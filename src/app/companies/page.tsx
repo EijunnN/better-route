@@ -91,19 +91,19 @@ export default function CompaniesPage() {
 
   if (showForm || editingCompany) {
     return (
-      <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">
+      <div className="min-h-screen bg-background p-8">
         <div className="mx-auto max-w-3xl">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            <h1 className="text-2xl font-bold text-foreground">
               {editingCompany ? "Editar Empresa" : "Nueva Empresa"}
             </h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-1 text-sm text-muted-foreground">
               {editingCompany
                 ? "Actualice la información de la empresa"
                 : "Complete el formulario para crear una nueva empresa"}
             </p>
           </div>
-          <div className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
             <CompanyForm
               onSubmit={editingCompany ? handleUpdate : handleCreate}
               initialData={
@@ -136,14 +136,14 @@ export default function CompaniesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">
+    <div className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            <h1 className="text-2xl font-bold text-foreground">
               Gestión de Empresas
             </h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-1 text-sm text-muted-foreground">
               Administre las empresas inquilinas del sistema
             </p>
           </div>
@@ -152,60 +152,60 @@ export default function CompaniesPage() {
 
         {isLoading ? (
           <div className="flex justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-300 border-t-zinc-900 dark:border-zinc-700 dark:border-t-zinc-100" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
           </div>
         ) : companies.length === 0 ? (
-          <div className="rounded-lg border border-zinc-200 bg-white p-12 text-center dark:border-zinc-800 dark:bg-zinc-950">
-            <p className="text-zinc-600 dark:text-zinc-400">
+          <div className="rounded-lg border border-border bg-card p-12 text-center shadow-sm">
+            <p className="text-muted-foreground">
               No hay empresas registradas. Cree la primera empresa.
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-            <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800">
-              <thead className="bg-zinc-50 dark:bg-zinc-900">
+          <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Nombre Legal
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Nombre Comercial
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     País
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Estado
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border">
                 {companies.map((company) => (
-                  <tr key={company.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                  <tr key={company.id} className="hover:bg-muted/50 transition-colors">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-foreground">
                       {company.legalName}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-600 dark:text-zinc-400">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
                       {company.commercialName}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-600 dark:text-zinc-400">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
                       {company.email}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-600 dark:text-zocal-400">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
                       {company.country}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
                       <span
                         className={`inline-flex rounded-full px-2 text-xs font-semibold ${
                           company.active
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                            : "bg-destructive/10 text-destructive"
                         }`}
                       >
                         {company.active ? "Activo" : "Inactivo"}
@@ -214,14 +214,14 @@ export default function CompaniesPage() {
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
                       <button
                         onClick={() => setEditingCompany(company)}
-                        className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 mr-4"
+                        className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
                       >
                         Editar
                       </button>
                       {company.active && (
                         <button
                           onClick={() => handleDelete(company.id)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          className="text-destructive hover:text-destructive/80 transition-colors"
                         >
                           Desactivar
                         </button>

@@ -75,7 +75,7 @@ export function FleetForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {errors.form && (
-        <div className="rounded-md bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
+        <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
           {errors.form}
         </div>
       )}
@@ -88,11 +88,11 @@ export function FleetForm({
             value={formData.name}
             onChange={(e) => updateField("name", e.target.value)}
             disabled={isSubmitting}
-            className={errors.name ? "border-red-500" : ""}
+            className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
             placeholder="Ej: Flota Norte - Express"
           />
           {errors.name && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+            <p className="text-sm text-destructive">{errors.name}</p>
           )}
         </div>
 
@@ -103,7 +103,7 @@ export function FleetForm({
             value={formData.type}
             onChange={(e) => updateField("type", e.target.value)}
             disabled={isSubmitting}
-            className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-base ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:border-zinc-800 dark:bg-zinc-950 dark:ring-offset-zinc-950"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
           >
             {FLEET_TYPES.map((type) => (
               <option key={type.value} value={type.value}>
@@ -112,7 +112,7 @@ export function FleetForm({
             ))}
           </select>
           {errors.type && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.type}</p>
+            <p className="text-sm text-destructive">{errors.type}</p>
           )}
         </div>
 
@@ -126,11 +126,11 @@ export function FleetForm({
             value={formData.weightCapacity}
             onChange={(e) => updateField("weightCapacity", parseInt(e.target.value) || 0)}
             disabled={isSubmitting}
-            className={errors.weightCapacity ? "border-red-500" : ""}
+            className={errors.weightCapacity ? "border-destructive focus-visible:ring-destructive" : ""}
             placeholder="Ej: 5000"
           />
           {errors.weightCapacity && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.weightCapacity}</p>
+            <p className="text-sm text-destructive">{errors.weightCapacity}</p>
           )}
         </div>
 
@@ -144,11 +144,11 @@ export function FleetForm({
             value={formData.volumeCapacity}
             onChange={(e) => updateField("volumeCapacity", parseInt(e.target.value) || 0)}
             disabled={isSubmitting}
-            className={errors.volumeCapacity ? "border-red-500" : ""}
+            className={errors.volumeCapacity ? "border-destructive focus-visible:ring-destructive" : ""}
             placeholder="Ej: 50"
           />
           {errors.volumeCapacity && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.volumeCapacity}</p>
+            <p className="text-sm text-destructive">{errors.volumeCapacity}</p>
           )}
         </div>
 
@@ -160,10 +160,10 @@ export function FleetForm({
             value={formData.operationStart}
             onChange={(e) => updateField("operationStart", e.target.value)}
             disabled={isSubmitting}
-            className={errors.operationStart ? "border-red-500" : ""}
+            className={errors.operationStart ? "border-destructive focus-visible:ring-destructive" : ""}
           />
           {errors.operationStart && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.operationStart}</p>
+            <p className="text-sm text-destructive">{errors.operationStart}</p>
           )}
         </div>
 
@@ -175,10 +175,10 @@ export function FleetForm({
             value={formData.operationEnd}
             onChange={(e) => updateField("operationEnd", e.target.value)}
             disabled={isSubmitting}
-            className={errors.operationEnd ? "border-red-500" : ""}
+            className={errors.operationEnd ? "border-destructive focus-visible:ring-destructive" : ""}
           />
           {errors.operationEnd && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.operationEnd}</p>
+            <p className="text-sm text-destructive">{errors.operationEnd}</p>
           )}
         </div>
 
@@ -191,9 +191,9 @@ export function FleetForm({
               checked={formData.active}
               onChange={(e) => updateField("active", e.target.checked)}
               disabled={isSubmitting}
-              className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-2 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950"
+              className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
             />
-            <span className="text-sm text-zinc-700 dark:text-zinc-300">
+            <span className="text-sm text-muted-foreground">
               {formData.active ? "Activa" : "Inactiva"}
             </span>
           </div>

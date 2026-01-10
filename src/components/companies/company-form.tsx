@@ -109,7 +109,7 @@ export function CompanyForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {errors.form && (
-        <div className="rounded-md bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
+        <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
           {errors.form}
         </div>
       )}
@@ -122,10 +122,10 @@ export function CompanyForm({
             value={formData.legalName}
             onChange={(e) => updateField("legalName", e.target.value)}
             disabled={isSubmitting}
-            className={errors.legalName ? "border-red-500" : ""}
+            className={errors.legalName ? "border-destructive focus-visible:ring-destructive" : ""}
           />
           {errors.legalName && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.legalName}</p>
+            <p className="text-sm text-destructive">{errors.legalName}</p>
           )}
         </div>
 
@@ -136,10 +136,10 @@ export function CompanyForm({
             value={formData.commercialName}
             onChange={(e) => updateField("commercialName", e.target.value)}
             disabled={isSubmitting}
-            className={errors.commercialName ? "border-red-500" : ""}
+            className={errors.commercialName ? "border-destructive focus-visible:ring-destructive" : ""}
           />
           {errors.commercialName && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.commercialName}</p>
+            <p className="text-sm text-destructive">{errors.commercialName}</p>
           )}
         </div>
 
@@ -151,10 +151,10 @@ export function CompanyForm({
             value={formData.email}
             onChange={(e) => updateField("email", e.target.value)}
             disabled={isSubmitting}
-            className={errors.email ? "border-red-500" : ""}
+            className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
           />
           {errors.email && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.email}</p>
+            <p className="text-sm text-destructive">{errors.email}</p>
           )}
         </div>
 
@@ -185,7 +185,7 @@ export function CompanyForm({
             value={formData.country}
             onChange={(e) => updateField("country", e.target.value)}
             disabled={isSubmitting}
-            className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-base ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:border-zinc-800 dark:bg-zinc-950 dark:ring-offset-zinc-950"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
           >
             {COUNTRIES.map((country) => (
               <option key={country.code} value={country.code}>
@@ -202,7 +202,7 @@ export function CompanyForm({
             value={formData.currency}
             onChange={(e) => updateField("currency", e.target.value)}
             disabled={isSubmitting}
-            className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-base ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:border-zinc-800 dark:bg-zinc-950 dark:ring-offset-zinc-950"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
           >
             {CURRENCIES.map((currency) => (
               <option key={currency.code} value={currency.code}>
@@ -219,7 +219,7 @@ export function CompanyForm({
             value={formData.timezone}
             onChange={(e) => updateField("timezone", e.target.value)}
             disabled={isSubmitting}
-            className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-base ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:border-zinc-800 dark:bg-zinc-950 dark:ring-offset-zinc-950"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
           >
             {TIMEZONES.map((tz) => (
               <option key={tz} value={tz}>
@@ -236,7 +236,7 @@ export function CompanyForm({
             value={formData.dateFormat}
             onChange={(e) => updateField("dateFormat", e.target.value)}
             disabled={isSubmitting}
-            className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-base ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:border-zinc-800 dark:bg-zinc-950 dark:ring-offset-zinc-950"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
           >
             {DATE_FORMATS.map((format) => (
               <option key={format.value} value={format.value}>
