@@ -20,6 +20,8 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { DriverAssignmentDisplay, AssignmentMetricsCard } from "./driver-assignment-quality";
+import { ManualDriverAssignmentDialog } from "./manual-driver-assignment-dialog";
+import { AssignmentHistory } from "./assignment-history";
 
 // Re-export types from optimization-runner
 export type { OptimizationResult, OptimizationRoute, OptimizationStop } from "@/lib/optimization-runner";
@@ -364,8 +366,30 @@ function RouteMapPlaceholder() {
 export function OptimizationResults({ result, onReoptimize, onConfirm, onReassignDriver }: OptimizationResultsProps) {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned" | "map">("routes");
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [selectedRouteForAssignment, setSelectedRouteForAssignment] = useState<{
+    routeId: string;
+    vehicleId: string;
+    vehiclePlate: string;
+    driverId?: string;
+    driverName?: string;
+  } | null>(null);
 
   const selectedRoute = result.routes.find((r) => r.routeId === selectedRouteId);
+
+  const handleReassignDriver = (routeId: string, vehicleId: string) => {
+    const route = result.routes.find((r) => r.routeId === routeId && r.vehicleId === vehicleId);
+    if (route) {
+      setSelectedRouteForAssignment({
+        routeId: route.routeId,
+        vehicleId: route.vehicleId,
+        vehiclePlate: route.vehiclePlate,
+        driverId: route.driverId,
+        driverName: route.driverName,
+      });
+      setAssignmentDialogOpen(true);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -470,7 +494,7 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
                   onToggle={() =>
                     setSelectedRouteId(selectedRouteId === route.routeId ? null : route.routeId)
                   }
-                  onReassignDriver={onReassignDriver}
+                  onReassignDriver={onReassignDriver ? handleReassignDriver : undefined}
                 />
               ))}
             </div>
@@ -524,6 +548,70 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
           )}
         </div>
       </div>
+
+      {/* Manual Assignment Dialog */}
+      {selectedRouteForAssignment && (
+        <ManualDriverAssignmentDialog
+          open={assignmentDialogOpen}
+          onOpenChange={setAssignmentDialogOpen}
+          routeId={selectedRouteForAssignment.routeId}
+          vehicleId={selectedRouteForAssignment.vehicleId}
+          vehiclePlate={selectedRouteForAssignment.vehiclePlate}
+          currentDriverId={selectedRouteForAssignment.driverId}
+          currentDriverName={selectedRouteForAssignment.driverName}
+          onAssign={async (driverId, overrideWarnings, reason) => {
+            // Call the API to assign driver
+            const response = await fetch("/api/driver-assignment/manual", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-company-id": localStorage.getItem("companyId") || "",
+                "x-user-id": localStorage.getItem("userId") || "",
+              },
+              body: JSON.stringify({
+                companyId: localStorage.getItem("companyId"),
+                vehicleId: selectedRouteForAssignment.vehicleId,
+                driverId,
+                routeId: selectedRouteForAssignment.routeId,
+                overrideWarnings,
+                reason,
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error("Failed to assign driver");
+            }
+
+            // Trigger callback to refresh the results
+            if (onReassignDriver) {
+              onReassignDriver(selectedRouteForAssignment.routeId, selectedRouteForAssignment.vehicleId);
+            }
+          }}
+          onRemove={async () => {
+            // Call the API to remove assignment
+            const response = await fetch(
+              `/api/driver-assignment/remove/${selectedRouteForAssignment.routeId}/${selectedRouteForAssignment.vehicleId}`,
+              {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-company-id": localStorage.getItem("companyId") || "",
+                  "x-user-id": localStorage.getItem("userId") || "",
+                },
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error("Failed to remove assignment");
+            }
+
+            // Trigger callback to refresh the results
+            if (onReassignDriver) {
+              onReassignDriver(selectedRouteForAssignment.routeId, selectedRouteForAssignment.vehicleId);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

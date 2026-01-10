@@ -19,7 +19,9 @@
       "Bash(bun install)",
       "Bash(npm install)",
       "Bash(bunx jq:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

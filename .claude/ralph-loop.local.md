@@ -1,9 +1,9 @@
 ---
 active: true
 iteration: 1
-max_iterations: 0
+max_iterations: 2
 completion_promise: null
-started_at: "2026-01-10T21:31:01Z"
+started_at: "2026-01-10T22:37:46Z"
 ---
 
-@prompt.md --max-iteration 2
+@prompt.md

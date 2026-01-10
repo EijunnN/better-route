@@ -65,3 +65,80 @@ Implemented intelligent automatic driver assignment system with the following fe
 - WORKLOAD: Prioritize balanced workload distribution
 - FLEET_MATCH: Prioritize fleet alignment
 
+---
+
+## Story 9.2: Asignación Manual de Conductores - COMPLETED
+
+### Implementation Summary
+
+Implemented comprehensive manual driver assignment system with full audit trail and real-time validation:
+
+#### Backend Changes:
+1. **Created `POST /api/driver-assignment/manual`**:
+   - Manual driver assignment endpoint with validation
+   - Supports override warnings flag for forcing assignments despite issues
+   - Updates job result with manual assignment metadata
+   - Creates audit log entry for every manual assignment
+   - Returns validation results with errors and warnings
+
+2. **Created `DELETE /api/driver-assignment/remove/[routeId]/[vehicleId]`**:
+   - Remove driver assignment endpoint for reassignment
+   - GET method returns current assignment info before removal
+   - Creates audit log entry with previous assignment details
+   - Updates job result to clear driver assignment
+
+3. **Created `GET /api/driver-assignment/history/[routeId]`**:
+   - Returns complete assignment history from audit logs
+   - Groups changes by action type for summary
+   - Ordered by most recent first
+
+#### Frontend Changes:
+1. **Created `src/components/optimization/manual-driver-assignment-dialog.tsx`**:
+   - Full-featured dialog for manual driver assignment
+   - Driver list with search functionality
+   - Real-time validation display with warnings and errors
+   - Override warnings checkbox for forcing assignments
+   - Optional reason field for audit
+   - Remove assignment button for reassignment
+   - Driver cards showing:
+     - License compliance
+     - Skills match percentage
+     - Availability status
+     - Fleet alignment
+
+2. **Created `src/components/optimization/assignment-history.tsx`**:
+   - Timeline view of all assignment changes
+   - Action badges (Manual Assignment, Removed, Automatic)
+   - Shows driver changes with previous and new assignments
+   - Displays override warnings
+   - Shows validation details (errors, warnings)
+   - Collapsible card with summary statistics
+
+3. **Updated `src/components/optimization/optimization-results.tsx`**:
+   - Integrated ManualDriverAssignmentDialog
+   - Added handleReassignDriver callback to open dialog
+   - Dialog opens with pre-filled current assignment info
+   - API calls for assign and remove operations
+   - Refresh callback after successful assignment changes
+
+### Features Implemented:
+- ✅ List of drivers showing availability, skills, and restrictions
+- ✅ Real-time validation of manual assignments
+- ✅ Clear warnings shown without blocking assignments
+- ✅ Override checkbox for forcing assignments despite warnings
+- ✅ Assignment history tracked with audit logs
+- ✅ Remove existing assignments for reassignment
+- ✅ API validates before confirming manual assignment
+- ✅ Optional reason field for audit trail
+- ✅ Search functionality for driver selection
+- ✅ Visual indicators for assignment quality
+
+### Story Steps Verification:
+1. ✅ Lista de conductores muestra disponibilidad, habilidades y restricciones
+2. ✅ Validación de asignación en tiempo real mientras se selecciona
+3. ✅ Advertencias mostradas claramente sin bloquear asignación
+4. ✅ Registro de asignaciones manuales en auditoría
+5. ✅ Interfaz permite quitar asignaciones existentes para reasignar
+6. ✅ Asignaciones pueden hacerse a rutas sin conductor o cambiar conductor
+7. ✅ API valida restricciones antes de confirmar asignación manual
+
