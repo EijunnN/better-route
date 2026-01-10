@@ -44,3 +44,46 @@
 - @radix-ui/react-dialog
 - lucide-react
 
+---
+
+## 2025-01-10 - Story 4.2: Gestión de Habilidades de Conductores
+
+### Implemented Features
+
+1. **Driver Skills Compatibility Validation** (`src/lib/validations/driver-skills-compatibility.ts`)
+   - `validateDriverSkillsCompatibility()` - Validates driver has required skills
+   - `filterDriversByRequiredSkills()` - Filters compatible drivers for orders
+   - `canDriverHandleOrder()` - Quick compatibility check
+   - `calculateDriverSkillsQualityScore()` - Quality scoring for assignments
+   - `formatDriverSkillsCompatibilityResponse()` - API response formatter
+   - Automatic exclusion of expired skills
+   - Configurable handling of expiring soon skills
+
+2. **API Endpoints**
+   - `GET /api/drivers/[id]/skills-compatibility` - Check driver skills via query params
+   - `POST /api/drivers/[id]/skills-compatibility` - Check driver skills via request body
+   - Supports filtering by active/inactive skills
+   - Configurable handling of skills expiring soon
+   - Returns detailed compatibility report with quality score
+
+3. **Validation Features**
+   - Validates driver has all required skills for routes/orders
+   - Automatically excludes expired skills from compatibility checks
+   - Warns about skills expiring within 30 days
+   - Quality score (0-100) for driver assignment decisions
+   - Detailed error messages for missing/invalid skills
+
+### Files Created
+- `src/lib/validations/driver-skills-compatibility.ts` - Driver skills compatibility logic
+- `src/app/api/drivers/[id]/skills-compatibility/route.ts` - Compatibility check API
+
+### Story 4.2 Status: COMPLETED ✅
+
+All requirements met:
+- ✅ Assigning skills using centralized catalog (already existed)
+- ✅ Skills show obtained and expiry dates (already existed)
+- ✅ Automatic validation of skills before route assignments (NEW)
+- ✅ Alerts for certifications expiring within 30 days (already existed as expiring_soon status)
+- ✅ Automatic exclusion of expired skills in compatibility verification (NEW)
+- ✅ API to query drivers by specific skills (already existed)
+

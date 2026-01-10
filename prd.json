@@ -154,7 +154,7 @@
         "Confirmar API permite consultar conductores por habilidades específicas",
         "Verificar interfaz muestra claramente habilidades y su vigencia"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "4.3",
