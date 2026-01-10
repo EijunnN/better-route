@@ -1,0 +1,797 @@
+{
+  "project": "Sistema de Gestión Logística",
+  "version": "2.0",
+  "stories": [
+    {
+      "id": "1.1",
+      "module": "Gestión de Empresas y Configuración Multi-Tenant",
+      "category": "functional",
+      "description": "Creación y Gestión de Companies - Permitir crear y gestionar Companies (empresas inquilinas) para operación multi-tenant aislada",
+      "steps": [
+        "Verificar que el formulario de creación incluye campos para nombre legal, nombre comercial, correo electrónico, teléfono, dirección fiscal, país, zona horaria, moneda y formato de fecha",
+        "Validar unicidad del nombre legal antes de permitir la creación",
+        "Verificar que correos duplicados en otra Company activa sean rechazados",
+        "Confirmar que cada Company recibe un identificador único automático",
+        "Verificar que la desactivación marca datos como inactivos sin eliminar registros físicamente",
+        "Confirmar generación de evento de auditoría en creación y modificaciones",
+        "Validar que la API permite consulta de Companies con filtrado por estado, país o fecha"
+      ],
+      "passes": false
+    },
+    {
+      "id": "1.2",
+      "module": "Gestión de Empresas y Configuración Multi-Tenant",
+      "category": "functional",
+      "description": "Aislamiento de Datos entre Companies - Implementar aislamiento de datos a nivel de base de datos para garantizar acceso exclusivo a datos propios",
+      "steps": [
+        "Verificar que cada tabla incluye columna tenantId para identificar Company propietaria",
+        "Confirmar que todas las consultas incluyen automáticamente filtro por tenantId de sesión",
+        "Validar que endpoints de API rechazan solicitudes a recursos de otro tenant",
+        "Verificar que logs de auditoría registran tenant y usuario en cada operación",
+        "Confirmar que migraciones preservan tenantId de cada registro",
+        "Validar manejo correcto de cambio de Company de usuario con reasignación de datos"
+      ],
+      "passes": false
+    },
+    {
+      "id": "2.1",
+      "module": "Gestión de Flotas",
+      "category": "functional",
+      "description": "Creación y Configuración de Flotas - Crear y configurar flotas con información detallada para organizar vehículos y conductores",
+      "steps": [
+        "Verificar formulario con campos: nombre, tipo de flota, empresa propietaria, capacidades de peso/volumen, horarios de operación y estado",
+        "Validar unicidad de nombre dentro de la Company y capacidades como valores positivos",
+        "Confirmar tipos de flota configurables: carga pesada, carga ligera, express, refrigerado, especial",
+        "Verificar que desactivación requiere confirmación si hay vehículos o conductores activos",
+        "Validar mantenimiento de historial completo de cambios en atributos críticos",
+        "Confirmar API permite consultar flotas con filtros por empresa, tipo, estado y fecha"
+      ],
+      "passes": false
+    },
+    {
+      "id": "2.2",
+      "module": "Gestión de Flotas",
+      "category": "functional",
+      "description": "Asociación de Vehículos a Flotas - Asignar vehículos a flotas específicas para organización vehicular",
+      "steps": [
+        "Verificar que cada vehículo tiene campo fleetId referenciando su flota",
+        "Validar compatibilidad entre características del vehículo y configuración de flota",
+        "Confirmar presentación de opciones cuando hay planificaciones activas al reasignar",
+        "Verificar historial de cambios de flota con timestamps y usuario responsable",
+        "Validar consulta de vehículos con filtro por flota y conteo por estado",
+        "Confirmar endpoint API para obtener todos los vehículos de una flota específica"
+      ],
+      "passes": false
+    },
+    {
+      "id": "2.3",
+      "module": "Gestión de Flotas",
+      "category": "functional",
+      "description": "Asociación de Conductores a Flotas - Asignar conductores a flotas específicas para organización de personal",
+      "steps": [
+        "Verificar que cada conductor tiene campo fleetId referenciando flota primaria",
+        "Validar soporte de flotas secundarias mediante tabla relación many-to-many",
+        "Confirmar configuración de disponibilidad por día de semana con rangos horarios",
+        "Verificar que días de descanso se marcan como no disponibles automáticamente",
+        "Validar consulta de conductores con filtro por flota y disponibilidad actual",
+        "Confirmar endpoint API para obtener conductores disponibles en horario específico"
+      ],
+      "passes": false
+    },
+    {
+      "id": "3.1",
+      "module": "Gestión de Vehículos",
+      "category": "functional",
+      "description": "Registro de Vehículos con Atributos Completos - Registrar vehículos con características físicas y capacidades",
+      "steps": [
+        "Verificar formulario con: matrícula, marca, modelo, año, tipo, capacidades peso/volumen, dimensiones, refrigerado, calentado, elevación, licencia, seguro, inspección y estado",
+        "Validar unicidad de matrícula dentro de la Company",
+        "Confirmar que capacidades de peso y volumen son valores positivos mayores a cero",
+        "Verificar que tipos de licencia corresponden a categorías válidas del país",
+        "Validar generación de alertas cuando fechas de documentos se aproximan a vencimiento",
+        "Confirmar mantenimiento de historial de cambios para todos los atributos",
+        "Verificar API permite consultar vehículos con filtros por tipo, estado, capacidades y flota"
+      ],
+      "passes": false
+    },
+    {
+      "id": "3.2",
+      "module": "Gestión de Vehículos",
+      "category": "functional",
+      "description": "Gestión del Estado Operativo de Vehículos - Controlar disponibilidad de vehículos para planificaciones",
+      "steps": [
+        "Verificar estados definidos: DISPONIBLE, EN_MANTENIMIENTO, ASIGNADO, INACTIVO",
+        "Validar que transiciones de estado siguen reglas predefinidas",
+        "Confirmar rechazo de desactivación de vehículos con rutas confirmadas pendientes",
+        "Verificar presentación de opciones de reasignación para vehículos con asignaciones activas",
+        "Validar historial de cambios con timestamp, estados, usuario y motivo opcional",
+        "Confirmar consulta de vehículos por estado con métricas de utilización",
+        "Verificar endpoint API para disponibilidad de vehículos en rango de fechas"
+      ],
+      "passes": false
+    },
+    {
+      "id": "3.3",
+      "module": "Gestión de Vehículos",
+      "category": "functional",
+      "description": "Catálogo de Habilidades de Vehículos - Gestionar catálogo centralizado de capacidades especiales",
+      "steps": [
+        "Verificar CRUD completo de habilidades con código único, nombre, categoría, descripción, activo y timestamps",
+        "Validar organización en categorías: Equipamiento, Temperatura, Certificaciones, Especiales",
+        "Confirmar que habilidades en uso no pueden eliminarse, solo desactivarse",
+        "Verificar API permite consultar habilidades por categoría y estado activo",
+        "Validar asignación de habilidades mediante checkboxes o selector múltiple",
+        "Confirmar validación contra duplicados de código de habilidad"
+      ],
+      "passes": false
+    },
+    {
+      "id": "4.1",
+      "module": "Gestión de Conductores",
+      "category": "functional",
+      "description": "Registro de Conductores con Información Completa - Registrar datos personales y profesionales de conductores",
+      "steps": [
+        "Verificar formulario con: nombre, identificación, correo, teléfono, fecha nacimiento, fotografía, licencia, vencimiento, categorías, certificaciones y flota",
+        "Validar formato de identificación y licencia según país de operación",
+        "Confirmar alertas visuales para licencias próximas a vencer en menos de 30 días",
+        "Verificar marcado automático como NO_DISPONIBLE para conductores con licencias vencidas",
+        "Validar API permite consultar conductores con filtros por flota, estado de licencia y certificaciones",
+        "Confirmar mantenimiento de historial de cambios en atributos críticos"
+      ],
+      "passes": false
+    },
+    {
+      "id": "4.2",
+      "module": "Gestión de Conductores",
+      "category": "functional",
+      "description": "Gestión de Habilidades de Conductores - Asignar competencias que determinan rutas realizables",
+      "steps": [
+        "Verificar asignación de habilidades usando catálogo centralizado",
+        "Validar que habilidades muestran fecha de obtención y vencimiento cuando aplica",
+        "Confirmar validación automática de habilidades vigentes antes de asignar a rutas",
+        "Verificar alertas para certificaciones próximas a vencer en menos de 30 días",
+        "Validar exclusión automática de habilidades vencidas en verificación de compatibilidad",
+        "Confirmar API permite consultar conductores por habilidades específicas",
+        "Verificar interfaz muestra claramente habilidades y su vigencia"
+      ],
+      "passes": false
+    },
+    {
+      "id": "4.3",
+      "module": "Gestión de Conductores",
+      "category": "functional",
+      "description": "Gestión del Estado Operativo de Conductores - Mantener visibilidad del progreso de rutas",
+      "steps": [
+        "Verificar estados: DISPONIBLE, ASIGNADO, EN_RUTA, EN_PAUSA, COMPLETADO, NO_DISPONIBLE, AUSENTE",
+        "Validar actualización automática de estado basada en acciones de planificación y ejecución",
+        "Confirmar detección automática de ausencia cuando supera tiempo de tolerancia",
+        "Verificar inicio automático de reasignaciones al detectar conductor ausente",
+        "Validar registro de transiciones con timestamp, actor y contexto",
+        "Confirmar API permite consultar estado actual de conductores por flota",
+        "Verificar dashboard muestra claramente estado de cada conductor activo"
+      ],
+      "passes": false
+    },
+    {
+      "id": "5.1",
+      "module": "Configuración de Ventanas de Tiempo",
+      "category": "functional",
+      "description": "Creación de Presets de Ventanas de Tiempo - Crear presets reutilizables de horarios de entrega prometidos",
+      "steps": [
+        "Verificar soporte de tipos: SHIFT (turno), RANGE (rango), EXACT (hora exacta)",
+        "Validar definición de hora inicio y fin para SHIFT y RANGE",
+        "Confirmar definición de hora específica y tolerancia en minutos para EXACT",
+        "Verificar nombre descriptivo único dentro de la Company",
+        "Validar que horas de fin sean posteriores a horas de inicio",
+        "Confirmar posibilidad de marcar presets como inactivos sin eliminar",
+        "Verificar API permite CRUD completo con filtrado por tipo y estado"
+      ],
+      "passes": false
+    },
+    {
+      "id": "5.2",
+      "module": "Configuración de Ventanas de Tiempo",
+      "category": "functional",
+      "description": "Configuración de Estrictez de Ventanas de Tiempo - Controlar comportamiento del algoritmo ante restricciones",
+      "steps": [
+        "Verificar configuración de estrictez predeterminada en cada preset",
+        "Validar que cada pedido puede sobrescribir estrictez del preset individualmente",
+        "Confirmar que en modo HARD el algoritmo rechaza asignaciones que violen ventanas",
+        "Verificar que en modo SOFT el algoritmo minimiza retrasos con factor de penalización",
+        "Validar reporte de pedidos sin asignar por restricciones hard",
+        "Confirmar interfaz muestra claramente configuración de estrictez por pedido",
+        "Verificar métricas de optimización incluyen nivel de incumplimiento de ventanas"
+      ],
+      "passes": false
+    },
+    {
+      "id": "6.1",
+      "module": "Importación de Pedidos",
+      "category": "functional",
+      "description": "Carga de Archivos CSV para Importación de Pedidos - Importar masivamente información de entregas",
+      "steps": [
+        "Verificar aceptación de archivos CSV con extensión .csv y codificación UTF-8",
+        "Validar detección automática de delimitador para coma y punto y coma",
+        "Confirmar que archivo tiene headers en primera fila mapeados a campos",
+        "Verificar rechazo de archivos sin campos requeridos con mensaje específico",
+        "Validar preview de primeros registros antes de procesar",
+        "Confirmar indicador de progreso para archivos grandes",
+        "Verificar API recibe contenido CSV como base64 y retorna resultado de importación"
+      ],
+      "passes": false
+    },
+    {
+      "id": "6.2",
+      "module": "Importación de Pedidos",
+      "category": "functional",
+      "description": "Validación de Datos Durante Importación - Identificar y corregir errores antes de planificación",
+      "steps": [
+        "Verificar validación de coordenadas dentro de rangos válidos de latitud y longitud",
+        "Validar que coordenadas (0, 0) generan advertencia o rechazo configurable",
+        "Confirmar rechazo de Tracking IDs duplicados con indicación de IDs afectados",
+        "Verificar marcado de campos requeridos faltantes como errores específicos por registro",
+        "Validar generación de reporte de errores con número de fila y tipo de error",
+        "Confirmar separación de registros válidos e inválidos para corrección",
+        "Verificar que validación completa antes de cualquier modificación en base de datos"
+      ],
+      "passes": false
+    },
+    {
+      "id": "6.3",
+      "module": "Importación de Pedidos",
+      "category": "functional",
+      "description": "Mapeo de Columnas del CSV - Acomodar variaciones en formatos de exportación",
+      "steps": [
+        "Verificar interfaz muestra preview de datos con headers del archivo",
+        "Validar que cada columna tiene selector de campo destino en el sistema",
+        "Confirmar autocompletado de mapeo basado en nombres de columna similares",
+        "Verificar marcado claro de campos requeridos sin mapeo como faltantes",
+        "Validar bloqueo de avance hasta que campos requeridos estén mapeados",
+        "Confirmar posibilidad de guardar configuración de mapeo como plantilla reutilizable",
+        "Verificar API recibe mapeo de columnas como parte de solicitud de importación"
+      ],
+      "passes": false
+    },
+    {
+      "id": "6.4",
+      "module": "Importación de Pedidos",
+      "category": "functional",
+      "description": "Geocodificación y Priorización de Coordenadas - Procesar coordenadas para visualización en mapa",
+      "steps": [
+        "Verificar uso directo de coordenadas del CSV cuando son válidas",
+        "Validar marcadores con código de colores por estado del pedido",
+        "Confirmar tooltip al pasar mouse muestra tracking ID, dirección y estado",
+        "Verificar activación automática de clustering cuando hay muchos puntos cercanos",
+        "Validar que click en cluster hace zoom para separar puntos individuales",
+        "Confirmar rendimiento fluido con miles de puntos en el mapa",
+        "Verificar API retorna datos GeoJSON para visualización en cliente"
+      ],
+      "passes": false
+    },
+    {
+      "id": "7.1",
+      "module": "Configuración de Optimización",
+      "category": "functional",
+      "description": "Configuración del Depot y Recursos Base - Definir recursos base para construcción de rutas",
+      "steps": [
+        "Verificar selector de depot permite ubicación por click en mapa o entrada directa",
+        "Validar que sistema verifica coordenadas válidas del depot antes de optimización",
+        "Confirmar lista de vehículos muestra matrículas, tipo, capacidades y habilidades",
+        "Verificar selección de vehículos permite filtrado por tipo, flota y estado",
+        "Validar lista de conductores muestra nombre, flota y habilidades disponibles",
+        "Confirmar filtrado automático de conductores con licencias vencidas o restricciones",
+        "Verificar API recibe configuración de recursos como parte del request de optimización"
+      ],
+      "passes": false
+    },
+    {
+      "id": "7.2",
+      "module": "Configuración de Optimización",
+      "category": "functional",
+      "description": "Configuración de Capacidades y Restricciones - Asegurar rutas físicamente realizables",
+      "steps": [
+        "Verificar oferta de modo capacitado y no capacitado para optimización",
+        "Validar que en modo capacitado el algoritmo respeta límites de peso y volumen",
+        "Confirmar verificación de habilidades requeridas contra capacidades de vehículo y conductor",
+        "Verificar exclusión automática de vehículos sin habilidades suficientes para un pedido",
+        "Validar interfaz muestra resumen de pedidos pendientes con requerimientos de capacidad",
+        "Confirmar API permite configurar qué restricciones considerar durante optimización",
+        "Verificar métricas de optimización indican capacidad utilizada por ruta"
+      ],
+      "passes": false
+    },
+    {
+      "id": "7.3",
+      "module": "Configuración de Optimización",
+      "category": "functional",
+      "description": "Configuración de Tiempo y Ventanas de Entrega - Balancear cumplimiento de horarios con eficiencia",
+      "steps": [
+        "Verificar especificación de ventana de trabajo con hora de inicio y fin",
+        "Validar tiempo de servicio configurable con valor predeterminado de 10 minutos",
+        "Confirmar modo de respeto a hora prometida seleccionable entre HARD y SOFT",
+        "Verificar configuración de factor de penalización de retraso en modo SOFT",
+        "Validar verificación de que todos los pedidos quepan en la ventana de trabajo",
+        "Confirmar API recibe todos los parámetros de tiempo en request de optimización",
+        "Verificar métricas de resultado indican nivel de cumplimiento de ventanas"
+      ],
+      "passes": false
+    },
+    {
+      "id": "7.4",
+      "module": "Configuración de Optimización",
+      "category": "functional",
+      "description": "Configuración de Estrategia de Optimización - Personalizar comportamiento del algoritmo",
+      "steps": [
+        "Verificar objetivo de optimización con opciones: DISTANCIA, TIEMPO, BALANCEADO",
+        "Validar factor de penalización configurable con rango de 1x a 20x",
+        "Confirmar número máximo de rutas configurable con valor predeterminado infinito",
+        "Verificar interfaz incluye descripción de cada parámetro para facilitar selección",
+        "Validar posibilidad de guardar presets de configuración para configuraciones comunes",
+        "Confirmar API acepta todos los parámetros de estrategia en el request",
+        "Verificar sistema muestra resumen de configuración antes de ejecutar optimización"
+      ],
+      "passes": false
+    },
+    {
+      "id": "8.1",
+      "module": "Ejecución de Optimización",
+      "category": "functional",
+      "description": "Ejecución Asíncrona de Optimización - No bloquear interfaz en planes grandes",
+      "steps": [
+        "Verificar API retorna job ID inmediatamente al iniciar optimización",
+        "Validar endpoint de estado permite polling hasta completar o fallar",
+        "Confirmar sistema mantiene cola de trabajos con control de concurrencia",
+        "Verificar timeouts configurables con valor predeterminado de 5 minutos",
+        "Validar retorno de resultado cacheado si las entradas no han cambiado",
+        "Confirmar interfaz muestra indicador de progreso animado durante procesamiento",
+        "Verificar usuario puede cancelar optimización en curso"
+      ],
+      "passes": false
+    },
+    {
+      "id": "8.2",
+      "module": "Ejecución de Optimización",
+      "category": "functional",
+      "description": "Visualización de Resultados de Optimización - Evaluar calidad de solución",
+      "steps": [
+        "Verificar cada ruta muestra vehículo, conductor, stops, distancia, duración y métricas",
+        "Validar marcado de conflictos de capacidad o ventanas con indicadores visuales",
+        "Confirmar listado de pedidos sin asignar con motivo de exclusión",
+        "Verificar interfaz permite navegar entre rutas para ver detalles",
+        "Validar mapa muestra todas las rutas con colores diferenciados",
+        "Confirmar métricas agregadas muestran resumen de todas las rutas",
+        "Verificar API retorna estructura de datos con todas las métricas de resultado"
+      ],
+      "passes": false
+    },
+    {
+      "id": "8.3",
+      "module": "Ejecución de Optimización",
+      "category": "functional",
+      "description": "Cancelación y Re-ejecución de Optimización - Iterar hasta solución satisfactoria",
+      "steps": [
+        "Verificar usuario puede cancelar optimización con botón de cancelación",
+        "Validar que cancelación detiene procesamiento y libera recursos",
+        "Confirmar preservación de resultados parciales para revisión",
+        "Verificar re-ejecución puede usar misma configuración con modificaciones",
+        "Validar guardado de historial de optimizaciones para comparación",
+        "Confirmar interfaz muestra claramente optimizaciones completadas vs canceladas",
+        "Verificar comparación de resultados permite side-by-side de métricas"
+      ],
+      "passes": false
+    },
+    {
+      "id": "9.1",
+      "module": "Asignación de Conductores",
+      "category": "functional",
+      "description": "Asignación Automática de Conductores - Acelerar planificación considerando habilidades",
+      "steps": [
+        "Verificar asignación automática verifica habilidades, disponibilidad y licencias",
+        "Validar sistema muestra sugerencias con indicadores de calidad de asignación",
+        "Confirmar respeto de restricciones de horas de trabajo en asignaciones automáticas",
+        "Verificar usuario puede sobrescribir asignaciones automáticas manualmente",
+        "Validar modificaciones manuales se validan en tiempo real",
+        "Confirmar API permite ejecutar asignación automática o recibir asignaciones manuales",
+        "Verificar registro de historial de asignaciones para auditoría"
+      ],
+      "passes": false
+    },
+    {
+      "id": "9.2",
+      "module": "Asignación de Conductores",
+      "category": "functional",
+      "description": "Asignación Manual de Conductores - Manejar situaciones especiales",
+      "steps": [
+        "Verificar lista de conductores muestra disponibilidad, habilidades y restricciones",
+        "Validar validación de asignación en tiempo real mientras se selecciona",
+        "Confirmar advertencias mostradas claramente sin bloquear asignación",
+        "Verificar registro de asignaciones manuales en auditoría",
+        "Validar interfaz permite quitar asignaciones existentes para reasignar",
+        "Confirmar asignaciones pueden hacerse a rutas sin conductor o cambiar conductor",
+        "Verificar API valida restricciones antes de confirmar asignación manual"
+      ],
+      "passes": false
+    },
+    {
+      "id": "9.3",
+      "module": "Asignación de Conductores",
+      "category": "functional",
+      "description": "Confirmación Final del Plan - Bloquear plan para ejecución",
+      "steps": [
+        "Verificar sistema verifica completitud antes de permitir confirmación",
+        "Validar verificación incluye conductor asignado, habilidades y cumplimiento de restricciones",
+        "Confirmar conflictos pendientes mostrados claramente con opción de resolver",
+        "Verificar confirmación solicita confirmación explícita con diálogo de seguridad",
+        "Validar que después de confirmar el plan cambia a estado CONFIRMED",
+        "Confirmar modificaciones posteriores se hacen mediante proceso de reasignación",
+        "Verificar API retorna error si se intenta confirmar plan incompleto"
+      ],
+      "passes": false
+    },
+    {
+      "id": "10.1",
+      "module": "Monitoreo de Ejecución",
+      "category": "functional",
+      "description": "Dashboard de Monitoreo en Tiempo Real - Mantener visibilidad del progreso de entregas",
+      "steps": [
+        "Verificar dashboard muestra mapa con ubicaciones de vehículos y rutas",
+        "Validar lista de conductores muestra estado, progreso y alertas activas",
+        "Confirmar actualizaciones automáticas sin requerir refresco manual",
+        "Verificar indicadores clave incluyen completitud, retrasos y alertas",
+        "Validar selección de conductor muestra detalle de ruta con stops",
+        "Confirmar rendimiento fluido con docenas de conductores activos",
+        "Verificar API soporta polling frecuente con datos resumidos"
+      ],
+      "passes": false
+    },
+    {
+      "id": "10.2",
+      "module": "Monitoreo de Ejecución",
+      "category": "functional",
+      "description": "Sistema de Alertas - Tomar acciones correctivas tempranamente",
+      "steps": [
+        "Verificar sistema tiene reglas de alerta preconfiguradas y editables",
+        "Validar alertas críticas se muestran inmediatamente con opciones de acción",
+        "Confirmar categorización de alertas por severidad: crítica, advertencia, informativa",
+        "Verificar cada alerta incluye contexto completo del problema",
+        "Validar panel de notificaciones acumula alertas para revisión posterior",
+        "Confirmar alertas pueden marcarse como leídas o descartarse",
+        "Verificar API permite consultar alertas activas con filtros"
+      ],
+      "passes": false
+    },
+    {
+      "id": "10.3",
+      "module": "Monitoreo de Ejecución",
+      "category": "functional",
+      "description": "Actualización de Estado de Stops - Mantener registro de progreso de entregas",
+      "steps": [
+        "Verificar estados de stop: PENDING, IN_PROGRESS, COMPLETED, FAILED, SKIPPED",
+        "Validar actualización requiere confirmación del usuario",
+        "Confirmar registro automático de timestamp de actualización",
+        "Verificar notas opcionales permitidas en cualquier cambio de estado",
+        "Validar sistema recalcula métricas de ruta al cambiar estado de stop",
+        "Confirmar mantenimiento de historial de cambios de estado para auditoría",
+        "Verificar API valida transiciones de estado válidas"
+      ],
+      "passes": false
+    },
+    {
+      "id": "11.1",
+      "module": "Reasignaciones",
+      "category": "functional",
+      "description": "Proceso de Reasignación por Ausencia de Conductor - Minimizar impacto de ausencias",
+      "steps": [
+        "Verificar selección de conductor ausente inicia proceso de reasignación",
+        "Validar sistema calcula impacto de diferentes escenarios de redistribución",
+        "Confirmar opciones de reasignación muestran métricas de impacto claramente",
+        "Verificar usuario puede seleccionar y ejecutar una opción",
+        "Validar reasignaciones mantienen compatibilidad de habilidades",
+        "Confirmar sistema verifica capacidad disponible de vehículos receptores",
+        "Verificar todas las reasignaciones se registran en auditoría"
+      ],
+      "passes": false
+    },
+    {
+      "id": "11.2",
+      "module": "Reasignaciones",
+      "category": "functional",
+      "description": "Cálculo de Impacto de Reasignación - Tomar decisiones informadas sobre redistribución",
+      "steps": [
+        "Verificar cálculo de impacto incluye distancia adicional, tiempo adicional y ventanas comprometidas",
+        "Validar métricas mostradas en términos absolutos y porcentuales",
+        "Confirmar cálculo de impacto para cada opción de reasignación",
+        "Verificar política de reasignación prioriza conductores del mismo tipo de flota",
+        "Validar verificación de restricciones de capacidad para cada conductor receptor",
+        "Confirmar indicación de disponibilidad de conductores para absorber stops",
+        "Verificar API retorna estructura de impacto para cada opción calculada"
+      ],
+      "passes": false
+    },
+    {
+      "id": "11.3",
+      "module": "Reasignaciones",
+      "category": "functional",
+      "description": "Ejecución y Registro de Reasignaciones - Implementar cambios y actualizar operación",
+      "steps": [
+        "Verificar ejecución de reasignación es atómica con rollback en caso de error",
+        "Validar vistas de monitoreo se actualizan inmediatamente después de ejecutar",
+        "Confirmar registro de todos los detalles de la reasignación ejecutada",
+        "Verificar regeneración automática de archivos de output si es necesario",
+        "Validar posibilidad de consultar historial de reasignaciones posteriormente",
+        "Confirmar API retorna confirmación de ejecución exitosa o error con detalle",
+        "Verificar conductores afectados pueden ver sus rutas actualizadas"
+      ],
+      "passes": false
+    },
+    {
+      "id": "12.1",
+      "module": "Generación de Output",
+      "category": "functional",
+      "description": "Generación de Archivos de Output - Proporcionar información de rutas a conductores",
+      "steps": [
+        "Verificar archivo incluye información por conductor: identificación, stops, direcciones, horas, notas",
+        "Validar generación valida completitud del plan antes de producir output",
+        "Confirmar reporte de problemas de validación sin generar archivo",
+        "Verificar archivo formateado para lectura humana",
+        "Validar descarga disponible inmediatamente después de generar",
+        "Confirmar mantenimiento de historial de outputs generados",
+        "Verificar API permite generación y descarga de output"
+      ],
+      "passes": false
+    },
+    {
+      "id": "12.2",
+      "module": "Generación de Output",
+      "category": "functional",
+      "description": "Métricas de Resumen del Plan - Evaluar calidad de planificación",
+      "steps": [
+        "Verificar generación automática de métricas al confirmar el plan",
+        "Validar almacenamiento de métricas con la sesión de planificación",
+        "Confirmar interfaz muestra métricas de resumen al visualizar el plan",
+        "Verificar métricas históricas permiten comparación entre sesiones",
+        "Validar API retorna métricas como parte de respuesta de planificación",
+        "Confirmar dashboard incluye gráficos de tendencias de métricas",
+        "Verificar métricas incluidas en reportes exportables"
+      ],
+      "passes": false
+    },
+    {
+      "id": "13.1",
+      "module": "APIs y Comunicación",
+      "category": "functional",
+      "description": "API RESTful de Gestión - Integrar frontend con backend",
+      "steps": [
+        "Verificar API sigue convenciones REST para operaciones CRUD",
+        "Validar endpoints usan métodos HTTP apropiados: GET, POST, PUT, PATCH, DELETE",
+        "Confirmar paginación soporta limit y offset con total count",
+        "Verificar filtrado usa operadores estándar en query params",
+        "Validar errores retornan código HTTP apropiado con detalle de validación",
+        "Confirmar documentación de API disponible en formato OpenAPI",
+        "Verificar autenticación usa tokens JWT en headers Authorization"
+      ],
+      "passes": false
+    },
+    {
+      "id": "13.2",
+      "module": "APIs y Comunicación",
+      "category": "functional",
+      "description": "API de Planificación y Optimización - Implementar frontend de planificación",
+      "steps": [
+        "Verificar carga de archivos usa multipart/form-data",
+        "Validar procesamiento asíncrono con job ID para tracking",
+        "Confirmar optimización recibe configuración completa y retorna job ID",
+        "Verificar polling de job retorna estado y resultado cuando complete",
+        "Validar confirmación valida precondiciones y retorna errores específicos",
+        "Confirmar endpoints requieren autenticación y autorización apropiadas",
+        "Verificar API define estructuras de request y response tipadas"
+      ],
+      "passes": false
+    },
+    {
+      "id": "13.3",
+      "module": "APIs y Comunicación",
+      "category": "functional",
+      "description": "API de Monitoreo en Tiempo Real - Implementar frontend de monitoreo",
+      "steps": [
+        "Verificar endpoint de estado resumido optimizado para polling frecuente",
+        "Validar endpoint de detalle retorna información completa de la ruta",
+        "Confirmar acciones validan permisos y reglas de negocio antes de ejecutar",
+        "Verificar reasignaciones reciben descripción del cambio y retornan impacto",
+        "Validar endpoints soportan filtrado por fecha, flota, estado",
+        "Confirmar API incluye rate limiting para endpoints de monitoreo",
+        "Verificar respuestas incluyen timestamps para sincronización"
+      ],
+      "passes": false
+    },
+    {
+      "id": "14.1",
+      "module": "Seguridad y Control de Acceso",
+      "category": "security",
+      "description": "Sistema de Autenticación con JWT - Acceder a funcionalidades de manera segura",
+      "steps": [
+        "Verificar login verifica credenciales contra base de datos",
+        "Validar respuesta incluye access token y refresh token",
+        "Confirmar access tokens tienen expiración corta (minutos)",
+        "Verificar refresh tokens tienen expiración larga (días)",
+        "Validar API valida tokens en cada request protegido",
+        "Confirmar tokens inválidos retornan error descriptivo",
+        "Verificar rate limiting aplicado a endpoints de autenticación"
+      ],
+      "passes": false
+    },
+    {
+      "id": "14.2",
+      "module": "Seguridad y Control de Acceso",
+      "category": "security",
+      "description": "Control de Acceso Basado en Roles - Controlar operaciones por tipo de usuario",
+      "steps": [
+        "Verificar roles predefinidos: PLANIFICADOR, MONITOR, ADMIN_FLOTA, ADMIN_SISTEMA",
+        "Validar cada rol tiene permisos específicos definidos",
+        "Confirmar permisos granulares a nivel de entidad y acción",
+        "Verificar acceso a datos filtrado por Company del usuario",
+        "Validar acciones sensibles requieren confirmación adicional",
+        "Confirmar registro de quién ejecutó cada acción sensible",
+        "Verificar API verifica permisos antes de ejecutar operaciones"
+      ],
+      "passes": false
+    },
+    {
+      "id": "15.1",
+      "module": "Gestión de Sesiones",
+      "category": "security",
+      "description": "Gestión de Sesiones con Redis - Mantener sesiones activas durante uso",
+      "steps": [
+        "Verificar sesiones almacenadas en Redis con TTL configurado",
+        "Validar actividad del usuario renueva TTL de la sesión",
+        "Confirmar sesiones expiradas se invalidan automáticamente",
+        "Verificar API verifica validez de sesión en cada request",
+        "Validar administradores pueden invalidar sesiones de usuarios",
+        "Confirmar invalidación global puede aplicarse a todos los usuarios",
+        "Verificar tokens de refresco se invalidan cuando la sesión se revoca"
+      ],
+      "passes": false
+    },
+    {
+      "id": "16.1",
+      "module": "Interfaz de Usuario",
+      "category": "ui",
+      "description": "Componentes UI Base - Experiencia de usuario coherente",
+      "steps": [
+        "Verificar componentes siguen diseño de Shadcn/ui",
+        "Validar formularios tienen validación en tiempo real",
+        "Confirmar tablas soportan paginación, filtrado y ordenamiento",
+        "Verificar date pickers permiten selección de fecha y hora",
+        "Validar file uploads soportan drag-and-drop",
+        "Confirmar componentes son accesibles según WCAG 2.1",
+        "Verificar interfaz es consistente en toda la aplicación"
+      ],
+      "passes": false
+    },
+    {
+      "id": "16.2",
+      "module": "Interfaz de Usuario",
+      "category": "ui",
+      "description": "Diseño Responsivo - Funcionar en diferentes tamaños de pantalla",
+      "steps": [
+        "Verificar diseño se adapta a breakpoints de Tailwind: sm, md, lg, xl, 2xl",
+        "Validar sidebar se colapsa en pantallas pequeñas",
+        "Confirmar tablas muestran columnas esenciales en móviles",
+        "Verificar formularios son usables en pantallas pequeñas",
+        "Validar mapas mantienen funcionalidad completa en cualquier tamaño",
+        "Confirmar interacciones táctiles tienen áreas de toque adecuadas",
+        "Verificar interfaz carga desde service worker para funcionamiento offline básico"
+      ],
+      "passes": false
+    },
+    {
+      "id": "16.3",
+      "module": "Interfaz de Usuario",
+      "category": "ui",
+      "description": "Flujo de Planificación - Completar proceso de manera eficiente",
+      "steps": [
+        "Verificar dashboard muestra sesiones recientes con estado",
+        "Validar creación de nueva sesión inicia wizard de planificación",
+        "Confirmar wizard muestra progreso actual y pasos restantes",
+        "Verificar errores se muestran claramente con opciones de corrección",
+        "Validar revisión de items permite edición inline",
+        "Confirmar atajos de teclado aceleran operaciones frecuentes",
+        "Verificar confirmación requiere validación explícita de usuario"
+      ],
+      "passes": false
+    },
+    {
+      "id": "16.4",
+      "module": "Interfaz de Usuario",
+      "category": "ui",
+      "description": "Flujo de Monitoreo - Dar seguimiento eficiente a ejecución de rutas",
+      "steps": [
+        "Verificar mapa central muestra todas las rutas y vehículos activos",
+        "Validar panel lateral lista conductores con estado y progreso",
+        "Confirmar selección de conductor muestra detalle de ruta",
+        "Verificar alertas aparecen prominentemente cuando ocurren",
+        "Validar wizard de reasignación guía paso a paso",
+        "Confirmar actualización de estado es inmediata",
+        "Verificar métricas de rendimiento están visibles"
+      ],
+      "passes": false
+    },
+    {
+      "id": "17.1",
+      "module": "Rendimiento y Escalabilidad",
+      "category": "performance",
+      "description": "Optimización de Consultas Geoespaciales - Tiempos de respuesta aceptables con grandes volúmenes",
+      "steps": [
+        "Verificar todos los campos de geometría tienen índice GIST",
+        "Validar consultas de proximidad usan operadores PostGIS nativos",
+        "Confirmar matrices de distancia se cachean cuando es posible",
+        "Verificar operaciones batch usan inserciones optimizadas",
+        "Validar rendimiento medido con conjuntos de datos grandes",
+        "Confirmar planes de ejecución analizados para identificar cuellos de botella",
+        "Verificar estadísticas de tabla se mantienen actualizadas"
+      ],
+      "passes": false
+    },
+    {
+      "id": "17.2",
+      "module": "Rendimiento y Escalabilidad",
+      "category": "performance",
+      "description": "Caché de Datos con Redis - Mejorar rendimiento de lecturas frecuentes",
+      "steps": [
+        "Verificar Redis configurado con estrategia de conexión apropiada",
+        "Validar claves de caché incluyen versionado para invalidación granular",
+        "Confirmar TTL configurado apropiadamente para cada tipo de dato",
+        "Verificar sesiones almacenadas en Redis con TTL configurable",
+        "Validar geocodificación se cachea con TTL largo",
+        "Confirmar sistema maneja apropiadamente fallos de Redis",
+        "Verificar métricas de caché se monitorizan para optimización"
+      ],
+      "passes": false
+    },
+    {
+      "id": "17.3",
+      "module": "Rendimiento y Escalabilidad",
+      "category": "performance",
+      "description": "Procesamiento Batch Eficiente - Manejar importación de miles de registros sin bloquear",
+      "steps": [
+        "Verificar inserciones usan operaciones batch en lugar de individuales",
+        "Validar tamaño de batch optimizado para el driver de base de datos",
+        "Confirmar parsing soporta streaming para archivos grandes",
+        "Verificar progreso se reporta durante procesamiento largo",
+        "Validar errores se capturan a nivel de registro sin bloquear todo el proceso",
+        "Confirmar memoria se gestiona apropiadamente durante procesamiento",
+        "Verificar timeouts configurados para evitar bloqueos indefinidos"
+      ],
+      "passes": false
+    }
+  ],
+  "summary": {
+    "total_stories": 47,
+    "by_category": {
+      "functional": 40,
+      "security": 3,
+      "ui": 4,
+      "performance": 3
+    },
+    "by_module": {
+      "Gestión de Empresas y Configuración Multi-Tenant": 2,
+      "Gestión de Flotas": 3,
+      "Gestión de Vehículos": 3,
+      "Gestión de Conductores": 3,
+      "Configuración de Ventanas de Tiempo": 2,
+      "Importación de Pedidos": 4,
+      "Configuración de Optimización": 4,
+      "Ejecución de Optimización": 3,
+      "Asignación de Conductores": 3,
+      "Monitoreo de Ejecución": 3,
+      "Reasignaciones": 3,
+      "Generación de Output": 2,
+      "APIs y Comunicación": 3,
+      "Seguridad y Control de Acceso": 2,
+      "Gestión de Sesiones": 1,
+      "Interfaz de Usuario": 4,
+      "Rendimiento y Escalabilidad": 3
+    },
+    "all_pending": true
+  }
+}
