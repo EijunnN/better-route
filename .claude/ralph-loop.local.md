@@ -1,9 +1,9 @@
 ---
 active: true
 iteration: 1
-max_iterations: 2
+max_iterations: 5
 completion_promise: null
-started_at: "2026-01-10T02:29:54Z"
+started_at: "2026-01-10T03:09:52Z"
 ---
 
-crea un header moderno con shadcn
+@prompt.md --completion-promie COMPLETE
