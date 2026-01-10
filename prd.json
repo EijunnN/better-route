@@ -266,7 +266,7 @@
         "Confirmar rendimiento fluido con miles de puntos en el mapa",
         "Verificar API retorna datos GeoJSON para visualización en cliente"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "7.1",

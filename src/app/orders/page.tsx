@@ -6,7 +6,9 @@ import {
   OrderForm,
   OrderFormData,
 } from "@/components/orders/order-form";
+import { OrderMap } from "@/components/orders/order-map";
 import { ORDER_STATUS, TIME_WINDOW_STRICTNESS } from "@/lib/validations/order";
+import { Map, List } from "lucide-react";
 
 const DEMO_COMPANY_ID = "demo-company-id";
 
@@ -43,6 +45,7 @@ export default function OrdersPage() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -192,6 +195,24 @@ export default function OrdersPage() {
             <option value="FAILED">Failed</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
+          <div className="flex border rounded-md">
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className="rounded-r-none"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "map" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("map")}
+              className="rounded-l-none"
+            >
+              <Map className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -203,6 +224,17 @@ export default function OrdersPage() {
               Create your first order to get started.
             </p>
           </div>
+        ) : viewMode === "map" ? (
+          <OrderMap
+            companyId={DEMO_COMPANY_ID}
+            statusFilter={filterStatus || "ALL"}
+            searchQuery={searchQuery}
+            onOrderClick={(orderId) => {
+              const order = orders.find((o) => o.id === orderId);
+              if (order) handleEdit(order);
+            }}
+            height="600px"
+          />
         ) : (
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full">

@@ -95,3 +95,52 @@
   - src/app/api/orders/import/route.ts - Added template support and auto-mapping
 - **Status**: ✅ Passes all requirements
 
+#### Story 6.4: Geocodificación y Priorización de Coordenadas
+- **Implemented**: GeoJSON API endpoint and interactive map visualization
+- **Features**:
+  - GET /api/orders/geojson endpoint returning GeoJSON FeatureCollection
+  - Direct use of coordinates from CSV when valid
+  - Color-coded markers by order status (PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, FAILED, CANCELLED)
+  - Interactive tooltips showing tracking ID, customer name, address, and status
+  - Automatic clustering for many nearby points using maplibre-gl built-in clustering
+  - Click on cluster zooms to separate individual points
+  - Bounding box filtering for performance with large datasets
+  - Debounced map movement events to avoid excessive API calls
+  - Auto-fit bounds on initial load to show all orders
+  - Order count display showing number of visible orders
+  - Search and status filtering support
+  - Tenant-aware with multi-tenancy support
+- **API Response Structure**:
+  ```typescript
+  {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [longitude, latitude]
+      },
+      properties: {
+        id: string,
+        trackingId: string,
+        customerName: string,
+        address: string,
+        status: ORDER_STATUS,
+        color: string
+      }
+    }],
+    metadata: {
+      total: number,
+      limit: number,
+      filtered?: string,
+      bbox?: string
+    }
+  }
+  ```
+- **Files Added**:
+  - src/app/api/orders/geojson/route.ts - GeoJSON endpoint
+  - src/components/orders/order-map.tsx - Map component with clustering
+- **Files Modified**:
+  - src/app/orders/page.tsx - Added list/map view toggle
+- **Status**: ✅ Passes all requirements
+
