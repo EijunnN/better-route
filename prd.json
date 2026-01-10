@@ -282,7 +282,7 @@
         "Confirmar filtrado automático de conductores con licencias vencidas o restricciones",
         "Verificar API recibe configuración de recursos como parte del request de optimización"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "7.2",

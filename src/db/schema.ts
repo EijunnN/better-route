@@ -598,3 +598,58 @@ export const csvColumnMappingTemplatesRelations = relations(csvColumnMappingTemp
     references: [companies.id],
   }),
 }));
+
+// Optimization objective types
+export const OPTIMIZATION_OBJECTIVE = {
+  DISTANCE: "DISTANCE",
+  TIME: "TIME",
+  BALANCED: "BALANCED",
+} as const;
+
+// Optimization configurations for route planning
+export const optimizationConfigurations = pgTable("optimization_configurations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  // Depot location
+  depotLatitude: varchar("depot_latitude", { length: 20 }).notNull(),
+  depotLongitude: varchar("depot_longitude", { length: 20 }).notNull(),
+  depotAddress: text("depot_address"),
+  // Vehicle and driver selection (stored as JSON arrays)
+  selectedVehicleIds: text("selected_vehicle_ids").notNull(), // JSON array of UUIDs
+  selectedDriverIds: text("selected_driver_ids").notNull(), // JSON array of UUIDs
+  // Optimization parameters
+  objective: varchar("objective", { length: 20 })
+    .notNull()
+    .$type<keyof typeof OPTIMIZATION_OBJECTIVE>()
+    .default("BALANCED"),
+  // Capacity constraints
+  capacityEnabled: boolean("capacity_enabled").notNull().default(true),
+  // Time window settings
+  workWindowStart: time("work_window_start").notNull(),
+  workWindowEnd: time("work_window_end").notNull(),
+  serviceTimeMinutes: integer("service_time_minutes").notNull().default(10),
+  timeWindowStrictness: varchar("time_window_strictness", { length: 20 })
+    .notNull()
+    .$type<keyof typeof TIME_WINDOW_STRICTNESS>()
+    .default("SOFT"),
+  // Strategy parameters
+  penaltyFactor: integer("penalty_factor").notNull().default(3),
+  maxRoutes: integer("max_routes"),
+  // Metadata
+  status: varchar("status", { length: 50 })
+    .notNull()
+    .default("DRAFT"), // DRAFT, CONFIGURED, OPTIMIZING, COMPLETED, FAILED
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const optimizationConfigurationsRelations = relations(optimizationConfigurations, ({ one }) => ({
+  company: one(companies, {
+    fields: [optimizationConfigurations.companyId],
+    references: [companies.id],
+  }),
+}));

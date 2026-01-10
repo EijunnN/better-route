@@ -1,146 +1,76 @@
 # Progress - Sistema de Gestión Logística
 
-## Iteration 1 (2026-01-10)
+## 2025-01-10 - Story 7.1: Configuración del Depot y Recursos Base
 
-### Completed Features
+### Completed
 
-#### Story 6.1: Carga de Archivos CSV para Importación de Pedidos
-- **Implemented**: POST /api/orders/import endpoint
-- **Features**:
-  - Accepts CSV files as base64 encoded content
-  - Automatic delimiter detection (comma or semicolon)
-  - UTF-8 encoding support
-  - CSV parsing with quoted value handling
-  - Preview mode (validation only) and process mode
-  - Required field validation (tracking_id, address, latitude, longitude)
-  - Duplicate tracking ID detection (within CSV and against database)
-  - Coordinate validation (range checks and (0,0) warning)
-  - Time window preset validation
-  - Column mapping support with default English/Spanish headers
-  - Batch import with progress reporting
-  - Detailed error reporting with row numbers
-- **Status**: ✅ Passes all requirements
+**Database Schema:**
+- Added `optimizationConfigurations` table to `src/db/schema.ts`
+- Added `OPTIMIZATION_OBJECTIVE` constant (DISTANCE, TIME, BALANCED)
+- Configuration includes depot location, vehicle/driver selection, optimization parameters
 
-#### Story 6.2: Validación de Datos Durante Importación
-- **Implemented**: Enhanced validation with error categorization
-- **Features**:
-  - Error severity levels: critical, warning, info
-  - Error type categorization: required_field, format, range, duplicate, reference, validation
-  - Valid/invalid record separation in response
-  - Error summary statistics (by field, severity, error type)
-  - Required field errors reported as critical with specific messages
-  - Coordinate validation (range checks with specific error messages)
-  - (0, 0) coordinate detection as warning (not blocking)
-  - Duplicate tracking ID detection (within CSV and database)
-  - Email format validation as warning
-  - Numeric field validation (weight, volume must be positive)
-  - Strictness validation (HARD or SOFT only)
-  - Time window preset reference validation
-  - Complete validation BEFORE any database modification
-  - Enhanced API response with validRecords and invalidRecords arrays
-- **API Response Structure**:
-  ```typescript
-  {
-    success, totalRows, validRows, invalidRows, importedRows,
-    errors: CSVValidationError[],
-    validRecords: CSVRecordValidationResult[],
-    invalidRecords: CSVRecordValidationResult[],
-    preview, duplicateTrackingIds,
-    summary: { byField, bySeverity, byErrorType }
-  }
-  ```
-- **Status**: ✅ Passes all requirements
+**Validation:**
+- Created `src/lib/validations/optimization-config.ts`
+- Coordinate validation (latitude: -90 to 90, longitude: -180 to 180)
+- Rejection of (0, 0) coordinates
+- Time format validation (HH:MM)
+- UUID array validation for vehicles and drivers
 
-#### Story 6.3: Mapeo de Columnas del CSV
-- **Implemented**: Enhanced column mapping system with templates and similarity algorithm
-- **Features**:
-  - Database table `csv_column_mapping_templates` for storing reusable mappings
-  - Column mapping template CRUD API endpoints:
-    - GET /api/csv-column-mapping-templates - List all templates
-    - POST /api/csv-column-mapping-templates - Create new template
-    - GET /api/csv-column-mapping-templates/[id] - Get specific template
-    - PATCH /api/csv-column-mapping-templates/[id] - Update template
-    - DELETE /api/csv-column-mapping-templates/[id] - Soft delete template
-  - Column mapping suggestion endpoint:
-    - POST /api/orders/import/suggest-mapping - Get AI-powered column suggestions
-  - Fuzzy matching algorithm using Levenshtein distance for similarity scoring
-  - Auto-completion of mapping based on column name similarity (multi-language support)
-  - Extended default mapping with English and Spanish variations
-  - Template-based import support (can specify templateId instead of columnMapping)
-  - Validation helpers for required fields mapping
-  - Updated import endpoint to support:
-    - templateId parameter for using saved templates
-    - Auto-mapping fallback when no mapping provided
-    - Returns column mapping info in response
-- **API Response for Suggestions**:
-  ```typescript
-  {
-    suggestedMapping: Record<string, CSV_SYSTEM_FIELD>,
-    confidence: Record<string, number>, // 0-1 score per mapping
-    unmappedRequiredFields: string[],
-    unmappedOptionalFields: string[],
-    autoMappedCount: number,
-    manualMappingRequired: boolean,
-    requiredFieldsValidation: { valid: boolean, missingFields: string[] }
-  }
-  ```
-- **Files Added**:
-  - src/lib/validations/csv-column-mapping.ts - Validation schemas
-  - src/lib/csv-column-mapping.ts - Similarity algorithm and utilities
-  - src/app/api/csv-column-mapping-templates/route.ts - Template CRUD
-  - src/app/api/csv-column-mapping-templates/[id]/route.ts - Single template operations
-  - src/app/api/orders/import/suggest-mapping/route.ts - Mapping suggestions
-- **Files Modified**:
-  - src/db/schema.ts - Added csvColumnMappingTemplates table
-  - src/app/api/orders/import/route.ts - Added template support and auto-mapping
-- **Status**: ✅ Passes all requirements
+**API Routes:**
+- Created `src/app/api/optimization/configure/route.ts` (GET, POST)
+  - GET: List configurations with filtering
+  - POST: Create configuration with validation
+  - Validates all vehicles exist and are AVAILABLE
+  - Validates all drivers exist and are AVAILABLE
+  - Checks for expired driver licenses
+- Created `src/app/api/optimization/configure/[id]/route.ts` (GET, PATCH, DELETE)
+  - GET: Fetch single configuration
+  - PATCH: Update configuration (blocked during OPTIMIZING status)
+  - DELETE: Delete configuration (blocked during OPTIMIZING status)
 
-#### Story 6.4: Geocodificación y Priorización de Coordenadas
-- **Implemented**: GeoJSON API endpoint and interactive map visualization
-- **Features**:
-  - GET /api/orders/geojson endpoint returning GeoJSON FeatureCollection
-  - Direct use of coordinates from CSV when valid
-  - Color-coded markers by order status (PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, FAILED, CANCELLED)
-  - Interactive tooltips showing tracking ID, customer name, address, and status
-  - Automatic clustering for many nearby points using maplibre-gl built-in clustering
-  - Click on cluster zooms to separate individual points
-  - Bounding box filtering for performance with large datasets
-  - Debounced map movement events to avoid excessive API calls
-  - Auto-fit bounds on initial load to show all orders
-  - Order count display showing number of visible orders
-  - Search and status filtering support
-  - Tenant-aware with multi-tenancy support
-- **API Response Structure**:
-  ```typescript
-  {
-    type: "FeatureCollection",
-    features: [{
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [longitude, latitude]
-      },
-      properties: {
-        id: string,
-        trackingId: string,
-        customerName: string,
-        address: string,
-        status: ORDER_STATUS,
-        color: string
-      }
-    }],
-    metadata: {
-      total: number,
-      limit: number,
-      filtered?: string,
-      bbox?: string
-    }
-  }
-  ```
-- **Files Added**:
-  - src/app/api/orders/geojson/route.ts - GeoJSON endpoint
-  - src/components/orders/order-map.tsx - Map component with clustering
-- **Files Modified**:
-  - src/app/orders/page.tsx - Added list/map view toggle
-- **Status**: ✅ Passes all requirements
+**UI Components:**
+- Created `src/components/ui/select.tsx` - Radix UI select component
+- Created `src/components/ui/checkbox.tsx` - Radix UI checkbox component
+- Created `src/components/ui/card.tsx` - Card layout component
+
+**Optimization Components:**
+- Created `src/components/optimization/depot-selector.tsx`
+  - Interactive MapLibre GL map with click-to-select
+  - Manual input mode for coordinates
+  - "Use My Location" geolocation feature
+  - Depot marker visualization
+  - Address field support
+
+- Created `src/components/optimization/vehicle-selector.tsx`
+  - Multi-select vehicle cards
+  - Filter by fleet, type, search
+  - Shows vehicle: plate, type, capacities, fleet, status
+  - Only AVAILABLE vehicles shown
+  - Select all filtered functionality
+  - Visual feedback for selected items
+
+- Created `src/components/optimization/driver-selector.tsx`
+  - Multi-select driver cards
+  - Filter by fleet, license status, search
+  - Shows driver: name, ID, license number, expiry, fleet
+  - License status indicators (valid, expiring soon, expired)
+  - Expired licenses are grayed out and disabled
+  - Auto-filters out drivers with expired licenses
+
+**Page:**
+- Created `src/app/optimization/page.tsx`
+  - Two-step wizard: Resources → Settings
+  - Step 1: Depot selection, vehicle selection, driver selection
+  - Step 2: Configuration name, optimization strategy, capacity constraints, time settings
+  - Summary before creation
+  - Full validation before allowing proceed
+
+### Steps Verified (from PRD 7.1)
+- [x] Depot selector allows location by click on map or direct input
+- [x] System validates depot coordinates before optimization
+- [x] Vehicle list shows: plate, type, capacities, and fleet
+- [x] Vehicle selection allows filtering by type, fleet, and status
+- [x] Driver list shows: name, fleet, and license information
+- [x] Driver selection filters out expired/restricted licenses
+- [x] API receives configuration as part of optimization request
 
