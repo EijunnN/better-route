@@ -1,206 +1,63 @@
 # Progress - Sistema de Gestión Logística
 
-## 2025-01-10 - Story 7.4: Configuración de Estrategia de Optimización
+## 2026-01-10 - Story 8.1: Ejecución Asíncrona de Optimización
 
-### Completed
+### Completed Implementation
 
-**Validation Updates:**
-- Updated `src/lib/validations/optimization-config.ts`
-  - Made depot coordinates optional for presets
-  - Made selectedVehicleIds and selectedDriverIds optional
-  - Added status field support (DRAFT/CONFIGURED)
+**Story 8.1: Ejecución Asíncrona de Optimización** - PASSED
 
-**API Routes:**
-- Created `src/app/api/optimization/presets/route.ts` (GET, POST)
-  - GET: List all saved presets (configurations with DRAFT status)
-  - POST: Create new preset with optimization settings
-  - Presets store only strategy settings, not vehicle/driver assignments
-  - Includes validation for time windows and penalty factors
+Implemented async job execution system for route optimization with the following components:
 
-- Updated `src/app/api/optimization/configure/route.ts`
-  - Added conditional validation based on status (DRAFT vs CONFIGURED)
-  - DRAFT status skips vehicle/driver/resource validation
-  - Supports saving both full configurations and presets
+#### Database Schema
+- Added `optimization_jobs` table to `src/db/schema.ts` with fields:
+  - `id`, `companyId`, `configurationId`
+  - `status` (PENDING, RUNNING, COMPLETED, FAILED, CANCELLED)
+  - `progress` (0-100), `result` (JSON), `error`
+  - `startedAt`, `completedAt`, `cancelledAt`
+  - `timeoutMs`, `inputHash` for caching
 
-**UI Updates:**
-- Updated `src/app/optimization/page.tsx`
-  - Moved penalty factor from Time Settings to Optimization Strategy section
-  - Added descriptive text for each strategy parameter
-  - Added "Save as Preset" button to save current settings
-  - Added "Load Preset" button to load saved configurations
-  - Preset dialog for naming and saving custom configurations
-  - Preset list dialog showing all saved presets with key details
-  - Loading states and error handling for preset operations
+#### Job Queue Infrastructure (`src/lib/job-queue.ts`)
+- In-memory job queue with concurrency control (max 3 concurrent jobs)
+- Job registration/unregistration with AbortController support
+- Configurable timeout handling
+- Progress tracking updates
+- Result caching based on input hash (SHA256)
+- Job cancellation support
 
-**Features Implemented:**
-- Optimization objective selection (DISTANCE, TIME, BALANCED)
-- Maximum routes configuration (unlimited or specified number)
-- Penalty factor configuration (1x to 20x) with visual scale
-- Save/load configuration presets for common scenarios
-- Detailed descriptions for each parameter
-- Presets shown with objective, capacity mode, time window, and penalty info
+#### Optimization Runner (`src/lib/optimization-runner.ts`)
+- Mock VRP solver implementation (placeholder for production algorithm)
+- Async job execution with abort signal support
+- Input hash calculation for caching
+- Progress reporting during execution
+- Integration with job queue for lifecycle management
 
-### Steps Verified (from PRD 7.4)
-- [x] Verification of optimization objective with options: DISTANCE, TIME, BALANCED
-- [x] Penalty factor configurable with range of 1x to 20x
-- [x] Number maximum of routes configurable with unlimited default
-- [x] Interface includes description of each parameter for easy selection
-- [x] Possibility to save presets of configuration for common configurations
-- [x] API accepts all strategy parameters in the request
-- [x] System shows summary of configuration before executing optimization
+#### API Endpoints
+- `POST /api/optimization/jobs` - Create and start optimization job
+- `GET /api/optimization/jobs` - List jobs with filtering
+- `GET /api/optimization/jobs/[id]` - Get job status and results
+- `DELETE /api/optimization/jobs/[id]` - Cancel running job
 
----
+#### UI Component (`src/components/optimization/job-progress.tsx`)
+- Real-time job status polling (configurable interval)
+- Animated progress bar for running jobs
+- Status badges with appropriate colors
+- Cancel button for active jobs
+- Elapsed time display
+- Error/failed state handling
 
-## 2025-01-10 - Story 7.3: Configuración de Tiempo y Ventanas de Entrega
+#### Additional Components
+- Added `src/components/ui/progress.tsx` - Progress bar component
+- Added `src/lib/validations/optimization-job.ts` - Job validation schemas
 
-### Completed
+### All Steps Verified ✓
+- [x] API returns job ID immediately when starting optimization
+- [x] Status polling endpoint available until completion/failure
+- [x] Job queue with concurrency control implemented
+- [x] Configurable timeouts (default 5 minutes, max 10 minutes)
+- [x] Result caching based on input hash
+- [x] UI shows animated progress indicator during processing
+- [x] User can cancel optimization via button/endpoint
 
-**Validation:**
-- Updated `src/lib/validations/optimization-config.ts`
-  - Added validation for work window end time being after start time
-  - Prevents invalid time ranges that would break optimization
-
-**UI Updates:**
-- Updated `src/app/optimization/page.tsx`
-  - Reorganized Time Settings card for better UX
-  - Added description for service time field (default 10 minutes)
-  - Added description for time window strictness selector
-  - Moved penalty factor configuration from Optimization Strategy to Time Settings
-  - Penalty factor now conditionally shows only in SOFT mode
-  - Added visual scale indicators for penalty factor (1x to 20x)
-  - Added description explaining penalty factor is only used in SOFT mode
-
-**Existing Features (Already Implemented):**
-- Work window start/end time inputs (HH:MM format)
-- Service time configuration with default 10 minutes
-- Time window strictness mode (HARD/SOFT) selection
-- Penalty factor for SOFT mode (1-20 range)
-- All time parameters properly validated and sent to API
-
-### Steps Verified (from PRD 7.3)
-- [x] Specification of work window with start and end time
-- [x] Configurable service time with default 10 minutes
-- [x] Mode of respect to promised time selectable between HARD and SOFT
-- [x] Configuration of delay penalty factor in SOFT mode
-- [x] Validation that work window end is after start time
-- [x] API receives all time parameters in optimization request
-- [x] Result metrics will indicate level of window compliance (deferred to execution phase)
-
----
-
-## 2025-01-10 - Story 7.2: Configuración de Capacidades y Restricciones
-
-### Completed
-
-**UI Components:**
-- Created `src/components/ui/badge.tsx` - Badge component for displaying skills and tags
-
-**API Routes:**
-- Created `src/app/api/orders/pending-summary/route.ts` (GET)
-  - Returns summary of all pending orders
-  - Calculates total and max weight/volume requirements
-  - Extracts and aggregates required skills from orders
-  - Returns first 100 orders for preview
-  - Used for capacity constraints planning
-
-**Optimization Components:**
-- Created `src/components/optimization/capacity-constraints-summary.tsx`
-  - Displays summary of pending orders with capacity requirements
-  - Shows total orders, total weight/volume, max requirements
-  - Lists all required skills with color-coded badges by category
-  - Shows count of orders with weight/volume requirements
-  - Provides insight for capacity constraint planning
-  - Includes loading and error states
-
-**Page Updates:**
-- Updated `src/app/optimization/page.tsx`
-  - Replaced simple checkbox with dual-button capacity mode selector
-  - Added "Capacitated" mode: respects weight/volume limits and skills
-  - Added "Non-Capacitated" mode: faster optimization without constraints
-  - Integrated CapacityConstraintsSummary component
-  - Shows pending orders summary during configuration
-
-### Steps Verified (from PRD 7.2)
-- [x] Offer of capacitated and non-capacitated mode for optimization
-- [x] Capacitated mode respects weight and volume limits (schema supports it)
-- [x] Verification of required skills against vehicle and driver capabilities
-- [x] Interface shows summary of pending orders with capacity requirements
-- [x] API allows configuring which restrictions to consider (capacityEnabled field)
-- [x] Exclusion of vehicles without sufficient skills for orders (handled by schema)
-
----
-
-## 2025-01-10 - Story 7.1: Configuración del Depot y Recursos Base
-
-### Completed
-
-**Database Schema:**
-- Added `optimizationConfigurations` table to `src/db/schema.ts`
-- Added `OPTIMIZATION_OBJECTIVE` constant (DISTANCE, TIME, BALANCED)
-- Configuration includes depot location, vehicle/driver selection, optimization parameters
-
-**Validation:**
-- Created `src/lib/validations/optimization-config.ts`
-- Coordinate validation (latitude: -90 to 90, longitude: -180 to 180)
-- Rejection of (0, 0) coordinates
-- Time format validation (HH:MM)
-- UUID array validation for vehicles and drivers
-
-**API Routes:**
-- Created `src/app/api/optimization/configure/route.ts` (GET, POST)
-  - GET: List configurations with filtering
-  - POST: Create configuration with validation
-  - Validates all vehicles exist and are AVAILABLE
-  - Validates all drivers exist and are AVAILABLE
-  - Checks for expired driver licenses
-- Created `src/app/api/optimization/configure/[id]/route.ts` (GET, PATCH, DELETE)
-  - GET: Fetch single configuration
-  - PATCH: Update configuration (blocked during OPTIMIZING status)
-  - DELETE: Delete configuration (blocked during OPTIMIZING status)
-
-**UI Components:**
-- Created `src/components/ui/select.tsx` - Radix UI select component
-- Created `src/components/ui/checkbox.tsx` - Radix UI checkbox component
-- Created `src/components/ui/card.tsx` - Card layout component
-
-**Optimization Components:**
-- Created `src/components/optimization/depot-selector.tsx`
-  - Interactive MapLibre GL map with click-to-select
-  - Manual input mode for coordinates
-  - "Use My Location" geolocation feature
-  - Depot marker visualization
-  - Address field support
-
-- Created `src/components/optimization/vehicle-selector.tsx`
-  - Multi-select vehicle cards
-  - Filter by fleet, type, search
-  - Shows vehicle: plate, type, capacities, fleet, status
-  - Only AVAILABLE vehicles shown
-  - Select all filtered functionality
-  - Visual feedback for selected items
-
-- Created `src/components/optimization/driver-selector.tsx`
-  - Multi-select driver cards
-  - Filter by fleet, license status, search
-  - Shows driver: name, ID, license number, expiry, fleet
-  - License status indicators (valid, expiring soon, expired)
-  - Expired licenses are grayed out and disabled
-  - Auto-filters out drivers with expired licenses
-
-**Page:**
-- Created `src/app/optimization/page.tsx`
-  - Two-step wizard: Resources → Settings
-  - Step 1: Depot selection, vehicle selection, driver selection
-  - Step 2: Configuration name, optimization strategy, capacity constraints, time settings
-  - Summary before creation
-  - Full validation before allowing proceed
-
-### Steps Verified (from PRD 7.1)
-- [x] Depot selector allows location by click on map or direct input
-- [x] System validates depot coordinates before optimization
-- [x] Vehicle list shows: plate, type, capacities, and fleet
-- [x] Vehicle selection allows filtering by type, fleet, and status
-- [x] Driver list shows: name, fleet, and license information
-- [x] Driver selection filters out expired/restricted licenses
-- [x] API receives configuration as part of optimization request
-
+### Next Stories
+- Story 8.2: Visualización de Resultados de Optimización
+- Story 8.3: Cancelación y Re-ejecución de Optimización

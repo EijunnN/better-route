@@ -647,9 +647,59 @@ export const optimizationConfigurations = pgTable("optimization_configurations",
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const optimizationConfigurationsRelations = relations(optimizationConfigurations, ({ one }) => ({
+export const optimizationConfigurationsRelations = relations(optimizationConfigurations, ({ one, many }) => ({
   company: one(companies, {
     fields: [optimizationConfigurations.companyId],
     references: [companies.id],
+  }),
+  jobs: many(optimizationJobs),
+}));
+
+// Optimization job status types
+export const OPTIMIZATION_JOB_STATUS = {
+  PENDING: "PENDING",
+  RUNNING: "RUNNING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  CANCELLED: "CANCELLED",
+} as const;
+
+// Optimization jobs for async execution tracking
+export const optimizationJobs = pgTable("optimization_jobs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  configurationId: uuid("configuration_id")
+    .notNull()
+    .references(() => optimizationConfigurations.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 50 })
+    .notNull()
+    .$type<keyof typeof OPTIMIZATION_JOB_STATUS>()
+    .default("PENDING"),
+  progress: integer("progress").notNull().default(0), // 0-100
+  result: text("result"), // JSON string containing optimization results
+  error: text("error"), // Error message if failed
+  // Timestamps for job lifecycle
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  // Timeout configuration
+  timeoutMs: integer("timeout_ms").notNull().default(300000), // 5 minutes default
+  // Input hash for result caching
+  inputHash: varchar("input_hash", { length: 64 }),
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const optimizationJobsRelations = relations(optimizationJobs, ({ one }) => ({
+  company: one(companies, {
+    fields: [optimizationJobs.companyId],
+    references: [companies.id],
+  }),
+  configuration: one(optimizationConfigurations, {
+    fields: [optimizationJobs.configurationId],
+    references: [optimizationConfigurations.id],
   }),
 }));
