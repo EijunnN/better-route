@@ -1,77 +1,23 @@
 # Progress - Sistema de Gestión Logística
 
-## Completed Stories
-- Story 1.1: Companies - Multi-tenant Company Management
-- Story 1.2: Companies - Data Isolation
-- Story 2.1: Fleets - Fleet Creation and Configuration
-- Story 2.2: Fleets - Vehicle-Fleet Association
-- Story 2.3: Fleets - Driver-Fleet Association
-- Story 3.1: Vehicles - Vehicle Registration with Full Attributes
-- Story 3.2: Vehicles - Vehicle Operational Status Management
-- Story 3.3: Vehicles - Vehicle Skills Catalog
-- Story 4.1: Drivers - Driver Registration with Complete Information
-- Story 4.2: Drivers - Driver Skills Management
-- Story 4.3: Drivers - Driver Operational State Management
-- Story 5.1: Time Window Presets - Preset Creation
-- Story 5.2: Time Window Strictness Configuration
+## Iteration 1 (2026-01-10)
 
-## Current Implementation: Story 5.2 - Time Window Strictness Configuration
+### Completed Features
 
-### Database Schema
-- Added `orders` table with fields:
-  - `id`, `companyId`, `trackingId` (unique)
-  - `customerName`, `customerPhone`, `customerEmail`
-  - `address`, `latitude`, `longitude`
-  - `timeWindowPresetId` (FK to timeWindowPresets)
-  - `strictness` (nullable - allows override of preset strictness)
-  - `promisedDate`, `weightRequired`, `volumeRequired`
-  - `requiredSkills`, `notes`, `status`, `active`, timestamps
+#### Story 6.1: Carga de Archivos CSV para Importación de Pedidos
+- **Implemented**: POST /api/orders/import endpoint
+- **Features**:
+  - Accepts CSV files as base64 encoded content
+  - Automatic delimiter detection (comma or semicolon)
+  - UTF-8 encoding support
+  - CSV parsing with quoted value handling
+  - Preview mode (validation only) and process mode
+  - Required field validation (tracking_id, address, latitude, longitude)
+  - Duplicate tracking ID detection (within CSV and against database)
+  - Coordinate validation (range checks and (0,0) warning)
+  - Time window preset validation
+  - Column mapping support with default English/Spanish headers
+  - Batch import with progress reporting
+  - Detailed error reporting with row numbers
+- **Status**: ✅ Passes all requirements
 
-### API Endpoints
-- `GET/POST /api/orders` - List and create orders
-  - Query params: status, timeWindowPresetId, active, search
-  - Joins with timeWindowPresets to get effective strictness
-- `GET/PATCH/DELETE /api/orders/[id]` - Individual order operations
-  - Enriches response with preset details and effective strictness
-- `GET/POST /api/orders/validate` - Validate orders against constraints
-  - GET: Summary of orders by strictness type
-  - POST: Simulation with arrival time to check violations
-
-### Validation Logic
-- Time window strictness validation library (`src/lib/time-window-strictness.ts`):
-  - `validateTimeWindowStrictness()` - Validate assignment against constraints
-  - `violatesTimeWindow()` - Check if arrival time violates window
-  - `calculateDelayPenalty()` - Penalty calculation for SOFT mode
-  - `getEffectiveStrictness()` - Get order strictness or fallback to preset
-  - `isStrictnessOverridden()` - Check if order overrides preset
-
-### Validation Schemas
-- Order validation schemas (`src/lib/validations/order.ts`):
-  - `orderSchema` - Create validation with coordinate checks
-  - `updateOrderSchema` - Update validation (all optional)
-  - `orderQuerySchema` - Query parameters with filtering
-  - Warns on coordinates (0, 0) as likely invalid
-
-### Frontend
-- Page: `/orders` - Full CRUD interface for orders
-  - Table display with tracking ID, customer, address
-  - Shows time window preset, effective strictness, status
-  - Visual indicators for strictness overrides
-  - Search and filter capabilities
-- Order Form Component (`src/components/orders/order-form.tsx`):
-  - Time window preset selector with details preview
-  - Strictness override dropdown (Inherit/HARD/SOFT)
-  - Visual warning when overriding preset strictness
-  - Location fields (address, latitude, longitude)
-  - Capacity requirements (weight, volume, skills)
-  - Customer information fields
-
-### Features Implemented
-1. Orders can inherit strictness from preset or override it
-2. HARD mode: algorithm rejects assignments that violate windows
-3. SOFT mode: algorithm minimizes delays with penalty factor
-4. Validation API reports unassignable orders with reasons
-5. UI clearly shows strictness configuration per order
-6. Effective strictness calculation (order override > preset default)
-7. Simulation endpoint to test constraints before optimization
-8. Summary endpoint for compliance metrics

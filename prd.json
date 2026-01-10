@@ -218,7 +218,7 @@
         "Confirmar indicador de progreso para archivos grandes",
         "Verificar API recibe contenido CSV como base64 y retorna resultado de importación"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "6.2",
