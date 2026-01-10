@@ -1,20 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setTenantContext, requireTenantContext } from "@/lib/tenant";
 import { db } from "@/db";
-import { orders, timeWindowPresets } from "@/db/schema";
+import { orders, timeWindowPresets, csvColumnMappingTemplates } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { orderSchema } from "@/lib/validations/order";
+import { csvImportWithMappingSchema } from "@/lib/validations/csv-column-mapping";
+import { suggestColumnMapping, mapCSVRow } from "@/lib/csv-column-mapping";
 import { z } from "zod";
 
-// CSV import request schema
+// CSV import request schema (updated to support templates)
 const csvImportRequestSchema = z.object({
   // CSV content as base64 encoded string
   csvContent: z.string().min(1, "CSV content is required"),
   // Optional column mapping (maps CSV columns to order fields)
   columnMapping: z.record(z.string(), z.string()).optional(),
+  // Optional template ID to use for column mapping
+  templateId: z.string().uuid().optional(),
   // Whether to actually process (true) or just validate/preview (false)
   process: z.boolean().default(false),
-});
+}).refine(
+  (data) => !(data.columnMapping && data.templateId),
+  "Cannot provide both columnMapping and templateId. Use one or the other."
+);
 
 // Error severity levels for better categorization
 const ERROR_SEVERITY = ["critical", "warning", "info"] as const;
@@ -230,7 +237,8 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
 };
 
 /**
- * Map CSV row to order input
+ * Map CSV row to order input (legacy function for backward compatibility)
+ * @deprecated Use mapCSVRow from @/lib/csv-column-mapping instead
  */
 function mapCSVRowToOrder(row: CSVRow, customMapping?: Record<string, string>): any {
   const mapping = { ...DEFAULT_COLUMN_MAPPING, ...customMapping };
@@ -254,10 +262,14 @@ function mapCSVRowToOrder(row: CSVRow, customMapping?: Record<string, string>): 
 function validateOrderRow(
   row: CSVRow,
   rowIndex: number,
-  existingTrackingIds: Set<string>
+  existingTrackingIds: Set<string>,
+  mapping: Record<string, string> = {}
 ): CSVValidationError[] {
   const errors: CSVValidationError[] = [];
-  const orderData = mapCSVRowToOrder(row);
+  // Use the provided mapping or fall back to default
+  const orderData = Object.keys(mapping).length > 0
+    ? mapCSVRow(row, mapping)
+    : mapCSVRowToOrder(row);
 
   try {
     // Check for missing required fields first (highest priority errors)
@@ -513,6 +525,36 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = csvImportRequestSchema.parse(body);
 
+    // Load template mapping if templateId is provided
+    let templateMapping: Record<string, string> | undefined;
+    if (validatedData.templateId) {
+      const template = await db
+        .select()
+        .from(csvColumnMappingTemplates)
+        .where(
+          and(
+            eq(csvColumnMappingTemplates.id, validatedData.templateId),
+            eq(csvColumnMappingTemplates.companyId, context.companyId),
+            eq(csvColumnMappingTemplates.active, true)
+          )
+        );
+
+      if (template.length === 0) {
+        return NextResponse.json(
+          { error: "Template not found or inactive" },
+          { status: 404 }
+        );
+      }
+
+      templateMapping = JSON.parse(template[0].columnMapping);
+    }
+
+    // Merge custom mapping with template mapping (custom takes precedence)
+    const effectiveMapping = {
+      ...templateMapping,
+      ...validatedData.columnMapping,
+    };
+
     // Decode base64 content
     let csvContent: string;
     try {
@@ -543,9 +585,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for required headers
-    const firstRow = rows[0];
-    const normalizedHeaders = Object.keys(firstRow).map((h) => h.toLowerCase().trim());
+    // Generate column mapping suggestions if no mapping provided
+    const csvHeaders = Object.keys(rows[0]);
+    let finalMapping = effectiveMapping;
+
+    if (Object.keys(finalMapping).length === 0) {
+      // Auto-generate mapping using similarity algorithm
+      const suggestions = suggestColumnMapping(csvHeaders);
+      finalMapping = suggestions.suggestedMapping;
+    }
+
+    // Check for required headers after mapping
+    const normalizedHeaders = Object.keys(rows[0]).map((h) => h.toLowerCase().trim());
     const hasTrackingId = normalizedHeaders.some((h) =>
       ["tracking_id", "tracking id", "trackingid", "trackingid"].includes(h)
     );
@@ -556,7 +607,8 @@ export async function POST(request: NextRequest) {
           error: "Missing required field",
           details: "CSV must contain a tracking ID column",
           requiredFields: ["tracking_id", "address", "latitude", "longitude"],
-          foundHeaders: Object.keys(firstRow),
+          foundHeaders: Object.keys(rows[0]),
+          suggestedMapping: finalMapping,
         },
         { status: 400 }
       );
@@ -570,7 +622,12 @@ export async function POST(request: NextRequest) {
 
     // Check for existing tracking IDs in database BEFORE any validation
     const trackingIdsInCSV = rows
-      .map((row) => mapCSVRowToOrder(row).trackingId)
+      .map((row) => {
+        const mapped = Object.keys(finalMapping).length > 0
+          ? mapCSVRow(row, finalMapping)
+          : mapCSVRowToOrder(row);
+        return mapped.trackingId;
+      })
       .filter((id): id is string => !!id);
 
     const existingOrders = await db
@@ -589,8 +646,10 @@ export async function POST(request: NextRequest) {
     // Validate each row and separate valid/invalid records
     rows.forEach((row, index) => {
       const rowIndex = index + 2; // +1 for 0-based index, +1 for header row
-      const rowErrors = validateOrderRow(row, rowIndex, seenTrackingIds);
-      const orderData = mapCSVRowToOrder(row);
+      const rowErrors = validateOrderRow(row, rowIndex, seenTrackingIds, finalMapping);
+      const orderData = Object.keys(finalMapping).length > 0
+        ? mapCSVRow(row, finalMapping)
+        : mapCSVRowToOrder(row);
 
       // Check for duplicate with existing orders in database
       if (existingTrackingIds.has(orderData.trackingId)) {
@@ -621,9 +680,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Map valid rows to order data for further validation
-    const orderDataList = validRecords.map((record) =>
-      mapCSVRowToOrder(rows.find((_, i) => i + 2 === record.row)!, validatedData.columnMapping)
-    );
+    const orderDataList = validRecords.map((record) => {
+      const row = rows.find((_, i) => i + 2 === record.row)!;
+      return Object.keys(finalMapping).length > 0
+        ? mapCSVRow(row, finalMapping)
+        : mapCSVRowToOrder(row, validatedData.columnMapping);
+    });
 
     // Validate time window presets (cross-field validation)
     const presetErrors = await validateTimeWindowPresets(orderDataList, context.companyId);
@@ -650,7 +712,9 @@ export async function POST(request: NextRequest) {
     // Generate preview (first 10 rows with mapped field names)
     const preview = rows.slice(0, 10).map((row, index) => ({
       row: index + 2,
-      ...mapCSVRowToOrder(row, validatedData.columnMapping),
+      ...(Object.keys(finalMapping).length > 0
+        ? mapCSVRow(row, finalMapping)
+        : mapCSVRowToOrder(row, validatedData.columnMapping)),
     }));
 
     // If not processing, return complete validation results
@@ -668,6 +732,10 @@ export async function POST(request: NextRequest) {
           preview,
           duplicateTrackingIds: Array.from(existingTrackingIds),
           summary,
+          // Include column mapping information in response
+          columnMapping: finalMapping,
+          csvHeaders,
+          templateId: validatedData.templateId,
         },
         { status: 200 }
       );
@@ -727,6 +795,10 @@ export async function POST(request: NextRequest) {
         preview,
         duplicateTrackingIds: Array.from(existingTrackingIds),
         summary,
+        // Include column mapping information in response
+        columnMapping: finalMapping,
+        csvHeaders,
+        templateId: validatedData.templateId,
       },
       { status: importErrors.length === 0 ? 201 : 207 }
     );

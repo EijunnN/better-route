@@ -1,0 +1,225 @@
+import { NextRequest, NextResponse } from "next/server";
+import { setTenantContext, requireTenantContext } from "@/lib/tenant";
+import { db } from "@/db";
+import { csvColumnMappingTemplates } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { updateCsvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
+import { z } from "zod";
+
+function extractTenantContext(request: NextRequest) {
+  const companyId = request.headers.get("x-company-id");
+  const userId = request.headers.get("x-user-id");
+  if (!companyId) return null;
+  return { companyId, userId: userId || undefined };
+}
+
+// GET - Get a specific column mapping template
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const tenantCtx = extractTenantContext(request);
+    if (!tenantCtx) {
+      return NextResponse.json(
+        { error: "Missing tenant context" },
+        { status: 401 }
+      );
+    }
+
+    setTenantContext(tenantCtx);
+    const context = requireTenantContext();
+
+    const template = await db
+      .select()
+      .from(csvColumnMappingTemplates)
+      .where(
+        and(
+          eq(csvColumnMappingTemplates.id, id),
+          eq(csvColumnMappingTemplates.companyId, context.companyId)
+        )
+      );
+
+    if (template.length === 0) {
+      return NextResponse.json(
+        { error: "Template not found" },
+        { status: 404 }
+      );
+    }
+
+    // Parse JSON fields for response
+    const parsedTemplate = {
+      ...template[0],
+      columnMapping: JSON.parse(template[0].columnMapping),
+      requiredFields: JSON.parse(template[0].requiredFields),
+    };
+
+    return NextResponse.json(parsedTemplate);
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch template" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH - Update a column mapping template
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const tenantCtx = extractTenantContext(request);
+    if (!tenantCtx) {
+      return NextResponse.json(
+        { error: "Missing tenant context" },
+        { status: 401 }
+      );
+    }
+
+    setTenantContext(tenantCtx);
+    const context = requireTenantContext();
+
+    // Check if template exists
+    const existing = await db
+      .select()
+      .from(csvColumnMappingTemplates)
+      .where(
+        and(
+          eq(csvColumnMappingTemplates.id, id),
+          eq(csvColumnMappingTemplates.companyId, context.companyId)
+        )
+      );
+
+    if (existing.length === 0) {
+      return NextResponse.json(
+        { error: "Template not found" },
+        { status: 404 }
+      );
+    }
+
+    const body = await request.json();
+    const validatedData = updateCsvColumnMappingTemplateSchema.parse(body);
+
+    // If updating name, check for uniqueness
+    if (validatedData.name && validatedData.name !== existing[0].name) {
+      const nameConflict = await db
+        .select()
+        .from(csvColumnMappingTemplates)
+        .where(
+          and(
+            eq(csvColumnMappingTemplates.companyId, context.companyId),
+            eq(csvColumnMappingTemplates.name, validatedData.name)
+          )
+        );
+
+      if (nameConflict.length > 0) {
+        return NextResponse.json(
+          { error: "Template with this name already exists" },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Build update object
+    const updateData: any = {};
+    if (validatedData.name !== undefined) updateData.name = validatedData.name;
+    if (validatedData.description !== undefined) updateData.description = validatedData.description;
+    if (validatedData.columnMapping !== undefined) {
+      updateData.columnMapping = JSON.stringify(validatedData.columnMapping);
+    }
+    if (validatedData.requiredFields !== undefined) {
+      updateData.requiredFields = JSON.stringify(validatedData.requiredFields);
+    }
+    if (validatedData.active !== undefined) updateData.active = validatedData.active;
+    updateData.updatedAt = new Date();
+
+    // Update template
+    const updated = await db
+      .update(csvColumnMappingTemplates)
+      .set(updateData)
+      .where(
+        and(
+          eq(csvColumnMappingTemplates.id, id),
+          eq(csvColumnMappingTemplates.companyId, context.companyId)
+        )
+      )
+      .returning();
+
+    // Parse JSON fields for response
+    const parsedTemplate = {
+      ...updated[0],
+      columnMapping: JSON.parse(updated[0].columnMapping),
+      requiredFields: JSON.parse(updated[0].requiredFields),
+    };
+
+    return NextResponse.json(parsedTemplate);
+  } catch (error: any) {
+    if (error.name === "ZodError") {
+      return NextResponse.json(
+        { error: "Validation failed", details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: error.message || "Failed to update template" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Delete (deactivate) a column mapping template
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const tenantCtx = extractTenantContext(request);
+    if (!tenantCtx) {
+      return NextResponse.json(
+        { error: "Missing tenant context" },
+        { status: 401 }
+      );
+    }
+
+    setTenantContext(tenantCtx);
+    const context = requireTenantContext();
+
+    // Check if template exists
+    const existing = await db
+      .select()
+      .from(csvColumnMappingTemplates)
+      .where(
+        and(
+          eq(csvColumnMappingTemplates.id, id),
+          eq(csvColumnMappingTemplates.companyId, context.companyId)
+        )
+      );
+
+    if (existing.length === 0) {
+      return NextResponse.json(
+        { error: "Template not found" },
+        { status: 404 }
+      );
+    }
+
+    // Soft delete (set active to false)
+    await db
+      .update(csvColumnMappingTemplates)
+      .set({
+        active: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(csvColumnMappingTemplates.id, id));
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to delete template" },
+      { status: 500 }
+    );
+  }
+}

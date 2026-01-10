@@ -51,3 +51,47 @@
   ```
 - **Status**: ✅ Passes all requirements
 
+#### Story 6.3: Mapeo de Columnas del CSV
+- **Implemented**: Enhanced column mapping system with templates and similarity algorithm
+- **Features**:
+  - Database table `csv_column_mapping_templates` for storing reusable mappings
+  - Column mapping template CRUD API endpoints:
+    - GET /api/csv-column-mapping-templates - List all templates
+    - POST /api/csv-column-mapping-templates - Create new template
+    - GET /api/csv-column-mapping-templates/[id] - Get specific template
+    - PATCH /api/csv-column-mapping-templates/[id] - Update template
+    - DELETE /api/csv-column-mapping-templates/[id] - Soft delete template
+  - Column mapping suggestion endpoint:
+    - POST /api/orders/import/suggest-mapping - Get AI-powered column suggestions
+  - Fuzzy matching algorithm using Levenshtein distance for similarity scoring
+  - Auto-completion of mapping based on column name similarity (multi-language support)
+  - Extended default mapping with English and Spanish variations
+  - Template-based import support (can specify templateId instead of columnMapping)
+  - Validation helpers for required fields mapping
+  - Updated import endpoint to support:
+    - templateId parameter for using saved templates
+    - Auto-mapping fallback when no mapping provided
+    - Returns column mapping info in response
+- **API Response for Suggestions**:
+  ```typescript
+  {
+    suggestedMapping: Record<string, CSV_SYSTEM_FIELD>,
+    confidence: Record<string, number>, // 0-1 score per mapping
+    unmappedRequiredFields: string[],
+    unmappedOptionalFields: string[],
+    autoMappedCount: number,
+    manualMappingRequired: boolean,
+    requiredFieldsValidation: { valid: boolean, missingFields: string[] }
+  }
+  ```
+- **Files Added**:
+  - src/lib/validations/csv-column-mapping.ts - Validation schemas
+  - src/lib/csv-column-mapping.ts - Similarity algorithm and utilities
+  - src/app/api/csv-column-mapping-templates/route.ts - Template CRUD
+  - src/app/api/csv-column-mapping-templates/[id]/route.ts - Single template operations
+  - src/app/api/orders/import/suggest-mapping/route.ts - Mapping suggestions
+- **Files Modified**:
+  - src/db/schema.ts - Added csvColumnMappingTemplates table
+  - src/app/api/orders/import/route.ts - Added template support and auto-mapping
+- **Status**: ✅ Passes all requirements
+

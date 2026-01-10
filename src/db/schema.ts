@@ -574,3 +574,27 @@ export const ordersRelations = relations(orders, ({ one }) => ({
     references: [timeWindowPresets.id],
   }),
 }));
+
+// CSV column mapping templates for reusable import configurations
+export const csvColumnMappingTemplates = pgTable("csv_column_mapping_templates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  // Column mapping stored as JSON: { "csv_column": "system_field" }
+  columnMapping: text("column_mapping").notNull(), // JSON string
+  // List of required fields that must be mapped
+  requiredFields: text("required_fields").notNull(), // JSON array string
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const csvColumnMappingTemplatesRelations = relations(csvColumnMappingTemplates, ({ one }) => ({
+  company: one(companies, {
+    fields: [csvColumnMappingTemplates.companyId],
+    references: [companies.id],
+  }),
+}));
