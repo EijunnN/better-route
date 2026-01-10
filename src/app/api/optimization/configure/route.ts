@@ -107,41 +107,53 @@ export async function POST(request: NextRequest) {
     const data = optimizationConfigSchema.parse(body);
 
     // Parse and validate vehicle IDs
-    let vehicleIds: string[];
-    try {
-      vehicleIds = JSON.parse(data.selectedVehicleIds);
-      if (!Array.isArray(vehicleIds) || vehicleIds.length === 0) {
+    let vehicleIds: string[] = [];
+    if (data.selectedVehicleIds) {
+      try {
+        vehicleIds = JSON.parse(data.selectedVehicleIds);
+        if (!Array.isArray(vehicleIds) || vehicleIds.length === 0) {
+          return NextResponse.json(
+            { error: "At least one vehicle must be selected" },
+            { status: 400 }
+          );
+        }
+      } catch {
         return NextResponse.json(
-          { error: "At least one vehicle must be selected" },
+          { error: "Invalid vehicle IDs format" },
           { status: 400 }
         );
       }
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid vehicle IDs format" },
-        { status: 400 }
-      );
     }
 
     // Parse and validate driver IDs
-    let driverIds: string[];
-    try {
-      driverIds = JSON.parse(data.selectedDriverIds);
-      if (!Array.isArray(driverIds) || driverIds.length === 0) {
+    let driverIds: string[] = [];
+    if (data.selectedDriverIds) {
+      try {
+        driverIds = JSON.parse(data.selectedDriverIds);
+        if (!Array.isArray(driverIds) || driverIds.length === 0) {
+          return NextResponse.json(
+            { error: "At least one driver must be selected" },
+            { status: 400 }
+          );
+        }
+      } catch {
         return NextResponse.json(
-          { error: "At least one driver must be selected" },
+          { error: "Invalid driver IDs format" },
           { status: 400 }
         );
       }
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid driver IDs format" },
-        { status: 400 }
-      );
     }
 
-    // Validate that all vehicles exist and are available
-    const vehiclesResult = await db
+    // Determine if this is a preset (DRAFT) or full configuration
+    const isPreset = data.status === "DRAFT";
+
+    let vehiclesResult: any[] = [];
+    let driversResult: any[] = [];
+
+    // Only validate vehicles and drivers if not a preset
+    if (!isPreset && vehicleIds.length > 0) {
+      // Validate that all vehicles exist and are available
+      vehiclesResult = await db
       .select({
         id: vehicles.id,
         plate: vehicles.plate,
@@ -181,9 +193,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    }
 
-    // Validate that all drivers exist and are available
-    const driversResult = await db
+    // Only validate drivers if not a preset
+    if (!isPreset && driverIds.length > 0) {
+      // Validate that all drivers exist and are available
+      driversResult = await db
       .select({
         id: drivers.id,
         name: drivers.name,
@@ -237,39 +252,44 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    }
 
-    // Validate depot coordinates
-    const lat = parseFloat(data.depotLatitude);
-    const lng = parseFloat(data.depotLongitude);
-    if (isNaN(lat) || isNaN(lng)) {
-      return NextResponse.json(
-        { error: "Invalid depot coordinates" },
-        { status: 400 }
-      );
+    // Validate depot coordinates (only if provided)
+    if (data.depotLatitude && data.depotLongitude) {
+      const lat = parseFloat(data.depotLatitude);
+      const lng = parseFloat(data.depotLongitude);
+      if (isNaN(lat) || isNaN(lng)) {
+        return NextResponse.json(
+          { error: "Invalid depot coordinates" },
+          { status: 400 }
+        );
+      }
     }
 
     // Create configuration
+    const insertData: any = {
+      companyId: tenantCtx.companyId,
+      name: data.name,
+      depotLatitude: data.depotLatitude || "0",
+      depotLongitude: data.depotLongitude || "0",
+      depotAddress: data.depotAddress || null,
+      selectedVehicleIds: data.selectedVehicleIds || "[]",
+      selectedDriverIds: data.selectedDriverIds || "[]",
+      objective: data.objective,
+      capacityEnabled: data.capacityEnabled,
+      workWindowStart: data.workWindowStart,
+      workWindowEnd: data.workWindowEnd,
+      serviceTimeMinutes: data.serviceTimeMinutes,
+      timeWindowStrictness: data.timeWindowStrictness,
+      penaltyFactor: data.penaltyFactor,
+      maxRoutes: data.maxRoutes || null,
+      status: data.status || "CONFIGURED",
+      active: true,
+    };
+
     const [config] = await db
       .insert(optimizationConfigurations)
-      .values({
-        companyId: tenantCtx.companyId,
-        name: data.name,
-        depotLatitude: data.depotLatitude,
-        depotLongitude: data.depotLongitude,
-        depotAddress: data.depotAddress || null,
-        selectedVehicleIds: data.selectedVehicleIds,
-        selectedDriverIds: data.selectedDriverIds,
-        objective: data.objective,
-        capacityEnabled: data.capacityEnabled,
-        workWindowStart: data.workWindowStart,
-        workWindowEnd: data.workWindowEnd,
-        serviceTimeMinutes: data.serviceTimeMinutes,
-        timeWindowStrictness: data.timeWindowStrictness,
-        penaltyFactor: data.penaltyFactor,
-        maxRoutes: data.maxRoutes || null,
-        status: "CONFIGURED",
-        active: true,
-      })
+      .values(insertData)
       .returning();
 
     // Log creation

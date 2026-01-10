@@ -314,7 +314,7 @@
         "Confirmar API recibe todos los parámetros de tiempo en request de optimización",
         "Verificar métricas de resultado indican nivel de cumplimiento de ventanas"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "7.4",
@@ -330,7 +330,7 @@
         "Confirmar API acepta todos los parámetros de estrategia en el request",
         "Verificar sistema muestra resumen de configuración antes de ejecutar optimización"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "8.1",

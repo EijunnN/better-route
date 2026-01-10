@@ -1,5 +1,56 @@
 # Progress - Sistema de Gestión Logística
 
+## 2025-01-10 - Story 7.4: Configuración de Estrategia de Optimización
+
+### Completed
+
+**Validation Updates:**
+- Updated `src/lib/validations/optimization-config.ts`
+  - Made depot coordinates optional for presets
+  - Made selectedVehicleIds and selectedDriverIds optional
+  - Added status field support (DRAFT/CONFIGURED)
+
+**API Routes:**
+- Created `src/app/api/optimization/presets/route.ts` (GET, POST)
+  - GET: List all saved presets (configurations with DRAFT status)
+  - POST: Create new preset with optimization settings
+  - Presets store only strategy settings, not vehicle/driver assignments
+  - Includes validation for time windows and penalty factors
+
+- Updated `src/app/api/optimization/configure/route.ts`
+  - Added conditional validation based on status (DRAFT vs CONFIGURED)
+  - DRAFT status skips vehicle/driver/resource validation
+  - Supports saving both full configurations and presets
+
+**UI Updates:**
+- Updated `src/app/optimization/page.tsx`
+  - Moved penalty factor from Time Settings to Optimization Strategy section
+  - Added descriptive text for each strategy parameter
+  - Added "Save as Preset" button to save current settings
+  - Added "Load Preset" button to load saved configurations
+  - Preset dialog for naming and saving custom configurations
+  - Preset list dialog showing all saved presets with key details
+  - Loading states and error handling for preset operations
+
+**Features Implemented:**
+- Optimization objective selection (DISTANCE, TIME, BALANCED)
+- Maximum routes configuration (unlimited or specified number)
+- Penalty factor configuration (1x to 20x) with visual scale
+- Save/load configuration presets for common scenarios
+- Detailed descriptions for each parameter
+- Presets shown with objective, capacity mode, time window, and penalty info
+
+### Steps Verified (from PRD 7.4)
+- [x] Verification of optimization objective with options: DISTANCE, TIME, BALANCED
+- [x] Penalty factor configurable with range of 1x to 20x
+- [x] Number maximum of routes configurable with unlimited default
+- [x] Interface includes description of each parameter for easy selection
+- [x] Possibility to save presets of configuration for common configurations
+- [x] API accepts all strategy parameters in the request
+- [x] System shows summary of configuration before executing optimization
+
+---
+
 ## 2025-01-10 - Story 7.3: Configuración de Tiempo y Ventanas de Entrega
 
 ### Completed

@@ -81,11 +81,11 @@ const uuidArraySchema = z
 
 export const optimizationConfigSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name too long"),
-  depotLatitude: nonZeroCoordinateSchema,
-  depotLongitude: nonZeroLongitudeSchema,
+  depotLatitude: nonZeroCoordinateSchema.optional(),
+  depotLongitude: nonZeroLongitudeSchema.optional(),
   depotAddress: z.string().optional(),
-  selectedVehicleIds: z.string().min(1, "At least one vehicle is required"),
-  selectedDriverIds: z.string().min(1, "At least one driver is required"),
+  selectedVehicleIds: z.string().optional(),
+  selectedDriverIds: z.string().optional(),
   objective: z.enum(OPTIMIZATION_OBJECTIVE_VALUES).default("BALANCED"),
   capacityEnabled: z.boolean().default(true),
   workWindowStart: timeSchema,
@@ -94,6 +94,7 @@ export const optimizationConfigSchema = z.object({
   timeWindowStrictness: z.enum(TIME_WINDOW_STRICTNESS_VALUES).default("SOFT"),
   penaltyFactor: z.number().int().min(1).max(20).default(3),
   maxRoutes: z.number().int().positive().optional(),
+  status: z.enum(["DRAFT", "CONFIGURED"]).default("CONFIGURED"),
 }).refine(
   (data) => {
     // Validate that work window end is after start
