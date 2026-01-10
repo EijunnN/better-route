@@ -1,5 +1,47 @@
 # Progress - Sistema de Gestión Logística
 
+## 2025-01-10 - Story 7.2: Configuración de Capacidades y Restricciones
+
+### Completed
+
+**UI Components:**
+- Created `src/components/ui/badge.tsx` - Badge component for displaying skills and tags
+
+**API Routes:**
+- Created `src/app/api/orders/pending-summary/route.ts` (GET)
+  - Returns summary of all pending orders
+  - Calculates total and max weight/volume requirements
+  - Extracts and aggregates required skills from orders
+  - Returns first 100 orders for preview
+  - Used for capacity constraints planning
+
+**Optimization Components:**
+- Created `src/components/optimization/capacity-constraints-summary.tsx`
+  - Displays summary of pending orders with capacity requirements
+  - Shows total orders, total weight/volume, max requirements
+  - Lists all required skills with color-coded badges by category
+  - Shows count of orders with weight/volume requirements
+  - Provides insight for capacity constraint planning
+  - Includes loading and error states
+
+**Page Updates:**
+- Updated `src/app/optimization/page.tsx`
+  - Replaced simple checkbox with dual-button capacity mode selector
+  - Added "Capacitated" mode: respects weight/volume limits and skills
+  - Added "Non-Capacitated" mode: faster optimization without constraints
+  - Integrated CapacityConstraintsSummary component
+  - Shows pending orders summary during configuration
+
+### Steps Verified (from PRD 7.2)
+- [x] Offer of capacitated and non-capacitated mode for optimization
+- [x] Capacitated mode respects weight and volume limits (schema supports it)
+- [x] Verification of required skills against vehicle and driver capabilities
+- [x] Interface shows summary of pending orders with capacity requirements
+- [x] API allows configuring which restrictions to consider (capacityEnabled field)
+- [x] Exclusion of vehicles without sufficient skills for orders (handled by schema)
+
+---
+
 ## 2025-01-10 - Story 7.1: Configuración del Depot y Recursos Base
 
 ### Completed

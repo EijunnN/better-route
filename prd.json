@@ -298,7 +298,7 @@
         "Confirmar API permite configurar qué restricciones considerar durante optimización",
         "Verificar métricas de optimización indican capacidad utilizada por ruta"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "7.3",

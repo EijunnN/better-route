@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DepotSelector } from "@/components/optimization/depot-selector";
 import { VehicleSelector } from "@/components/optimization/vehicle-selector";
 import { DriverSelector } from "@/components/optimization/driver-selector";
+import { CapacityConstraintsSummary } from "@/components/optimization/capacity-constraints-summary";
 import { Loader2, Settings, ArrowRight } from "lucide-react";
 import type { DepotLocationInput } from "@/lib/validations/optimization-config";
 
@@ -310,25 +311,49 @@ export default function OptimizationPage() {
             <CardHeader>
               <CardTitle>Capacity Constraints</CardTitle>
               <CardDescription>
-                Enable or disable capacity and skill constraints during optimization.
+                Configure capacity and skill restrictions for route optimization.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="capacity-enabled"
-                  checked={capacityEnabled}
-                  onChange={(e) => setCapacityEnabled(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <Label htmlFor="capacity-enabled" className="cursor-pointer">
-                  Enable capacity constraints
-                </Label>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                {/* Capacity Mode Toggle */}
+                <div className="space-y-3">
+                  <Label>Capacity Mode</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCapacityEnabled(true)}
+                      className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                        capacityEnabled
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <p className="font-medium">Capacitated</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Respects vehicle weight/volume limits and required skills. May result in unassigned orders.
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCapacityEnabled(false)}
+                      className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                        !capacityEnabled
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <p className="font-medium">Non-Capacitated</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Faster optimization without capacity constraints. All orders will be assigned.
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Pending Orders Summary */}
+                <CapacityConstraintsSummary companyId={DEFAULT_COMPANY_ID} />
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                When enabled, the algorithm will respect vehicle weight/volume limits and required skills.
-              </p>
             </CardContent>
           </Card>
 
