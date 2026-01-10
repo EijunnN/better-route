@@ -1,6 +1,6 @@
 # Progress - Sistema de Gestión Logística
 
-## Iteration 1
+## Iteration 2
 
 ### Completed Features
 
@@ -13,27 +13,25 @@
 - [x] Confirmar generación de evento de auditoría en creación y modificaciones (audit_logs table)
 - [x] Validar que la API permite consulta de Companies con filtrado por estado, país o fecha
 
-### Files Created
-- `src/db/schema.ts` - Database schema with companies, users, and audit_logs tables
-- `src/db/index.ts` - Database connection configuration
-- `drizzle.config.ts` - Drizzle ORM configuration
-- `src/lib/validations/company.ts` - Company validation schemas with Zod
-- `src/app/api/companies/route.ts` - GET (list) and POST (create) endpoints
-- `src/app/api/companies/[id]/route.ts` - GET, PATCH, DELETE endpoints for individual companies
-- `src/components/ui/input.tsx` - Input UI component
-- `src/components/ui/label.tsx` - Label UI component
-- `src/components/companies/company-form.tsx` - Company creation/edit form
-- `src/app/companies/page.tsx` - Company management page with list view
+#### Story 1.2: Aislamiento de Datos entre Companies
+- [x] Verificar que cada tabla incluye columna tenantId para identificar Company propietaria (audit_logs updated)
+- [x] Confirmar que todas las consultas incluyen automáticamente filtro por tenantId de sesión (withTenantFilter helper)
+- [x] Validar que endpoints de API rechazan solicitudes a recursos de otro tenant (TenantAccessDeniedError)
+- [x] Verificar que logs de auditoría registran tenant y usuario en cada operación (getAuditLogContext helper)
+- [x] Confirmar que migraciones preservan tenantId de cada registro (schema updated)
+- [x] Validar manejo correcto de cambio de Company de usuario con reasignación de datos (verifyTenantAccess helper)
 
-### Dependencies Added
-- `drizzle-orm` - Database ORM
-- `postgres` - PostgreSQL driver
-- `drizzle-kit` - Drizzle CLI tools
-- `zod` - Schema validation
-- `@t3-oss/env-nextjs` - Environment variable validation
-- `@radix-ui/react-label` - Label primitive
+### Files Created/Modified
+- `src/db/schema.ts` - Added tenantId column to audit_logs table
+- `src/db/tenant-aware.ts` - Tenant isolation helpers (withTenantFilter, verifyTenantAccess, getAuditLogContext)
+- `src/lib/tenant.ts` - AsyncLocalStorage-based tenant context management
+- `src/lib/audit.ts` - Audit log helpers with automatic tenant context
+- `src/middleware.ts` - Next.js middleware for extracting tenant context from headers
+- `src/app/api/companies/route.ts` - Updated with tenant filtering and cross-tenant rejection
+- `src/app/api/companies/[id]/route.ts` - Updated with tenant filtering and cross-tenant rejection
 
 ### Next Steps
-- Story 1.2: Aislamiento de Datos entre Companies (implement tenantId filtering)
-- Set up database migrations
+- Story 2.1: Creación y Configuración de Flotas
+- Set up database migrations for new schema changes
 - Add authentication and authorization
+

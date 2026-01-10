@@ -3,9 +3,35 @@ import { db } from "@/db";
 import { companies } from "@/db/schema";
 import { companySchema, companyQuerySchema } from "@/lib/validations/company";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { withTenantFilter, verifyTenantAccess, getAuditLogContext } from "@/db/tenant-aware";
+import { setTenantContext } from "@/lib/tenant";
+
+function extractTenantContext(request: NextRequest) {
+  const companyId = request.headers.get("x-company-id");
+  const userId = request.headers.get("x-user-id");
+
+  if (!companyId) {
+    return null;
+  }
+
+  return {
+    companyId,
+    userId: userId || undefined,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
+    const tenantCtx = extractTenantContext(request);
+    if (!tenantCtx) {
+      return NextResponse.json(
+        { error: "Missing tenant context" },
+        { status: 401 }
+      );
+    }
+
+    setTenantContext(tenantCtx);
+
     const { searchParams } = new URL(request.url);
     const query = companyQuerySchema.parse(Object.fromEntries(searchParams));
 
@@ -24,7 +50,8 @@ export async function GET(request: NextRequest) {
       conditions.push(lte(companies.createdAt, new Date(query.endDate)));
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    // Apply tenant filtering - users can only see their own company
+    const whereClause = withTenantFilter(companies, conditions);
 
     const [data, totalResult] = await Promise.all([
       db
@@ -56,8 +83,21 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const tenantCtx = extractTenantContext(request);
+    if (!tenantCtx) {
+      return NextResponse.json(
+        { error: "Missing tenant context" },
+        { status: 401 }
+      );
+    }
+
+    setTenantContext(tenantCtx);
+
     const body = await request.json();
     const validatedData = companySchema.parse(body);
+
+    // Check if user has permission to create companies
+    // For now, we assume this is an admin operation
 
     const existingCompany = await db
       .select()

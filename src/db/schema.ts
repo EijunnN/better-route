@@ -54,6 +54,9 @@ export const auditLogs = pgTable("audit_logs", {
   companyId: uuid("company_id")
     .notNull()
     .references(() => companies.id, { onDelete: "restrict" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
   userId: uuid("user_id").references(() => users.id),
   entityType: varchar("entity_type", { length: 100 }).notNull(),
   entityId: uuid("entity_id").notNull(),

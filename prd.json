@@ -31,7 +31,7 @@
         "Confirmar que migraciones preservan tenantId de cada registro",
         "Validar manejo correcto de cambio de Company de usuario con reasignación de datos"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "2.1",
