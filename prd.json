@@ -250,7 +250,7 @@
         "Confirmar posibilidad de guardar configuración de mapeo como plantilla reutilizable",
         "Verificar API recibe mapeo de columnas como parte de solicitud de importación"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "6.4",
