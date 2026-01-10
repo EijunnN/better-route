@@ -108,7 +108,7 @@
         "Confirmar consulta de vehículos por estado con métricas de utilización",
         "Verificar endpoint API para disponibilidad de vehículos en rango de fechas"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "3.3",

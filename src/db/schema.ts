@@ -153,6 +153,7 @@ export const vehiclesRelations = relations(vehicles, ({ one, many }) => ({
     references: [fleets.id],
   }),
   fleetHistory: many(vehicleFleetHistory),
+  statusHistory: many(vehicleStatusHistory),
 }));
 
 // Driver status types
@@ -310,6 +311,40 @@ export const vehicleFleetHistoryRelations = relations(vehicleFleetHistory, ({ on
   }),
   user: one(users, {
     fields: [vehicleFleetHistory.userId],
+    references: [users.id],
+  }),
+}));
+
+// Vehicle status history for tracking status changes
+export const vehicleStatusHistory = pgTable("vehicle_status_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  vehicleId: uuid("vehicle_id")
+    .notNull()
+    .references(() => vehicles.id, { onDelete: "cascade" }),
+  previousStatus: varchar("previous_status", { length: 50 })
+    .$type<keyof typeof VEHICLE_STATUS>(),
+  newStatus: varchar("new_status", { length: 50 })
+    .notNull()
+    .$type<keyof typeof VEHICLE_STATUS>(),
+  userId: uuid("user_id").references(() => users.id),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const vehicleStatusHistoryRelations = relations(vehicleStatusHistory, ({ one }) => ({
+  company: one(companies, {
+    fields: [vehicleStatusHistory.companyId],
+    references: [companies.id],
+  }),
+  vehicle: one(vehicles, {
+    fields: [vehicleStatusHistory.vehicleId],
+    references: [vehicles.id],
+  }),
+  user: one(users, {
+    fields: [vehicleStatusHistory.userId],
     references: [users.id],
   }),
 }));

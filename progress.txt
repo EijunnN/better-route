@@ -1,33 +1,46 @@
 # Progress - Sistema de Gestión Logística
 
-## Iteration 1 - 2025-01-10
+## 2025-01-10 - Story 3.2: Gestión del Estado Operativo de Vehículos
 
-### Story 2.3 - Asociación de Conductores a Flotas
+### Implemented Features
 
-**Completed Steps:**
-1. ✅ Added driver availability by day of week with time ranges schema (driver_availability table)
-2. ✅ Implemented days off logic with isDayOff boolean field
-3. ✅ Created secondary fleets many-to-many relationship table (driver_secondary_fleets)
-4. ✅ Created API endpoints for driver availability CRUD operations
-5. ✅ Created API endpoint for checking driver availability at specific date/time
-6. ✅ Created API endpoints for secondary fleets CRUD operations
-7. ✅ Created API endpoint for getting available drivers at specific time for a fleet
+1. **Database Schema**
+   - Created `vehicleStatusHistory` table for tracking status changes
+   - Added relation from vehicles to status history
 
-**New Tables:**
-- `driver_availability`: Stores driver availability by day of week with time ranges and days off
-- `driver_secondary_fleets`: Many-to-many relationship for drivers with secondary fleets
+2. **Validation Module** (`src/lib/validations/vehicle-status.ts`)
+   - Status transition rules matrix (AVAILABLE, IN_MAINTENANCE, ASSIGNED, INACTIVE)
+   - `validateStatusTransition()` function for transition validation
+   - `requiresActiveRouteCheck()` for detecting transitions needing route validation
+   - Zod schemas for status transition input and queries
 
-**New API Routes:**
-- `/api/driver-availability` - CRUD for driver availability
-- `/api/driver-availability/[id]` - Individual driver availability operations
-- `/api/driver-availability/check` - POST to check availability at specific time
-- `/api/driver-secondary-fleets` - CRUD for secondary fleets
-- `/api/driver-secondary-fleets/[id]` - Individual secondary fleet operations
-- `/api/drivers/available-at` - GET to find available drivers for fleet at time
+3. **API Endpoints**
+   - `POST /api/vehicles/[id]/status-transition` - Change vehicle status with validation
+   - `GET /api/vehicles/[id]/status-history` - Get status change history
+   - `GET /api/vehicles/available` - Query available vehicles in date range
 
-**Validation Files:**
-- `src/lib/validations/driver-availability.ts` - Time format validation, day of week helpers
-- `src/lib/validations/driver-secondary-fleet.ts` - Secondary fleet validation
+4. **UI Components**
+   - Dialog component (`src/components/ui/dialog.tsx`)
+   - Vehicle Status Modal (`src/components/vehicles/vehicle-status-modal.tsx`)
+   - Added "Cambiar Estado" button to vehicles list
 
-Build passed successfully with all new routes.
+### Status Transition Rules
+- AVAILABLE → IN_MAINTENANCE, ASSIGNED, INACTIVE
+- IN_MAINTENANCE → AVAILABLE, INACTIVE
+- ASSIGNED → AVAILABLE, IN_MAINTENANCE, INACTIVE
+- INACTIVE → AVAILABLE
+
+### Files Created/Modified
+- `src/db/schema.ts` - Added vehicleStatusHistory table
+- `src/lib/validations/vehicle-status.ts` - Status transition validation
+- `src/app/api/vehicles/[id]/status-transition/route.ts` - Status transition API
+- `src/app/api/vehicles/[id]/status-history/route.ts` - Status history API
+- `src/app/api/vehicles/available/route.ts` - Availability query API
+- `src/components/ui/dialog.tsx` - Dialog UI component
+- `src/components/vehicles/vehicle-status-modal.tsx` - Status change modal
+- `src/app/vehicles/page.tsx` - Added status change functionality
+
+### Dependencies Added
+- @radix-ui/react-dialog
+- lucide-react
 

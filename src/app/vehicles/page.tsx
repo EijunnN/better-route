@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { VehicleForm } from "@/components/vehicles/vehicle-form";
+import { VehicleStatusModal } from "@/components/vehicles/vehicle-status-modal";
 import type { VehicleInput } from "@/lib/validations/vehicle";
+import type { VehicleStatusTransitionInput } from "@/lib/validations/vehicle-status";
 
 interface Vehicle {
   id: string;
@@ -77,6 +79,7 @@ export default function VehiclesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [statusModalVehicle, setStatusModalVehicle] = useState<Vehicle | null>(null);
 
   const fetchVehicles = async () => {
     try {
@@ -167,6 +170,23 @@ export default function VehiclesPage() {
       const error = await response.json();
       alert(error.error || error.details || "Error al desactivar el vehículo");
       return;
+    }
+
+    await fetchVehicles();
+  };
+
+  const handleStatusChange = async (vehicleId: string, data: VehicleStatusTransitionInput) => {
+    const response = await fetch(`/api/vehicles/${vehicleId}/status-transition`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": "demo-company-id",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw response;
     }
 
     await fetchVehicles();
@@ -354,9 +374,15 @@ export default function VehiclesPage() {
                       <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
                         <button
                           onClick={() => setEditingVehicle(vehicle)}
-                          className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
+                          className="text-muted-foreground hover:text-foreground mr-3 transition-colors"
                         >
                           Editar
+                        </button>
+                        <button
+                          onClick={() => setStatusModalVehicle(vehicle)}
+                          className="text-muted-foreground hover:text-foreground mr-3 transition-colors"
+                        >
+                          Cambiar Estado
                         </button>
                         {vehicle.active && (
                           <button
@@ -375,6 +401,18 @@ export default function VehiclesPage() {
           </div>
         )}
       </div>
+
+      {/* Status Change Modal */}
+      {statusModalVehicle && (
+        <VehicleStatusModal
+          open={!!statusModalVehicle}
+          onOpenChange={(open) => !open && setStatusModalVehicle(null)}
+          vehicleId={statusModalVehicle.id}
+          currentStatus={statusModalVehicle.status}
+          vehiclePlate={statusModalVehicle.plate}
+          onStatusChange={handleStatusChange}
+        />
+      )}
     </div>
   );
 }
