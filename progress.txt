@@ -1,2 +1,100 @@
 # Progress - Sistema de Gestión Logística
 
+## Story 10.1: Sistema de Monitoreo en Tiempo Real - COMPLETED
+
+### Implementation Summary
+
+Implemented comprehensive real-time monitoring system for tracking driver routes and plan execution:
+
+#### Backend Changes:
+1. **Created `GET /api/monitoring/summary`**:
+   - Returns monitoring summary for confirmed optimization plans
+   - Shows metrics: total drivers, drivers in route, available, on pause
+   - Calculates route progress metrics (completed stops, total stops, completeness %)
+   - Tracks delayed stops and active alerts
+   - Returns job configuration details (jobId, configurationId, configurationName)
+   - Tenant-aware filtering
+
+2. **Created `GET /api/monitoring/geojson`**:
+   - Returns GeoJSON data for map visualization
+   - Generates route lines with colors for each driver
+   - Creates stop points with sequence numbers
+   - Includes driver and route metadata in properties
+
+3. **Created `GET /api/monitoring/drivers`**:
+   - Returns list of all drivers with monitoring data
+   - Shows driver status, fleet info, route assignments
+   - Includes progress metrics (completed stops, total stops, percentage)
+   - Returns active alerts for each driver
+
+4. **Created `GET /api/monitoring/drivers/[id]`**:
+   - Returns detailed information for a specific driver
+   - Includes driver profile and full route details
+   - Shows stops with statuses and metadata
+
+#### Frontend Changes:
+1. **Created `src/app/monitoring/page.tsx`**:
+   - Main monitoring dashboard page
+   - Real-time polling every 10 seconds
+   - Overview and detail views
+   - Shows last update timestamp with manual refresh
+   - Error handling with retry option
+   - Loading states for all data fetches
+
+2. **Created `src/components/monitoring/monitoring-metrics.tsx`**:
+   - Displays key metrics cards:
+     - Total Drivers
+     - Drivers In Route
+     - Completed Stops / Total Stops
+     - Completeness Percentage
+     - Delayed Stops
+     - Active Alerts
+   - Visual indicators with icons
+
+3. **Created `src/components/monitoring/monitoring-map.tsx`**:
+   - Interactive map using MapLibre GL
+   - Displays all driver routes with colored lines
+   - Shows stop points with sequence numbers
+   - Click on stop to select driver
+   - Highlight selected driver's route
+   - Auto-fit bounds to show all routes
+   - Uses OpenStreetMap tiles
+   - Error handling for map initialization
+
+4. **Created `src/components/monitoring/driver-list-item.tsx`**:
+   - Individual driver card in list
+   - Shows driver status badge
+   - Displays fleet and vehicle info
+   - Progress bar for route completion
+   - Alerts indicator with count
+   - Click to view driver details
+
+5. **Created `src/components/monitoring/driver-route-detail.tsx`**:
+   - Detailed view of selected driver
+   - Driver profile information
+   - Complete route with all stops
+   - Stop statuses and times
+   - Back button to overview
+
+### Features Implemented:
+- ✅ Real-time tracking of driver locations and route progress
+- ✅ Map visualization of all active routes
+- ✅ Driver status monitoring (in route, available, on pause)
+- ✅ Route completion metrics (stops completed, percentage)
+- ✅ Alert system for delays and issues
+- ✅ Driver list with search and filtering
+- ✅ Detailed view per driver with route breakdown
+- ✅ Auto-refresh every 10 seconds
+- ✅ Manual refresh button
+- ✅ Tenant-aware data filtering
+- ✅ Interactive map with click-to-select functionality
+- ✅ Visual route highlighting for selected driver
+
+### Technical Details:
+- **Map Library**: MapLibre GL with OpenStreetMap tiles
+- **Polling Interval**: 10 seconds for real-time updates
+- **State Management**: React hooks (useState, useEffect, useCallback)
+- **Responsive Layout**: Grid system with map (2 cols) and driver list (1 col)
+- **Error Handling**: Comprehensive error states with retry options
+
+---
