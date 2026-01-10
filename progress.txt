@@ -64,6 +64,67 @@ Implemented comprehensive optimization results visualization with the following 
 - [x] Aggregate metrics show summary of all routes
 - [x] API returns data structure with all result metrics
 
+## 2026-01-10 - Story 8.3: Cancelación y Re-ejecución de Optimización
+
+### Completed Implementation
+
+**Story 8.3: Cancelación y Re-ejecución de Optimización** - PASSED
+
+Implemented cancellation and re-execution functionality with the following components:
+
+#### Partial Results Preservation (`src/lib/job-queue.ts`, `src/lib/optimization-runner.ts`)
+- Modified `cancelJob()` function to accept and save partial results
+- Modified `runOptimization()` to track partial routes incrementally
+- Created partial result object with computed metrics when cancellation occurs
+- Used global state to pass partial results during cancellation cleanup
+- Added `isPartial` flag to distinguish partial from complete results
+
+#### Optimization History Page (`src/app/optimization/history/page.tsx`)
+- Complete history view of all optimization jobs with filtering by status
+- Status badges (Completed, Cancelled, Failed, Running, Pending) with color coding
+- Side-by-side comparison feature - select up to 2 jobs to compare metrics
+- CompareValue component showing:
+  - Trend indicators (TrendingUp/TrendingDown) for metrics changes
+  - Percentage differences between runs
+  - Color coding (green for improvements, red for regressions)
+- Job list displaying:
+  - Configuration name and objective
+  - Result metrics (routes, stops, distance)
+  - Unassigned orders count
+  - Timestamps (completed/cancelled/created)
+- Re-optimize button to run same configuration again
+- View button to see detailed results
+- Checkbox selection for comparison
+
+#### Enhanced Results Page (`src/app/optimization/[id]/results/page.tsx`)
+- Added support for viewing existing job results via `?jobId=` query parameter
+- Added `?reoptimize=true` query parameter to force new optimization
+- History button in header navigation
+- Status badge showing COMPLETED or CANCELLED state
+- "Partial Results" badge for cancelled jobs
+- Contextual message when viewing partial results
+- Re-optimize functionality now uses same configuration without page reload
+
+#### Visual Status Indicators
+- Completed jobs: Green badge with checkmark icon
+- Cancelled jobs: Orange badge with X icon
+- Jobs with partial results: Orange "Partial Results" badge
+- Cancellations clearly distinguished from failures
+
+#### New Imports Used
+- `useSearchParams` from Next.js for query parameter handling
+- `Suspense` for search params compatibility
+- `CheckCircle2`, `History` icons from lucide-react
+
+### All Steps Verified ✓
+- [x] User can cancel optimization with cancel button (already implemented)
+- [x] Cancellation stops processing and frees resources (already implemented)
+- [x] Partial results are preserved for review after cancellation
+- [x] Re-execution can use same configuration with modifications
+- [x] History of optimizations is saved and queryable
+- [x] Interface clearly shows completed vs cancelled optimizations
+- [x] Side-by-side comparison of results allows viewing metrics differences
+
 ### Next Stories
-- Story 8.3: Cancelación y Re-ejecución de Optimización
 - Story 9.1: Asignación Automática de Conductores
+- Story 9.2: Asignación Manual de Conductores

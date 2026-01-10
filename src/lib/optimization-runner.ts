@@ -85,9 +85,40 @@ export async function runOptimization(
 ): Promise<OptimizationResult> {
   const startTime = Date.now();
 
+  // Track partial results for cancellation
+  let partialRoutes: OptimizationRoute[] = [];
+  let partialUnassignedOrders: Array<{
+    orderId: string;
+    trackingId: string;
+    reason: string;
+  }> = [];
+
   // Check for abort signal
   const checkAbort = () => {
     if (signal?.aborted) {
+      // Create partial results object
+      const partialResult: OptimizationResult & { isPartial?: boolean } = {
+        routes: partialRoutes,
+        unassignedOrders: partialUnassignedOrders,
+        metrics: {
+          totalDistance: partialRoutes.reduce((sum, r) => sum + r.totalDistance, 0),
+          totalDuration: partialRoutes.reduce((sum, r) => sum + r.totalDuration, 0),
+          totalRoutes: partialRoutes.length,
+          totalStops: partialRoutes.reduce((sum, r) => sum + r.stops.length, 0),
+          utilizationRate: partialRoutes.length > 0
+            ? partialRoutes.reduce((sum, r) => sum + r.utilizationPercentage, 0) / partialRoutes.length
+            : 0,
+          timeWindowComplianceRate: 100,
+        },
+        summary: {
+          optimizedAt: new Date().toISOString(),
+          objective: "DISTANCE",
+          processingTimeMs: Date.now() - startTime,
+        },
+        isPartial: true,
+      };
+      // Store partial result globally for access during cancellation
+      (globalThis as any).__partialOptimizationResult = partialResult;
       throw new Error("Optimization cancelled by user");
     }
   };
@@ -211,7 +242,7 @@ export async function runOptimization(
     }
 
     if (routeStops.length > 0) {
-      routes.push({
+      const newRoute = {
         routeId: `route-${vehicle.id}-${Date.now()}`,
         vehicleId: vehicle.id,
         vehiclePlate: vehicle.plate,
@@ -224,7 +255,10 @@ export async function runOptimization(
         totalVolume: routeStops.length * 50, // Mock volume
         utilizationPercentage: Math.round((routeStops.length / maxStopsPerRoute) * 100),
         timeWindowViolations: 0,
-      });
+      };
+      routes.push(newRoute);
+      // Update partial results tracking
+      partialRoutes = [...routes];
     }
   }
 
@@ -381,7 +415,11 @@ export async function createAndExecuteJob(
       await completeJob(jobId, result);
     } catch (error) {
       if (isJobAborting(jobId)) {
-        await cancelJob(jobId);
+        // Get partial results if available
+        const partialResults = (globalThis as any).__partialOptimizationResult;
+        await cancelJob(jobId, partialResults);
+        // Clean up global state
+        delete (globalThis as any).__partialOptimizationResult;
       } else {
         await failJob(
           jobId,

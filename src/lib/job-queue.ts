@@ -101,9 +101,9 @@ export function setJobTimeout(
 }
 
 /**
- * Cancel a running job
+ * Cancel a running job with optional partial results
  */
-export async function cancelJob(jobId: string): Promise<boolean> {
+export async function cancelJob(jobId: string, partialResults?: unknown): Promise<boolean> {
   const job = activeJobs.get(jobId);
   if (!job) {
     return false; // Job not found or not running
@@ -119,14 +119,26 @@ export async function cancelJob(jobId: string): Promise<boolean> {
     clearTimeout(job.timeoutHandle);
   }
 
-  // Update job status in database
+  // Update job status in database with optional partial results
+  const updateData: {
+    status: "CANCELLED";
+    cancelledAt: Date;
+    updatedAt: Date;
+    result?: string;
+  } = {
+    status: "CANCELLED",
+    cancelledAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  // Save partial results if provided
+  if (partialResults) {
+    updateData.result = JSON.stringify(partialResults);
+  }
+
   await db
     .update(optimizationJobs)
-    .set({
-      status: "CANCELLED",
-      cancelledAt: new Date(),
-      updatedAt: new Date(),
-    })
+    .set(updateData)
     .where(eq(optimizationJobs.id, jobId));
 
   // Remove from active jobs
