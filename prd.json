@@ -170,7 +170,7 @@
         "Confirmar API permite consultar estado actual de conductores por flota",
         "Verificar dashboard muestra claramente estado de cada conductor activo"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "5.1",

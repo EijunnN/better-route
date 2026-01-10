@@ -2,8 +2,8 @@
 active: true
 iteration: 1
 max_iterations: 3
-completion_promise: "COMPLETE"
-started_at: "2026-01-10T16:14:34Z"
+completion_promise: null
+started_at: "2026-01-10T17:24:51Z"
 ---
 
 @prompt.md

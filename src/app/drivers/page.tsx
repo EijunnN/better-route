@@ -3,8 +3,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { DriverForm } from "@/components/drivers/driver-form";
+import { DriverStatusModal } from "@/components/drivers/driver-status-modal";
 import type { DriverInput } from "@/lib/validations/driver";
+import type { DriverStatusTransitionInput } from "@/lib/validations/driver-status";
 import { isExpired, isExpiringSoon } from "@/lib/validations/driver";
+import { STATUS_COLOR_CLASSES } from "@/lib/validations/driver-status";
 
 interface Driver {
   id: string;
@@ -58,6 +61,7 @@ export default function DriversPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
+  const [statusModalDriver, setStatusModalDriver] = useState<Driver | null>(null);
 
   const fetchDrivers = async () => {
     try {
@@ -153,6 +157,24 @@ export default function DriversPage() {
     await fetchDrivers();
   };
 
+  const handleStatusChange = async (driverId: string, data: DriverStatusTransitionInput) => {
+    const response = await fetch(`/api/drivers/${driverId}/status-transition`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": "demo-company-id",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw response;
+    }
+
+    await fetchDrivers();
+    setStatusModalDriver(null);
+  };
+
   const getFleetName = (fleetId: string) => {
     const fleet = fleets.find((f) => f.id === fleetId);
     return fleet?.name || "Desconocida";
@@ -160,6 +182,7 @@ export default function DriversPage() {
 
   if (showForm || editingDriver) {
     return (
+      <>
       <div className="min-h-screen bg-background p-8">
         <div className="mx-auto max-w-3xl">
           <div className="mb-6">
@@ -208,10 +231,12 @@ export default function DriversPage() {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
     <div className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex items-center justify-between">
@@ -294,23 +319,15 @@ export default function DriversPage() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4">
-                        <span
-                          className={`inline-flex rounded-full px-2 text-xs font-semibold ${
-                            driver.status === "AVAILABLE"
-                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                              : driver.status === "ASSIGNED"
-                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                              : driver.status === "IN_ROUTE"
-                              ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
-                              : driver.status === "ON_PAUSE"
-                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                              : driver.status === "COMPLETED"
-                              ? "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400"
-                              : "bg-destructive/10 text-destructive"
+                        <button
+                          onClick={() => setStatusModalDriver(driver)}
+                          className={`inline-flex cursor-pointer rounded-full px-3 py-1 text-xs font-semibold transition-colors hover:opacity-80 ${
+                            STATUS_COLOR_CLASSES[driver.status as keyof typeof STATUS_COLOR_CLASSES] ||
+                            "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
                           }`}
                         >
                           {DRIVER_STATUS_LABELS[driver.status] || driver.status}
-                        </span>
+                        </button>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
                         <button
@@ -337,5 +354,17 @@ export default function DriversPage() {
         )}
       </div>
     </div>
+
+    {statusModalDriver && (
+      <DriverStatusModal
+        open={!!statusModalDriver}
+        onOpenChange={(open) => !open && setStatusModalDriver(null)}
+        driverId={statusModalDriver.id}
+        driverName={statusModalDriver.name}
+        currentStatus={statusModalDriver.status as any}
+        onStatusChange={handleStatusChange}
+      />
+    )}
+    </>
   );
 }

@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1768066200993,
+      "tag": "0000_swift_manta",
+      "breakpoints": true
+    }
+  ]
+}

@@ -167,6 +167,20 @@ export const DRIVER_STATUS = {
   ABSENT: "ABSENT",
 } as const;
 
+// Valid driver status transitions
+export const DRIVER_STATUS_TRANSITIONS: Record<
+  keyof typeof DRIVER_STATUS,
+  (keyof typeof DRIVER_STATUS)[]
+> = {
+  AVAILABLE: ["ASSIGNED", "UNAVAILABLE", "ABSENT"],
+  ASSIGNED: ["IN_ROUTE", "AVAILABLE", "UNAVAILABLE", "ABSENT"],
+  IN_ROUTE: ["ON_PAUSE", "COMPLETED", "UNAVAILABLE", "ABSENT"],
+  ON_PAUSE: ["IN_ROUTE", "AVAILABLE", "UNAVAILABLE", "ABSENT"],
+  COMPLETED: ["AVAILABLE", "ASSIGNED", "UNAVAILABLE"],
+  UNAVAILABLE: ["AVAILABLE"],
+  ABSENT: ["AVAILABLE", "UNAVAILABLE"],
+};
+
 export const drivers = pgTable("drivers", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyId: uuid("company_id")
@@ -206,6 +220,7 @@ export const driversRelations = relations(drivers, ({ one, many }) => ({
   driverSkills: many(driverSkills),
   availability: many(driverAvailability),
   secondaryFleets: many(driverSecondaryFleets),
+  statusHistory: many(driverStatusHistory),
 }));
 
 // Vehicle skill categories
@@ -420,5 +435,40 @@ export const driverSecondaryFleetsRelations = relations(driverSecondaryFleets, (
   fleet: one(fleets, {
     fields: [driverSecondaryFleets.fleetId],
     references: [fleets.id],
+  }),
+}));
+
+// Driver status history for tracking status changes
+export const driverStatusHistory = pgTable("driver_status_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  driverId: uuid("driver_id")
+    .notNull()
+    .references(() => drivers.id, { onDelete: "cascade" }),
+  previousStatus: varchar("previous_status", { length: 50 })
+    .$type<keyof typeof DRIVER_STATUS>(),
+  newStatus: varchar("new_status", { length: 50 })
+    .notNull()
+    .$type<keyof typeof DRIVER_STATUS>(),
+  userId: uuid("user_id").references(() => users.id),
+  reason: text("reason"),
+  context: text("context"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const driverStatusHistoryRelations = relations(driverStatusHistory, ({ one }) => ({
+  company: one(companies, {
+    fields: [driverStatusHistory.companyId],
+    references: [companies.id],
+  }),
+  driver: one(drivers, {
+    fields: [driverStatusHistory.driverId],
+    references: [drivers.id],
+  }),
+  user: one(users, {
+    fields: [driverStatusHistory.userId],
+    references: [users.id],
   }),
 }));

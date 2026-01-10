@@ -1,89 +1,46 @@
 # Progress - Sistema de Gestión Logística
 
-## 2025-01-10 - Story 3.2: Gestión del Estado Operativo de Vehículos
+## Completed Stories
 
-### Implemented Features
+### Story 4.3 - Driver Operational State Management (Gestión del Estado Operativo de Conductores)
 
-1. **Database Schema**
-   - Created `vehicleStatusHistory` table for tracking status changes
-   - Added relation from vehicles to status history
+**Status:** ✅ Completed
 
-2. **Validation Module** (`src/lib/validations/vehicle-status.ts`)
-   - Status transition rules matrix (AVAILABLE, IN_MAINTENANCE, ASSIGNED, INACTIVE)
-   - `validateStatusTransition()` function for transition validation
-   - `requiresActiveRouteCheck()` for detecting transitions needing route validation
-   - Zod schemas for status transition input and queries
+**Implementation:**
+- Added `driver_status_history` table to database schema with fields for tracking status transitions
+- Added `DRIVER_STATUS_TRANSITIONS` type definition defining valid state transitions
+- Created database migration and applied it successfully
+- Created `/lib/validations/driver-status.ts` with:
+  - `STATUS_DISPLAY_NAMES` for UI display
+  - `STATUS_COLOR_CLASSES` for visual indicators
+  - `validateStatusTransition()` function for transition validation
+  - `requiresActiveRouteCheck()` function for active route validation
+  - Zod schemas for API validation
+- Created API endpoints:
+  - `POST /api/drivers/[id]/status-transition` - Change driver status with validation and history
+  - `GET /api/drivers/[id]/status-history` - Get driver status change history
+  - `GET /api/drivers/status-by-fleet?fleetId=xxx` - Get driver status metrics by fleet
+- Created `/components/drivers/driver-status-modal.tsx` UI component for status changes
+- Created `/components/ui/textarea.tsx` UI component
+- Updated `/app/drivers/page.tsx` with:
+  - Clickable status badges that open the status change modal
+  - Integration with DriverStatusModal component
 
-3. **API Endpoints**
-   - `POST /api/vehicles/[id]/status-transition` - Change vehicle status with validation
-   - `GET /api/vehicles/[id]/status-history` - Get status change history
-   - `GET /api/vehicles/available` - Query available vehicles in date range
+**API Endpoints:**
+- `POST /api/drivers/[id]/status-transition` - Change driver status
+- `GET /api/drivers/[id]/status-history` - Get status history
+- `GET /api/drivers/status-by-fleet` - Get fleet driver status metrics
 
-4. **UI Components**
-   - Dialog component (`src/components/ui/dialog.tsx`)
-   - Vehicle Status Modal (`src/components/vehicles/vehicle-status-modal.tsx`)
-   - Added "Cambiar Estado" button to vehicles list
+**Files Modified:**
+- `src/db/schema.ts` - Added driver_status_history table and DRIVER_STATUS_TRANSITIONS
+- `src/lib/validations/driver-status.ts` - New validation module
+- `src/app/api/drivers/[id]/status-transition/route.ts` - New API endpoint
+- `src/app/api/drivers/[id]/status-history/route.ts` - New API endpoint
+- `src/app/api/drivers/status-by-fleet/route.ts` - New API endpoint
+- `src/components/drivers/driver-status-modal.tsx` - New UI component
+- `src/components/ui/textarea.tsx` - New UI component
+- `src/app/drivers/page.tsx` - Updated with status change functionality
 
-### Status Transition Rules
-- AVAILABLE → IN_MAINTENANCE, ASSIGNED, INACTIVE
-- IN_MAINTENANCE → AVAILABLE, INACTIVE
-- ASSIGNED → AVAILABLE, IN_MAINTENANCE, INACTIVE
-- INACTIVE → AVAILABLE
-
-### Files Created/Modified
-- `src/db/schema.ts` - Added vehicleStatusHistory table
-- `src/lib/validations/vehicle-status.ts` - Status transition validation
-- `src/app/api/vehicles/[id]/status-transition/route.ts` - Status transition API
-- `src/app/api/vehicles/[id]/status-history/route.ts` - Status history API
-- `src/app/api/vehicles/available/route.ts` - Availability query API
-- `src/components/ui/dialog.tsx` - Dialog UI component
-- `src/components/vehicles/vehicle-status-modal.tsx` - Status change modal
-- `src/app/vehicles/page.tsx` - Added status change functionality
-
-### Dependencies Added
-- @radix-ui/react-dialog
-- lucide-react
-
----
-
-## 2025-01-10 - Story 4.2: Gestión de Habilidades de Conductores
-
-### Implemented Features
-
-1. **Driver Skills Compatibility Validation** (`src/lib/validations/driver-skills-compatibility.ts`)
-   - `validateDriverSkillsCompatibility()` - Validates driver has required skills
-   - `filterDriversByRequiredSkills()` - Filters compatible drivers for orders
-   - `canDriverHandleOrder()` - Quick compatibility check
-   - `calculateDriverSkillsQualityScore()` - Quality scoring for assignments
-   - `formatDriverSkillsCompatibilityResponse()` - API response formatter
-   - Automatic exclusion of expired skills
-   - Configurable handling of expiring soon skills
-
-2. **API Endpoints**
-   - `GET /api/drivers/[id]/skills-compatibility` - Check driver skills via query params
-   - `POST /api/drivers/[id]/skills-compatibility` - Check driver skills via request body
-   - Supports filtering by active/inactive skills
-   - Configurable handling of skills expiring soon
-   - Returns detailed compatibility report with quality score
-
-3. **Validation Features**
-   - Validates driver has all required skills for routes/orders
-   - Automatically excludes expired skills from compatibility checks
-   - Warns about skills expiring within 30 days
-   - Quality score (0-100) for driver assignment decisions
-   - Detailed error messages for missing/invalid skills
-
-### Files Created
-- `src/lib/validations/driver-skills-compatibility.ts` - Driver skills compatibility logic
-- `src/app/api/drivers/[id]/skills-compatibility/route.ts` - Compatibility check API
-
-### Story 4.2 Status: COMPLETED ✅
-
-All requirements met:
-- ✅ Assigning skills using centralized catalog (already existed)
-- ✅ Skills show obtained and expiry dates (already existed)
-- ✅ Automatic validation of skills before route assignments (NEW)
-- ✅ Alerts for certifications expiring within 30 days (already existed as expiring_soon status)
-- ✅ Automatic exclusion of expired skills in compatibility verification (NEW)
-- ✅ API to query drivers by specific skills (already existed)
+**Migration:**
+- `drizzle/0000_swift_manta.sql` - Applied successfully
 

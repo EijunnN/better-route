@@ -10,7 +10,11 @@
       "Bash(git -C \"C:\\\\Users\\\\vicen\\\\desktop\\\\projects\\\\bun\\\\planeamiento\" log --oneline -10)",
       "Bash(bun run test)",
       "Bash(tsc:*)",
-      "Bash(bun test)"
+      "Bash(bun test)",
+      "Bash(dir:*)",
+      "Bash(bunx drizzle-kit generate:*)",
+      "Bash(bunx drizzle-kit migrate:*)",
+      "Bash(bunx tsc:*)"
     ]
   }
 }
