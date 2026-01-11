@@ -82,21 +82,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       {/* Background pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-50 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
 
-      <Card className="relative w-full max-w-md border-slate-700 bg-slate-800/50 shadow-2xl backdrop-blur-sm">
+      <Card className="relative w-full max-w-md border-border bg-card/95 shadow-2xl backdrop-blur-sm">
         <CardHeader className="space-y-4 text-center">
           {/* Logo */}
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 shadow-lg shadow-blue-500/30">
-            <Route className="h-8 w-8 text-white" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary shadow-lg">
+            <Route className="h-8 w-8 text-primary-foreground" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-white">
+            <CardTitle className="text-2xl font-bold text-foreground">
               Planeamiento
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription>
               Sistema de Gestión de Rutas
             </CardDescription>
           </div>
@@ -106,14 +106,14 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* General error */}
             {errors.general && (
-              <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {errors.general}
               </div>
             )}
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-300">
+              <Label htmlFor="email">
                 Correo Electrónico
               </Label>
               <Input
@@ -122,19 +122,17 @@ export default function LoginPage() {
                 placeholder="correo@empresa.com"
                 value={email}
                 onChange={(e) => handleEmailChange(e.target.value)}
-                className={`border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500 ${
-                  errors.email ? "border-red-500" : ""
-                }`}
+                className={errors.email ? "border-destructive" : ""}
                 disabled={isPending}
               />
               {errors.email && (
-                <p className="text-sm text-red-400">{errors.email}</p>
+                <p className="text-sm text-destructive">{errors.email}</p>
               )}
             </div>
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-300">
+              <Label htmlFor="password">
                 Contraseña
               </Label>
               <div className="relative">
@@ -144,15 +142,13 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => handlePasswordChange(e.target.value)}
-                  className={`border-slate-600 bg-slate-700/50 pr-10 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500 ${
-                    errors.password ? "border-red-500" : ""
-                  }`}
+                  className={`pr-10 ${errors.password ? "border-destructive" : ""}`}
                   disabled={isPending}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   tabIndex={-1}
                 >
                   {showPassword ? (
@@ -163,14 +159,14 @@ export default function LoginPage() {
                 </button>
               </div>
               {errors.password && (
-                <p className="text-sm text-red-400">{errors.password}</p>
+                <p className="text-sm text-destructive">{errors.password}</p>
               )}
             </div>
 
             {/* Submit */}
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 font-semibold text-white shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-cyan-500"
+              className="w-full font-semibold"
               disabled={isPending}
             >
               {isPending ? (
@@ -185,16 +181,16 @@ export default function LoginPage() {
           </form>
 
           {/* Demo credentials */}
-          <div className="mt-6 rounded-lg border border-slate-600 bg-slate-700/30 p-4">
-            <p className="mb-2 text-xs font-medium text-slate-400">
+          <div className="mt-6 rounded-lg border border-border bg-muted/50 p-4">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">
               Credenciales de prueba:
             </p>
-            <div className="space-y-1 text-sm text-slate-300">
+            <div className="space-y-1 text-sm text-foreground">
               <p>
-                <span className="text-slate-500">Email:</span> admin@planeamiento.com
+                <span className="text-muted-foreground">Email:</span> admin@planeamiento.com
               </p>
               <p>
-                <span className="text-slate-500">Password:</span> admin123
+                <span className="text-muted-foreground">Password:</span> admin123
               </p>
             </div>
           </div>

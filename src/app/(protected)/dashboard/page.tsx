@@ -24,26 +24,41 @@ interface MetricCardProps {
     value: number;
     isPositive: boolean;
   };
-  iconBg: string;
-  iconColor: string;
+  variant: 'chart1' | 'chart2' | 'chart3' | 'chart4' | 'chart5';
 }
 
-function MetricCard({ title, value, description, icon: Icon, trend, iconBg, iconColor }: MetricCardProps) {
+const variantStyles = {
+  chart1: 'bg-[hsl(var(--chart-1))]/10 text-[hsl(var(--chart-1))]',
+  chart2: 'bg-[hsl(var(--chart-2))]/10 text-[hsl(var(--chart-2))]',
+  chart3: 'bg-[hsl(var(--chart-3))]/10 text-[hsl(var(--chart-3))]',
+  chart4: 'bg-[hsl(var(--chart-4))]/10 text-[hsl(var(--chart-4))]',
+  chart5: 'bg-[hsl(var(--chart-5))]/10 text-[hsl(var(--chart-5))]',
+};
+
+const iconBgStyles = {
+  chart1: 'bg-[hsl(var(--chart-1))]',
+  chart2: 'bg-[hsl(var(--chart-2))]',
+  chart3: 'bg-[hsl(var(--chart-3))]',
+  chart4: 'bg-[hsl(var(--chart-4))]',
+  chart5: 'bg-[hsl(var(--chart-5))]',
+};
+
+function MetricCard({ title, value, description, icon: Icon, trend, variant }: MetricCardProps) {
   return (
     <Card className="relative overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <div className={`rounded-lg p-2 ${iconBg}`}>
-          <Icon className={`h-4 w-4 ${iconColor}`} />
+        <div className={`rounded-lg p-2 ${variantStyles[variant]}`}>
+          <Icon className="h-4 w-4" />
         </div>
       </CardHeader>
       <CardContent>
         <div className="text-3xl font-bold">{value}</div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {trend && (
-            <span className={`flex items-center font-medium ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`flex items-center font-medium ${trend.isPositive ? 'text-[hsl(var(--chart-2))]' : 'text-destructive'}`}>
               {trend.isPositive ? (
                 <ArrowUpRight className="h-3 w-3" />
               ) : (
@@ -67,7 +82,7 @@ interface RecentOrderProps {
   time: string;
 }
 
-function RecentOrderItem({ id, client, address, status, time }: RecentOrderProps) {
+function RecentOrderItem({ client, address, status, time }: RecentOrderProps) {
   const statusConfig = {
     pending: { label: 'Pendiente', variant: 'secondary' as const },
     assigned: { label: 'Asignado', variant: 'default' as const },
@@ -110,8 +125,8 @@ function ActiveDriverItem({ name, vehicle, stops, completed, status }: ActiveDri
   return (
     <div className="flex items-center justify-between py-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-          <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--chart-2))]/10">
+          <Users className="h-5 w-5 text-[hsl(var(--chart-2))]" />
         </div>
         <div>
           <p className="font-medium">{name}</p>
@@ -123,7 +138,7 @@ function ActiveDriverItem({ name, vehicle, stops, completed, status }: ActiveDri
           <p className="text-sm font-medium">{completed}/{stops} paradas</p>
           <div className="mt-1 h-1.5 w-20 rounded-full bg-muted">
             <div 
-              className="h-full rounded-full bg-green-500 transition-all"
+              className="h-full rounded-full bg-[hsl(var(--chart-2))] transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -137,7 +152,6 @@ function ActiveDriverItem({ name, vehicle, stops, completed, status }: ActiveDri
 }
 
 export default function DashboardPage() {
-  // Datos mock para el dashboard
   const metrics = {
     ordersToday: 156,
     ordersTrend: 12,
@@ -172,8 +186,7 @@ export default function DashboardPage() {
             description="vs. ayer"
             icon={Package}
             trend={{ value: metrics.ordersTrend, isPositive: true }}
-            iconBg="bg-blue-100 dark:bg-blue-900/30"
-            iconColor="text-blue-600 dark:text-blue-400"
+            variant="chart1"
           />
           <MetricCard
             title="Conductores Activos"
@@ -181,8 +194,7 @@ export default function DashboardPage() {
             description="de 30 disponibles"
             icon={Users}
             trend={{ value: metrics.driversTrend, isPositive: true }}
-            iconBg="bg-green-100 dark:bg-green-900/30"
-            iconColor="text-green-600 dark:text-green-400"
+            variant="chart2"
           />
           <MetricCard
             title="Vehículos en Ruta"
@@ -190,8 +202,7 @@ export default function DashboardPage() {
             description="de 25 operativos"
             icon={Truck}
             trend={{ value: metrics.vehiclesTrend, isPositive: false }}
-            iconBg="bg-orange-100 dark:bg-orange-900/30"
-            iconColor="text-orange-600 dark:text-orange-400"
+            variant="chart3"
           />
           <MetricCard
             title="Tasa de Cumplimiento"
@@ -199,8 +210,7 @@ export default function DashboardPage() {
             description="en tiempo"
             icon={CheckCircle2}
             trend={{ value: metrics.completionTrend, isPositive: true }}
-            iconBg="bg-purple-100 dark:bg-purple-900/30"
-            iconColor="text-purple-600 dark:text-purple-400"
+            variant="chart4"
           />
         </div>
 
@@ -209,8 +219,8 @@ export default function DashboardPage() {
           <Link href="/orders">
             <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
               <CardContent className="flex items-center gap-4 p-6">
-                <div className="rounded-xl bg-blue-500 p-3">
-                  <Package className="h-6 w-6 text-white" />
+                <div className={`rounded-xl p-3 ${iconBgStyles.chart1}`}>
+                  <Package className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <div>
                   <h3 className="font-semibold">Gestionar Pedidos</h3>
@@ -222,8 +232,8 @@ export default function DashboardPage() {
           <Link href="/optimization">
             <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
               <CardContent className="flex items-center gap-4 p-6">
-                <div className="rounded-xl bg-green-500 p-3">
-                  <Route className="h-6 w-6 text-white" />
+                <div className={`rounded-xl p-3 ${iconBgStyles.chart2}`}>
+                  <Route className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <div>
                   <h3 className="font-semibold">Optimizar Rutas</h3>
@@ -235,8 +245,8 @@ export default function DashboardPage() {
           <Link href="/monitoring">
             <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
               <CardContent className="flex items-center gap-4 p-6">
-                <div className="rounded-xl bg-purple-500 p-3">
-                  <TrendingUp className="h-6 w-6 text-white" />
+                <div className={`rounded-xl p-3 ${iconBgStyles.chart4}`}>
+                  <TrendingUp className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <div>
                   <h3 className="font-semibold">Monitorear</h3>
@@ -263,7 +273,7 @@ export default function DashboardPage() {
               </Link>
             </CardHeader>
             <CardContent>
-              <div className="divide-y">
+              <div className="divide-y divide-border">
                 {recentOrders.map((order) => (
                   <RecentOrderItem key={order.id} {...order} />
                 ))}
@@ -285,7 +295,7 @@ export default function DashboardPage() {
               </Link>
             </CardHeader>
             <CardContent>
-              <div className="divide-y">
+              <div className="divide-y divide-border">
                 {activeDrivers.map((driver, index) => (
                   <ActiveDriverItem key={index} {...driver} />
                 ))}
@@ -295,31 +305,31 @@ export default function DashboardPage() {
         </div>
 
         {/* Alerts Section */}
-        <Card className="border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/30">
+        <Card className="border-[hsl(var(--chart-5))]/30 bg-[hsl(var(--chart-5))]/5">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-              <CardTitle className="text-orange-800 dark:text-orange-300">Alertas Activas</CardTitle>
+              <AlertTriangle className="h-5 w-5 text-[hsl(var(--chart-5))]" />
+              <CardTitle className="text-[hsl(var(--chart-5))]">Alertas Activas</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 md:grid-cols-3">
-              <div className="flex items-center gap-3 rounded-lg bg-white p-3 dark:bg-slate-800">
-                <Clock className="h-5 w-5 text-orange-500" />
+              <div className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border">
+                <Clock className="h-5 w-5 text-[hsl(var(--chart-5))]" />
                 <div>
                   <p className="font-medium">3 entregas retrasadas</p>
                   <p className="text-sm text-muted-foreground">Revisar asignaciones</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-lg bg-white p-3 dark:bg-slate-800">
-                <Truck className="h-5 w-5 text-orange-500" />
+              <div className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border">
+                <Truck className="h-5 w-5 text-[hsl(var(--chart-5))]" />
                 <div>
                   <p className="font-medium">2 vehículos en mantenimiento</p>
                   <p className="text-sm text-muted-foreground">Hasta mañana</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-lg bg-white p-3 dark:bg-slate-800">
-                <Users className="h-5 w-5 text-orange-500" />
+              <div className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border">
+                <Users className="h-5 w-5 text-[hsl(var(--chart-5))]" />
                 <div>
                   <p className="font-medium">1 conductor sin ruta</p>
                   <p className="text-sm text-muted-foreground">Disponible para asignar</p>
