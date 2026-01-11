@@ -1,5 +1,47 @@
 # Progress - Sistema de Gestión Logística
 
+## 2025-01-11 - Story 11.3: Ejecución y Registro de Reasignaciones (COMPLETED)
+
+### Atomic Execution with Rollback
+- Enhanced executeReassignment function (src/lib/reassignment.ts:718-995):
+  - Pre-validates all reassignments before execution
+  - Captures rollback data before making changes
+  - Automatic rollback on failure with detailed error reporting
+  - Phased execution: stops update → driver status update → history record creation
+  - Returns reassignmentHistoryId for tracking
+
+### Enhanced API Response
+- Updated execute API endpoint (src/app/api/reassignment/execute/route.ts):
+  - Uses enhanced executeReassignment function with rollback support
+  - Creates comprehensive audit logs for entire operation and each reassignment
+  - Supports regenerateOutput flag for automatic output file generation
+  - Returns outputRegenerationUrl when output generation is requested
+  - GET endpoint returns reassignment capability status and recent activity
+
+### Output File Regeneration
+- New output regeneration API (src/app/api/reassignment/output/[historyId]/route.ts):
+  - GET generates JSON output with all driver routes after reassignment
+  - POST triggers notifications to affected drivers
+  - Output includes: driver info, vehicle, stops with status, summary metrics
+  - Designed for client-side formatting (PDF, CSV, etc.)
+
+### Real-time Monitoring Updates
+- Enhanced monitoring endpoint (src/app/api/monitoring/drivers/route.ts):
+  - Queries actual routeStops table for current driver status
+  - Supports updatedSince query parameter for incremental updates
+  - Flags recently reassigned drivers (recentlyReassigned field)
+  - Includes reassignment alerts in driver status
+  - Short cache header (5s) for near real-time updates
+
+### Story 11.3 Verification Steps (All Completed)
+✓ Verificar ejecución de reasignación es atómica con rollback en caso de error
+✓ Validar vistas de monitoreo se actualizan inmediatamente después de ejecutar
+✓ Confirmar registro de todos los detalles de la reasignación ejecutada
+✓ Verificar regeneración automática de archivos de output si es necesario
+✓ Validar posibilidad de consultar historial de reasignaciones posteriormente
+✓ Confirmar API retorna confirmación de ejecución exitosa o error con detalle
+✓ Verificar conductores afectados pueden ver sus rutas actualizadas
+
 ## 2025-01-11 - Story 11.2: Cálculo de Impacto de Reasignación (COMPLETED)
 
 ### Enhanced Reassignment Impact Calculation

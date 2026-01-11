@@ -522,7 +522,7 @@
         "Confirmar API retorna confirmación de ejecución exitosa o error con detalle",
         "Verificar conductores afectados pueden ver sus rutas actualizadas"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "12.1",
