@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, optimizationConfigurations, drivers, alerts } from "@/db/schema";
+import { optimizationJobs, optimizationConfigurations, drivers, alerts, routeStops } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -79,19 +79,46 @@ export async function GET(request: NextRequest) {
     const driversAvailable = allDrivers.filter((d) => d.status === "AVAILABLE").length;
     const driversOnPause = allDrivers.filter((d) => d.status === "ON_PAUSE").length;
 
-    // Calculate route metrics from result
+    // Try to get actual stops from database
+    const dbStops = await db.query.routeStops.findMany({
+      where: eq(routeStops.jobId, confirmedJob.id),
+      columns: {
+        status: true,
+        completedAt: true,
+        timeWindowEnd: true,
+      },
+    });
+
     let totalStops = 0;
+    let completedStops = 0;
+    let delayedStops = 0;
     let routesCount = 0;
 
-    if (parsedResult?.routes) {
+    if (dbStops.length > 0) {
+      // Use actual stop data from database
+      totalStops = dbStops.length;
+      completedStops = dbStops.filter(s => s.status === "COMPLETED").length;
+
+      // Count delayed stops (completed after time window or failed/skipped)
+      const now = new Date();
+      delayedStops = dbStops.filter(s => {
+        if (s.status === "FAILED" || s.status === "SKIPPED") return true;
+        if (s.status === "COMPLETED" && s.completedAt && s.timeWindowEnd) {
+          return s.completedAt > s.timeWindowEnd;
+        }
+        if ((s.status === "PENDING" || s.status === "IN_PROGRESS") && s.timeWindowEnd) {
+          return now > s.timeWindowEnd;
+        }
+        return false;
+      }).length;
+    } else if (parsedResult?.routes) {
+      // Fallback to parsed result if no stops in database yet
       routesCount = parsedResult.routes.length;
       totalStops = parsedResult.routes.reduce((sum: number, route: any) => sum + (route.stops?.length || 0), 0);
+      // Mock data for when stops haven't been created yet
+      completedStops = 0;
+      delayedStops = 0;
     }
-
-    // For now, we'll use mock data for completed stops and delays
-    // In a real implementation, this would come from a stops table with actual status tracking
-    const completedStops = Math.floor(totalStops * 0.4); // Mock: 40% completed
-    const delayedStops = Math.floor(totalStops * 0.1); // Mock: 10% delayed
 
     // Get active alerts count from database
     const activeAlertsResult = await db

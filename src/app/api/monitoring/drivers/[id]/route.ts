@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { drivers, fleets, vehicles } from "@/db/schema";
+import { drivers, fleets, vehicles, routeStops, optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -44,7 +44,7 @@ export async function GET(
     // Get the most recent confirmed optimization job
     const confirmedJob = await db.query.optimizationJobs.findFirst({
       where: and(
-        withTenantFilter(sql`${optimizationJobs}`),
+        withTenantFilter(optimizationJobs),
         eq(optimizationJobs.status, "COMPLETED")
       ),
       orderBy: [desc(optimizationJobs.createdAt)],
@@ -53,45 +53,119 @@ export async function GET(
     let routeData = null;
     let vehicleData = null;
 
-    if (confirmedJob?.result) {
-      try {
-        const parsedResult = JSON.parse(confirmedJob.result);
-        const route = parsedResult?.routes?.find((r: any) => r.driverId === driverId);
+    if (confirmedJob) {
+      // Try to get route stops from database first
+      const dbStops = await db.query.routeStops.findMany({
+        where: and(
+          eq(routeStops.jobId, confirmedJob.id),
+          eq(routeStops.driverId, driverId)
+        ),
+        with: {
+          vehicle: true,
+          order: true,
+        },
+        orderBy: [routeStops.sequence],
+      });
 
-        if (route) {
-          // Get vehicle details
-          vehicleData = await db.query.vehicles.findFirst({
-            where: eq(vehicles.id, route.vehicleId),
-          });
+      if (dbStops.length > 0) {
+        // Use actual stop data from database
+        const firstStop = dbStops[0];
+        vehicleData = firstStop.vehicle;
 
-          // Build route data with stops
-          routeData = {
-            routeId: route.routeId,
-            vehicle: {
-              id: route.vehicleId,
-              plate: route.vehiclePlate,
-              brand: vehicleData?.brand || "Unknown",
-              model: vehicleData?.model || "Unknown",
-            },
-            metrics: {
-              totalDistance: route.totalDistance,
-              totalDuration: route.totalDuration,
-              totalWeight: route.totalWeight,
-              totalVolume: route.totalVolume,
-              utilizationPercentage: route.utilizationPercentage,
-              timeWindowViolations: route.timeWindowViolations,
-            },
-            stops: route.stops.map((stop: any, index: number) => ({
-              ...stop,
-              status: getStopStatus(index, route.stops.length), // Mock status based on position
-              estimatedArrival: stop.estimatedArrival || calculateEstimatedArrival(index),
-              completedAt: index < Math.floor(route.stops.length * 0.5) ? new Date().toISOString() : null,
-            })),
-            assignmentQuality: route.assignmentQuality,
-          };
+        // Calculate metrics from actual stops
+        const completedStops = dbStops.filter(s => s.status === "COMPLETED");
+        const failedStops = dbStops.filter(s => s.status === "FAILED");
+        const skippedStops = dbStops.filter(s => s.status === "SKIPPED");
+        const inProgressStops = dbStops.filter(s => s.status === "IN_PROGRESS");
+
+        // Get route info from job result or use first stop's routeId
+        let routeInfo = null;
+        if (confirmedJob?.result) {
+          try {
+            const parsedResult = JSON.parse(confirmedJob.result);
+            routeInfo = parsedResult?.routes?.find((r: any) => r.driverId === driverId);
+          } catch {
+            // Ignore parse errors
+          }
         }
-      } catch {
-        // Ignore parse errors
+
+        routeData = {
+          routeId: firstStop.routeId,
+          jobId: confirmedJob.id,
+          vehicle: {
+            id: vehicleData.id,
+            plate: vehicleData.plate,
+            brand: vehicleData.brand,
+            model: vehicleData.model,
+          },
+          metrics: {
+            totalDistance: routeInfo?.totalDistance || 0,
+            totalDuration: routeInfo?.totalDuration || 0,
+            totalWeight: routeInfo?.totalWeight || 0,
+            totalVolume: routeInfo?.totalVolume || 0,
+            utilizationPercentage: routeInfo?.utilizationPercentage || 0,
+            timeWindowViolations: failedStops.length + skippedStops.length,
+          },
+          stops: dbStops.map(stop => ({
+            id: stop.id,
+            orderId: stop.orderId,
+            trackingId: stop.order?.trackingId || `ORD-${stop.orderId.slice(0, 8)}`,
+            sequence: stop.sequence,
+            address: stop.address,
+            latitude: stop.latitude,
+            longitude: stop.longitude,
+            status: stop.status,
+            estimatedArrival: stop.estimatedArrival?.toISOString() || null,
+            completedAt: stop.completedAt?.toISOString() || null,
+            startedAt: stop.startedAt?.toISOString() || null,
+            notes: stop.notes || null,
+            timeWindowStart: stop.timeWindowStart?.toISOString() || null,
+            timeWindowEnd: stop.timeWindowEnd?.toISOString() || null,
+          })),
+          assignmentQuality: routeInfo?.assignmentQuality,
+        };
+      } else if (confirmedJob?.result) {
+        // Fallback to job result if no stops in database yet
+        try {
+          const parsedResult = JSON.parse(confirmedJob.result);
+          const route = parsedResult?.routes?.find((r: any) => r.driverId === driverId);
+
+          if (route) {
+            // Get vehicle details
+            vehicleData = await db.query.vehicles.findFirst({
+              where: eq(vehicles.id, route.vehicleId),
+            });
+
+            // Build route data with stops (using mock status since no DB data yet)
+            routeData = {
+              routeId: route.routeId,
+              jobId: confirmedJob.id,
+              vehicle: {
+                id: route.vehicleId,
+                plate: route.vehiclePlate,
+                brand: vehicleData?.brand || "Unknown",
+                model: vehicleData?.model || "Unknown",
+              },
+              metrics: {
+                totalDistance: route.totalDistance,
+                totalDuration: route.totalDuration,
+                totalWeight: route.totalWeight,
+                totalVolume: route.totalVolume,
+                utilizationPercentage: route.utilizationPercentage,
+                timeWindowViolations: route.timeWindowViolations,
+              },
+              stops: route.stops.map((stop: any, index: number) => ({
+                ...stop,
+                status: "PENDING", // All stops start as PENDING
+                estimatedArrival: stop.estimatedArrival || calculateEstimatedArrival(index),
+                completedAt: null,
+              })),
+              assignmentQuality: route.assignmentQuality,
+            };
+          }
+        } catch {
+          // Ignore parse errors
+        }
       }
     }
 
@@ -122,21 +196,9 @@ export async function GET(
   }
 }
 
-// Mock stop status based on position in route
-function getStopStatus(index: number, totalStops: number): string {
-  const completedThreshold = Math.floor(totalStops * 0.5);
-  if (index < completedThreshold) return "COMPLETED";
-  if (index === completedThreshold) return "IN_PROGRESS";
-  return "PENDING";
-}
-
-// Mock estimated arrival calculation
+// Calculate estimated arrival time for a stop
 function calculateEstimatedArrival(index: number): string {
   const baseTime = Date.now();
   const minutesPerStop = 15;
   return new Date(baseTime + index * minutesPerStop * 60 * 1000).toISOString();
 }
-
-// Import optimizationJobs
-import { optimizationJobs } from "@/db/schema";
-import { sql } from "drizzle-orm";

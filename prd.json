@@ -474,7 +474,7 @@
         "Confirmar mantenimiento de historial de cambios de estado para auditoría",
         "Verificar API valida transiciones de estado válidas"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "11.1",

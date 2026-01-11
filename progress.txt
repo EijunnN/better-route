@@ -236,3 +236,134 @@ Implemented comprehensive alert system for proactive monitoring and issue resolu
 - **Alert Types**: 12 predefined types covering all major scenarios
 
 ---
+
+## Story 10.3: Actualización de Estado de Stops - COMPLETED
+
+### Implementation Summary
+
+Implemented comprehensive stop status tracking system with manual updates and audit history:
+
+#### Database Schema Changes:
+1. **Added `STOP_STATUS` enum**:
+   - PENDING: Stop is waiting to be started
+   - IN_PROGRESS: Driver is currently at this stop
+   - COMPLETED: Stop was successfully completed
+   - FAILED: Stop could not be completed
+   - SKIPPED: Stop was intentionally skipped
+
+2. **Added `STOP_STATUS_TRANSITIONS`**:
+   - Defines valid transitions between states
+   - PENDING → IN_PROGRESS, FAILED, SKIPPED
+   - IN_PROGRESS → COMPLETED, FAILED, SKIPPED, PENDING
+   - FAILED → PENDING, SKIPPED (can retry or skip)
+   - COMPLETED/SKIPPED → Terminal states (no transitions)
+
+3. **Added `route_stops` table**:
+   - Stores individual stops within optimized routes
+   - Links to job, route, driver, vehicle, and order
+   - Tracks sequence, address, coordinates
+   - Time windows (estimated arrival, service time, window start/end)
+   - Status tracking with timestamps (startedAt, completedAt)
+   - Optional notes for status changes
+   - Flexible metadata field
+
+4. **Added `route_stop_history` table**:
+   - Audit trail for all stop status changes
+   - Records previous and new status
+   - Tracks user who made the change
+   - Stores optional notes with each change
+   - Flexible metadata for additional context
+
+#### Backend API Endpoints:
+1. **`POST /api/route-stops`**:
+   - Create route stops from optimization job result
+   - Deletes existing stops for job before creating new ones
+   - Validates all required fields
+   - Returns created stops with count
+
+2. **`GET /api/route-stops`**:
+   - List route stops with filters
+   - Filters: jobId, routeId, driverId, status
+   - Pagination support (limit, offset)
+   - Returns total count
+   - Includes related driver, vehicle, and order data
+
+3. **`GET /api/route-stops/[id]`**:
+   - Get detailed information for a specific stop
+   - Includes related driver, vehicle, order, job data
+   - Returns full history of status changes
+
+4. **`PATCH /api/route-stops/[id]`**:
+   - Update stop status with validation
+   - Validates status transitions
+   - Automatically sets startedAt for IN_PROGRESS
+   - Automatically sets completedAt for COMPLETED
+   - Creates history entry for every change
+   - Creates alerts for FAILED/SKIPPED stops
+   - Supports optional notes
+
+5. **`DELETE /api/route-stops/[id]`**:
+   - Delete a route stop (cleanup only)
+   - Prevents deletion of in-progress/completed stops
+
+6. **`GET /api/route-stops/[id]/history`**:
+   - Get audit history for a specific stop
+   - Returns all status changes with timestamps
+   - Includes user information for each change
+
+#### Monitoring API Updates:
+1. **Updated `GET /api/monitoring/drivers/[id]`**:
+   - Now reads actual stop data from `route_stops` table
+   - Falls back to job result if stops not yet created
+   - Calculates metrics from real stop statuses
+   - Returns stop IDs for status updates
+   - Includes time windows and notes
+
+2. **Updated `GET /api/monitoring/summary`**:
+   - Now uses actual stop data from database
+   - Calculates completed/delayed stops from real data
+   - Identifies delays based on time windows
+   - Falls back to job result if stops not created
+
+#### Frontend Components:
+1. **`src/components/monitoring/stop-status-update-dialog.tsx`**:
+   - Dialog for updating stop status
+   - Shows current stop info with time windows
+   - Visual status selection with descriptions
+   - Optional notes field
+   - Warning messages for terminal states (FAILED/SKIPPED)
+   - Highlights current status
+   - Prevents selecting current status
+
+2. **Updated `src/components/monitoring/driver-route-detail.tsx`**:
+   - Added edit button (visible on hover) for each stop
+   - Opens status update dialog on click
+   - Refreshes data after status update
+   - Shows stop notes when present
+   - Displays time windows (start/end)
+   - Shows startedAt and completedAt timestamps
+
+### Features Implemented:
+- ✅ Stop states: PENDING, IN_PROGRESS, COMPLETED, FAILED, SKIPPED
+- ✅ User confirmation for status updates (dialog)
+- ✅ Automatic timestamp recording (startedAt, completedAt)
+- ✅ Optional notes on status changes
+- ✅ Recalculates route metrics when stop status changes
+- ✅ Complete audit history for all status changes
+- ✅ Validates status transitions
+- ✅ Creates alerts for FAILED/SKIPPED stops
+- ✅ Tenant-aware data filtering
+- ✅ Real-time updates in monitoring dashboard
+- ✅ Visual indicators for each status
+- ✅ Time window tracking
+
+### Technical Details:
+- **Database Tables**: 2 new tables (route_stops, route_stop_history)
+- **API Endpoints**: 5 new endpoints (plus 2 monitoring updates)
+- **UI Components**: 1 new component (StopStatusUpdateDialog)
+- **Status Types**: 5 stop statuses with defined transitions
+- **Audit Trail**: Every status change is recorded with user, timestamp, and notes
+- **Automatic Timestamps**: startedAt set on IN_PROGRESS, completedAt set on COMPLETED
+- **Alert Integration**: FAILED/SKIPPED stops trigger automatic alerts
+
+---

@@ -698,7 +698,7 @@ export const optimizationJobs = pgTable("optimization_jobs", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const optimizationJobsRelations = relations(optimizationJobs, ({ one }) => ({
+export const optimizationJobsRelations = relations(optimizationJobs, ({ one, many }) => ({
   company: one(companies, {
     fields: [optimizationJobs.companyId],
     references: [companies.id],
@@ -707,6 +707,7 @@ export const optimizationJobsRelations = relations(optimizationJobs, ({ one }) =
     fields: [optimizationJobs.configurationId],
     references: [optimizationConfigurations.id],
   }),
+  routeStops: many(routeStops),
 }));
 
 // Alert severity levels
@@ -868,6 +869,130 @@ export const alertNotificationsRelations = relations(alertNotifications, ({ one 
   }),
   recipient: one(users, {
     fields: [alertNotifications.recipientId],
+    references: [users.id],
+  }),
+}));
+
+// Stop status types for route execution tracking
+export const STOP_STATUS = {
+  PENDING: "PENDING",
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
+} as const;
+
+// Valid stop status transitions
+export const STOP_STATUS_TRANSITIONS: Record<
+  keyof typeof STOP_STATUS,
+  (keyof typeof STOP_STATUS)[]
+> = {
+  PENDING: ["IN_PROGRESS", "FAILED", "SKIPPED"],
+  IN_PROGRESS: ["COMPLETED", "FAILED", "SKIPPED", "PENDING"],
+  COMPLETED: [], // Terminal state - no transitions allowed
+  FAILED: ["PENDING", "SKIPPED"], // Can retry or skip
+  SKIPPED: [], // Terminal state - no transitions allowed
+};
+
+// Route stops - individual stops within optimized routes
+export const routeStops = pgTable("route_stops", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  jobId: uuid("job_id")
+    .notNull()
+    .references(() => optimizationJobs.id, { onDelete: "cascade" }),
+  routeId: varchar("route_id", { length: 100 }).notNull(), // Route identifier from optimization result
+  driverId: uuid("driver_id")
+    .notNull()
+    .references(() => drivers.id, { onDelete: "restrict" }),
+  vehicleId: uuid("vehicle_id")
+    .notNull()
+    .references(() => vehicles.id, { onDelete: "restrict" }),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "restrict" }),
+  sequence: integer("sequence").notNull(), // Order in the route (1, 2, 3, ...)
+  // Stop details
+  address: text("address").notNull(),
+  latitude: varchar("latitude", { length: 20 }).notNull(),
+  longitude: varchar("longitude", { length: 20 }).notNull(),
+  // Time information
+  estimatedArrival: timestamp("estimated_arrival"),
+  estimatedServiceTime: integer("estimated_service_time"), // seconds
+  timeWindowStart: timestamp("time_window_start"),
+  timeWindowEnd: timestamp("time_window_end"),
+  // Status tracking
+  status: varchar("status", { length: 20 })
+    .notNull()
+    .$type<keyof typeof STOP_STATUS>()
+    .default("PENDING"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  // Optional notes for status changes
+  notes: text("notes"),
+  // Metadata
+  metadata: jsonb("metadata"), // Flexible data for stop-specific info
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const routeStopsRelations = relations(routeStops, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [routeStops.companyId],
+    references: [companies.id],
+  }),
+  job: one(optimizationJobs, {
+    fields: [routeStops.jobId],
+    references: [optimizationJobs.id],
+  }),
+  driver: one(drivers, {
+    fields: [routeStops.driverId],
+    references: [drivers.id],
+  }),
+  vehicle: one(vehicles, {
+    fields: [routeStops.vehicleId],
+    references: [vehicles.id],
+  }),
+  order: one(orders, {
+    fields: [routeStops.orderId],
+    references: [orders.id],
+  }),
+  history: many(routeStopHistory),
+}));
+
+// Route stop history - audit trail for stop status changes
+export const routeStopHistory = pgTable("route_stop_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  routeStopId: uuid("route_stop_id")
+    .notNull()
+    .references(() => routeStops.id, { onDelete: "cascade" }),
+  previousStatus: varchar("previous_status", { length: 20 })
+    .$type<keyof typeof STOP_STATUS>(),
+  newStatus: varchar("new_status", { length: 20 })
+    .notNull()
+    .$type<keyof typeof STOP_STATUS>(),
+  userId: uuid("user_id").references(() => users.id),
+  notes: text("notes"),
+  metadata: jsonb("metadata"), // Additional context about the change
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const routeStopHistoryRelations = relations(routeStopHistory, ({ one }) => ({
+  company: one(companies, {
+    fields: [routeStopHistory.companyId],
+    references: [companies.id],
+  }),
+  routeStop: one(routeStops, {
+    fields: [routeStopHistory.routeStopId],
+    references: [routeStops.id],
+  }),
+  user: one(users, {
+    fields: [routeStopHistory.userId],
     references: [users.id],
   }),
 }));
