@@ -14,6 +14,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { db } from "@/db";
+import { orders, drivers, vehicles, DRIVER_STATUS, VEHICLE_STATUS, ORDER_STATUS } from "@/db/schema";
+import { eq, and, count, sql } from "drizzle-orm";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
+
+async function getCompanyId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("access_token")?.value;
+  if (!token) return null;
+  
+  const payload = await verifyToken(token);
+  if (!payload || payload.type !== "access") return null;
+  
+  return payload.companyId;
+}
 
 interface MetricCardProps {
   title: string;
@@ -74,21 +90,24 @@ function MetricCard({ title, value, description, icon: Icon, trend, variant }: M
   );
 }
 
-interface RecentOrderProps {
-  id: string;
-  client: string;
+interface OrderItemProps {
+  trackingId: string;
+  customerName: string | null;
   address: string;
-  status: 'pending' | 'assigned' | 'in_progress' | 'completed';
-  time: string;
+  status: string;
 }
 
-function RecentOrderItem({ client, address, status, time }: RecentOrderProps) {
-  const statusConfig = {
-    pending: { label: 'Pendiente', variant: 'secondary' as const },
-    assigned: { label: 'Asignado', variant: 'default' as const },
-    in_progress: { label: 'En Ruta', variant: 'default' as const },
-    completed: { label: 'Completado', variant: 'secondary' as const },
+function RecentOrderItem({ trackingId, customerName, address, status }: OrderItemProps) {
+  const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
+    PENDING: { label: 'Pendiente', variant: 'secondary' },
+    ASSIGNED: { label: 'Asignado', variant: 'default' },
+    IN_PROGRESS: { label: 'En Ruta', variant: 'default' },
+    COMPLETED: { label: 'Completado', variant: 'secondary' },
+    FAILED: { label: 'Fallido', variant: 'destructive' },
+    CANCELLED: { label: 'Cancelado', variant: 'secondary' },
   };
+
+  const config = statusConfig[status] || { label: status, variant: 'secondary' as const };
 
   return (
     <div className="flex items-center justify-between py-3">
@@ -97,31 +116,36 @@ function RecentOrderItem({ client, address, status, time }: RecentOrderProps) {
           <Package className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <p className="font-medium">{client}</p>
-          <p className="text-sm text-muted-foreground">{address}</p>
+          <p className="font-medium">{customerName || trackingId}</p>
+          <p className="text-sm text-muted-foreground line-clamp-1">{address}</p>
         </div>
       </div>
-      <div className="flex items-center gap-3">
-        <Badge variant={statusConfig[status].variant}>
-          {statusConfig[status].label}
-        </Badge>
-        <span className="text-sm text-muted-foreground">{time}</span>
-      </div>
+      <Badge variant={config.variant}>
+        {config.label}
+      </Badge>
     </div>
   );
 }
 
-interface ActiveDriverProps {
+interface DriverItemProps {
   name: string;
-  vehicle: string;
-  stops: number;
-  completed: number;
-  status: 'active' | 'idle' | 'returning';
+  status: string;
+  fleetName: string;
 }
 
-function ActiveDriverItem({ name, vehicle, stops, completed, status }: ActiveDriverProps) {
-  const progress = stops > 0 ? Math.round((completed / stops) * 100) : 0;
-  
+function ActiveDriverItem({ name, status, fleetName }: DriverItemProps) {
+  const statusConfig: Record<string, { label: string; color: string }> = {
+    AVAILABLE: { label: 'Disponible', color: 'bg-[hsl(var(--chart-2))]' },
+    ASSIGNED: { label: 'Asignado', color: 'bg-[hsl(var(--chart-3))]' },
+    IN_ROUTE: { label: 'En Ruta', color: 'bg-[hsl(var(--chart-1))]' },
+    ON_PAUSE: { label: 'En Pausa', color: 'bg-[hsl(var(--chart-4))]' },
+    COMPLETED: { label: 'Completado', color: 'bg-[hsl(var(--chart-2))]' },
+    UNAVAILABLE: { label: 'No Disponible', color: 'bg-muted' },
+    ABSENT: { label: 'Ausente', color: 'bg-destructive' },
+  };
+
+  const config = statusConfig[status] || { label: status, color: 'bg-muted' };
+
   return (
     <div className="flex items-center justify-between py-3">
       <div className="flex items-center gap-3">
@@ -130,86 +154,144 @@ function ActiveDriverItem({ name, vehicle, stops, completed, status }: ActiveDri
         </div>
         <div>
           <p className="font-medium">{name}</p>
-          <p className="text-sm text-muted-foreground">{vehicle}</p>
+          <p className="text-sm text-muted-foreground">{fleetName}</p>
         </div>
       </div>
-      <div className="flex items-center gap-4">
-        <div className="text-right">
-          <p className="text-sm font-medium">{completed}/{stops} paradas</p>
-          <div className="mt-1 h-1.5 w-20 rounded-full bg-muted">
-            <div 
-              className="h-full rounded-full bg-[hsl(var(--chart-2))] transition-all"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-        <Badge variant={status === 'active' ? 'default' : 'secondary'}>
-          {status === 'active' ? 'Activo' : status === 'idle' ? 'Disponible' : 'Regresando'}
-        </Badge>
+      <div className="flex items-center gap-2">
+        <div className={`h-2 w-2 rounded-full ${config.color}`} />
+        <span className="text-sm text-muted-foreground">{config.label}</span>
       </div>
     </div>
   );
 }
 
-export default function DashboardPage() {
-  const metrics = {
-    ordersToday: 156,
-    ordersTrend: 12,
-    activeDrivers: 24,
-    driversTrend: 8,
-    vehiclesInRoute: 18,
-    vehiclesTrend: -5,
-    completionRate: 94,
-    completionTrend: 3,
+export default async function DashboardPage() {
+  const companyId = await getCompanyId();
+
+  // Datos por defecto si no hay sesión
+  let metrics = {
+    totalOrders: 0,
+    pendingOrders: 0,
+    activeDrivers: 0,
+    totalDrivers: 0,
+    vehiclesInRoute: 0,
+    totalVehicles: 0,
+    completedOrders: 0,
   };
 
-  const recentOrders: RecentOrderProps[] = [
-    { id: '1', client: 'Farmacia San Pablo', address: 'Av. Insurgentes Sur 1234', status: 'in_progress', time: '10:30' },
-    { id: '2', client: 'Tienda OXXO', address: 'Calle Reforma 567', status: 'assigned', time: '10:15' },
-    { id: '3', client: 'Restaurante El Rincón', address: 'Blvd. Miguel Hidalgo 890', status: 'pending', time: '10:00' },
-    { id: '4', client: 'Hospital Central', address: 'Av. Universidad 234', status: 'completed', time: '09:45' },
-  ];
+  let recentOrders: OrderItemProps[] = [];
+  let activeDriversList: DriverItemProps[] = [];
 
-  const activeDrivers: ActiveDriverProps[] = [
-    { name: 'Juan Pérez', vehicle: 'Toyota Hilux - ABC-123', stops: 12, completed: 8, status: 'active' },
-    { name: 'María García', vehicle: 'Ford Transit - XYZ-789', stops: 15, completed: 15, status: 'returning' },
-    { name: 'Carlos López', vehicle: 'Chevrolet S10 - DEF-456', stops: 10, completed: 3, status: 'active' },
-  ];
+  if (companyId) {
+    // Obtener métricas de pedidos
+    const [orderStats] = await db
+      .select({
+        total: count(),
+        pending: sql<number>`count(*) filter (where ${orders.status} = 'PENDING')`,
+        completed: sql<number>`count(*) filter (where ${orders.status} = 'COMPLETED')`,
+        inProgress: sql<number>`count(*) filter (where ${orders.status} = 'IN_PROGRESS')`,
+      })
+      .from(orders)
+      .where(and(eq(orders.companyId, companyId), eq(orders.active, true)));
+
+    // Obtener métricas de conductores
+    const [driverStats] = await db
+      .select({
+        total: count(),
+        available: sql<number>`count(*) filter (where ${drivers.status} = 'AVAILABLE')`,
+        inRoute: sql<number>`count(*) filter (where ${drivers.status} = 'IN_ROUTE')`,
+        assigned: sql<number>`count(*) filter (where ${drivers.status} = 'ASSIGNED')`,
+      })
+      .from(drivers)
+      .where(and(eq(drivers.companyId, companyId), eq(drivers.active, true)));
+
+    // Obtener métricas de vehículos
+    const [vehicleStats] = await db
+      .select({
+        total: count(),
+        available: sql<number>`count(*) filter (where ${vehicles.status} = 'AVAILABLE')`,
+        assigned: sql<number>`count(*) filter (where ${vehicles.status} = 'ASSIGNED')`,
+        maintenance: sql<number>`count(*) filter (where ${vehicles.status} = 'IN_MAINTENANCE')`,
+      })
+      .from(vehicles)
+      .where(and(eq(vehicles.companyId, companyId), eq(vehicles.active, true)));
+
+    metrics = {
+      totalOrders: orderStats?.total || 0,
+      pendingOrders: Number(orderStats?.pending) || 0,
+      activeDrivers: Number(driverStats?.inRoute) + Number(driverStats?.assigned) || 0,
+      totalDrivers: driverStats?.total || 0,
+      vehiclesInRoute: Number(vehicleStats?.assigned) || 0,
+      totalVehicles: vehicleStats?.total || 0,
+      completedOrders: Number(orderStats?.completed) || 0,
+    };
+
+    // Obtener pedidos recientes
+    const recentOrdersData = await db
+      .select({
+        trackingId: orders.trackingId,
+        customerName: orders.customerName,
+        address: orders.address,
+        status: orders.status,
+      })
+      .from(orders)
+      .where(and(eq(orders.companyId, companyId), eq(orders.active, true)))
+      .orderBy(sql`${orders.createdAt} desc`)
+      .limit(5);
+
+    recentOrders = recentOrdersData;
+
+    // Obtener conductores activos con sus flotas
+    const driversWithFleets = await db.query.drivers.findMany({
+      where: and(eq(drivers.companyId, companyId), eq(drivers.active, true)),
+      with: {
+        fleet: true,
+      },
+      limit: 5,
+      orderBy: sql`${drivers.updatedAt} desc`,
+    });
+
+    activeDriversList = driversWithFleets.map(d => ({
+      name: d.name,
+      status: d.status,
+      fleetName: d.fleet?.name || 'Sin flota',
+    }));
+  }
+
+  const completionRate = metrics.totalOrders > 0 
+    ? Math.round((metrics.completedOrders / metrics.totalOrders) * 100) 
+    : 0;
 
   return (
     <div className="space-y-6">
         {/* Metrics Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            title="Pedidos Hoy"
-            value={metrics.ordersToday}
-            description="vs. ayer"
+            title="Pedidos Totales"
+            value={metrics.totalOrders}
+            description={`${metrics.pendingOrders} pendientes`}
             icon={Package}
-            trend={{ value: metrics.ordersTrend, isPositive: true }}
             variant="chart1"
           />
           <MetricCard
             title="Conductores Activos"
             value={metrics.activeDrivers}
-            description="de 30 disponibles"
+            description={`de ${metrics.totalDrivers} disponibles`}
             icon={Users}
-            trend={{ value: metrics.driversTrend, isPositive: true }}
             variant="chart2"
           />
           <MetricCard
-            title="Vehículos en Ruta"
+            title="Vehículos Asignados"
             value={metrics.vehiclesInRoute}
-            description="de 25 operativos"
+            description={`de ${metrics.totalVehicles} operativos`}
             icon={Truck}
-            trend={{ value: metrics.vehiclesTrend, isPositive: false }}
             variant="chart3"
           />
           <MetricCard
             title="Tasa de Cumplimiento"
-            value={`${metrics.completionRate}%`}
-            description="en tiempo"
+            value={`${completionRate}%`}
+            description={`${metrics.completedOrders} completados`}
             icon={CheckCircle2}
-            trend={{ value: metrics.completionTrend, isPositive: true }}
             variant="chart4"
           />
         </div>
@@ -273,11 +355,23 @@ export default function DashboardPage() {
               </Link>
             </CardHeader>
             <CardContent>
-              <div className="divide-y divide-border">
-                {recentOrders.map((order) => (
-                  <RecentOrderItem key={order.id} {...order} />
-                ))}
-              </div>
+              {recentOrders.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <Package className="mx-auto h-12 w-12 opacity-50" />
+                  <p className="mt-2">No hay pedidos registrados</p>
+                  <Link href="/orders">
+                    <Button variant="link" className="mt-2">
+                      Crear primer pedido
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {recentOrders.map((order) => (
+                    <RecentOrderItem key={order.trackingId} {...order} />
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -285,59 +379,73 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Conductores Activos</CardTitle>
-                <CardDescription>Estado actual de las rutas</CardDescription>
+                <CardTitle>Conductores</CardTitle>
+                <CardDescription>Estado actual del equipo</CardDescription>
               </div>
-              <Link href="/monitoring">
+              <Link href="/drivers">
                 <Button variant="outline" size="sm">
-                  Ver mapa
+                  Ver todos
                 </Button>
               </Link>
             </CardHeader>
             <CardContent>
-              <div className="divide-y divide-border">
-                {activeDrivers.map((driver, index) => (
-                  <ActiveDriverItem key={index} {...driver} />
-                ))}
-              </div>
+              {activeDriversList.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <Users className="mx-auto h-12 w-12 opacity-50" />
+                  <p className="mt-2">No hay conductores registrados</p>
+                  <Link href="/drivers">
+                    <Button variant="link" className="mt-2">
+                      Agregar conductor
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {activeDriversList.map((driver, index) => (
+                    <ActiveDriverItem key={index} {...driver} />
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Alerts Section */}
-        <Card className="border-[hsl(var(--chart-5))]/30 bg-[hsl(var(--chart-5))]/5">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-[hsl(var(--chart-5))]" />
-              <CardTitle className="text-[hsl(var(--chart-5))]">Alertas Activas</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border">
-                <Clock className="h-5 w-5 text-[hsl(var(--chart-5))]" />
-                <div>
-                  <p className="font-medium">3 entregas retrasadas</p>
-                  <p className="text-sm text-muted-foreground">Revisar asignaciones</p>
-                </div>
+        {/* Info Section */}
+        {metrics.totalOrders === 0 && (
+          <Card className="border-[hsl(var(--chart-4))]/30 bg-[hsl(var(--chart-4))]/5">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+                <CardTitle className="text-[hsl(var(--chart-4))]">Primeros pasos</CardTitle>
               </div>
-              <div className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border">
-                <Truck className="h-5 w-5 text-[hsl(var(--chart-5))]" />
-                <div>
-                  <p className="font-medium">2 vehículos en mantenimiento</p>
-                  <p className="text-sm text-muted-foreground">Hasta mañana</p>
-                </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Link href="/fleets" className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors">
+                  <Truck className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+                  <div>
+                    <p className="font-medium">1. Crear flotas</p>
+                    <p className="text-sm text-muted-foreground">Organiza tus vehículos</p>
+                  </div>
+                </Link>
+                <Link href="/vehicles" className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors">
+                  <Truck className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+                  <div>
+                    <p className="font-medium">2. Agregar vehículos</p>
+                    <p className="text-sm text-muted-foreground">Registra tu flota</p>
+                  </div>
+                </Link>
+                <Link href="/drivers" className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors">
+                  <Users className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+                  <div>
+                    <p className="font-medium">3. Agregar conductores</p>
+                    <p className="text-sm text-muted-foreground">Asigna tu equipo</p>
+                  </div>
+                </Link>
               </div>
-              <div className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border">
-                <Users className="h-5 w-5 text-[hsl(var(--chart-5))]" />
-                <div>
-                  <p className="font-medium">1 conductor sin ruta</p>
-                  <p className="text-sm text-muted-foreground">Disponible para asignar</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
     </div>
   );
 }
