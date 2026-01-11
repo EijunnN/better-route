@@ -709,6 +709,7 @@ export const optimizationJobsRelations = relations(optimizationJobs, ({ one, man
   }),
   routeStops: many(routeStops),
   outputHistory: many(outputHistory),
+  planMetrics: many(planMetrics),
 }));
 
 // Alert severity levels
@@ -1092,5 +1093,72 @@ export const outputHistoryRelations = relations(outputHistory, ({ one }) => ({
   user: one(users, {
     fields: [outputHistory.generatedBy],
     references: [users.id],
+  }),
+}));
+
+// Plan metrics - stores summary metrics for confirmed optimization plans
+export const planMetrics = pgTable("plan_metrics", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  jobId: uuid("job_id")
+    .notNull()
+    .references(() => optimizationJobs.id, { onDelete: "cascade" }),
+  configurationId: uuid("configuration_id")
+    .notNull()
+    .references(() => optimizationConfigurations.id, { onDelete: "cascade" }),
+  // Route summary metrics
+  totalRoutes: integer("total_routes").notNull(),
+  totalStops: integer("total_stops").notNull(),
+  totalDistance: integer("total_distance").notNull(), // meters
+  totalDuration: integer("total_duration").notNull(), // seconds
+  // Capacity utilization metrics
+  averageUtilizationRate: integer("average_utilization_rate").notNull(), // 0-100
+  maxUtilizationRate: integer("max_utilization_rate").notNull(), // 0-100
+  minUtilizationRate: integer("min_utilization_rate").notNull(), // 0-100
+  // Time window metrics
+  timeWindowComplianceRate: integer("time_window_compliance_rate").notNull(), // 0-100
+  totalTimeWindowViolations: integer("total_time_window_violations").notNull(),
+  // Driver assignment metrics
+  driverAssignmentCoverage: integer("driver_assignment_coverage").notNull(), // 0-100
+  averageAssignmentQuality: integer("average_assignment_quality").notNull(), // 0-100
+  assignmentsWithWarnings: integer("assignments_with_warnings").notNull(),
+  assignmentsWithErrors: integer("assignments_with_errors").notNull(),
+  // Assignment detail metrics
+  skillCoverage: integer("skill_coverage").notNull(), // 0-100
+  licenseCompliance: integer("license_compliance").notNull(), // 0-100
+  fleetAlignment: integer("fleet_alignment").notNull(), // 0-100
+  workloadBalance: integer("workload_balance").notNull(), // 0-100
+  // Unassigned orders
+  unassignedOrders: integer("unassigned_orders").notNull(),
+  // Metadata
+  objective: varchar("objective", { length: 20 })
+    .$type<keyof typeof OPTIMIZATION_OBJECTIVE>(),
+  processingTimeMs: integer("processing_time_ms").notNull(),
+  // Trend comparison (optional - compared to previous session)
+  comparedToJobId: uuid("compared_to_job_id").references(() => optimizationJobs.id),
+  distanceChangePercent: integer("distance_change_percent"), // can be negative
+  durationChangePercent: integer("duration_change_percent"), // can be negative
+  complianceChangePercent: integer("compliance_change_percent"), // can be negative
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const planMetricsRelations = relations(planMetrics, ({ one }) => ({
+  company: one(companies, {
+    fields: [planMetrics.companyId],
+    references: [companies.id],
+  }),
+  job: one(optimizationJobs, {
+    fields: [planMetrics.jobId],
+    references: [optimizationJobs.id],
+  }),
+  configuration: one(optimizationConfigurations, {
+    fields: [planMetrics.configurationId],
+    references: [optimizationConfigurations.id],
+  }),
+  comparedToJob: one(optimizationJobs, {
+    fields: [planMetrics.comparedToJobId],
+    references: [optimizationJobs.id],
   }),
 }));

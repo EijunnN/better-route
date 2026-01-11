@@ -47,3 +47,52 @@
 ✅ API endpoints for generation and download
 ✅ CSV and JSON format support
 ✅ Tenant isolation for all operations
+
+---
+
+## 2026-01-11 - Story 12.2: Métricas de Resumen del Plan
+
+### Completed Implementation
+
+**Database Schema (`src/db/schema.ts`)**
+- Added `planMetrics` table to store summary metrics for confirmed optimization plans with:
+  - Route summary metrics: totalRoutes, totalStops, totalDistance, totalDuration
+  - Capacity utilization: averageUtilizationRate, maxUtilizationRate, minUtilizationRate
+  - Time window metrics: timeWindowComplianceRate, totalTimeWindowViolations
+  - Driver assignment metrics: driverAssignmentCoverage, averageAssignmentQuality
+  - Assignment details: assignmentsWithWarnings, assignmentsWithErrors
+  - Quality metrics: skillCoverage, licenseCompliance, fleetAlignment, workloadBalance
+  - Unassigned orders count
+  - Trend comparison: comparedToJobId, distance/duration/compliance change percentages
+  - Metadata: objective, processingTimeMs, createdAt
+- Added relation from `optimizationJobs` to `planMetrics`
+
+**Plan Metrics Library (`src/lib/plan-metrics.ts`)**
+- `calculatePlanMetrics()` - Calculates metrics from optimization result and validation
+- `findPreviousJobForComparison()` - Finds previous job for trend comparison
+- `calculateComparisonMetrics()` - Calculates percentage changes vs previous session
+- `savePlanMetrics()` - Saves metrics to database with comparison data
+- `getPlanMetrics()` - Retrieves metrics for a specific job
+- `getHistoricalMetrics()` - Gets historical metrics for trends with pagination
+- `getMetricsSummaryStats()` - Gets aggregate statistics for company
+
+**API Endpoints**
+- `POST /api/optimization/jobs/[id]/confirm` - Updated to generate and store metrics on confirmation
+  - Automatically calculates metrics when plan is confirmed
+  - Compares against previous session for trend analysis
+  - Returns metrics in response body
+- `GET /api/optimization/jobs/[id]/metrics` - Retrieve metrics for a specific job
+  - Supports includeHistorical query parameter
+  - Supports includeSummary query parameter for company stats
+- `GET /api/metrics/history` - Retrieve historical metrics for the company
+  - Supports pagination (limit, offset)
+  - Supports includeSummary query parameter
+
+### Features Implemented
+✅ Automatic metrics generation on plan confirmation
+✅ Storage of metrics with planning session
+✅ Historical metrics retrieval with pagination
+✅ Comparison metrics between sessions (distance/duration/compliance changes)
+✅ Summary statistics for company-wide trends
+✅ API endpoints for metrics retrieval
+✅ Tenant isolation for all operations

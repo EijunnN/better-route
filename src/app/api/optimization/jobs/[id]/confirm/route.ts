@@ -12,6 +12,12 @@ import {
   canConfirmPlan,
 } from "@/lib/plan-validation";
 import { createAuditLog } from "@/lib/audit";
+import {
+  calculatePlanMetrics,
+  calculateComparisonMetrics,
+  savePlanMetrics,
+  getPlanMetrics,
+} from "@/lib/plan-metrics";
 
 /**
  * POST /api/optimization/jobs/[id]/confirm
@@ -185,6 +191,25 @@ export async function POST(
       .where(eq(optimizationConfigurations.id, job.configurationId))
       .returning();
 
+    // Generate and save plan metrics
+    const planMetricsData = calculatePlanMetrics(
+      tenantContext.companyId,
+      job.id,
+      job.configurationId,
+      result,
+      validationResult
+    );
+
+    // Calculate comparison metrics against previous session
+    const comparisonMetrics = await calculateComparisonMetrics(
+      tenantContext.companyId,
+      planMetricsData,
+      job.id
+    );
+
+    // Save metrics to database
+    const metricsId = await savePlanMetrics(planMetricsData, comparisonMetrics);
+
     // Create audit log
     await createAuditLog({
       entityType: "optimization_configuration",
@@ -197,6 +222,8 @@ export async function POST(
         validationSummary: validationResult.summary,
         overrideWarnings: data.overrideWarnings,
         confirmationNote: data.confirmationNote || null,
+        metricsId,
+        comparisonMetrics,
       }),
     });
 
@@ -208,6 +235,11 @@ export async function POST(
         isValid: validationResult.isValid,
         summary: validationResult.summary,
         metrics: validationResult.metrics,
+      },
+      planMetrics: {
+        id: metricsId,
+        ...planMetricsData,
+        comparison: comparisonMetrics,
       },
     });
   } catch (error) {

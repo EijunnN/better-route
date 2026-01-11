@@ -538,7 +538,7 @@
         "Confirmar mantenimiento de historial de outputs generados",
         "Verificar API permite generación y descarga de output"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "12.2",
@@ -554,7 +554,7 @@
         "Confirmar dashboard incluye gráficos de tendencias de métricas",
         "Verificar métricas incluidas en reportes exportables"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "13.1",
