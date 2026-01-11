@@ -634,7 +634,7 @@
         "Confirmar registro de quién ejecutó cada acción sensible",
         "Verificar API verifica permisos antes de ejecutar operaciones"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "15.1",

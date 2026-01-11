@@ -25,16 +25,20 @@
 - Reassignment system for absent drivers
 - Output generation and plan metrics
 
-## Next Priority Stories
+### Story 14.2 - Control de Acceso Basado en Roles (Security) - COMPLETED
+- Created comprehensive RBAC system in src/lib/authorization.ts
+- Implemented granular permissions: EntityType enum with 17 entities, Action enum with 16 actions
+- Defined role permissions mapping for all 4 roles (PLANIFICADOR, MONITOR, ADMIN_FLOTA, ADMIN_SISTEMA)
+- ADMIN_SISTEMA has wildcard (*) permission for full access
+- Created AuthorizationError class with detailed error information
+- Implemented sensitive actions tracking (force_delete, bulk_delete, bulk_update, change_status, invalidate_sessions)
+- Created route helper utilities (src/lib/route-helpers.ts) for consistent permission checks
+- Updated companies API routes with permission checks (GET, POST, PATCH, DELETE)
+- Created API middleware (src/lib/api-middleware.ts) with auth, permission, and audit logging helpers
+- Tenant filtering (by Company) already implemented in src/db/tenant-aware.ts
+- Audit logging already implemented in src/lib/audit.ts
 
-### Story 14.2 - Control de Acceso Basado en Roles (Security)
-- Verify roles predefinidos: PLANIFICADOR, MONITOR, ADMIN_FLOTA, ADMIN_SISTEMA
-- Validate each rol has permisos específicos definidos
-- Confirm permisos granulares a nivel de entidad y acción
-- Verify acceso a datos filtrado por Company del usuario
-- Validar acciones sensibles requieren confirmación adicional
-- Confirm registro de quién ejecutó cada acción sensible
-- Verificar API verifica permisos antes de ejecutar operaciones
+## Next Priority Stories
 
 ### Story 15.1 - Gestión de Sesiones con Redis (Security)
 - Verify sesiones almacenadas en Redis con TTL configurado

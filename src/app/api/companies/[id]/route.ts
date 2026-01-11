@@ -5,35 +5,22 @@ import { updateCompanySchema } from "@/lib/validations/company";
 import { eq, and } from "drizzle-orm";
 import { withTenantFilter, verifyTenantAccess, TenantAccessDeniedError } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
+import { setupAuthContext, checkPermissionOrError, unauthorizedResponse, handleError, notFoundResponse } from "@/lib/route-helpers";
+import { EntityType, Action } from "@/lib/authorization";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 }
-      );
+    const authResult = await setupAuthContext(request);
+    if (!authResult.authenticated || !authResult.user) {
+      return unauthorizedResponse();
     }
 
-    setTenantContext(tenantCtx);
+    // Check if user can read companies
+    const permError = checkPermissionOrError(authResult.user, EntityType.COMPANY, Action.READ);
+    if (permError) return permError;
 
     const { id } = await params;
 
@@ -47,25 +34,12 @@ export async function GET(
       .limit(1);
 
     if (!company) {
-      return NextResponse.json(
-        { error: "Company not found" },
-        { status: 404 }
-      );
+      return notFoundResponse("Company");
     }
 
     return NextResponse.json(company);
   } catch (error) {
-    console.error("Error fetching company:", error);
-    if (error instanceof TenantAccessDeniedError) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
-    }
-    return NextResponse.json(
-      { error: "Error fetching company" },
-      { status: 500 }
-    );
+    return handleError(error, "fetching company");
   }
 }
 
@@ -74,15 +48,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 }
-      );
+    const authResult = await setupAuthContext(request);
+    if (!authResult.authenticated || !authResult.user) {
+      return unauthorizedResponse();
     }
 
-    setTenantContext(tenantCtx);
+    // Check if user can update companies
+    const permError = checkPermissionOrError(authResult.user, EntityType.COMPANY, Action.UPDATE);
+    if (permError) return permError;
 
     const { id } = await params;
     const body = await request.json();
@@ -98,10 +71,7 @@ export async function PATCH(
       .limit(1);
 
     if (existingCompany.length === 0) {
-      return NextResponse.json(
-        { error: "Company not found" },
-        { status: 404 }
-      );
+      return notFoundResponse("Company");
     }
 
     // Verify tenant access
@@ -156,23 +126,7 @@ export async function PATCH(
 
     return NextResponse.json(updatedCompany);
   } catch (error) {
-    console.error("Error updating company:", error);
-    if (error instanceof TenantAccessDeniedError) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
-    }
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Invalid input", details: error },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json(
-      { error: "Error updating company" },
-      { status: 500 }
-    );
+    return handleError(error, "updating company");
   }
 }
 
@@ -181,15 +135,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 }
-      );
+    const authResult = await setupAuthContext(request);
+    if (!authResult.authenticated || !authResult.user) {
+      return unauthorizedResponse();
     }
 
-    setTenantContext(tenantCtx);
+    // Check if user can delete companies (sensitive action)
+    const permError = checkPermissionOrError(authResult.user, EntityType.COMPANY, Action.DELETE);
+    if (permError) return permError;
 
     const { id } = await params;
 
@@ -203,10 +156,7 @@ export async function DELETE(
       .limit(1);
 
     if (existingCompany.length === 0) {
-      return NextResponse.json(
-        { error: "Company not found" },
-        { status: 404 }
-      );
+      return notFoundResponse("Company");
     }
 
     // Verify tenant access
@@ -222,16 +172,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting company:", error);
-    if (error instanceof TenantAccessDeniedError) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
-    }
-    return NextResponse.json(
-      { error: "Error deleting company" },
-      { status: 500 }
-    );
+    return handleError(error, "deleting company");
   }
 }

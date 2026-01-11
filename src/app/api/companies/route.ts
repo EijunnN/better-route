@@ -5,32 +5,19 @@ import { companySchema, companyQuerySchema } from "@/lib/validations/company";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
 import { withTenantFilter, verifyTenantAccess, getAuditLogContext } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
+import { setupAuthContext, checkPermissionOrError, unauthorizedResponse, handleError } from "@/lib/route-helpers";
+import { EntityType, Action } from "@/lib/authorization";
 
 export async function GET(request: NextRequest) {
   try {
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 }
-      );
+    const authResult = await setupAuthContext(request);
+    if (!authResult.authenticated || !authResult.user) {
+      return unauthorizedResponse();
     }
 
-    setTenantContext(tenantCtx);
+    // Check if user can read companies
+    const permError = checkPermissionOrError(authResult.user, EntityType.COMPANY, Action.READ);
+    if (permError) return permError;
 
     const { searchParams } = new URL(request.url);
     const query = companyQuerySchema.parse(Object.fromEntries(searchParams));
@@ -83,21 +70,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 }
-      );
+    const authResult = await setupAuthContext(request);
+    if (!authResult.authenticated || !authResult.user) {
+      return unauthorizedResponse();
     }
 
-    setTenantContext(tenantCtx);
+    // Check if user can create companies
+    const permError = checkPermissionOrError(authResult.user, EntityType.COMPANY, Action.CREATE);
+    if (permError) return permError;
 
     const body = await request.json();
     const validatedData = companySchema.parse(body);
-
-    // Check if user has permission to create companies
-    // For now, we assume this is an admin operation
 
     const existingCompany = await db
       .select()
@@ -135,16 +118,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newCompany, { status: 201 });
   } catch (error) {
-    console.error("Error creating company:", error);
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Invalid input", details: error },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json(
-      { error: "Error creating company" },
-      { status: 500 }
-    );
+    return handleError(error, "creating company");
   }
 }
