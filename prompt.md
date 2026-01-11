@@ -1,4 +1,5 @@
 @prd.json @progress.txt \
+0. En que momento se crea la page login para ingresar ?
 1. Decide which task to work on next. \
 This should be the one YOU decide has the highest priority, \
 - not necessarily the first in the list. \

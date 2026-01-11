@@ -24,7 +24,8 @@
       "Bash(npm run build:*)",
       "Bash(wc:*)",
       "Bash(bun biome:*)",
-      "Bash(bun test:*)"
+      "Bash(bun test:*)",
+      "Bash(find:*)"
     ]
   }
 }
