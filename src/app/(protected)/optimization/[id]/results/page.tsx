@@ -9,14 +9,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ArrowLeft, AlertCircle, Clock, History, CheckCircle2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
-const DEFAULT_COMPANY_ID = "default-company";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 function ResultsPageContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const configId = params.id as string;
   const existingJobId = searchParams.get("jobId");
   const reoptimize = searchParams.get("reoptimize") === "true";
@@ -30,8 +31,10 @@ function ResultsPageContent() {
     return existingJobId ? "existing" : "new";
   });
 
-  // Start optimization job when component mounts
+  // Start optimization job when component mounts and companyId is available
   useEffect(() => {
+    if (!companyId) return;
+
     // If viewing an existing job, fetch its data
     if (existingJobId && viewMode === "existing" && !reoptimize) {
       const fetchExistingJob = async () => {
@@ -40,7 +43,7 @@ function ResultsPageContent() {
 
         try {
           const response = await fetch(`/api/optimization/jobs/${existingJobId}`, {
-            headers: { "x-company-id": DEFAULT_COMPANY_ID },
+            headers: { "x-company-id": companyId },
           });
 
           if (!response.ok) {
@@ -80,7 +83,7 @@ function ResultsPageContent() {
         // First, fetch the configuration to get vehicle and driver IDs
         const configResponse = await fetch(`/api/optimization/configure/${configId}`, {
           headers: {
-            "x-company-id": DEFAULT_COMPANY_ID,
+            "x-company-id": companyId,
           },
         });
 
@@ -100,11 +103,11 @@ function ResultsPageContent() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-company-id": DEFAULT_COMPANY_ID,
+            "x-company-id": companyId,
           },
           body: JSON.stringify({
             configurationId: configId,
-            companyId: DEFAULT_COMPANY_ID,
+            companyId: companyId,
             vehicleIds,
             driverIds,
           }),
@@ -137,7 +140,7 @@ function ResultsPageContent() {
     };
 
     startOptimization();
-  }, [configId, viewMode, existingJobId, reoptimize]);
+  }, [configId, viewMode, existingJobId, reoptimize, companyId]);
 
   const handleJobComplete = (jobResult: any) => {
     setResult(jobResult);
@@ -165,7 +168,7 @@ function ResultsPageContent() {
     alert("Plan confirmation will be implemented in Story 9.3");
   };
 
-  if (isStartingJob) {
+  if (isAuthLoading || !companyId || isStartingJob) {
     return (
       <div className="container mx-auto py-8 px-4 max-w-6xl">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -173,7 +176,9 @@ function ResultsPageContent() {
             <CardContent className="py-12">
               <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-lg font-medium">Starting optimization...</p>
+                <p className="text-lg font-medium">
+                  {isAuthLoading ? "Cargando..." : "Starting optimization..."}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   Preparing your route optimization job
                 </p>
@@ -269,13 +274,13 @@ function ResultsPageContent() {
       </div>
 
       {/* Job Progress */}
-      {jobId && !result && (
+      {jobId && !result && companyId && (
         <JobProgress
           jobId={jobId}
           apiUrl={API_URL || ""}
           onComplete={handleJobComplete}
           onError={handleJobError}
-          companyId={DEFAULT_COMPANY_ID}
+          companyId={companyId}
         />
       )}
 

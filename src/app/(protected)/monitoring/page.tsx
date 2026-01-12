@@ -12,8 +12,8 @@ import { DriverRouteDetail } from "@/components/monitoring/driver-route-detail";
 import { MonitoringMap } from "@/components/monitoring/monitoring-map";
 import { AlertPanel } from "@/components/alerts/alert-panel";
 import { Loader2, RefreshCw, AlertCircle, Bell, X } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
-const DEFAULT_COMPANY_ID = "default-company";
 const POLLING_INTERVAL = 10000; // 10 seconds
 
 interface MonitoringData {
@@ -71,6 +71,7 @@ interface DriverDetailData {
 }
 
 export default function MonitoringPage() {
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [monitoringData, setMonitoringData] = useState<MonitoringData | null>(null);
   const [driversData, setDriversData] = useState<DriverMonitoringData[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
@@ -85,9 +86,10 @@ export default function MonitoringPage() {
   const [alertsCount, setAlertsCount] = useState(0);
 
   const fetchMonitoringData = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/monitoring/summary", {
-        headers: { "x-company-id": DEFAULT_COMPANY_ID },
+        headers: { "x-company-id": companyId },
       });
 
       if (!response.ok) throw new Error("Failed to fetch monitoring data");
@@ -100,13 +102,14 @@ export default function MonitoringPage() {
       console.error("Error fetching monitoring data:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch monitoring data");
     }
-  }, []);
+  }, [companyId]);
 
   const fetchDriversData = useCallback(async () => {
+    if (!companyId) return;
     setIsLoadingDrivers(true);
     try {
       const response = await fetch("/api/monitoring/drivers", {
-        headers: { "x-company-id": DEFAULT_COMPANY_ID },
+        headers: { "x-company-id": companyId },
       });
 
       if (!response.ok) throw new Error("Failed to fetch drivers data");
@@ -118,13 +121,14 @@ export default function MonitoringPage() {
     } finally {
       setIsLoadingDrivers(false);
     }
-  }, []);
+  }, [companyId]);
 
   const fetchDriverDetail = useCallback(async (driverId: string) => {
+    if (!companyId) return;
     setIsLoadingDetail(true);
     try {
       const response = await fetch(`/api/monitoring/drivers/${driverId}`, {
-        headers: { "x-company-id": DEFAULT_COMPANY_ID },
+        headers: { "x-company-id": companyId },
       });
 
       if (!response.ok) throw new Error("Failed to fetch driver detail");
@@ -137,7 +141,7 @@ export default function MonitoringPage() {
     } finally {
       setIsLoadingDetail(false);
     }
-  }, []);
+  }, [companyId]);
 
   // Initial load
   useEffect(() => {
@@ -183,7 +187,7 @@ export default function MonitoringPage() {
     return date.toLocaleTimeString();
   };
 
-  if (isLoading) {
+  if (isAuthLoading || !companyId || isLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -306,10 +310,10 @@ export default function MonitoringPage() {
             </Card>
 
             {/* Alerts Panel - shown when toggle is active */}
-            {showAlerts && (
+            {showAlerts && companyId && (
               <div className="lg:col-span-1">
                 <div className="h-[500px]">
-                  <AlertPanel companyId={DEFAULT_COMPANY_ID} />
+                  <AlertPanel companyId={companyId} />
                 </div>
               </div>
             )}

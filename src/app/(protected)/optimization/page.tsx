@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,6 @@ import { CapacityConstraintsSummary } from "@/components/optimization/capacity-c
 import { Loader2, Settings, ArrowRight, Save, FolderOpen, Package, AlertTriangle } from "lucide-react";
 import type { DepotLocationInput } from "@/lib/validations/optimization-config";
 
-const DEFAULT_COMPANY_ID = "default-company";
 
 // Preset interface
 interface OptimizationPreset {
@@ -46,6 +46,7 @@ const OBJECTIVE_OPTIONS = [
 
 export default function OptimizationPage() {
   const router = useRouter();
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [step, setStep] = useState<"resources" | "settings">("resources");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,17 +62,20 @@ export default function OptimizationPage() {
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number | null>(null);
   const [pendingOrdersLoading, setPendingOrdersLoading] = useState(true);
 
-  // Load presets and pending orders count on mount
+  // Load presets and pending orders count when companyId is available
   useEffect(() => {
-    loadPresets();
-    loadPendingOrdersCount();
-  }, []);
+    if (companyId) {
+      loadPresets();
+      loadPendingOrdersCount();
+    }
+  }, [companyId]);
 
   const loadPendingOrdersCount = async () => {
+    if (!companyId) return;
     setPendingOrdersLoading(true);
     try {
       const response = await fetch("/api/orders/pending-summary", {
-        headers: { "x-company-id": DEFAULT_COMPANY_ID },
+        headers: { "x-company-id": companyId },
       });
       if (response.ok) {
         const data = await response.json();
@@ -86,11 +90,12 @@ export default function OptimizationPage() {
   };
 
   const loadPresets = async () => {
+    if (!companyId) return;
     setIsLoadingPresets(true);
     setPresetError(null);
     try {
       const response = await fetch("/api/optimization/presets", {
-        headers: { "x-company-id": DEFAULT_COMPANY_ID },
+        headers: { "x-company-id": companyId },
       });
       if (!response.ok) throw new Error("Failed to load presets");
       const data = await response.json();
@@ -116,7 +121,7 @@ export default function OptimizationPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-company-id": DEFAULT_COMPANY_ID,
+          "x-company-id": companyId!,
         },
         body: JSON.stringify({
           name: presetName,
@@ -198,7 +203,7 @@ export default function OptimizationPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-company-id": DEFAULT_COMPANY_ID,
+          "x-company-id": companyId!,
         },
         body: JSON.stringify({
           name: configName,
@@ -231,6 +236,17 @@ export default function OptimizationPage() {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading while auth is loading
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="container mx-auto py-8 px-4 max-w-5xl">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl">
@@ -342,7 +358,7 @@ export default function OptimizationPage() {
             </CardHeader>
             <CardContent>
               <VehicleSelector
-                companyId={DEFAULT_COMPANY_ID}
+                companyId={companyId!}
                 selectedIds={selectedVehicleIds}
                 onChange={setSelectedVehicleIds}
               />
@@ -359,7 +375,7 @@ export default function OptimizationPage() {
             </CardHeader>
             <CardContent>
               <DriverSelector
-                companyId={DEFAULT_COMPANY_ID}
+                companyId={companyId!}
                 selectedIds={selectedDriverIds}
                 onChange={setSelectedDriverIds}
               />
@@ -542,7 +558,7 @@ export default function OptimizationPage() {
                 </div>
 
                 {/* Pending Orders Summary */}
-                <CapacityConstraintsSummary companyId={DEFAULT_COMPANY_ID} />
+                <CapacityConstraintsSummary companyId={companyId!} />
               </div>
             </CardContent>
           </Card>

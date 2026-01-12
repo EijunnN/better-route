@@ -19,8 +19,7 @@ import {
   Eye,
   RotateCcw,
 } from "lucide-react";
-
-const DEFAULT_COMPANY_ID = "default-company";
+import { useAuth } from "@/hooks/use-auth";
 
 interface OptimizationJob {
   id: string;
@@ -173,6 +172,7 @@ function CompareValue({
 
 export default function OptimizationHistoryPage() {
   const router = useRouter();
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [jobs, setJobs] = useState<OptimizationJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,10 +181,13 @@ export default function OptimizationHistoryPage() {
   const [showComparison, setShowComparison] = useState(false);
 
   useEffect(() => {
-    loadJobs();
-  }, [statusFilter]);
+    if (companyId) {
+      loadJobs();
+    }
+  }, [statusFilter, companyId]);
 
   const loadJobs = async () => {
+    if (!companyId) return;
     setIsLoading(true);
     setError(null);
 
@@ -197,7 +200,7 @@ export default function OptimizationHistoryPage() {
       params.append("offset", "0");
 
       const response = await fetch(`/api/optimization/jobs?${params}`, {
-        headers: { "x-company-id": DEFAULT_COMPANY_ID },
+        headers: { "x-company-id": companyId },
       });
 
       if (!response.ok) throw new Error("Failed to load jobs");
@@ -212,7 +215,7 @@ export default function OptimizationHistoryPage() {
               const configResponse = await fetch(
                 `/api/optimization/configure/${job.configurationId}`,
                 {
-                  headers: { "x-company-id": DEFAULT_COMPANY_ID },
+                  headers: { "x-company-id": companyId },
                 }
               );
               if (configResponse.ok) {
@@ -238,6 +241,17 @@ export default function OptimizationHistoryPage() {
       setIsLoading(false);
     }
   };
+
+  // Show loading while auth is loading
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="container mx-auto py-8 px-4 max-w-6xl">
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   const handleReoptimize = async (job: OptimizationJob) => {
     if (!job.configurationId) {
