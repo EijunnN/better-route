@@ -11,7 +11,7 @@ import { DepotSelector } from "@/components/optimization/depot-selector";
 import { VehicleSelector } from "@/components/optimization/vehicle-selector";
 import { DriverSelector } from "@/components/optimization/driver-selector";
 import { CapacityConstraintsSummary } from "@/components/optimization/capacity-constraints-summary";
-import { Loader2, Settings, ArrowRight, Save, FolderOpen } from "lucide-react";
+import { Loader2, Settings, ArrowRight, Save, FolderOpen, Package, AlertTriangle } from "lucide-react";
 import type { DepotLocationInput } from "@/lib/validations/optimization-config";
 
 const DEFAULT_COMPANY_ID = "default-company";
@@ -57,10 +57,33 @@ export default function OptimizationPage() {
   const [isLoadingPresets, setIsLoadingPresets] = useState(false);
   const [presetError, setPresetError] = useState<string | null>(null);
 
-  // Load presets on mount
+  // Pending orders state
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number | null>(null);
+  const [pendingOrdersLoading, setPendingOrdersLoading] = useState(true);
+
+  // Load presets and pending orders count on mount
   useEffect(() => {
     loadPresets();
+    loadPendingOrdersCount();
   }, []);
+
+  const loadPendingOrdersCount = async () => {
+    setPendingOrdersLoading(true);
+    try {
+      const response = await fetch("/api/orders/pending-summary", {
+        headers: { "x-company-id": DEFAULT_COMPANY_ID },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPendingOrdersCount(data.data?.totalOrders ?? 0);
+      }
+    } catch (err) {
+      console.error("Failed to load pending orders:", err);
+      setPendingOrdersCount(0);
+    } finally {
+      setPendingOrdersLoading(false);
+    }
+  };
 
   const loadPresets = async () => {
     setIsLoadingPresets(true);
@@ -256,6 +279,43 @@ export default function OptimizationPage() {
 
       {step === "resources" && (
         <div className="space-y-8">
+          {/* Pending Orders Alert */}
+          <Card className={pendingOrdersCount === 0 ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20" : "border-green-500 bg-green-50 dark:bg-green-950/20"}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                {pendingOrdersCount === 0 ? (
+                  <AlertTriangle className="w-6 h-6 text-orange-500" />
+                ) : (
+                  <Package className="w-6 h-6 text-green-500" />
+                )}
+                <div>
+                  <CardTitle className="text-lg">
+                    {pendingOrdersLoading ? (
+                      "Cargando órdenes..."
+                    ) : pendingOrdersCount === 0 ? (
+                      "No hay órdenes para planificar"
+                    ) : (
+                      `${pendingOrdersCount} órdenes pendientes para planificar`
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    {pendingOrdersCount === 0 ? (
+                      <>
+                        Para planificar rutas, primero debes crear órdenes en{" "}
+                        <a href="/orders" className="text-primary underline font-medium">
+                          la página de órdenes
+                        </a>
+                        . Las órdenes con status "PENDING" serán incluidas en la optimización.
+                      </>
+                    ) : (
+                      "Estas órdenes serán distribuidas automáticamente en rutas según la configuración que definas."
+                    )}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
           {/* Depot Location */}
           <Card>
             <CardHeader>
