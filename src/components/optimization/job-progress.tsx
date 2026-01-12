@@ -26,7 +26,6 @@ export interface OptimizationJobData {
 
 interface JobProgressProps {
   jobId: string | null;
-  apiUrl: string;
   onComplete?: (result: unknown) => void;
   onError?: (error: string) => void;
   onCancel?: () => void;
@@ -53,7 +52,6 @@ const STATUS_COLORS: Record<JobStatus, string> = {
 
 export function JobProgress({
   jobId,
-  apiUrl,
   onComplete,
   onError,
   onCancel,
@@ -73,7 +71,7 @@ export function JobProgress({
       if (companyId) headers["x-company-id"] = companyId;
       if (userId) headers["x-user-id"] = userId;
 
-      const response = await fetch(`${apiUrl}/optimization/jobs/${jobId}`, {
+      const response = await fetch(`/api/optimization/jobs/${jobId}`, {
         headers,
       });
 
@@ -87,7 +85,7 @@ export function JobProgress({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch job status");
     }
-  }, [jobId, apiUrl, companyId, userId]);
+  }, [jobId, companyId, userId]);
 
   const cancelJob = async () => {
     if (!jobId || isCancelling) return;
@@ -98,7 +96,7 @@ export function JobProgress({
       if (companyId) headers["x-company-id"] = companyId;
       if (userId) headers["x-user-id"] = userId;
 
-      const response = await fetch(`${apiUrl}/optimization/jobs/${jobId}`, {
+      const response = await fetch(`/api/optimization/jobs/${jobId}`, {
         method: "DELETE",
         headers,
       });

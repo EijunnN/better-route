@@ -11,8 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, ArrowLeft, AlertCircle, Clock, History, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-
 function ResultsPageContent() {
   const router = useRouter();
   const params = useParams();
@@ -277,7 +275,6 @@ function ResultsPageContent() {
       {jobId && !result && companyId && (
         <JobProgress
           jobId={jobId}
-          apiUrl={API_URL || ""}
           onComplete={handleJobComplete}
           onError={handleJobError}
           companyId={companyId}
