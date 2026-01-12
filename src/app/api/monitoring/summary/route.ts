@@ -34,36 +34,7 @@ export async function GET(request: NextRequest) {
       orderBy: [desc(optimizationJobs.createdAt)],
     });
 
-    if (!confirmedJob) {
-      return NextResponse.json({
-        data: {
-          hasActivePlan: false,
-          metrics: {
-            totalDrivers: 0,
-            driversInRoute: 0,
-            driversAvailable: 0,
-            driversOnPause: 0,
-            completedStops: 0,
-            totalStops: 0,
-            completenessPercentage: 0,
-            delayedStops: 0,
-            activeAlerts: 0,
-          },
-        },
-      });
-    }
-
-    // Parse the result
-    let parsedResult = null;
-    if (confirmedJob.result) {
-      try {
-        parsedResult = JSON.parse(confirmedJob.result);
-      } catch {
-        parsedResult = null;
-      }
-    }
-
-    // Get all driver statuses from the company
+    // Get all driver statuses from the company (regardless of active plan)
     const allDrivers = await db.query.drivers.findMany({
       where: withTenantFilter(drivers),
       columns: {
@@ -78,6 +49,45 @@ export async function GET(request: NextRequest) {
     const driversInRoute = allDrivers.filter((d) => d.status === "IN_ROUTE").length;
     const driversAvailable = allDrivers.filter((d) => d.status === "AVAILABLE").length;
     const driversOnPause = allDrivers.filter((d) => d.status === "ON_PAUSE").length;
+
+    // Get active alerts count
+    const activeAlertsResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(alerts)
+      .where(and(
+        withTenantFilter(alerts),
+        eq(alerts.status, "ACTIVE")
+      ));
+    const activeAlerts = activeAlertsResult[0]?.count || 0;
+
+    if (!confirmedJob) {
+      return NextResponse.json({
+        data: {
+          hasActivePlan: false,
+          metrics: {
+            totalDrivers: allDrivers.length,
+            driversInRoute,
+            driversAvailable,
+            driversOnPause,
+            completedStops: 0,
+            totalStops: 0,
+            completenessPercentage: 0,
+            delayedStops: 0,
+            activeAlerts: Number(activeAlerts),
+          },
+        },
+      });
+    }
+
+    // Parse the result
+    let parsedResult = null;
+    if (confirmedJob.result) {
+      try {
+        parsedResult = JSON.parse(confirmedJob.result);
+      } catch {
+        parsedResult = null;
+      }
+    }
 
     // Try to get actual stops from database
     const dbStops = await db.query.routeStops.findMany({
@@ -120,16 +130,6 @@ export async function GET(request: NextRequest) {
       delayedStops = 0;
     }
 
-    // Get active alerts count from database
-    const activeAlertsResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(alerts)
-      .where(and(
-        withTenantFilter(alerts),
-        eq(alerts.status, "ACTIVE")
-      ));
-    const activeAlerts = activeAlertsResult[0]?.count || 0;
-
     const completenessPercentage = totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
 
     return NextResponse.json({
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
           totalStops,
           completenessPercentage,
           delayedStops,
-          activeAlerts,
+          activeAlerts: Number(activeAlerts),
         },
         result: parsedResult,
       },
