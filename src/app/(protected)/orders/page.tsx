@@ -1,14 +1,14 @@
 "use client";
 
+import { List, Map } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  OrderForm,
-  OrderFormData,
-} from "@/components/orders/order-form";
+import { OrderForm, type OrderFormData } from "@/components/orders/order-form";
 import { OrderMap } from "@/components/orders/order-map";
-import { ORDER_STATUS, TIME_WINDOW_STRICTNESS } from "@/lib/validations/order";
-import { Map, List } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type {
+  ORDER_STATUS,
+  TIME_WINDOW_STRICTNESS,
+} from "@/lib/validations/order";
 
 const DEMO_COMPANY_ID = "demo-company-id";
 
@@ -160,168 +160,174 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Orders</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage delivery orders with time window constraints
-            </p>
-          </div>
-          <Button onClick={() => setShowForm(true)}>Create Order</Button>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Orders</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage delivery orders with time window constraints
+          </p>
         </div>
+        <Button onClick={() => setShowForm(true)}>Create Order</Button>
+      </div>
 
-        {/* Filters */}
-        <div className="flex gap-4 mb-6">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search by tracking ID or customer name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md bg-background"
-            />
-          </div>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border rounded-md bg-background"
-          >
-            <option value="">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="ASSIGNED">Assigned</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="FAILED">Failed</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
-          <div className="flex border rounded-md">
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-              className="rounded-r-none"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "map" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("map")}
-              className="rounded-l-none"
-            >
-              <Map className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
-        ) : filteredOrders.length === 0 ? (
-          <div className="text-center py-12 border rounded-lg bg-muted/30">
-            <p className="text-muted-foreground">No orders found.</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Create your first order to get started.
-            </p>
-          </div>
-        ) : viewMode === "map" ? (
-          <OrderMap
-            companyId={DEMO_COMPANY_ID}
-            statusFilter={filterStatus || "ALL"}
-            searchQuery={searchQuery}
-            onOrderClick={(orderId) => {
-              const order = orders.find((o) => o.id === orderId);
-              if (order) handleEdit(order);
-            }}
-            height="600px"
+      {/* Filters */}
+      <div className="flex gap-4 mb-6">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Search by tracking ID or customer name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md bg-background"
           />
-        ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="text-left p-4 font-medium">Tracking ID</th>
-                  <th className="text-left p-4 font-medium">Customer</th>
-                  <th className="text-left p-4 font-medium">Address</th>
-                  <th className="text-left p-4 font-medium">Time Window</th>
-                  <th className="text-left p-4 font-medium">Strictness</th>
-                  <th className="text-left p-4 font-medium">Status</th>
-                  <th className="text-right p-4 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((order) => (
-                  <tr key={order.id} className="border-t">
-                    <td className="p-4 font-medium">{order.trackingId}</td>
-                    <td className="p-4">
+        </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="px-3 py-2 border rounded-md bg-background"
+        >
+          <option value="">All Statuses</option>
+          <option value="PENDING">Pending</option>
+          <option value="ASSIGNED">Assigned</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="FAILED">Failed</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+        <div className="flex border rounded-md">
+          <Button
+            variant={viewMode === "list" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+            className="rounded-r-none"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === "map" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("map")}
+            className="rounded-l-none"
+          >
+            <Map className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-12">Loading...</div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="text-center py-12 border rounded-lg bg-muted/30">
+          <p className="text-muted-foreground">No orders found.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Create your first order to get started.
+          </p>
+        </div>
+      ) : viewMode === "map" ? (
+        <OrderMap
+          companyId={DEMO_COMPANY_ID}
+          statusFilter={filterStatus || "ALL"}
+          searchQuery={searchQuery}
+          onOrderClick={(orderId) => {
+            const order = orders.find((o) => o.id === orderId);
+            if (order) handleEdit(order);
+          }}
+          height="600px"
+        />
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-muted">
+              <tr>
+                <th className="text-left p-4 font-medium">Tracking ID</th>
+                <th className="text-left p-4 font-medium">Customer</th>
+                <th className="text-left p-4 font-medium">Address</th>
+                <th className="text-left p-4 font-medium">Time Window</th>
+                <th className="text-left p-4 font-medium">Strictness</th>
+                <th className="text-left p-4 font-medium">Status</th>
+                <th className="text-right p-4 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrders.map((order) => (
+                <tr key={order.id} className="border-t">
+                  <td className="p-4 font-medium">{order.trackingId}</td>
+                  <td className="p-4">
+                    <div>
+                      <div className="font-medium">
+                        {order.customerName || "-"}
+                      </div>
+                      {order.customerPhone && (
+                        <div className="text-sm text-muted-foreground">
+                          {order.customerPhone}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-4 max-w-xs truncate">{order.address}</td>
+                  <td className="p-4">
+                    {order.presetName ? (
                       <div>
-                        <div className="font-medium">{order.customerName || "-"}</div>
-                        {order.customerPhone && (
-                          <div className="text-sm text-muted-foreground">{order.customerPhone}</div>
+                        <div className="text-sm">{order.presetName}</div>
+                        {order.isStrictnessOverridden && (
+                          <span className="text-xs text-amber-600">
+                            (override)
+                          </span>
                         )}
                       </div>
-                    </td>
-                    <td className="p-4 max-w-xs truncate">{order.address}</td>
-                    <td className="p-4">
-                      {order.presetName ? (
-                        <div>
-                          <div className="text-sm">{order.presetName}</div>
-                          {order.isStrictnessOverridden && (
-                            <span className="text-xs text-amber-600">(override)</span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">No preset</span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStrictnessColor(
-                          order.effectiveStrictness
-                        )}`}
-                      >
-                        {order.effectiveStrictness}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          order.status
-                        )}`}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(order)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(order.id)}
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    ) : (
+                      <span className="text-muted-foreground">No preset</span>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStrictnessColor(
+                        order.effectiveStrictness,
+                      )}`}
+                    >
+                      {order.effectiveStrictness}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                        order.status,
+                      )}`}
+                    >
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="p-4 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(order)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(order.id)}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-        {showForm && (
-          <OrderForm
-            onSubmit={editingOrder ? handleUpdate : handleCreate}
-            initialData={editingOrder || undefined}
-            submitLabel={editingOrder ? "Update Order" : "Create Order"}
-            onCancel={handleCloseForm}
-          />
-        )}
+      {showForm && (
+        <OrderForm
+          onSubmit={editingOrder ? handleUpdate : handleCreate}
+          initialData={editingOrder || undefined}
+          submitLabel={editingOrder ? "Update Order" : "Create Order"}
+          onCancel={handleCloseForm}
+        />
+      )}
     </div>
   );
 }

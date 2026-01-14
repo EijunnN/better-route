@@ -1,22 +1,28 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertTriangle,
+  Award,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Shield,
+  Star,
+  TrendingUp,
+  User,
+  Users,
+  XCircle,
+} from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  User,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  ChevronDown,
-  ChevronUp,
-  Star,
-  Award,
-  Shield,
-  Users,
-  TrendingUp,
-} from "lucide-react";
-import { useState } from "react";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export interface AssignmentQuality {
   score: number;
@@ -86,8 +92,8 @@ export function DriverAssignmentDisplay({
           hasErrors
             ? "border-red-200 bg-red-50/50"
             : hasWarnings
-            ? "border-yellow-200 bg-yellow-50/50"
-            : "border-green-200 bg-green-50/50"
+              ? "border-yellow-200 bg-yellow-50/50"
+              : "border-green-200 bg-green-50/50"
         }`}
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -108,17 +114,25 @@ export function DriverAssignmentDisplay({
           {hasErrors && (
             <Badge variant="destructive" className="text-xs">
               <XCircle className="h-3 w-3 mr-1" />
-              {quality.errors.length} error{quality.errors.length > 1 ? "s" : ""}
+              {quality.errors.length} error
+              {quality.errors.length > 1 ? "s" : ""}
             </Badge>
           )}
           {hasWarnings && (
-            <Badge variant="outline" className="text-xs border-yellow-300 text-yellow-700">
+            <Badge
+              variant="outline"
+              className="text-xs border-yellow-300 text-yellow-700"
+            >
               <AlertTriangle className="h-3 w-3 mr-1" />
-              {quality.warnings.length} warning{quality.warnings.length > 1 ? "s" : ""}
+              {quality.warnings.length} warning
+              {quality.warnings.length > 1 ? "s" : ""}
             </Badge>
           )}
           {!hasErrors && !hasWarnings && quality && quality.score >= 80 && (
-            <Badge variant="outline" className="text-xs border-green-300 text-green-700">
+            <Badge
+              variant="outline"
+              className="text-xs border-green-300 text-green-700"
+            >
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Optimal
             </Badge>
@@ -136,8 +150,12 @@ export function DriverAssignmentDisplay({
         <div className="p-3 rounded-lg border bg-muted/30 space-y-3">
           {/* Score Breakdown */}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Assignment Quality</span>
-            <span className={`text-sm font-semibold ${getScoreColor(quality.score)}`}>
+            <span className="text-xs text-muted-foreground">
+              Assignment Quality
+            </span>
+            <span
+              className={`text-sm font-semibold ${getScoreColor(quality.score)}`}
+            >
               {getScoreLabel(quality.score)} ({quality.score}/100)
             </span>
           </div>
@@ -148,7 +166,10 @@ export function DriverAssignmentDisplay({
               <p className="text-xs font-medium text-yellow-700">Warnings:</p>
               <ul className="space-y-1">
                 {quality.warnings.map((warning, idx) => (
-                  <li key={idx} className="text-xs text-yellow-600 flex items-start gap-1">
+                  <li
+                    key={idx}
+                    className="text-xs text-yellow-600 flex items-start gap-1"
+                  >
                     <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <span>{warning}</span>
                   </li>
@@ -163,7 +184,10 @@ export function DriverAssignmentDisplay({
               <p className="text-xs font-medium text-red-700">Errors:</p>
               <ul className="space-y-1">
                 {quality.errors.map((error, idx) => (
-                  <li key={idx} className="text-xs text-red-600 flex items-start gap-1">
+                  <li
+                    key={idx}
+                    className="text-xs text-red-600 flex items-start gap-1"
+                  >
                     <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <span>{error}</span>
                   </li>
@@ -241,7 +265,9 @@ export function AssignmentMetricsCard({ metrics }: AssignmentMetricsProps) {
       <CardContent>
         <div className="space-y-4">
           {/* Overall Status */}
-          <div className={`p-4 rounded-lg border ${getScoreBg(metrics.averageScore)}`}>
+          <div
+            className={`p-4 rounded-lg border ${getScoreBg(metrics.averageScore)}`}
+          >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Star className="h-5 w-5" />
@@ -258,8 +284,8 @@ export function AssignmentMetricsCard({ metrics }: AssignmentMetricsProps) {
               {metrics.averageScore >= 80
                 ? "Excellent driver matching with minimal issues"
                 : metrics.averageScore >= 60
-                ? "Good driver matching with some concerns"
-                : "Poor driver matching - review recommended"}
+                  ? "Good driver matching with some concerns"
+                  : "Poor driver matching - review recommended"}
             </p>
           </div>
 

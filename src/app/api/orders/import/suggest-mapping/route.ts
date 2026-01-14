@@ -1,11 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { setTenantContext, requireTenantContext } from "@/lib/tenant";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import {
+  suggestColumnMapping,
+  validateRequiredFieldsMapped,
+} from "@/lib/csv-column-mapping";
+import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import { columnMappingSuggestionRequestSchema } from "@/lib/validations/csv-column-mapping";
-import { suggestColumnMapping, validateRequiredFieldsMapped } from "@/lib/csv-column-mapping";
-import { z } from "zod";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -21,7 +24,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -41,8 +44,8 @@ export async function POST(request: NextRequest) {
           and(
             eq(csvColumnMappingTemplates.id, validatedData.templateId),
             eq(csvColumnMappingTemplates.companyId, context.companyId),
-            eq(csvColumnMappingTemplates.active, true)
-          )
+            eq(csvColumnMappingTemplates.active, true),
+          ),
         );
 
       if (template.length > 0) {
@@ -54,12 +57,12 @@ export async function POST(request: NextRequest) {
     const suggestions = suggestColumnMapping(
       validatedData.csvHeaders,
       undefined,
-      templateMapping
+      templateMapping,
     );
 
     // Validate required fields are mapped
     const requiredFieldsValidation = validateRequiredFieldsMapped(
-      suggestions.suggestedMapping
+      suggestions.suggestedMapping,
     );
 
     return NextResponse.json({
@@ -70,12 +73,12 @@ export async function POST(request: NextRequest) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Validation failed", details: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: error.message || "Failed to generate suggestions" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

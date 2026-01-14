@@ -20,6 +20,12 @@ export const driverSecondaryFleetQuerySchema = z.object({
   offset: z.coerce.number().int().nonnegative().default(0),
 });
 
-export type DriverSecondaryFleetInput = z.infer<typeof driverSecondaryFleetSchema>;
-export type UpdateDriverSecondaryFleetInput = z.infer<typeof updateDriverSecondaryFleetSchema>;
-export type DriverSecondaryFleetQuery = z.infer<typeof driverSecondaryFleetQuerySchema>;
+export type DriverSecondaryFleetInput = z.infer<
+  typeof driverSecondaryFleetSchema
+>;
+export type UpdateDriverSecondaryFleetInput = z.infer<
+  typeof updateDriverSecondaryFleetSchema
+>;
+export type DriverSecondaryFleetQuery = z.infer<
+  typeof driverSecondaryFleetQuerySchema
+>;

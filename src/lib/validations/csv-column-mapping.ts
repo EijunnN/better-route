@@ -36,15 +36,20 @@ const columnMappingEntrySchema = z.object({
 
 // Create schema
 export const csvColumnMappingTemplateSchema = z.object({
-  name: z.string().min(1, "Template name is required").max(255, "Template name too long"),
+  name: z
+    .string()
+    .min(1, "Template name is required")
+    .max(255, "Template name too long"),
   description: z.string().optional(),
   columnMapping: z.record(
     z.string().min(1, "CSV column name is required"),
     z.enum(CSV_SYSTEM_FIELDS, {
       message: `Must be one of: ${CSV_SYSTEM_FIELDS.join(", ")}`,
-    })
+    }),
   ),
-  requiredFields: z.array(z.enum(CSV_SYSTEM_FIELDS)).default([...CSV_REQUIRED_FIELDS]),
+  requiredFields: z
+    .array(z.enum(CSV_SYSTEM_FIELDS))
+    .default([...CSV_REQUIRED_FIELDS]),
   active: z.boolean().default(true),
 });
 
@@ -52,17 +57,18 @@ export const csvColumnMappingTemplateSchema = z.object({
 export const updateCsvColumnMappingTemplateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
-  columnMapping: z.record(
-    z.string().min(1),
-    z.enum(CSV_SYSTEM_FIELDS)
-  ).optional(),
+  columnMapping: z
+    .record(z.string().min(1), z.enum(CSV_SYSTEM_FIELDS))
+    .optional(),
   requiredFields: z.array(z.enum(CSV_SYSTEM_FIELDS)).optional(),
   active: z.boolean().optional(),
 });
 
 // Column mapping suggestion request schema
 export const columnMappingSuggestionRequestSchema = z.object({
-  csvHeaders: z.array(z.string().min(1)).min(1, "At least one CSV header is required"),
+  csvHeaders: z
+    .array(z.string().min(1))
+    .min(1, "At least one CSV header is required"),
   templateId: z.string().uuid("Invalid template ID").optional(),
 });
 
@@ -77,19 +83,31 @@ export const columnMappingSuggestionResponseSchema = z.object({
 });
 
 // Validate CSV import with column mapping
-export const csvImportWithMappingSchema = z.object({
-  csvContent: z.string().min(1, "CSV content is required"),
-  columnMapping: z.record(z.string(), z.enum(CSV_SYSTEM_FIELDS)).optional(),
-  templateId: z.string().uuid("Invalid template ID").optional(),
-  process: z.boolean().default(false),
-}).refine(
-  (data) => !(data.columnMapping && data.templateId),
-  "Cannot provide both columnMapping and templateId. Use one or the other."
-);
+export const csvImportWithMappingSchema = z
+  .object({
+    csvContent: z.string().min(1, "CSV content is required"),
+    columnMapping: z.record(z.string(), z.enum(CSV_SYSTEM_FIELDS)).optional(),
+    templateId: z.string().uuid("Invalid template ID").optional(),
+    process: z.boolean().default(false),
+  })
+  .refine(
+    (data) => !(data.columnMapping && data.templateId),
+    "Cannot provide both columnMapping and templateId. Use one or the other.",
+  );
 
 // Type exports
-export type CsvColumnMappingTemplateInput = z.infer<typeof csvColumnMappingTemplateSchema>;
-export type UpdateCsvColumnMappingTemplateInput = z.infer<typeof updateCsvColumnMappingTemplateSchema>;
-export type ColumnMappingSuggestionRequest = z.infer<typeof columnMappingSuggestionRequestSchema>;
-export type ColumnMappingSuggestionResponse = z.infer<typeof columnMappingSuggestionResponseSchema>;
-export type CsvImportWithMappingInput = z.infer<typeof csvImportWithMappingSchema>;
+export type CsvColumnMappingTemplateInput = z.infer<
+  typeof csvColumnMappingTemplateSchema
+>;
+export type UpdateCsvColumnMappingTemplateInput = z.infer<
+  typeof updateCsvColumnMappingTemplateSchema
+>;
+export type ColumnMappingSuggestionRequest = z.infer<
+  typeof columnMappingSuggestionRequestSchema
+>;
+export type ColumnMappingSuggestionResponse = z.infer<
+  typeof columnMappingSuggestionResponseSchema
+>;
+export type CsvImportWithMappingInput = z.infer<
+  typeof csvImportWithMappingSchema
+>;

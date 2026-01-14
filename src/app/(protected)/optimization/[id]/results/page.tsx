@@ -1,14 +1,24 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  History,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import {
+  JobProgress,
+  type OptimizationJobData,
+} from "@/components/optimization/job-progress";
 import { OptimizationResults } from "@/components/optimization/optimization-results";
-import { JobProgress, type OptimizationJobData } from "@/components/optimization/job-progress";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowLeft, AlertCircle, Clock, History, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 
 function ResultsPageContent() {
@@ -40,9 +50,12 @@ function ResultsPageContent() {
         setStartError(null);
 
         try {
-          const response = await fetch(`/api/optimization/jobs/${existingJobId}`, {
-            headers: { "x-company-id": companyId },
-          });
+          const response = await fetch(
+            `/api/optimization/jobs/${existingJobId}`,
+            {
+              headers: { "x-company-id": companyId },
+            },
+          );
 
           if (!response.ok) {
             throw new Error("Job not found");
@@ -62,7 +75,9 @@ function ResultsPageContent() {
             setStartError("Job completed but no results available");
           }
         } catch (err) {
-          setStartError(err instanceof Error ? err.message : "Failed to load job");
+          setStartError(
+            err instanceof Error ? err.message : "Failed to load job",
+          );
         } finally {
           setIsStartingJob(false);
         }
@@ -79,11 +94,14 @@ function ResultsPageContent() {
 
       try {
         // First, fetch the configuration to get vehicle and driver IDs
-        const configResponse = await fetch(`/api/optimization/configure/${configId}`, {
-          headers: {
-            "x-company-id": companyId,
+        const configResponse = await fetch(
+          `/api/optimization/configure/${configId}`,
+          {
+            headers: {
+              "x-company-id": companyId,
+            },
           },
-        });
+        );
 
         if (!configResponse.ok) {
           throw new Error("Configuration not found");
@@ -131,7 +149,9 @@ function ResultsPageContent() {
           updatedAt: new Date().toISOString(),
         });
       } catch (err) {
-        setStartError(err instanceof Error ? err.message : "Failed to start optimization");
+        setStartError(
+          err instanceof Error ? err.message : "Failed to start optimization",
+        );
       } finally {
         setIsStartingJob(false);
       }
@@ -197,12 +217,17 @@ function ResultsPageContent() {
               <div className="flex flex-col items-center gap-4">
                 <AlertCircle className="h-12 w-12 text-destructive" />
                 <p className="text-lg font-medium">Optimization Failed</p>
-                <p className="text-sm text-muted-foreground text-center">{startError}</p>
+                <p className="text-sm text-muted-foreground text-center">
+                  {startError}
+                </p>
                 <div className="flex gap-3 mt-4">
                   <Button variant="outline" onClick={handleReoptimize}>
                     Try Again
                   </Button>
-                  <Button variant="outline" onClick={() => router.push("/optimization")}>
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push("/optimization")}
+                  >
                     Back to Configuration
                   </Button>
                 </div>
@@ -242,24 +267,31 @@ function ResultsPageContent() {
                 jobData.status === "CANCELLED"
                   ? "bg-orange-500/10 text-orange-700 border-orange-500/20"
                   : jobData.status === "COMPLETED"
-                  ? "bg-green-500/10 text-green-700 border-green-500/20"
-                  : "bg-blue-500/10 text-blue-700 border-blue-500/20"
+                    ? "bg-green-500/10 text-green-700 border-green-500/20"
+                    : "bg-blue-500/10 text-blue-700 border-blue-500/20"
               }
             >
-              {jobData.status === "CANCELLED" && <Clock className="w-3 h-3 mr-1" />}
-              {jobData.status === "COMPLETED" && <CheckCircle2 className="w-3 h-3 mr-1" />}
+              {jobData.status === "CANCELLED" && (
+                <Clock className="w-3 h-3 mr-1" />
+              )}
+              {jobData.status === "COMPLETED" && (
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+              )}
               {jobData.status === "CANCELLED"
                 ? "Cancelled"
                 : jobData.status === "COMPLETED"
-                ? "Completed"
-                : jobData.status.toLowerCase()}
+                  ? "Completed"
+                  : jobData.status.toLowerCase()}
             </Badge>
           )}
         </div>
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold">Optimization Results</h1>
           {result?.isPartial && (
-            <Badge variant="outline" className="text-orange-600 border-orange-600">
+            <Badge
+              variant="outline"
+              className="text-orange-600 border-orange-600"
+            >
               Partial Results
             </Badge>
           )}
@@ -295,7 +327,13 @@ function ResultsPageContent() {
 
 export default function OptimizationResultsPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      }
+    >
       <ResultsPageContent />
     </Suspense>
   );

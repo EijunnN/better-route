@@ -1,4 +1,7 @@
-import { CSV_SYSTEM_FIELDS, CSV_REQUIRED_FIELDS } from "@/lib/validations/csv-column-mapping";
+import {
+  CSV_REQUIRED_FIELDS,
+  CSV_SYSTEM_FIELDS,
+} from "@/lib/validations/csv-column-mapping";
 
 // Extended default mapping with common variations in multiple languages
 const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
@@ -161,8 +164,8 @@ function levenshteinDistance(str1: string, str2: string): number {
       } else {
         matrix[i][j] = Math.min(
           matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
+          matrix[i][j - 1] + 1, // insertion
+          matrix[i - 1][j] + 1, // deletion
         );
       }
     }
@@ -199,7 +202,7 @@ function calculateSimilarity(str1: string, str2: string): number {
  */
 function findBestMatch(
   csvColumn: string,
-  availableFields: readonly string[] = CSV_SYSTEM_FIELDS
+  availableFields: readonly string[] = CSV_SYSTEM_FIELDS,
 ): { field: string | null; confidence: number } {
   const normalizedColumn = csvColumn.toLowerCase().trim();
 
@@ -219,8 +222,12 @@ function findBestMatch(
     // Check against the field name in different formats
     const variations = [
       field,
-      field.replace(/([A-Z])/g, "_$1").toLowerCase(), // camelCase to snake_case
-      field.replace(/([A-Z])/g, " $1").toLowerCase(), // camelCase to space-separated
+      field
+        .replace(/([A-Z])/g, "_$1")
+        .toLowerCase(), // camelCase to snake_case
+      field
+        .replace(/([A-Z])/g, " $1")
+        .toLowerCase(), // camelCase to space-separated
       field.toLowerCase(),
     ];
 
@@ -245,7 +252,7 @@ function findBestMatch(
 export function suggestColumnMapping(
   csvHeaders: string[],
   customMapping?: Record<string, string>,
-  templateMapping?: Record<string, string>
+  templateMapping?: Record<string, string>,
 ): {
   suggestedMapping: Record<string, string>;
   confidence: Record<string, number>;
@@ -274,7 +281,7 @@ export function suggestColumnMapping(
 
     // Find best match using fuzzy matching
     const availableFields = CSV_SYSTEM_FIELDS.filter(
-      (field) => !alreadyMappedFields.has(field)
+      (field) => !alreadyMappedFields.has(field),
     );
     const { field, confidence: score } = findBestMatch(header, availableFields);
 
@@ -289,10 +296,12 @@ export function suggestColumnMapping(
   // Determine unmapped fields
   const mappedFields = new Set(Object.values(suggestedMapping));
   const unmappedRequiredFields = CSV_REQUIRED_FIELDS.filter(
-    (field): field is typeof CSV_REQUIRED_FIELDS[number] => !mappedFields.has(field)
+    (field): field is (typeof CSV_REQUIRED_FIELDS)[number] =>
+      !mappedFields.has(field),
   );
   const unmappedOptionalFields = CSV_SYSTEM_FIELDS.filter(
-    (field) => !CSV_REQUIRED_FIELDS.includes(field as any) && !mappedFields.has(field)
+    (field) =>
+      !CSV_REQUIRED_FIELDS.includes(field as any) && !mappedFields.has(field),
   );
 
   return {
@@ -310,13 +319,15 @@ export function suggestColumnMapping(
  */
 export function validateRequiredFieldsMapped(
   mapping: Record<string, string>,
-  requiredFields: readonly string[] = CSV_REQUIRED_FIELDS
+  requiredFields: readonly string[] = CSV_REQUIRED_FIELDS,
 ): {
   valid: boolean;
   missingFields: string[];
 } {
   const mappedFields = new Set(Object.values(mapping));
-  const missingFields = requiredFields.filter((field) => !mappedFields.has(field));
+  const missingFields = requiredFields.filter(
+    (field) => !mappedFields.has(field),
+  );
 
   return {
     valid: missingFields.length === 0,
@@ -329,7 +340,7 @@ export function validateRequiredFieldsMapped(
  */
 export function mapCSVRow(
   row: Record<string, string>,
-  mapping: Record<string, string>
+  mapping: Record<string, string>,
 ): Record<string, string> {
   const result: Record<string, string> = {};
 

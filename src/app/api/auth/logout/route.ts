@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth";
 
 /**
@@ -11,12 +11,15 @@ export async function POST(request: NextRequest) {
     // Clear authentication cookies
     await clearAuthCookies();
 
-    return NextResponse.json({ success: true, message: "Sesión cerrada correctamente" });
+    return NextResponse.json({
+      success: true,
+      message: "Sesión cerrada correctamente",
+    });
   } catch (error) {
     console.error("Logout error:", error);
     return NextResponse.json(
       { error: "Error al cerrar sesión" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

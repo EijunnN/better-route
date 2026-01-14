@@ -1,13 +1,19 @@
 "use client";
 
+import { AlertTriangle, Clock, Search, User } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Search, User, Clock, AlertTriangle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Driver {
   id: string;
@@ -99,10 +105,14 @@ export function DriverSelector({
   }, [companyId, fleetFilter]);
 
   // Check license expiry
-  const getLicenseStatus = (expiryDate: string): "valid" | "warning" | "expired" => {
+  const getLicenseStatus = (
+    expiryDate: string,
+  ): "valid" | "warning" | "expired" => {
     const expiry = new Date(expiryDate);
     const now = new Date();
-    const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = Math.ceil(
+      (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
     if (daysUntilExpiry < 0) return "expired";
     if (daysUntilExpiry < 30) return "warning";
@@ -130,7 +140,9 @@ export function DriverSelector({
   // Handle select all
   const handleSelectAll = () => {
     const allIds = filteredDrivers.map((d) => d.id);
-    const allSelected = filteredDrivers.every((d) => selectedIds.includes(d.id));
+    const allSelected = filteredDrivers.every((d) =>
+      selectedIds.includes(d.id),
+    );
 
     if (allSelected) {
       onChange(selectedIds.filter((id) => !allIds.includes(id)));
@@ -149,14 +161,16 @@ export function DriverSelector({
   };
 
   const allFilteredSelected =
-    filteredDrivers.length > 0 && filteredDrivers.every((d) => selectedIds.includes(d.id));
+    filteredDrivers.length > 0 &&
+    filteredDrivers.every((d) => selectedIds.includes(d.id));
 
   return (
     <div className={`space-y-4 ${className}`}>
       <div>
         <Label className="text-base font-semibold">Select Drivers</Label>
         <p className="text-sm text-muted-foreground mt-1">
-          Choose the drivers that will be assigned to routes. Drivers with expired licenses are filtered out.
+          Choose the drivers that will be assigned to routes. Drivers with
+          expired licenses are filtered out.
         </p>
       </div>
 
@@ -206,7 +220,9 @@ export function DriverSelector({
             onCheckedChange={handleSelectAll}
           />
           <Label htmlFor="select-all-drivers" className="cursor-pointer">
-            {allFilteredSelected ? "Deselect all filtered" : "Select all filtered"}
+            {allFilteredSelected
+              ? "Deselect all filtered"
+              : "Select all filtered"}
             <span className="text-muted-foreground ml-2">
               ({filteredDrivers.length} drivers)
             </span>
@@ -229,17 +245,22 @@ export function DriverSelector({
           {filteredDrivers.map((driver) => {
             const licenseStatus = getLicenseStatus(driver.licenseExpiry);
             const daysUntilExpiry = Math.ceil(
-              (new Date(driver.licenseExpiry).getTime() - new Date().getTime()) /
-                (1000 * 60 * 60 * 24)
+              (new Date(driver.licenseExpiry).getTime() -
+                new Date().getTime()) /
+                (1000 * 60 * 60 * 24),
             );
 
             return (
               <Card
                 key={driver.id}
                 className={`p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
-                  selectedIds.includes(driver.id) ? "border-primary bg-primary/5" : ""
+                  selectedIds.includes(driver.id)
+                    ? "border-primary bg-primary/5"
+                    : ""
                 } ${licenseStatus === "expired" ? "opacity-50" : ""}`}
-                onClick={() => licenseStatus !== "expired" && handleToggle(driver.id)}
+                onClick={() =>
+                  licenseStatus !== "expired" && handleToggle(driver.id)
+                }
               >
                 <div className="flex items-start gap-3">
                   <Checkbox
@@ -271,7 +292,8 @@ export function DriverSelector({
                       License: {driver.licenseNumber}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Expires: {new Date(driver.licenseExpiry).toLocaleDateString()}
+                      Expires:{" "}
+                      {new Date(driver.licenseExpiry).toLocaleDateString()}
                     </p>
                     {driver.fleet && (
                       <p className="text-xs text-muted-foreground mt-1">
@@ -289,7 +311,8 @@ export function DriverSelector({
       {/* Summary */}
       <div className="p-3 bg-muted rounded-lg">
         <p className="text-sm font-medium">
-          {selectedIds.length} driver{selectedIds.length !== 1 ? "s" : ""} selected
+          {selectedIds.length} driver{selectedIds.length !== 1 ? "s" : ""}{" "}
+          selected
         </p>
       </div>
     </div>

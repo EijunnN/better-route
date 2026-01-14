@@ -1,15 +1,19 @@
 "use client";
 
+import maplibregl, {
+  LngLatBoundsLike,
+  type Map as MapLibreMap,
+  type StyleSpecification,
+} from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
-import maplibregl, { LngLatBoundsLike, Map as MapLibreMap, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { ORDER_STATUS } from "@/lib/validations/order";
+import type { ORDER_STATUS } from "@/lib/validations/order";
 
 // Using OpenStreetMap tiles (free, no API key required)
 const DEFAULT_STYLE: StyleSpecification = {
   version: 8 as const,
   sources: {
-    "osm": {
+    osm: {
       type: "raster",
       tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
       tileSize: 256,
@@ -96,7 +100,7 @@ export function OrderMap({
         new maplibregl.AttributionControl({
           compact: true,
         }),
-        "bottom-right"
+        "bottom-right",
       );
 
       // Add navigation controls
@@ -105,7 +109,7 @@ export function OrderMap({
       // Add scale control
       mapInstance.addControl(
         new maplibregl.ScaleControl({ maxWidth: 100, unit: "metric" }),
-        "bottom-left"
+        "bottom-left",
       );
 
       map.current = mapInstance;
@@ -205,7 +209,10 @@ export function OrderMap({
 
       if (features.length > 0) {
         const cluster = features[0];
-        const coordinates = (cluster.geometry as any).coordinates as [number, number];
+        const coordinates = (cluster.geometry as any).coordinates as [
+          number,
+          number,
+        ];
         const zoom = mapInstance.getZoom();
 
         mapInstance.easeTo({
@@ -304,7 +311,9 @@ export function OrderMap({
       setOrderCount(result.metadata.total);
 
       // Update map source
-      const source = mapInstance.getSource("orders") as maplibregl.GeoJSONSource;
+      const source = mapInstance.getSource(
+        "orders",
+      ) as maplibregl.GeoJSONSource;
       if (source) {
         source.setData(result);
       }

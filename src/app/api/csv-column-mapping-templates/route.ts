@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { setTenantContext, requireTenantContext } from "@/lib/tenant";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import { csvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
-import { z } from "zod";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           eq(csvColumnMappingTemplates.companyId, context.companyId),
-          eq(csvColumnMappingTemplates.active, true)
-        )
+          eq(csvColumnMappingTemplates.active, true),
+        ),
       )
       .orderBy(csvColumnMappingTemplates.createdAt);
 
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to fetch templates" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -78,14 +78,14 @@ export async function POST(request: NextRequest) {
       .where(
         and(
           eq(csvColumnMappingTemplates.companyId, context.companyId),
-          eq(csvColumnMappingTemplates.name, validatedData.name)
-        )
+          eq(csvColumnMappingTemplates.name, validatedData.name),
+        ),
       );
 
     if (existing.length > 0) {
       return NextResponse.json(
         { error: "Template with this name already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -114,12 +114,12 @@ export async function POST(request: NextRequest) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Validation failed", details: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: error.message || "Failed to create template" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

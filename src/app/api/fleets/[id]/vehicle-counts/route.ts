@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { fleets, vehicles } from "@/db/schema";
-import { eq, and, count, sql } from "drizzle-orm";
-import { withTenantFilter, TenantAccessDeniedError } from "@/db/tenant-aware";
+import { fleets, vehicleFleets, vehicles } from "@/db/schema";
+import { TenantAccessDeniedError, withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
 
 function extractTenantContext(request: NextRequest) {
@@ -25,14 +25,14 @@ function extractTenantContext(request: NextRequest) {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -49,10 +49,36 @@ export async function GET(
       .limit(1);
 
     if (!fleet) {
-      return NextResponse.json(
-        { error: "Fleet not found" },
-        { status: 404 }
+      return NextResponse.json({ error: "Fleet not found" }, { status: 404 });
+    }
+
+    // Get vehicle IDs belonging to this fleet via junction table
+    const fleetVehicleRecords = await db
+      .select({ vehicleId: vehicleFleets.vehicleId })
+      .from(vehicleFleets)
+      .where(
+        and(eq(vehicleFleets.fleetId, id), eq(vehicleFleets.active, true)),
       );
+    const vehicleIdsInFleet = fleetVehicleRecords.map((r) => r.vehicleId);
+
+    // If no vehicles in fleet, return zeros
+    if (vehicleIdsInFleet.length === 0) {
+      return NextResponse.json({
+        fleet: {
+          id: fleet.id,
+          name: fleet.name,
+        },
+        counts: {
+          total: 0,
+          byStatus: {
+            AVAILABLE: 0,
+            IN_MAINTENANCE: 0,
+            ASSIGNED: 0,
+            INACTIVE: 0,
+          },
+          utilizationRate: 0,
+        },
+      });
     }
 
     // Get vehicle counts by status for this fleet
@@ -64,10 +90,10 @@ export async function GET(
       .from(vehicles)
       .where(
         and(
-          eq(vehicles.fleetId, id),
+          inArray(vehicles.id, vehicleIdsInFleet),
           eq(vehicles.companyId, tenantCtx.companyId),
-          eq(vehicles.active, true)
-        )
+          eq(vehicles.active, true),
+        ),
       )
       .groupBy(vehicles.status);
 
@@ -77,22 +103,25 @@ export async function GET(
       .from(vehicles)
       .where(
         and(
-          eq(vehicles.fleetId, id),
+          inArray(vehicles.id, vehicleIdsInFleet),
           eq(vehicles.companyId, tenantCtx.companyId),
-          eq(vehicles.active, true)
-        )
+          eq(vehicles.active, true),
+        ),
       );
 
     // Calculate utilization metrics
-    const assignedCount = statusCounts.find((c) => c.status === "ASSIGNED")?.count || 0;
-    const availableCount = statusCounts.find((c) => c.status === "AVAILABLE")?.count || 0;
-    const inMaintenanceCount = statusCounts.find((c) => c.status === "IN_MAINTENANCE")?.count || 0;
-    const inactiveCount = statusCounts.find((c) => c.status === "INACTIVE")?.count || 0;
+    const assignedCount =
+      statusCounts.find((c) => c.status === "ASSIGNED")?.count || 0;
+    const availableCount =
+      statusCounts.find((c) => c.status === "AVAILABLE")?.count || 0;
+    const inMaintenanceCount =
+      statusCounts.find((c) => c.status === "IN_MAINTENANCE")?.count || 0;
+    const inactiveCount =
+      statusCounts.find((c) => c.status === "INACTIVE")?.count || 0;
 
     const totalVehicles = totalResult.count;
-    const utilizationRate = totalVehicles > 0
-      ? Math.round((assignedCount / totalVehicles) * 100)
-      : 0;
+    const utilizationRate =
+      totalVehicles > 0 ? Math.round((assignedCount / totalVehicles) * 100) : 0;
 
     return NextResponse.json({
       fleet: {
@@ -114,14 +143,11 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching fleet vehicle counts:", error);
     if (error instanceof TenantAccessDeniedError) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
     return NextResponse.json(
       { error: "Error fetching fleet vehicle counts" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

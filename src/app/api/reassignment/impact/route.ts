@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { setTenantContext } from "@/lib/tenant";
-import {
-  reassignmentImpactRequestSchema,
-  type ReassignmentImpactRequestSchema,
-} from "@/lib/validations/reassignment";
+import { type NextRequest, NextResponse } from "next/server";
 import {
   calculateReassignmentImpact,
   getAffectedRoutesForAbsentDriver,
 } from "@/lib/reassignment";
+import { setTenantContext } from "@/lib/tenant";
+import {
+  type ReassignmentImpactRequestSchema,
+  reassignmentImpactRequestSchema,
+} from "@/lib/validations/reassignment";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
           error: "Validation failed",
           details: validationResult.error.issues,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     if (data.companyId !== tenantCtx.companyId) {
       return NextResponse.json(
         { error: "Company ID mismatch" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const affectedRoutes = await getAffectedRoutesForAbsentDriver(
       tenantCtx.companyId,
       data.absentDriverId,
-      data.jobId
+      data.jobId,
     );
 
     // Calculate impact for the specific replacement driver
@@ -71,15 +71,21 @@ export async function POST(request: NextRequest) {
       tenantCtx.companyId,
       data.absentDriverId,
       data.replacementDriverId,
-      data.jobId
+      data.jobId,
     );
 
     return NextResponse.json({
       data: {
         ...impact,
         affectedRoutesCount: affectedRoutes.length,
-        totalAffectedStops: affectedRoutes.reduce((sum, r) => sum + r.totalStops, 0),
-        pendingAffectedStops: affectedRoutes.reduce((sum, r) => sum + r.pendingStops, 0),
+        totalAffectedStops: affectedRoutes.reduce(
+          (sum, r) => sum + r.totalStops,
+          0,
+        ),
+        pendingAffectedStops: affectedRoutes.reduce(
+          (sum, r) => sum + r.pendingStops,
+          0,
+        ),
       },
       meta: {
         absentDriverId: data.absentDriverId,
@@ -91,7 +97,7 @@ export async function POST(request: NextRequest) {
     console.error("Error calculating reassignment impact:", error);
     return NextResponse.json(
       { error: "Error calculating reassignment impact" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

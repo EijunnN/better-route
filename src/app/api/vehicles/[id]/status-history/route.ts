@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { vehicles, vehicleStatusHistory, users } from "@/db/schema";
-import { vehicleStatusHistoryQuerySchema } from "@/lib/validations/vehicle-status";
-import { eq, and, desc } from "drizzle-orm";
+import { users, vehicleStatusHistory, vehicles } from "@/db/schema";
 import { setTenantContext } from "@/lib/tenant";
+import { vehicleStatusHistoryQuerySchema } from "@/lib/validations/vehicle-status";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -23,12 +23,7 @@ async function getVehicle(id: string, companyId: string) {
   const [vehicle] = await db
     .select()
     .from(vehicles)
-    .where(
-      and(
-        eq(vehicles.id, id),
-        eq(vehicles.companyId, companyId)
-      )
-    )
+    .where(and(eq(vehicles.id, id), eq(vehicles.companyId, companyId)))
     .limit(1);
 
   return vehicle;
@@ -40,14 +35,14 @@ async function getVehicle(id: string, companyId: string) {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -57,10 +52,7 @@ export async function GET(
     const vehicle = await getVehicle(id, tenantCtx.companyId);
 
     if (!vehicle) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
     // Parse query parameters
@@ -87,8 +79,8 @@ export async function GET(
       .where(
         and(
           eq(vehicleStatusHistory.vehicleId, queryParams.vehicleId),
-          eq(vehicleStatusHistory.companyId, tenantCtx.companyId)
-        )
+          eq(vehicleStatusHistory.companyId, tenantCtx.companyId),
+        ),
       )
       .orderBy(desc(vehicleStatusHistory.createdAt))
       .limit(queryParams.limit)
@@ -101,8 +93,8 @@ export async function GET(
       .where(
         and(
           eq(vehicleStatusHistory.vehicleId, queryParams.vehicleId),
-          eq(vehicleStatusHistory.companyId, tenantCtx.companyId)
-        )
+          eq(vehicleStatusHistory.companyId, tenantCtx.companyId),
+        ),
       );
 
     const total = countResult ? 1 : 0;
@@ -118,12 +110,12 @@ export async function GET(
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Invalid query parameters", details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: "Error fetching vehicle status history" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

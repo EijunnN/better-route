@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getTenantContext } from "@/db/tenant-aware";
 import {
   getHistoricalMetrics,
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     if (!tenantContext.companyId) {
       return NextResponse.json(
         { error: "Company context required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const historical = await getHistoricalMetrics(
       tenantContext.companyId,
       safeLimit,
-      safeOffset
+      safeOffset,
     );
 
     const response: any = {
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     console.error("Error retrieving historical metrics:", error);
     return NextResponse.json(
       { error: "Internal server error", message: String(error) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

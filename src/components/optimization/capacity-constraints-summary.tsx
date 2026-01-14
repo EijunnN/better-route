@@ -1,9 +1,15 @@
 "use client";
 
+import { Loader2, Package, Users, Volume, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Package, Volume, Users, Wrench } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 interface PendingOrdersSummary {
   totalOrders: number;
@@ -116,7 +122,8 @@ export function CapacityConstraintsSummary({
       <CardHeader>
         <CardTitle>Pending Orders Summary</CardTitle>
         <CardDescription>
-          Capacity and skill requirements for {summary.totalOrders} pending orders
+          Capacity and skill requirements for {summary.totalOrders} pending
+          orders
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -134,7 +141,9 @@ export function CapacityConstraintsSummary({
             <Package className="w-5 h-5 text-blue-500" />
             <div>
               <p className="text-sm text-muted-foreground">Total Weight</p>
-              <p className="text-lg font-semibold">{summary.totalWeight.toLocaleString()} kg</p>
+              <p className="text-lg font-semibold">
+                {summary.totalWeight.toLocaleString()} kg
+              </p>
             </div>
           </div>
 
@@ -142,7 +151,9 @@ export function CapacityConstraintsSummary({
             <Volume className="w-5 h-5 text-green-500" />
             <div>
               <p className="text-sm text-muted-foreground">Total Volume</p>
-              <p className="text-lg font-semibold">{summary.totalVolume.toLocaleString()} m³</p>
+              <p className="text-lg font-semibold">
+                {summary.totalVolume.toLocaleString()} m³
+              </p>
             </div>
           </div>
 
@@ -150,7 +161,9 @@ export function CapacityConstraintsSummary({
             <Wrench className="w-5 h-5 text-orange-500" />
             <div>
               <p className="text-sm text-muted-foreground">Required Skills</p>
-              <p className="text-lg font-semibold">{summary.requiredSkills.length}</p>
+              <p className="text-lg font-semibold">
+                {summary.requiredSkills.length}
+              </p>
             </div>
           </div>
         </div>
@@ -161,12 +174,20 @@ export function CapacityConstraintsSummary({
             <h4 className="text-sm font-medium">Weight Requirements</h4>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-muted-foreground">Max single order: </span>
-                <span className="font-medium">{summary.maxWeight.toLocaleString()} kg</span>
+                <span className="text-muted-foreground">
+                  Max single order:{" "}
+                </span>
+                <span className="font-medium">
+                  {summary.maxWeight.toLocaleString()} kg
+                </span>
               </div>
               <div>
-                <span className="text-muted-foreground">Orders with weight: </span>
-                <span className="font-medium">{summary.ordersWithWeightRequirements} / {summary.totalOrders}</span>
+                <span className="text-muted-foreground">
+                  Orders with weight:{" "}
+                </span>
+                <span className="font-medium">
+                  {summary.ordersWithWeightRequirements} / {summary.totalOrders}
+                </span>
               </div>
             </div>
           </div>
@@ -178,12 +199,20 @@ export function CapacityConstraintsSummary({
             <h4 className="text-sm font-medium">Volume Requirements</h4>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-muted-foreground">Max single order: </span>
-                <span className="font-medium">{summary.maxVolume.toLocaleString()} m³</span>
+                <span className="text-muted-foreground">
+                  Max single order:{" "}
+                </span>
+                <span className="font-medium">
+                  {summary.maxVolume.toLocaleString()} m³
+                </span>
               </div>
               <div>
-                <span className="text-muted-foreground">Orders with volume: </span>
-                <span className="font-medium">{summary.ordersWithVolumeRequirements} / {summary.totalOrders}</span>
+                <span className="text-muted-foreground">
+                  Orders with volume:{" "}
+                </span>
+                <span className="font-medium">
+                  {summary.ordersWithVolumeRequirements} / {summary.totalOrders}
+                </span>
               </div>
             </div>
           </div>
@@ -198,15 +227,21 @@ export function CapacityConstraintsSummary({
                 <Badge
                   key={skill.code}
                   variant="secondary"
-                  className={skillCategoryColors[skill.category] || "bg-gray-100 text-gray-800"}
+                  className={
+                    skillCategoryColors[skill.category] ||
+                    "bg-gray-100 text-gray-800"
+                  }
                 >
                   {skill.name}
-                  <span className="ml-1 text-xs opacity-70">({skill.code})</span>
+                  <span className="ml-1 text-xs opacity-70">
+                    ({skill.code})
+                  </span>
                 </Badge>
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              Vehicles and drivers must have these skills when capacity constraints are enabled
+              Vehicles and drivers must have these skills when capacity
+              constraints are enabled
             </p>
           </div>
         )}
@@ -215,13 +250,13 @@ export function CapacityConstraintsSummary({
         {summary.ordersWithWeightRequirements === 0 &&
           summary.ordersWithVolumeRequirements === 0 &&
           summary.requiredSkills.length === 0 && (
-          <div className="p-4 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground text-center">
-              No capacity or skill requirements found in pending orders.
-              You can disable capacity constraints for faster optimization.
-            </p>
-          </div>
-        )}
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground text-center">
+                No capacity or skill requirements found in pending orders. You
+                can disable capacity constraints for faster optimization.
+              </p>
+            </div>
+          )}
       </CardContent>
     </Card>
   );

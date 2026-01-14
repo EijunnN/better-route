@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, timeWindowPresets } from "@/db/schema";
-import { updateOrderSchema } from "@/lib/validations/order";
-import { eq, and, } from "drizzle-orm";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext, requireTenantContext } from "@/lib/tenant";
-import { logUpdate, logDelete } from "@/lib/audit";
+import { logDelete, logUpdate } from "@/lib/audit";
+import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+import { updateOrderSchema } from "@/lib/validations/order";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -17,14 +17,14 @@ function extractTenantContext(request: NextRequest) {
 // GET - Single order by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -63,20 +63,15 @@ export async function GET(
         presetToleranceMinutes: timeWindowPresets.toleranceMinutes,
       })
       .from(orders)
-      .leftJoin(timeWindowPresets, eq(orders.timeWindowPresetId, timeWindowPresets.id))
-      .where(
-        and(
-          eq(orders.id, id),
-          withTenantFilter(orders, [])
-        )
+      .leftJoin(
+        timeWindowPresets,
+        eq(orders.timeWindowPresetId, timeWindowPresets.id),
       )
+      .where(and(eq(orders.id, id), withTenantFilter(orders, [])))
       .limit(1);
 
     if (result.length === 0) {
-      return NextResponse.json(
-        { error: "Order not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     const order = result[0];
@@ -85,14 +80,16 @@ export async function GET(
     const enrichedOrder = {
       ...order,
       effectiveStrictness: order.strictness || order.presetStrictness || "HARD",
-      isStrictnessOverridden: order.strictness !== null && order.strictness !== order.presetStrictness,
+      isStrictnessOverridden:
+        order.strictness !== null &&
+        order.strictness !== order.presetStrictness,
     };
 
     return NextResponse.json(enrichedOrder);
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to fetch order" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
@@ -100,14 +97,14 @@ export async function GET(
 // PATCH - Update order
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -122,23 +119,18 @@ export async function PATCH(
     const existing = await db
       .select()
       .from(orders)
-      .where(
-        and(
-          eq(orders.id, id),
-          eq(orders.companyId, context.companyId)
-        )
-      )
+      .where(and(eq(orders.id, id), eq(orders.companyId, context.companyId)))
       .limit(1);
 
     if (existing.length === 0) {
-      return NextResponse.json(
-        { error: "Order not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     // If updating tracking ID, check for uniqueness
-    if (validatedData.trackingId && validatedData.trackingId !== existing[0].trackingId) {
+    if (
+      validatedData.trackingId &&
+      validatedData.trackingId !== existing[0].trackingId
+    ) {
       const duplicate = await db
         .select()
         .from(orders)
@@ -146,15 +138,15 @@ export async function PATCH(
           and(
             eq(orders.companyId, context.companyId),
             eq(orders.trackingId, validatedData.trackingId),
-            eq(orders.active, true)
-          )
+            eq(orders.active, true),
+          ),
         )
         .limit(1);
 
       if (duplicate.length > 0) {
         return NextResponse.json(
           { error: "An order with this tracking ID already exists" },
-          { status: 409 }
+          { status: 409 },
         );
       }
     }
@@ -168,15 +160,15 @@ export async function PATCH(
           and(
             eq(timeWindowPresets.id, validatedData.timeWindowPresetId),
             eq(timeWindowPresets.companyId, context.companyId),
-            eq(timeWindowPresets.active, true)
-          )
+            eq(timeWindowPresets.active, true),
+          ),
         )
         .limit(1);
 
       if (preset.length === 0) {
         return NextResponse.json(
           { error: "Time window preset not found or inactive" },
-          { status: 404 }
+          { status: 404 },
         );
       }
     }
@@ -200,12 +192,12 @@ export async function PATCH(
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Validation failed", details: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: error.message || "Failed to update order" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -213,14 +205,14 @@ export async function PATCH(
 // DELETE - Soft delete order
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -233,19 +225,11 @@ export async function DELETE(
     const existing = await db
       .select()
       .from(orders)
-      .where(
-        and(
-          eq(orders.id, id),
-          eq(orders.companyId, context.companyId)
-        )
-      )
+      .where(and(eq(orders.id, id), eq(orders.companyId, context.companyId)))
       .limit(1);
 
     if (existing.length === 0) {
-      return NextResponse.json(
-        { error: "Order not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     // Soft delete by setting active to false
@@ -264,7 +248,7 @@ export async function DELETE(
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to delete order" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

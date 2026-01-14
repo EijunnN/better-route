@@ -1,4 +1,4 @@
-import { fleets, vehicles } from "@/db/schema";
+import type { fleets, vehicles } from "@/db/schema";
 
 // Type inference for Drizzle ORM tables
 type FleetRecord = typeof fleets.$inferSelect;
@@ -16,7 +16,7 @@ export interface CompatibilityResult {
  */
 export function validateVehicleFleetCompatibility(
   vehicle: Partial<VehicleRecord>,
-  fleet: FleetRecord
+  fleet: FleetRecord,
 ): CompatibilityResult {
   const result: CompatibilityResult = {
     compatible: true,
@@ -27,7 +27,7 @@ export function validateVehicleFleetCompatibility(
   // Check if vehicle type is compatible with fleet type
   const vehicleTypeCompatibility = checkVehicleTypeCompatibility(
     vehicle.type,
-    fleet.type
+    fleet.type,
   );
   if (!vehicleTypeCompatibility.compatible) {
     result.compatible = false;
@@ -55,10 +55,11 @@ export function validateVehicleFleetCompatibility(
  * Checks if vehicle type is compatible with fleet type
  */
 function checkVehicleTypeCompatibility(
-  vehicleType: string | undefined,
-  fleetType: string
+  vehicleType: string | null | undefined,
+  fleetType: string | null | undefined,
 ): { compatible: boolean; reason?: string } {
-  if (!vehicleType) {
+  // If either type is not set, compatibility check is skipped
+  if (!vehicleType || !fleetType) {
     return { compatible: true };
   }
 
@@ -87,46 +88,58 @@ function checkVehicleTypeCompatibility(
  */
 function checkCapacityCompatibility(
   vehicle: Partial<VehicleRecord>,
-  fleet: FleetRecord
+  fleet: FleetRecord,
 ): { compatible: boolean; errors: string[]; warnings: string[] } {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Vehicle should not exceed fleet's max capacity
+  // Skip capacity checks if fleet capacities are not set (legacy/optional)
+  const fleetWeightCapacity = fleet.weightCapacity ?? 0;
+  const fleetVolumeCapacity = fleet.volumeCapacity ?? 0;
+
+  // Vehicle should not exceed fleet's max capacity (if fleet capacity is set)
   if (
+    fleetWeightCapacity > 0 &&
     vehicle.weightCapacity !== undefined &&
-    vehicle.weightCapacity > fleet.weightCapacity
+    vehicle.weightCapacity !== null &&
+    vehicle.weightCapacity > fleetWeightCapacity
   ) {
     errors.push(
-      `Capacidad de peso del vehículo (${vehicle.weightCapacity}kg) excede la capacidad de la flota (${fleet.weightCapacity}kg)`
+      `Capacidad de peso del vehículo (${vehicle.weightCapacity}kg) excede la capacidad de la flota (${fleetWeightCapacity}kg)`,
     );
   }
 
   if (
+    fleetVolumeCapacity > 0 &&
     vehicle.volumeCapacity !== undefined &&
-    vehicle.volumeCapacity > fleet.volumeCapacity
+    vehicle.volumeCapacity !== null &&
+    vehicle.volumeCapacity > fleetVolumeCapacity
   ) {
     errors.push(
-      `Capacidad de volumen del vehículo (${vehicle.volumeCapacity}m³) excede la capacidad de la flota (${fleet.volumeCapacity}m³)`
+      `Capacidad de volumen del vehículo (${vehicle.volumeCapacity}m³) excede la capacidad de la flota (${fleetVolumeCapacity}m³)`,
     );
   }
 
-  // Warning if vehicle is significantly underutilized
+  // Warning if vehicle is significantly underutilized (only if fleet capacity is set)
   if (
+    fleetWeightCapacity > 0 &&
     vehicle.weightCapacity !== undefined &&
-    vehicle.weightCapacity < fleet.weightCapacity * 0.5
+    vehicle.weightCapacity !== null &&
+    vehicle.weightCapacity < fleetWeightCapacity * 0.5
   ) {
     warnings.push(
-      `Capacidad de peso del vehículo es significativamente menor que la capacidad de la flota`
+      `Capacidad de peso del vehículo es significativamente menor que la capacidad de la flota`,
     );
   }
 
   if (
+    fleetVolumeCapacity > 0 &&
     vehicle.volumeCapacity !== undefined &&
-    vehicle.volumeCapacity < fleet.volumeCapacity * 0.5
+    vehicle.volumeCapacity !== null &&
+    vehicle.volumeCapacity < fleetVolumeCapacity * 0.5
   ) {
     warnings.push(
-      `Capacidad de volumen del vehículo es significativamente menor que la capacidad de la flota`
+      `Capacidad de volumen del vehículo es significativamente menor que la capacidad de la flota`,
     );
   }
 
@@ -142,21 +155,26 @@ function checkCapacityCompatibility(
  */
 function checkFeatureCompatibility(
   vehicle: Partial<VehicleRecord>,
-  fleet: FleetRecord
+  fleet: FleetRecord,
 ): { warnings: string[] } {
   const warnings: string[] = [];
+
+  // Skip feature compatibility checks if fleet type is not set
+  if (!fleet.type) {
+    return { warnings };
+  }
 
   // Refrigerated vehicle should ideally be in REFRIGERATED fleet
   if (vehicle.refrigerated && fleet.type !== "REFRIGERATED") {
     warnings.push(
-      "Vehículo refrigerado podría funcionar mejor en una flota tipo REFRIGERATED"
+      "Vehículo refrigerado podría funcionar mejor en una flota tipo REFRIGERATED",
     );
   }
 
   // Heated vehicle might be better in REFRIGERATED or SPECIAL fleet
   if (vehicle.heated && !["REFRIGERATED", "SPECIAL"].includes(fleet.type)) {
     warnings.push(
-      "Vehículo con calefacción podría funcionar mejor en una flota tipo REFRIGERATED o SPECIAL"
+      "Vehículo con calefacción podría funcionar mejor en una flota tipo REFRIGERATED o SPECIAL",
     );
   }
 

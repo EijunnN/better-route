@@ -5,7 +5,7 @@
  * following the requirements of Story 14.2.
  */
 
-import { AuthenticatedUser, USER_ROLES } from "./auth-api";
+import { type AuthenticatedUser, USER_ROLES } from "./auth-api";
 
 /**
  * Entity types in the system
@@ -173,7 +173,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
 export function hasPermission(
   user: AuthenticatedUser,
   entity: EntityType,
-  action: Action
+  action: Action,
 ): boolean {
   const permissions = ROLE_PERMISSIONS[user.role] || [];
 
@@ -192,7 +192,7 @@ export function hasPermission(
  */
 export function hasAnyPermission(
   user: AuthenticatedUser,
-  permissions: Permission[]
+  permissions: Permission[],
 ): boolean {
   return permissions.some((permission) => {
     const [entity, action] = permission.split(":") as [EntityType, Action];
@@ -207,7 +207,7 @@ export function hasAnyPermission(
 export function requirePermission(
   user: AuthenticatedUser,
   entity: EntityType,
-  action: Action
+  action: Action,
 ): void {
   if (!hasPermission(user, entity, action)) {
     throw new AuthorizationError(user, entity, action);
@@ -231,13 +231,9 @@ export class AuthorizationError extends Error {
   public readonly action: Action;
   public readonly code = "AUTHORIZATION_ERROR";
 
-  constructor(
-    user: AuthenticatedUser,
-    entityType: EntityType,
-    action: Action
-  ) {
+  constructor(user: AuthenticatedUser, entityType: EntityType, action: Action) {
     super(
-      `User ${user.userId} with role ${user.role} does not have permission to ${action} ${entityType}`
+      `User ${user.userId} with role ${user.role} does not have permission to ${action} ${entityType}`,
     );
     this.name = "AuthorizationError";
     this.userId = user.userId;
@@ -273,7 +269,7 @@ export interface PermissionCheckResult {
 export function checkPermission(
   user: AuthenticatedUser,
   entity: EntityType,
-  action: Action
+  action: Action,
 ): PermissionCheckResult {
   const allowed = hasPermission(user, entity, action);
   const requiresConfirmation = allowed && isSensitiveAction(action);
@@ -292,7 +288,9 @@ export function checkPermission(
 /**
  * Create an API response for authorization error
  */
-export function createAuthorizationErrorResponse(error: AuthorizationError): Response {
+export function createAuthorizationErrorResponse(
+  error: AuthorizationError,
+): Response {
   return new Response(JSON.stringify(error.toJSON()), {
     status: 403,
     headers: { "Content-Type": "application/json" },
@@ -329,7 +327,7 @@ export function authorize(
   user: AuthenticatedUser,
   entity: EntityType,
   action: Action,
-  resourceOwnerId?: string
+  resourceOwnerId?: string,
 ): boolean {
   // Admins have full access
   if (isAdmin(user)) {

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-api";
-import { getUserSessions } from "@/lib/session";
 import { authorize } from "@/lib/authorization";
+import { getUserSessions } from "@/lib/session";
 
 /**
  * GET /api/auth/sessions
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to get sessions" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 }

@@ -5,17 +5,17 @@
  * authentication, authorization, and audit logging consistently.
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, type AuthenticatedUser } from "./auth-api";
+import { type NextRequest, NextResponse } from "next/server";
+import { logCreate, logDelete, logUpdate } from "./audit";
+import { type AuthenticatedUser, getAuthenticatedUser } from "./auth-api";
 import {
-  EntityType,
   Action,
-  requirePermission,
   checkPermission,
+  type EntityType,
   isSensitiveAction,
   type PermissionCheckResult,
+  requirePermission,
 } from "./authorization";
-import { logCreate, logUpdate, logDelete } from "./audit";
 
 /**
  * Middleware result type
@@ -35,26 +35,31 @@ export interface AuthenticatedRequest extends NextRequest {
  * Wrap an API handler with authentication requirement
  */
 export function withAuth(
-  handler: (request: AuthenticatedRequest) => Promise<NextResponse> | NextResponse
+  handler: (
+    request: AuthenticatedRequest,
+  ) => Promise<NextResponse> | NextResponse,
 ): (request: NextRequest) => Promise<NextResponse> {
   return async (request: NextRequest) => {
     try {
       const user = await getAuthenticatedUser(request);
-      // @ts-ignore - adding user to request
+      // @ts-expect-error - adding user to request
       request.user = user;
       return await handler(request as AuthenticatedRequest);
     } catch (error) {
       if (error instanceof Error) {
-        if (error.message === "Unauthorized" || error.message.includes("UNAUTHORIZED")) {
+        if (
+          error.message === "Unauthorized" ||
+          error.message.includes("UNAUTHORIZED")
+        ) {
           return NextResponse.json(
             { error: "Authentication required", code: "AUTH_REQUIRED" },
-            { status: 401 }
+            { status: 401 },
           );
         }
       }
       return NextResponse.json(
         { error: "Authentication failed", code: "AUTH_FAILED" },
-        { status: 401 }
+        { status: 401 },
       );
     }
   };
@@ -66,7 +71,9 @@ export function withAuth(
 export function withPermission(
   entity: EntityType,
   action: Action,
-  handler: (request: AuthenticatedRequest) => Promise<NextResponse> | NextResponse
+  handler: (
+    request: AuthenticatedRequest,
+  ) => Promise<NextResponse> | NextResponse,
 ): (request: NextRequest) => Promise<NextResponse> {
   return withAuth(async (request: AuthenticatedRequest) => {
     try {
@@ -87,7 +94,7 @@ export function withPermission(
 export function checkPermissions(
   user: AuthenticatedUser,
   entity: EntityType,
-  action: Action
+  action: Action,
 ): PermissionCheckResult {
   return checkPermission(user, entity, action);
 }
@@ -107,7 +114,9 @@ export interface AuditLogOptions {
  */
 export function withAuditLog(
   options: AuditLogOptions,
-  handler: (request: AuthenticatedRequest) => Promise<NextResponse> | NextResponse
+  handler: (
+    request: AuthenticatedRequest,
+  ) => Promise<NextResponse> | NextResponse,
 ): (request: AuthenticatedRequest) => Promise<NextResponse> {
   return async (request: AuthenticatedRequest) => {
     const response = await handler(request);
@@ -122,13 +131,25 @@ export function withAuditLog(
       // Determine log type based on action
       switch (auditAction) {
         case Action.CREATE:
-          await logCreate(options.entityType, options.entityId || "unknown", changes);
+          await logCreate(
+            options.entityType,
+            options.entityId || "unknown",
+            changes,
+          );
           break;
         case Action.UPDATE:
-          await logUpdate(options.entityType, options.entityId || "unknown", changes);
+          await logUpdate(
+            options.entityType,
+            options.entityId || "unknown",
+            changes,
+          );
           break;
         case Action.DELETE:
-          await logDelete(options.entityType, options.entityId || "unknown", changes);
+          await logDelete(
+            options.entityType,
+            options.entityId || "unknown",
+            changes,
+          );
           break;
       }
     }
@@ -143,7 +164,9 @@ export function withAuditLog(
 export function withAuthAndAudit(
   entity: EntityType,
   action: Action,
-  handler: (request: AuthenticatedRequest) => Promise<NextResponse> | NextResponse
+  handler: (
+    request: AuthenticatedRequest,
+  ) => Promise<NextResponse> | NextResponse,
 ): (request: NextRequest) => Promise<NextResponse> {
   return withAuth(async (request: AuthenticatedRequest) => {
     try {
@@ -196,7 +219,9 @@ export async function hasConfirmation(request: NextRequest): Promise<boolean> {
 /**
  * Require confirmation for sensitive actions
  */
-export async function requireConfirmation(request: NextRequest): Promise<boolean> {
+export async function requireConfirmation(
+  request: NextRequest,
+): Promise<boolean> {
   return await hasConfirmation(request);
 }
 
@@ -207,8 +232,12 @@ export async function validateSensitiveAction(
   user: AuthenticatedUser,
   entity: EntityType,
   action: Action,
-  request: NextRequest
-): Promise<{ allowed: boolean; requiresConfirmation: boolean; confirmed: boolean }> {
+  request: NextRequest,
+): Promise<{
+  allowed: boolean;
+  requiresConfirmation: boolean;
+  confirmed: boolean;
+}> {
   const check = checkPermission(user, entity, action);
 
   if (!check.allowed) {
@@ -226,7 +255,10 @@ export async function validateSensitiveAction(
 /**
  * Response for actions requiring confirmation
  */
-export function createConfirmationRequiredResponse(entity: EntityType, action: Action): NextResponse {
+export function createConfirmationRequiredResponse(
+  entity: EntityType,
+  action: Action,
+): NextResponse {
   return NextResponse.json(
     {
       error: "Confirmation required",
@@ -235,13 +267,15 @@ export function createConfirmationRequiredResponse(entity: EntityType, action: A
       action,
       message: `This action requires confirmation. Please confirm by sending { confirmed: true } in your request body.`,
     },
-    { status: 400 }
+    { status: 400 },
   );
 }
 
 /**
  * Extract authenticated user from request (after withAuth middleware)
  */
-export function getUserFromRequest(request: AuthenticatedRequest): AuthenticatedUser {
+export function getUserFromRequest(
+  request: AuthenticatedRequest,
+): AuthenticatedUser {
   return request.user;
 }

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { routeStopHistory, routeStops } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { eq, and, desc } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -15,11 +15,14 @@ function extractTenantContext(request: NextRequest) {
 // GET - Get history for a specific stop
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -28,10 +31,7 @@ export async function GET(
   try {
     // Verify stop exists and belongs to tenant
     const stop = await db.query.routeStops.findFirst({
-      where: and(
-        eq(routeStops.id, stopId),
-        withTenantFilter(routeStops)
-      ),
+      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops)),
     });
 
     if (!stop) {
@@ -61,7 +61,7 @@ export async function GET(
     console.error("Error fetching stop history:", error);
     return NextResponse.json(
       { error: "Failed to fetch stop history" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

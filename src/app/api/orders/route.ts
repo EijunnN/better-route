@@ -1,14 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, like, or } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, timeWindowPresets } from "@/db/schema";
-import {
-  orderSchema,
-  orderQuerySchema,
-} from "@/lib/validations/order";
-import { eq, and, desc, like, or } from "drizzle-orm";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext, requireTenantContext } from "@/lib/tenant";
-import { logCreate, logUpdate, logDelete } from "@/lib/audit";
+import { logCreate, logDelete, logUpdate } from "@/lib/audit";
+import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+import { orderQuerySchema, orderSchema } from "@/lib/validations/order";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -24,16 +21,14 @@ export async function GET(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     setTenantContext(tenantCtx);
 
     const { searchParams } = new URL(request.url);
-    const query = orderQuerySchema.parse(
-      Object.fromEntries(searchParams)
-    );
+    const query = orderQuerySchema.parse(Object.fromEntries(searchParams));
 
     const conditions = [];
 
@@ -52,7 +47,7 @@ export async function GET(request: NextRequest) {
     if (query.search) {
       const searchCondition = or(
         like(orders.trackingId, `%${query.search}%`),
-        like(orders.customerName || "", `%${query.search}%`)
+        like(orders.customerName || "", `%${query.search}%`),
       );
       if (searchCondition) conditions.push(searchCondition);
     }
@@ -86,7 +81,10 @@ export async function GET(request: NextRequest) {
         presetName: timeWindowPresets.name,
       })
       .from(orders)
-      .leftJoin(timeWindowPresets, eq(orders.timeWindowPresetId, timeWindowPresets.id))
+      .leftJoin(
+        timeWindowPresets,
+        eq(orders.timeWindowPresetId, timeWindowPresets.id),
+      )
       .where(whereClause)
       .orderBy(desc(orders.createdAt))
       .limit(query.limit)
@@ -101,7 +99,9 @@ export async function GET(request: NextRequest) {
     const enrichedData = data.map((order) => ({
       ...order,
       effectiveStrictness: order.strictness || order.presetStrictness || "HARD",
-      isStrictnessOverridden: order.strictness !== null && order.strictness !== order.presetStrictness,
+      isStrictnessOverridden:
+        order.strictness !== null &&
+        order.strictness !== order.presetStrictness,
     }));
 
     return NextResponse.json({
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to fetch orders" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -141,15 +141,15 @@ export async function POST(request: NextRequest) {
         and(
           eq(orders.companyId, context.companyId),
           eq(orders.trackingId, validatedData.trackingId),
-          eq(orders.active, true)
-        )
+          eq(orders.active, true),
+        ),
       )
       .limit(1);
 
     if (existing.length > 0) {
       return NextResponse.json(
         { error: "An order with this tracking ID already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -162,15 +162,15 @@ export async function POST(request: NextRequest) {
           and(
             eq(timeWindowPresets.id, validatedData.timeWindowPresetId),
             eq(timeWindowPresets.companyId, context.companyId),
-            eq(timeWindowPresets.active, true)
-          )
+            eq(timeWindowPresets.active, true),
+          ),
         )
         .limit(1);
 
       if (preset.length === 0) {
         return NextResponse.json(
           { error: "Time window preset not found or inactive" },
-          { status: 404 }
+          { status: 404 },
         );
       }
     }
@@ -194,12 +194,12 @@ export async function POST(request: NextRequest) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Validation failed", details: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: error.message || "Failed to create order" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

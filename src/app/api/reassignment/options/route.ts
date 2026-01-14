@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { setTenantContext } from "@/lib/tenant";
-import {
-  availableReplacementsSchema,
-  type AvailableReplacementsSchema,
-} from "@/lib/validations/reassignment";
+import { type NextRequest, NextResponse } from "next/server";
 import {
   generateReassignmentOptions,
   getAffectedRoutesForAbsentDriver,
 } from "@/lib/reassignment";
+import { setTenantContext } from "@/lib/tenant";
+import {
+  type AvailableReplacementsSchema,
+  availableReplacementsSchema,
+} from "@/lib/validations/reassignment";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
           error: "Validation failed",
           details: validationResult.error.issues,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     if (data.companyId !== tenantCtx.companyId) {
       return NextResponse.json(
         { error: "Company ID mismatch" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const affectedRoutes = await getAffectedRoutesForAbsentDriver(
       tenantCtx.companyId,
       data.absentDriverId,
-      data.jobId
+      data.jobId,
     );
 
     if (affectedRoutes.length === 0) {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       data.absentDriverId,
       data.strategy,
       data.jobId,
-      data.limit
+      data.limit,
     );
 
     return NextResponse.json({
@@ -94,10 +94,16 @@ export async function POST(request: NextRequest) {
         strategy: data.strategy,
         affectedRoutes: affectedRoutes.length,
         totalStops: affectedRoutes.reduce((sum, r) => sum + r.totalStops, 0),
-        pendingStops: affectedRoutes.reduce((sum, r) => sum + r.pendingStops, 0),
-        inProgressStops: affectedRoutes.reduce((sum, r) => sum + r.inProgressStops, 0),
+        pendingStops: affectedRoutes.reduce(
+          (sum, r) => sum + r.pendingStops,
+          0,
+        ),
+        inProgressStops: affectedRoutes.reduce(
+          (sum, r) => sum + r.inProgressStops,
+          0,
+        ),
         optionsGenerated: options.length,
-        affectedRoutesSummary: affectedRoutes.map(r => ({
+        affectedRoutesSummary: affectedRoutes.map((r) => ({
           routeId: r.routeId,
           vehiclePlate: r.vehiclePlate,
           pendingStops: r.pendingStops,
@@ -109,7 +115,7 @@ export async function POST(request: NextRequest) {
     console.error("Error generating reassignment options:", error);
     return NextResponse.json(
       { error: "Error generating reassignment options" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

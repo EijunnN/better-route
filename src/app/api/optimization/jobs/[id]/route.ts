@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/tenant";
 import { cancelJob as cancelJobQueue } from "@/lib/job-queue";
-import { eq, and } from "drizzle-orm";
+import { setTenantContext } from "@/lib/tenant";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -16,11 +16,14 @@ function extractTenantContext(request: NextRequest) {
 // GET - Get job status
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -30,7 +33,7 @@ export async function GET(
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
         eq(optimizationJobs.id, id),
-        withTenantFilter(optimizationJobs)
+        withTenantFilter(optimizationJobs),
       ),
     });
 
@@ -69,7 +72,7 @@ export async function GET(
     console.error("Error fetching job status:", error);
     return NextResponse.json(
       { error: "Failed to fetch job status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -77,11 +80,14 @@ export async function GET(
 // DELETE - Cancel running job
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -92,7 +98,7 @@ export async function DELETE(
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
         eq(optimizationJobs.id, id),
-        withTenantFilter(optimizationJobs)
+        withTenantFilter(optimizationJobs),
       ),
     });
 
@@ -107,7 +113,7 @@ export async function DELETE(
           error: "Job cannot be cancelled",
           reason: `Job is in ${job.status} state`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -117,7 +123,7 @@ export async function DELETE(
     if (!cancelled) {
       return NextResponse.json(
         { error: "Failed to cancel job - job may have already completed" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -132,7 +138,7 @@ export async function DELETE(
     console.error("Error cancelling job:", error);
     return NextResponse.json(
       { error: "Failed to cancel job" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

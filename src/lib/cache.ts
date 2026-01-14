@@ -122,7 +122,7 @@ function getRedisClient(): Redis {
 
     if (!url || !token) {
       throw new Error(
-        "Upstash Redis credentials not configured. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables."
+        "Upstash Redis credentials not configured. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.",
       );
     }
 
@@ -155,7 +155,10 @@ export async function isRedisAvailable(): Promise<boolean> {
     return true;
   } catch (error) {
     redisAvailable = false;
-    console.warn("[Cache] Redis unavailable:", error instanceof Error ? error.message : error);
+    console.warn(
+      "[Cache] Redis unavailable:",
+      error instanceof Error ? error.message : error,
+    );
 
     // Schedule reconnection attempt
     if (!reconnectTimeout) {
@@ -174,7 +177,7 @@ export async function isRedisAvailable(): Promise<boolean> {
  */
 async function withRedisFallback<T>(
   operation: (redis: Redis) => Promise<T>,
-  fallback: () => T
+  fallback: () => T,
 ): Promise<T> {
   try {
     if (!(await isRedisAvailable())) {
@@ -184,7 +187,10 @@ async function withRedisFallback<T>(
     const redis = getRedisClient();
     return await operation(redis);
   } catch (error) {
-    console.warn("[Cache] Redis operation failed:", error instanceof Error ? error.message : error);
+    console.warn(
+      "[Cache] Redis operation failed:",
+      error instanceof Error ? error.message : error,
+    );
     return fallback();
   }
 }
@@ -283,24 +289,27 @@ export function getCacheHitRate(): number {
  * @returns Cached value or null if not found
  */
 export async function cacheGet<T>(key: string): Promise<T | null> {
-  return withRedisFallback(async (redis) => {
-    const value = await redis.get<string>(key);
+  return withRedisFallback(
+    async (redis) => {
+      const value = await redis.get<string>(key);
 
-    if (value === null) {
+      if (value === null) {
+        recordMiss();
+        return null;
+      }
+
+      recordHit();
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        return value as T;
+      }
+    },
+    () => {
       recordMiss();
       return null;
-    }
-
-    recordHit();
-    try {
-      return JSON.parse(value) as T;
-    } catch {
-      return value as T;
-    }
-  }, () => {
-    recordMiss();
-    return null;
-  });
+    },
+  );
 }
 
 /**
@@ -310,14 +319,22 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
  * @param value - Value to cache
  * @param ttl - Cache TTL in seconds
  */
-export async function cacheSet<T>(key: string, value: T, ttl: number): Promise<void> {
-  return withRedisFallback(async (redis) => {
-    const serialized = typeof value === "string" ? value : JSON.stringify(value);
-    await redis.set(key, serialized, { ex: ttl });
-    recordSet();
-  }, () => {
-    // Silent fallback - cache is optional
-  });
+export async function cacheSet<T>(
+  key: string,
+  value: T,
+  ttl: number,
+): Promise<void> {
+  return withRedisFallback(
+    async (redis) => {
+      const serialized =
+        typeof value === "string" ? value : JSON.stringify(value);
+      await redis.set(key, serialized, { ex: ttl });
+      recordSet();
+    },
+    () => {
+      // Silent fallback - cache is optional
+    },
+  );
 }
 
 /**
@@ -326,12 +343,15 @@ export async function cacheSet<T>(key: string, value: T, ttl: number): Promise<v
  * @param key - Cache key
  */
 export async function cacheDelete(key: string): Promise<void> {
-  return withRedisFallback(async (redis) => {
-    await redis.del(key);
-    recordDelete();
-  }, () => {
-    // Silent fallback
-  });
+  return withRedisFallback(
+    async (redis) => {
+      await redis.del(key);
+      recordDelete();
+    },
+    () => {
+      // Silent fallback
+    },
+  );
 }
 
 /**
@@ -340,26 +360,32 @@ export async function cacheDelete(key: string): Promise<void> {
  * @param pattern - Key pattern (e.g., "user:v1:*")
  */
 export async function cacheDeletePattern(pattern: string): Promise<void> {
-  return withRedisFallback(async (redis) => {
-    // Scan for keys matching pattern
-    let cursor: string | number = "0";
-    const keys: string[] = [];
+  return withRedisFallback(
+    async (redis) => {
+      // Scan for keys matching pattern
+      let cursor: string | number = "0";
+      const keys: string[] = [];
 
-    do {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const scanResult: any = await redis.scan(cursor, { match: pattern, count: 100 });
-      cursor = scanResult[0];
-      keys.push(...(scanResult[1] || []));
-    } while (cursor !== 0);
+      do {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const scanResult: any = await redis.scan(cursor, {
+          match: pattern,
+          count: 100,
+        });
+        cursor = scanResult[0];
+        keys.push(...(scanResult[1] || []));
+      } while (cursor !== 0);
 
-    // Delete all matching keys
-    if (keys.length > 0) {
-      await redis.del(...keys);
-      recordDelete();
-    }
-  }, () => {
-    // Silent fallback
-  });
+      // Delete all matching keys
+      if (keys.length > 0) {
+        await redis.del(...keys);
+        recordDelete();
+      }
+    },
+    () => {
+      // Silent fallback
+    },
+  );
 }
 
 /**
@@ -373,7 +399,7 @@ export async function cacheDeletePattern(pattern: string): Promise<void> {
 export async function cacheGetOrSet<T>(
   key: string,
   factory: () => Promise<T> | T,
-  ttl: number
+  ttl: number,
 ): Promise<T> {
   // Try to get from cache
   const cached = await cacheGet<T>(key);
@@ -422,7 +448,9 @@ function geocodingCacheKey(address: string): string {
  * @param address - Address string
  * @returns Geocoding result or null
  */
-export async function getGeocodingFromCache(address: string): Promise<GeocodingResult | null> {
+export async function getGeocodingFromCache(
+  address: string,
+): Promise<GeocodingResult | null> {
   return cacheGet<GeocodingResult>(geocodingCacheKey(address));
 }
 
@@ -432,7 +460,10 @@ export async function getGeocodingFromCache(address: string): Promise<GeocodingR
  * @param address - Address string
  * @param result - Geocoding result
  */
-export async function setGeocodingCache(address: string, result: GeocodingResult): Promise<void> {
+export async function setGeocodingCache(
+  address: string,
+  result: GeocodingResult,
+): Promise<void> {
   await cacheSet(geocodingCacheKey(address), result, CACHE_TTL.GEOCODING);
 }
 
@@ -467,7 +498,11 @@ export async function getVehicleSkillsCache(): Promise<unknown | null> {
  * Set vehicle skills catalog in cache
  */
 export async function setVehicleSkillsCache(skills: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.VEHICLE_SKILLS}all`, skills, CACHE_TTL.REFERENCE_DATA);
+  await cacheSet(
+    `${CACHE_PREFIXES.VEHICLE_SKILLS}all`,
+    skills,
+    CACHE_TTL.REFERENCE_DATA,
+  );
 }
 
 /**
@@ -487,8 +522,14 @@ export async function getTimeWindowPresetsCache(): Promise<unknown | null> {
 /**
  * Set time window presets in cache
  */
-export async function setTimeWindowPresetsCache(presets: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.TIME_WINDOW_PRESETS}all`, presets, CACHE_TTL.REFERENCE_DATA);
+export async function setTimeWindowPresetsCache(
+  presets: unknown,
+): Promise<void> {
+  await cacheSet(
+    `${CACHE_PREFIXES.TIME_WINDOW_PRESETS}all`,
+    presets,
+    CACHE_TTL.REFERENCE_DATA,
+  );
 }
 
 /**
@@ -509,7 +550,11 @@ export async function getAlertRulesCache(): Promise<unknown | null> {
  * Set alert rules in cache
  */
 export async function setAlertRulesCache(rules: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.ALERT_RULES}all`, rules, CACHE_TTL.REFERENCE_DATA);
+  await cacheSet(
+    `${CACHE_PREFIXES.ALERT_RULES}all`,
+    rules,
+    CACHE_TTL.REFERENCE_DATA,
+  );
 }
 
 /**
@@ -528,7 +573,9 @@ export async function invalidateAlertRulesCache(): Promise<void> {
  *
  * @param userId - User ID
  */
-export async function getUserProfileCache(userId: string): Promise<unknown | null> {
+export async function getUserProfileCache(
+  userId: string,
+): Promise<unknown | null> {
   return cacheGet(`${CACHE_PREFIXES.USER_PROFILE}${userId}`);
 }
 
@@ -538,8 +585,15 @@ export async function getUserProfileCache(userId: string): Promise<unknown | nul
  * @param userId - User ID
  * @param profile - User profile data
  */
-export async function setUserProfileCache(userId: string, profile: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.USER_PROFILE}${userId}`, profile, CACHE_TTL.USER_DATA);
+export async function setUserProfileCache(
+  userId: string,
+  profile: unknown,
+): Promise<void> {
+  await cacheSet(
+    `${CACHE_PREFIXES.USER_PROFILE}${userId}`,
+    profile,
+    CACHE_TTL.USER_DATA,
+  );
 }
 
 /**
@@ -562,7 +616,9 @@ export async function invalidateUserCache(userId: string): Promise<void> {
  *
  * @param fleetId - Fleet ID
  */
-export async function getFleetVehiclesCache(fleetId: string): Promise<unknown | null> {
+export async function getFleetVehiclesCache(
+  fleetId: string,
+): Promise<unknown | null> {
   return cacheGet(`${CACHE_PREFIXES.FLEET_VEHICLES}${fleetId}`);
 }
 
@@ -572,8 +628,15 @@ export async function getFleetVehiclesCache(fleetId: string): Promise<unknown | 
  * @param fleetId - Fleet ID
  * @param vehicles - Vehicles data
  */
-export async function setFleetVehiclesCache(fleetId: string, vehicles: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.FLEET_VEHICLES}${fleetId}`, vehicles, CACHE_TTL.OPERATIONAL_DATA);
+export async function setFleetVehiclesCache(
+  fleetId: string,
+  vehicles: unknown,
+): Promise<void> {
+  await cacheSet(
+    `${CACHE_PREFIXES.FLEET_VEHICLES}${fleetId}`,
+    vehicles,
+    CACHE_TTL.OPERATIONAL_DATA,
+  );
 }
 
 /**
@@ -581,7 +644,9 @@ export async function setFleetVehiclesCache(fleetId: string, vehicles: unknown):
  *
  * @param fleetId - Fleet ID
  */
-export async function getFleetDriversCache(fleetId: string): Promise<unknown | null> {
+export async function getFleetDriversCache(
+  fleetId: string,
+): Promise<unknown | null> {
   return cacheGet(`${CACHE_PREFIXES.FLEET_DRIVERS}${fleetId}`);
 }
 
@@ -591,8 +656,15 @@ export async function getFleetDriversCache(fleetId: string): Promise<unknown | n
  * @param fleetId - Fleet ID
  * @param drivers - Drivers data
  */
-export async function setFleetDriversCache(fleetId: string, drivers: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.FLEET_DRIVERS}${fleetId}`, drivers, CACHE_TTL.OPERATIONAL_DATA);
+export async function setFleetDriversCache(
+  fleetId: string,
+  drivers: unknown,
+): Promise<void> {
+  await cacheSet(
+    `${CACHE_PREFIXES.FLEET_DRIVERS}${fleetId}`,
+    drivers,
+    CACHE_TTL.OPERATIONAL_DATA,
+  );
 }
 
 /**
@@ -635,7 +707,9 @@ export async function invalidateDriverCache(driverId: string): Promise<void> {
  *
  * @param companyId - Company ID
  */
-export async function getPendingOrdersSummaryCache(companyId: string): Promise<unknown | null> {
+export async function getPendingOrdersSummaryCache(
+  companyId: string,
+): Promise<unknown | null> {
   return cacheGet(`${CACHE_PREFIXES.ORDERS}pending:${companyId}`);
 }
 
@@ -645,8 +719,15 @@ export async function getPendingOrdersSummaryCache(companyId: string): Promise<u
  * @param companyId - Company ID
  * @param summary - Orders summary
  */
-export async function setPendingOrdersSummaryCache(companyId: string, summary: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.ORDERS}pending:${companyId}`, summary, CACHE_TTL.PLANNING_DATA);
+export async function setPendingOrdersSummaryCache(
+  companyId: string,
+  summary: unknown,
+): Promise<void> {
+  await cacheSet(
+    `${CACHE_PREFIXES.ORDERS}pending:${companyId}`,
+    summary,
+    CACHE_TTL.PLANNING_DATA,
+  );
 }
 
 /**
@@ -663,7 +744,9 @@ export async function invalidateOrdersCache(companyId: string): Promise<void> {
  *
  * @param jobId - Job ID
  */
-export async function getJobStatusCache(jobId: string): Promise<unknown | null> {
+export async function getJobStatusCache(
+  jobId: string,
+): Promise<unknown | null> {
   return cacheGet(`${CACHE_PREFIXES.JOB_STATUS}${jobId}`);
 }
 
@@ -673,8 +756,15 @@ export async function getJobStatusCache(jobId: string): Promise<unknown | null> 
  * @param jobId - Job ID
  * @param status - Job status
  */
-export async function setJobStatusCache(jobId: string, status: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.JOB_STATUS}${jobId}`, status, CACHE_TTL.PLANNING_DATA);
+export async function setJobStatusCache(
+  jobId: string,
+  status: unknown,
+): Promise<void> {
+  await cacheSet(
+    `${CACHE_PREFIXES.JOB_STATUS}${jobId}`,
+    status,
+    CACHE_TTL.PLANNING_DATA,
+  );
 }
 
 /**
@@ -695,7 +785,9 @@ export async function invalidateJobStatusCache(jobId: string): Promise<void> {
  *
  * @param companyId - Company ID
  */
-export async function getMonitoringSummaryCache(companyId: string): Promise<unknown | null> {
+export async function getMonitoringSummaryCache(
+  companyId: string,
+): Promise<unknown | null> {
   return cacheGet(`${CACHE_PREFIXES.MONITORING_SUMMARY}${companyId}`);
 }
 
@@ -705,8 +797,15 @@ export async function getMonitoringSummaryCache(companyId: string): Promise<unkn
  * @param companyId - Company ID
  * @param summary - Monitoring summary
  */
-export async function setMonitoringSummaryCache(companyId: string, summary: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.MONITORING_SUMMARY}${companyId}`, summary, CACHE_TTL.REALTIME_DATA);
+export async function setMonitoringSummaryCache(
+  companyId: string,
+  summary: unknown,
+): Promise<void> {
+  await cacheSet(
+    `${CACHE_PREFIXES.MONITORING_SUMMARY}${companyId}`,
+    summary,
+    CACHE_TTL.REALTIME_DATA,
+  );
 }
 
 /**
@@ -714,7 +813,9 @@ export async function setMonitoringSummaryCache(companyId: string, summary: unkn
  *
  * @param driverId - Driver ID
  */
-export async function getDriverStatusCache(driverId: string): Promise<unknown | null> {
+export async function getDriverStatusCache(
+  driverId: string,
+): Promise<unknown | null> {
   return cacheGet(`${CACHE_PREFIXES.DRIVER_STATUS}${driverId}`);
 }
 
@@ -724,8 +825,15 @@ export async function getDriverStatusCache(driverId: string): Promise<unknown | 
  * @param driverId - Driver ID
  * @param status - Driver status
  */
-export async function setDriverStatusCache(driverId: string, status: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.DRIVER_STATUS}${driverId}`, status, CACHE_TTL.REALTIME_DATA);
+export async function setDriverStatusCache(
+  driverId: string,
+  status: unknown,
+): Promise<void> {
+  await cacheSet(
+    `${CACHE_PREFIXES.DRIVER_STATUS}${driverId}`,
+    status,
+    CACHE_TTL.REALTIME_DATA,
+  );
 }
 
 /**
@@ -733,7 +841,9 @@ export async function setDriverStatusCache(driverId: string, status: unknown): P
  *
  * @param companyId - Company ID
  */
-export async function invalidateMonitoringCache(companyId: string): Promise<void> {
+export async function invalidateMonitoringCache(
+  companyId: string,
+): Promise<void> {
   await cacheDeletePattern(`${CACHE_PREFIXES.MONITORING_SUMMARY}${companyId}`);
   await cacheDeletePattern(`${CACHE_PREFIXES.ALERTS}*:${companyId}`);
 }
@@ -747,7 +857,9 @@ export async function invalidateMonitoringCache(companyId: string): Promise<void
  *
  * @param jobId - Job ID
  */
-export async function getPlanMetricsCache(jobId: string): Promise<unknown | null> {
+export async function getPlanMetricsCache(
+  jobId: string,
+): Promise<unknown | null> {
   return cacheGet(`${CACHE_PREFIXES.PLAN_METRICS}${jobId}`);
 }
 
@@ -757,8 +869,15 @@ export async function getPlanMetricsCache(jobId: string): Promise<unknown | null
  * @param jobId - Job ID
  * @param metrics - Plan metrics
  */
-export async function setPlanMetricsCache(jobId: string, metricsData: unknown): Promise<void> {
-  await cacheSet(`${CACHE_PREFIXES.PLAN_METRICS}${jobId}`, metricsData, CACHE_TTL.METRICS);
+export async function setPlanMetricsCache(
+  jobId: string,
+  metricsData: unknown,
+): Promise<void> {
+  await cacheSet(
+    `${CACHE_PREFIXES.PLAN_METRICS}${jobId}`,
+    metricsData,
+    CACHE_TTL.METRICS,
+  );
 }
 
 /**

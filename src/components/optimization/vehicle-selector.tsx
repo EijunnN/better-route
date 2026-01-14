@@ -1,13 +1,19 @@
 "use client";
 
+import { Fuel, Package, Search, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Search, Truck, Fuel, Package } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Vehicle {
   id: string;
@@ -110,7 +116,8 @@ export function VehicleSelector({
 
     const matchesType = typeFilter === "ALL" || vehicle.type === typeFilter;
 
-    const matchesStatus = statusFilter === "ALL" || vehicle.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "ALL" || vehicle.status === statusFilter;
 
     return matchesSearch && matchesType && matchesStatus;
   });
@@ -118,7 +125,9 @@ export function VehicleSelector({
   // Handle select all
   const handleSelectAll = () => {
     const allIds = filteredVehicles.map((v) => v.id);
-    const allSelected = filteredVehicles.every((v) => selectedIds.includes(v.id));
+    const allSelected = filteredVehicles.every((v) =>
+      selectedIds.includes(v.id),
+    );
 
     if (allSelected) {
       // Deselect all filtered vehicles
@@ -139,16 +148,19 @@ export function VehicleSelector({
   };
 
   const allFilteredSelected =
-    filteredVehicles.length > 0 && filteredVehicles.every((v) => selectedIds.includes(v.id));
+    filteredVehicles.length > 0 &&
+    filteredVehicles.every((v) => selectedIds.includes(v.id));
   const someFilteredSelected =
-    filteredVehicles.some((v) => selectedIds.includes(v.id)) && !allFilteredSelected;
+    filteredVehicles.some((v) => selectedIds.includes(v.id)) &&
+    !allFilteredSelected;
 
   return (
     <div className={`space-y-4 ${className}`}>
       <div>
         <Label className="text-base font-semibold">Select Vehicles</Label>
         <p className="text-sm text-muted-foreground mt-1">
-          Choose the vehicles that will be used for route optimization. Only available vehicles are shown.
+          Choose the vehicles that will be used for route optimization. Only
+          available vehicles are shown.
         </p>
       </div>
 
@@ -228,7 +240,9 @@ export function VehicleSelector({
             <Card
               key={vehicle.id}
               className={`p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
-                selectedIds.includes(vehicle.id) ? "border-primary bg-primary/5" : ""
+                selectedIds.includes(vehicle.id)
+                  ? "border-primary bg-primary/5"
+                  : ""
               }`}
               onClick={() => handleToggle(vehicle.id)}
             >
@@ -245,7 +259,9 @@ export function VehicleSelector({
                       {vehicle.status}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">{vehicle.type}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {vehicle.type}
+                  </p>
                   <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Package className="w-3 h-3" />
@@ -271,7 +287,8 @@ export function VehicleSelector({
       {/* Summary */}
       <div className="p-3 bg-muted rounded-lg">
         <p className="text-sm font-medium">
-          {selectedIds.length} vehicle{selectedIds.length !== 1 ? "s" : ""} selected
+          {selectedIds.length} vehicle{selectedIds.length !== 1 ? "s" : ""}{" "}
+          selected
         </p>
       </div>
     </div>

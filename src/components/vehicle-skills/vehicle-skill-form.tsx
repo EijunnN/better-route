@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { VehicleSkillInput } from "@/lib/validations/vehicle-skill";
-import { VEHICLE_SKILL_CATEGORIES, VEHICLE_SKILL_CATEGORY_LABELS } from "@/lib/validations/vehicle-skill";
+import {
+  VEHICLE_SKILL_CATEGORIES,
+  VEHICLE_SKILL_CATEGORY_LABELS,
+} from "@/lib/validations/vehicle-skill";
 
 interface VehicleSkillFormProps {
   onSubmit: (data: VehicleSkillInput) => Promise<void>;
@@ -13,7 +16,9 @@ interface VehicleSkillFormProps {
   submitLabel?: string;
 }
 
-const VEHICLE_SKILL_CATEGORIES_LIST = Object.entries(VEHICLE_SKILL_CATEGORY_LABELS).map(([value, label]) => ({
+const VEHICLE_SKILL_CATEGORIES_LIST = Object.entries(
+  VEHICLE_SKILL_CATEGORY_LABELS,
+).map(([value, label]) => ({
   value,
   label,
 }));
@@ -88,7 +93,11 @@ export function VehicleSkillForm({
               updateField("code", upperValue);
             }}
             disabled={isSubmitting}
-            className={errors.code ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.code
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
             placeholder="Ej: REFRIGERADO"
             autoComplete="off"
           />
@@ -108,7 +117,11 @@ export function VehicleSkillForm({
             value={formData.name}
             onChange={(e) => updateField("name", e.target.value)}
             disabled={isSubmitting}
-            className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.name
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
             placeholder="Ej: Cámara Refrigerada"
           />
           {errors.name && (
@@ -163,9 +176,11 @@ export function VehicleSkillForm({
             value={formData.description}
             onChange={(e) => updateField("description", e.target.value)}
             disabled={isSubmitting}
-            className={errors.description
-              ? "flex min-h-[80px] w-full rounded-md border border-destructive bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-              : "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"}
+            className={
+              errors.description
+                ? "flex min-h-[80px] w-full rounded-md border border-destructive bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                : "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+            }
             placeholder="Describe brevemente esta habilidad..."
             rows={3}
           />

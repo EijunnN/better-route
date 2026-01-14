@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
-import { desc, eq, and, sql } from "drizzle-orm";
 import { setTenantContext } from "@/lib/tenant";
 import { ORDER_STATUS } from "@/lib/validations/order";
-import { z } from "zod";
 
 /**
  * GeoJSON API endpoint for order visualization on map
@@ -20,7 +20,10 @@ function extractTenantContext(request: NextRequest) {
 
 // Query parameter validation schema
 const geojsonQuerySchema = z.object({
-  status: z.enum([...ORDER_STATUS, "ALL"]).optional().default("ALL"),
+  status: z
+    .enum([...ORDER_STATUS, "ALL"])
+    .optional()
+    .default("ALL"),
   search: z.string().optional(),
   // Bounding box filter: minLng,minLat,maxLng,maxLat
   bbox: z.string().optional(),
@@ -31,12 +34,12 @@ const geojsonQuerySchema = z.object({
 
 // Status to hex color mapping for map markers
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: "#6B7280",      // gray-500
-  ASSIGNED: "#2563EB",     // blue-600
-  IN_PROGRESS: "#EAB308",  // yellow-500
-  COMPLETED: "#16A34A",    // green-600
-  FAILED: "#DC2626",       // red-600
-  CANCELLED: "#9CA3AF",    // gray-400
+  PENDING: "#6B7280", // gray-500
+  ASSIGNED: "#2563EB", // blue-600
+  IN_PROGRESS: "#EAB308", // yellow-500
+  COMPLETED: "#16A34A", // green-600
+  FAILED: "#DC2626", // red-600
+  CANCELLED: "#9CA3AF", // gray-400
 };
 
 export async function GET(request: NextRequest) {
@@ -46,7 +49,7 @@ export async function GET(request: NextRequest) {
     if (!tenantContext) {
       return NextResponse.json(
         { error: "Tenant context required" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -59,8 +62,11 @@ export async function GET(request: NextRequest) {
 
     if (!validatedParams.success) {
       return NextResponse.json(
-        { error: "Invalid query parameters", details: validatedParams.error.flatten() },
-        { status: 400 }
+        {
+          error: "Invalid query parameters",
+          details: validatedParams.error.flatten(),
+        },
+        { status: 400 },
       );
     }
 
@@ -77,7 +83,7 @@ export async function GET(request: NextRequest) {
     // Search filter
     if (search) {
       conditions.push(
-        sql`(${orders.trackingId} ILIKE ${"%" + search + "%"} OR ${orders.customerName} ILIKE ${"%" + search + "%"} OR ${orders.address} ILIKE ${"%" + search + "%"})`
+        sql`(${orders.trackingId} ILIKE ${"%" + search + "%"} OR ${orders.customerName} ILIKE ${"%" + search + "%"} OR ${orders.address} ILIKE ${"%" + search + "%"})`,
       );
     }
 
@@ -85,18 +91,26 @@ export async function GET(request: NextRequest) {
     if (bbox) {
       const [minLng, minLat, maxLng, maxLat] = bbox.split(",").map(Number);
       if (
-        !isNaN(minLng) && !isNaN(minLat) && !isNaN(maxLng) && !isNaN(maxLat) &&
-        minLng >= -180 && minLng <= 180 &&
-        maxLng >= -180 && maxLng <= 180 &&
-        minLat >= -90 && minLat <= 90 &&
-        maxLat >= -90 && maxLat <= 90 &&
-        minLng < maxLng && minLat < maxLat
+        !isNaN(minLng) &&
+        !isNaN(minLat) &&
+        !isNaN(maxLng) &&
+        !isNaN(maxLat) &&
+        minLng >= -180 &&
+        minLng <= 180 &&
+        maxLng >= -180 &&
+        maxLng <= 180 &&
+        minLat >= -90 &&
+        minLat <= 90 &&
+        maxLat >= -90 &&
+        maxLat <= 90 &&
+        minLng < maxLng &&
+        minLat < maxLat
       ) {
         conditions.push(
           sql`CAST(${orders.longitude} AS DOUBLE PRECISION) >= ${minLng}
               AND CAST(${orders.longitude} AS DOUBLE PRECISION) <= ${maxLng}
               AND CAST(${orders.latitude} AS DOUBLE PRECISION) >= ${minLat}
-              AND CAST(${orders.latitude} AS DOUBLE PRECISION) <= ${maxLat}`
+              AND CAST(${orders.latitude} AS DOUBLE PRECISION) <= ${maxLat}`,
         );
       }
     }
@@ -119,18 +133,21 @@ export async function GET(request: NextRequest) {
 
     // Convert to GeoJSON FeatureCollection
     const features = ordersList
-      .filter(order => {
+      .filter((order) => {
         // Filter out invalid coordinates
         const lat = parseFloat(order.latitude);
         const lng = parseFloat(order.longitude);
         return (
-          !isNaN(lat) && !isNaN(lng) &&
-          lat >= -90 && lat <= 90 &&
-          lng >= -180 && lng <= 180 &&
+          !isNaN(lat) &&
+          !isNaN(lng) &&
+          lat >= -90 &&
+          lat <= 90 &&
+          lng >= -180 &&
+          lng <= 180 &&
           !(lat === 0 && lng === 0) // Filter out null island
         );
       })
-      .map(order => {
+      .map((order) => {
         const lat = parseFloat(order.latitude);
         const lng = parseFloat(order.longitude);
 
@@ -164,12 +181,14 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(geojson);
-
   } catch (error) {
     console.error("Error generating GeoJSON:", error);
     return NextResponse.json(
-      { error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      {
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
     );
   }
 }

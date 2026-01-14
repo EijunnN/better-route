@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, like } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { timeWindowPresets } from "@/db/schema";
-import {
-  timeWindowPresetSchema,
-  timeWindowPresetQuerySchema,
-} from "@/lib/validations/time-window-preset";
-import { eq, and, desc, like } from "drizzle-orm";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext, requireTenantContext } from "@/lib/tenant";
-import { logCreate, logUpdate, logDelete } from "@/lib/audit";
+import { logCreate, logDelete, logUpdate } from "@/lib/audit";
+import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+import {
+  timeWindowPresetQuerySchema,
+  timeWindowPresetSchema,
+} from "@/lib/validations/time-window-preset";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const query = timeWindowPresetQuerySchema.parse(
-      Object.fromEntries(searchParams)
+      Object.fromEntries(searchParams),
     );
 
     const conditions = [];
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to fetch time window presets" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -102,15 +102,15 @@ export async function POST(request: NextRequest) {
         and(
           eq(timeWindowPresets.companyId, context.companyId),
           eq(timeWindowPresets.name, validatedData.name),
-          eq(timeWindowPresets.active, true)
-        )
+          eq(timeWindowPresets.active, true),
+        ),
       )
       .limit(1);
 
     if (existing.length > 0) {
       return NextResponse.json(
         { error: "A time window preset with this name already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -129,12 +129,12 @@ export async function POST(request: NextRequest) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Validation failed", details: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: error.message || "Failed to create time window preset" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

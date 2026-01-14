@@ -1,15 +1,18 @@
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { drivers, vehicles, orders } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
-import type { OptimizationResult, OptimizationRoute } from "./optimization-runner";
+import { orders, USER_ROLES, users, vehicles } from "@/db/schema";
+import type {
+  OptimizationResult,
+  OptimizationRoute,
+} from "./optimization-runner";
 
 /**
  * Validation severity levels
  */
 export enum ValidationSeverity {
-  ERROR = "ERROR",     // Blocking - prevents confirmation
+  ERROR = "ERROR", // Blocking - prevents confirmation
   WARNING = "WARNING", // Non-blocking - can override
-  INFO = "INFO",       // Informational only
+  INFO = "INFO", // Informational only
 }
 
 /**
@@ -88,7 +91,7 @@ export const DEFAULT_VALIDATION_CONFIG: PlanValidationConfig = {
 export async function validatePlanForConfirmation(
   companyId: string,
   result: OptimizationResult,
-  config: PlanValidationConfig = DEFAULT_VALIDATION_CONFIG
+  config: PlanValidationConfig = DEFAULT_VALIDATION_CONFIG,
 ): Promise<PlanValidationResult> {
   const issues: ValidationIssue[] = [];
   const routes = result.routes || [];
@@ -106,7 +109,9 @@ export async function validatePlanForConfirmation(
   };
 
   // Check 1: All routes must have drivers assigned
-  const routesWithoutDrivers = routes.filter(r => !r.driverId || r.driverId === "");
+  const routesWithoutDrivers = routes.filter(
+    (r) => !r.driverId || r.driverId === "",
+  );
   summary.routesWithoutDrivers = routesWithoutDrivers.length;
   summary.routesWithDrivers = routes.length - routesWithoutDrivers.length;
 
@@ -127,7 +132,9 @@ export async function validatePlanForConfirmation(
       severity: ValidationSeverity.ERROR,
       category: "unassigned_orders",
       message: `${unassignedOrders.length} order(s) could not be assigned to any route`,
-      resolution: unassignedOrders.map(o => o.reason || "Review capacity constraints").join("; "),
+      resolution: unassignedOrders
+        .map((o) => o.reason || "Review capacity constraints")
+        .join("; "),
     });
   } else if (unassignedOrders.length > 0) {
     issues.push({
@@ -174,7 +181,8 @@ export async function validatePlanForConfirmation(
           routeId: route.routeId,
           vehicleId: route.vehicleId,
           driverId: route.driverId,
-          resolution: "Consider reassigning to a more suitable driver if available",
+          resolution:
+            "Consider reassigning to a more suitable driver if available",
         });
       }
     }
@@ -226,29 +234,37 @@ export async function validatePlanForConfirmation(
     const driverValidationIssues = await validateDriverLicensesAndSkills(
       companyId,
       routes,
-      config
+      config,
     );
     issues.push(...driverValidationIssues);
   }
 
   // Calculate summary counts
-  summary.errorCount = issues.filter(i => i.severity === ValidationSeverity.ERROR).length;
-  summary.warningCount = issues.filter(i => i.severity === ValidationSeverity.WARNING).length;
-  summary.infoCount = issues.filter(i => i.severity === ValidationSeverity.INFO).length;
+  summary.errorCount = issues.filter(
+    (i) => i.severity === ValidationSeverity.ERROR,
+  ).length;
+  summary.warningCount = issues.filter(
+    (i) => i.severity === ValidationSeverity.WARNING,
+  ).length;
+  summary.infoCount = issues.filter(
+    (i) => i.severity === ValidationSeverity.INFO,
+  ).length;
 
   // Calculate metrics
   const metrics = {
-    driverAssignmentCoverage: summary.totalRoutes > 0
-      ? (summary.routesWithDrivers / summary.totalRoutes) * 100
-      : 0,
+    driverAssignmentCoverage:
+      summary.totalRoutes > 0
+        ? (summary.routesWithDrivers / summary.totalRoutes) * 100
+        : 0,
     timeWindowCompliance,
-    averageAssignmentQuality: qualityCount > 0
-      ? totalQualityScore / qualityCount
-      : 0,
+    averageAssignmentQuality:
+      qualityCount > 0 ? totalQualityScore / qualityCount : 0,
   };
 
   // Determine if plan can be confirmed
-  const hasBlockingErrors = issues.some(i => i.severity === ValidationSeverity.ERROR);
+  const hasBlockingErrors = issues.some(
+    (i) => i.severity === ValidationSeverity.ERROR,
+  );
   const isValid = !hasBlockingErrors;
   const canConfirm = isValid;
 
@@ -267,29 +283,37 @@ export async function validatePlanForConfirmation(
 async function validateDriverLicensesAndSkills(
   companyId: string,
   routes: OptimizationRoute[],
-  config: PlanValidationConfig
+  config: PlanValidationConfig,
 ): Promise<ValidationIssue[]> {
   const issues: ValidationIssue[] = [];
   const driverIds = routes
-    .map(r => r.driverId)
+    .map((r) => r.driverId)
     .filter((id): id is string => !!id && id !== "");
 
   if (driverIds.length === 0) return issues;
 
-  // Fetch drivers with their license info
+  // Fetch drivers (users with CONDUCTOR role) with their license info
   const driversData = await db
     .select({
-      id: drivers.id,
-      name: drivers.name,
-      licenseExpiry: drivers.licenseExpiry,
-      status: drivers.status,
+      id: users.id,
+      name: users.name,
+      licenseExpiry: users.licenseExpiry,
+      status: users.driverStatus,
     })
-    .from(drivers)
-    .where(and(eq(drivers.companyId, companyId), inArray(drivers.id, driverIds)));
+    .from(users)
+    .where(
+      and(
+        eq(users.companyId, companyId),
+        inArray(users.id, driverIds),
+        eq(users.role, USER_ROLES.CONDUCTOR),
+      ),
+    );
 
   const now = new Date();
   const licenseWarningDate = new Date();
-  licenseWarningDate.setDate(licenseWarningDate.getDate() + config.licenseExpiryWarningDays);
+  licenseWarningDate.setDate(
+    licenseWarningDate.getDate() + config.licenseExpiryWarningDays,
+  );
 
   for (const driver of driversData) {
     if (config.checkLicenseExpiry && driver.licenseExpiry) {
@@ -297,12 +321,12 @@ async function validateDriverLicensesAndSkills(
 
       if (expiryDate < now) {
         // License expired - this is a blocking error
-        const affectedRoutes = routes.filter(r => r.driverId === driver.id);
+        const affectedRoutes = routes.filter((r) => r.driverId === driver.id);
         for (const route of affectedRoutes) {
           issues.push({
             severity: ValidationSeverity.ERROR,
             category: "license_expiry",
-            message: `Driver ${driver.name} has an expired license (${expiryDate.toISOString().split('T')[0]})`,
+            message: `Driver ${driver.name} has an expired license (${expiryDate.toISOString().split("T")[0]})`,
             driverId: driver.id,
             routeId: route.routeId,
             vehicleId: route.vehicleId,
@@ -311,8 +335,10 @@ async function validateDriverLicensesAndSkills(
         }
       } else if (expiryDate < licenseWarningDate) {
         // License expiring soon - warning
-        const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        const affectedRoutes = routes.filter(r => r.driverId === driver.id);
+        const daysUntilExpiry = Math.ceil(
+          (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        const affectedRoutes = routes.filter((r) => r.driverId === driver.id);
         for (const route of affectedRoutes) {
           issues.push({
             severity: ValidationSeverity.WARNING,
@@ -334,7 +360,9 @@ async function validateDriverLicensesAndSkills(
 /**
  * Get a summary of validation issues by category
  */
-export function getIssuesByCategory(issues: ValidationIssue[]): Record<string, ValidationIssue[]> {
+export function getIssuesByCategory(
+  issues: ValidationIssue[],
+): Record<string, ValidationIssue[]> {
   const byCategory: Record<string, ValidationIssue[]> = {};
 
   for (const issue of issues) {
@@ -356,16 +384,18 @@ export function getIssuesBySeverity(issues: ValidationIssue[]): {
   info: ValidationIssue[];
 } {
   return {
-    errors: issues.filter(i => i.severity === ValidationSeverity.ERROR),
-    warnings: issues.filter(i => i.severity === ValidationSeverity.WARNING),
-    info: issues.filter(i => i.severity === ValidationSeverity.INFO),
+    errors: issues.filter((i) => i.severity === ValidationSeverity.ERROR),
+    warnings: issues.filter((i) => i.severity === ValidationSeverity.WARNING),
+    info: issues.filter((i) => i.severity === ValidationSeverity.INFO),
   };
 }
 
 /**
  * Check if a plan can be confirmed (has no blocking errors)
  */
-export function canConfirmPlan(validationResult: PlanValidationResult): boolean {
+export function canConfirmPlan(
+  validationResult: PlanValidationResult,
+): boolean {
   return validationResult.canConfirm;
 }
 
@@ -376,7 +406,9 @@ export function getValidationSummaryText(result: PlanValidationResult): string {
   const parts: string[] = [];
 
   if (result.summary.routesWithoutDrivers > 0) {
-    parts.push(`${result.summary.routesWithoutDrivers} route(s) missing driver assignment`);
+    parts.push(
+      `${result.summary.routesWithoutDrivers} route(s) missing driver assignment`,
+    );
   }
 
   if (result.summary.unassignedOrders > 0) {

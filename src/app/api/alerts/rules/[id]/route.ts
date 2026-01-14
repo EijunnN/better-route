@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { alertRules } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { eq, and } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -15,11 +15,14 @@ function extractTenantContext(request: NextRequest) {
 // GET - Get alert rule details
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -28,17 +31,17 @@ export async function GET(
     const { id } = await params;
 
     const rule = await db.query.alertRules.findFirst({
-      where: and(
-        withTenantFilter(alertRules),
-        eq(alertRules.id, id)
-      ),
+      where: and(withTenantFilter(alertRules), eq(alertRules.id, id)),
       with: {
         alerts: true,
       },
     });
 
     if (!rule) {
-      return NextResponse.json({ error: "Alert rule not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Alert rule not found" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({ data: rule });
@@ -46,7 +49,7 @@ export async function GET(
     console.error("Error fetching alert rule:", error);
     return NextResponse.json(
       { error: "Failed to fetch alert rule" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -54,11 +57,14 @@ export async function GET(
 // PUT - Update alert rule
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -70,14 +76,14 @@ export async function PUT(
 
     // First verify the rule exists and belongs to tenant
     const existingRule = await db.query.alertRules.findFirst({
-      where: and(
-        withTenantFilter(alertRules),
-        eq(alertRules.id, id)
-      ),
+      where: and(withTenantFilter(alertRules), eq(alertRules.id, id)),
     });
 
     if (!existingRule) {
-      return NextResponse.json({ error: "Alert rule not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Alert rule not found" },
+        { status: 404 },
+      );
     }
 
     // Prepare update values
@@ -103,7 +109,7 @@ export async function PUT(
     console.error("Error updating alert rule:", error);
     return NextResponse.json(
       { error: "Failed to update alert rule" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -111,11 +117,14 @@ export async function PUT(
 // DELETE - Delete alert rule
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -125,14 +134,14 @@ export async function DELETE(
 
     // First verify the rule exists and belongs to tenant
     const existingRule = await db.query.alertRules.findFirst({
-      where: and(
-        withTenantFilter(alertRules),
-        eq(alertRules.id, id)
-      ),
+      where: and(withTenantFilter(alertRules), eq(alertRules.id, id)),
     });
 
     if (!existingRule) {
-      return NextResponse.json({ error: "Alert rule not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Alert rule not found" },
+        { status: 404 },
+      );
     }
 
     await db.delete(alertRules).where(eq(alertRules.id, id));
@@ -142,7 +151,7 @@ export async function DELETE(
     console.error("Error deleting alert rule:", error);
     return NextResponse.json(
       { error: "Failed to delete alert rule" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,36 +1,40 @@
+import { and, eq, inArray } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  optimizationConfigurations,
+  optimizationJobs,
+  orders,
+  USER_ROLES,
+  users,
+  vehicles,
+} from "@/db/schema";
+import {
+  assignDriversToRoutes,
+  DEFAULT_ASSIGNMENT_CONFIG,
+  type DriverAssignmentRequest,
+  type DriverAssignmentResult,
+  getAssignmentQualityMetrics,
+} from "./driver-assignment";
+import { type Coordinates, calculateRouteDistance } from "./geospatial";
 import {
   calculateInputHash,
-  canStartJob,
-  registerJob,
-  unregisterJob,
-  setJobTimeout,
   cancelJob,
-  updateJobProgress,
+  canStartJob,
   completeJob,
   failJob,
   getCachedResult,
   isJobAborting,
+  registerJob,
+  setJobTimeout,
+  unregisterJob,
+  updateJobProgress,
 } from "./job-queue";
-import { db } from "@/db";
-import { optimizationConfigurations, orders, vehicles, drivers, optimizationJobs } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
 import {
-  assignDriversToRoutes,
-  type DriverAssignmentRequest,
-  DEFAULT_ASSIGNMENT_CONFIG,
-  getAssignmentQualityMetrics,
-  type DriverAssignmentResult,
-} from "./driver-assignment";
-import {
-  calculateRouteDistance,
-  type Coordinates,
-} from "./geospatial";
-import {
-  optimizeRoutes as vroomOptimizeRoutes,
+  type DepotConfig,
   type OrderForOptimization,
   type VehicleForOptimization,
-  type DepotConfig,
   type OptimizationConfig as VroomOptConfig,
+  optimizeRoutes as vroomOptimizeRoutes,
 } from "./vroom-optimizer";
 
 // Optimization result types
@@ -61,6 +65,7 @@ export interface OptimizationRoute {
   totalVolume: number;
   utilizationPercentage: number;
   timeWindowViolations: number;
+  geometry?: string; // Encoded polyline from VROOM/OSRM
   assignmentQuality?: {
     score: number;
     warnings: string[];
@@ -118,13 +123,13 @@ export interface OptimizationInput {
 export async function runOptimization(
   input: OptimizationInput,
   signal?: AbortSignal,
-  jobId?: string
+  jobId?: string,
 ): Promise<OptimizationResult> {
   const startTime = Date.now();
 
   // Track partial results for cancellation
   let partialRoutes: OptimizationRoute[] = [];
-  let partialUnassignedOrders: Array<{
+  const partialUnassignedOrders: Array<{
     orderId: string;
     trackingId: string;
     reason: string;
@@ -138,13 +143,23 @@ export async function runOptimization(
         routes: partialRoutes,
         unassignedOrders: partialUnassignedOrders,
         metrics: {
-          totalDistance: partialRoutes.reduce((sum, r) => sum + r.totalDistance, 0),
-          totalDuration: partialRoutes.reduce((sum, r) => sum + r.totalDuration, 0),
+          totalDistance: partialRoutes.reduce(
+            (sum, r) => sum + r.totalDistance,
+            0,
+          ),
+          totalDuration: partialRoutes.reduce(
+            (sum, r) => sum + r.totalDuration,
+            0,
+          ),
           totalRoutes: partialRoutes.length,
           totalStops: partialRoutes.reduce((sum, r) => sum + r.stops.length, 0),
-          utilizationRate: partialRoutes.length > 0
-            ? partialRoutes.reduce((sum, r) => sum + r.utilizationPercentage, 0) / partialRoutes.length
-            : 0,
+          utilizationRate:
+            partialRoutes.length > 0
+              ? partialRoutes.reduce(
+                  (sum, r) => sum + r.utilizationPercentage,
+                  0,
+                ) / partialRoutes.length
+              : 0,
           timeWindowComplianceRate: 100,
         },
         summary: {
@@ -178,7 +193,7 @@ export async function runOptimization(
     where: and(
       eq(orders.companyId, input.companyId),
       eq(orders.status, "PENDING"),
-      eq(orders.active, true)
+      eq(orders.active, true),
     ),
   });
 
@@ -189,21 +204,26 @@ export async function runOptimization(
     where: and(
       eq(vehicles.companyId, input.companyId),
       inArray(vehicles.id, input.vehicleIds),
-      eq(vehicles.active, true)
+      eq(vehicles.active, true),
     ),
     with: {
-      fleet: true,
+      vehicleFleets: {
+        with: {
+          fleet: true,
+        },
+      },
     },
   });
 
   checkAbort();
 
-  // Fetch selected drivers
-  const selectedDrivers = await db.query.drivers.findMany({
+  // Fetch selected drivers (users with role CONDUCTOR)
+  const selectedDrivers = await db.query.users.findMany({
     where: and(
-      eq(drivers.companyId, input.companyId),
-      inArray(drivers.id, input.driverIds),
-      eq(drivers.active, true)
+      eq(users.companyId, input.companyId),
+      inArray(users.id, input.driverIds),
+      eq(users.active, true),
+      eq(users.role, USER_ROLES.CONDUCTOR),
     ),
   });
 
@@ -235,12 +255,14 @@ export async function runOptimization(
   }));
 
   // Prepare vehicles for VROOM
-  const vehiclesForVroom: VehicleForOptimization[] = selectedVehicles.map((vehicle) => ({
-    id: vehicle.id,
-    plate: vehicle.plate,
-    maxWeight: vehicle.weightCapacity || 10000,
-    maxVolume: vehicle.volumeCapacity || 100,
-  }));
+  const vehiclesForVroom: VehicleForOptimization[] = selectedVehicles.map(
+    (vehicle) => ({
+      id: vehicle.id,
+      plate: vehicle.plate || vehicle.name || vehicle.id,
+      maxWeight: vehicle.weightCapacity || 10000,
+      maxVolume: vehicle.volumeCapacity || 100,
+    }),
+  );
 
   // Depot config
   const depotConfig: DepotConfig = {
@@ -253,7 +275,8 @@ export async function runOptimization(
   // Optimization config
   const vroomConfig: VroomOptConfig = {
     depot: depotConfig,
-    objective: (config?.objective as "DISTANCE" | "TIME" | "BALANCED") || "BALANCED",
+    objective:
+      (config?.objective as "DISTANCE" | "TIME" | "BALANCED") || "BALANCED",
   };
 
   await updateJobProgress(jobId || input.configurationId, 30);
@@ -263,7 +286,7 @@ export async function runOptimization(
   const vroomResult = await vroomOptimizeRoutes(
     ordersForVroom,
     vehiclesForVroom,
-    vroomConfig
+    vroomConfig,
   );
 
   await updateJobProgress(jobId || input.configurationId, 70);
@@ -313,7 +336,7 @@ export async function runOptimization(
     const newRoute: OptimizationRoute = {
       routeId: `route-${vehicle.id}-${Date.now()}`,
       vehicleId: vehicle.id,
-      vehiclePlate: vehicle.plate,
+      vehiclePlate: vehicle.plate || vehicle.name || vehicle.id,
       stops: routeStops,
       totalDistance: vroomRoute.totalDistance,
       totalDuration: vroomRoute.totalDuration,
@@ -322,10 +345,11 @@ export async function runOptimization(
       utilizationPercentage: Math.round(
         Math.max(
           (vroomRoute.totalWeight / (vehicle.weightCapacity || 1)) * 100,
-          (vroomRoute.totalVolume / (vehicle.volumeCapacity || 1)) * 100
-        ) || 0
+          (vroomRoute.totalVolume / (vehicle.volumeCapacity || 1)) * 100,
+        ) || 0,
       ),
       timeWindowViolations: 0,
+      geometry: vroomRoute.geometry, // Encoded polyline from OSRM
     };
 
     routes.push(newRoute);
@@ -334,13 +358,10 @@ export async function runOptimization(
 
   // Perform intelligent driver assignment
   checkAbort();
-  const driverAssignments = await assignDriversToRoutes(
-    routeAssignments,
-    {
-      ...DEFAULT_ASSIGNMENT_CONFIG,
-      strategy: (config?.objective as any) || "BALANCED",
-    }
-  );
+  const driverAssignments = await assignDriversToRoutes(routeAssignments, {
+    ...DEFAULT_ASSIGNMENT_CONFIG,
+    strategy: (config?.objective as any) || "BALANCED",
+  });
 
   // Update routes with assigned drivers
   for (const route of routes) {
@@ -367,12 +388,13 @@ export async function runOptimization(
   const totalStops = routes.reduce((sum, r) => sum + r.stops.length, 0);
   const timeWindowViolations = routes.reduce(
     (sum, r) => sum + r.timeWindowViolations,
-    0
+    0,
   );
 
   const utilizationRate =
     routes.length > 0
-      ? routes.reduce((sum, r) => sum + r.utilizationPercentage, 0) / routes.length
+      ? routes.reduce((sum, r) => sum + r.utilizationPercentage, 0) /
+        routes.length
       : 0;
 
   const timeWindowComplianceRate =
@@ -402,7 +424,8 @@ export async function runOptimization(
       isManualOverride: false,
     }));
 
-  const assignmentMetrics = await getAssignmentQualityMetrics(assignmentResults);
+  const assignmentMetrics =
+    await getAssignmentQualityMetrics(assignmentResults);
 
   const result: OptimizationResult = {
     routes,
@@ -445,14 +468,14 @@ function sleep(ms: number): Promise<void> {
  */
 export async function createAndExecuteJob(
   input: OptimizationInput,
-  timeoutMs: number = 300000 // 5 minutes default
+  timeoutMs: number = 300000, // 5 minutes default
 ): Promise<{ jobId: string; cached: boolean }> {
   // Calculate input hash for caching
   const pendingOrders = await db.query.orders.findMany({
     where: and(
       eq(orders.companyId, input.companyId),
       eq(orders.status, "PENDING"),
-      eq(orders.active, true)
+      eq(orders.active, true),
     ),
   });
 
@@ -460,7 +483,7 @@ export async function createAndExecuteJob(
     input.configurationId,
     input.vehicleIds,
     input.driverIds,
-    pendingOrders.map((o) => o.id)
+    pendingOrders.map((o) => o.id),
   );
 
   // Check for cached results
@@ -472,7 +495,7 @@ export async function createAndExecuteJob(
       where: and(
         eq(optimizationJobs.inputHash, inputHash),
         eq(optimizationJobs.companyId, input.companyId),
-        eq(optimizationJobs.status, "COMPLETED")
+        eq(optimizationJobs.status, "COMPLETED"),
       ),
       orderBy: (jobs, { desc }) => [desc(jobs.createdAt)],
     });
@@ -522,7 +545,11 @@ export async function createAndExecuteJob(
         .where(eq(optimizationJobs.id, jobId));
 
       // Run optimization
-      const result = await runOptimization(input, abortController.signal, jobId);
+      const result = await runOptimization(
+        input,
+        abortController.signal,
+        jobId,
+      );
 
       // Complete job
       await completeJob(jobId, result);
@@ -536,7 +563,7 @@ export async function createAndExecuteJob(
       } else {
         await failJob(
           jobId,
-          error instanceof Error ? error.message : "Unknown error"
+          error instanceof Error ? error.message : "Unknown error",
         );
       }
     }

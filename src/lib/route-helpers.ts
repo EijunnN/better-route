@@ -5,9 +5,13 @@
  * tenant-based authentication with the new RBAC permission system.
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, AuthenticatedUser } from "./auth-api";
-import { EntityType, Action, requirePermission } from "./authorization";
+import { type NextRequest, NextResponse } from "next/server";
+import { type AuthenticatedUser, getAuthenticatedUser } from "./auth-api";
+import {
+  type Action,
+  type EntityType,
+  requirePermission,
+} from "./authorization";
 import { setTenantContext } from "./tenant";
 
 /**
@@ -90,7 +94,7 @@ export async function setupAuthContext(request: NextRequest): Promise<{
 export function checkPermissionOrError(
   user: AuthenticatedUser,
   entity: EntityType,
-  action: Action
+  action: Action,
 ): NextResponse | null {
   try {
     requirePermission(user, entity, action);
@@ -101,7 +105,7 @@ export function checkPermissionOrError(
     }
     return NextResponse.json(
       { error: "Permission check failed", code: "PERMISSION_ERROR" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -109,10 +113,12 @@ export function checkPermissionOrError(
 /**
  * Create unauthorized response
  */
-export function unauthorizedResponse(message: string = "Authentication required"): NextResponse {
+export function unauthorizedResponse(
+  message: string = "Authentication required",
+): NextResponse {
   return NextResponse.json(
     { error: message, code: "UNAUTHORIZED" },
-    { status: 401 }
+    { status: 401 },
   );
 }
 
@@ -122,7 +128,7 @@ export function unauthorizedResponse(message: string = "Authentication required"
 export function notFoundResponse(resource: string = "Resource"): NextResponse {
   return NextResponse.json(
     { error: `${resource} not found`, code: "NOT_FOUND" },
-    { status: 404 }
+    { status: 404 },
   );
 }
 
@@ -133,12 +139,12 @@ export function validationErrorResponse(error: unknown): NextResponse {
   if (error instanceof Error && error.name === "ZodError") {
     return NextResponse.json(
       { error: "Validation failed", details: error },
-      { status: 400 }
+      { status: 400 },
     );
   }
   return NextResponse.json(
     { error: "Invalid input", code: "VALIDATION_ERROR" },
-    { status: 400 }
+    { status: 400 },
   );
 }
 
@@ -151,12 +157,15 @@ export function handleError(error: unknown, context: string): NextResponse {
   if (error instanceof Error) {
     // Handle specific error types
     if (error.name === "AuthorizationError") {
-      return NextResponse.json((error as any).toJSON?.() || { error: error.message }, { status: 403 });
+      return NextResponse.json(
+        (error as any).toJSON?.() || { error: error.message },
+        { status: 403 },
+      );
     }
     if (error.name === "TenantAccessDeniedError") {
       return NextResponse.json(
         { error: "Access denied", code: "TENANT_ACCESS_DENIED" },
-        { status: 403 }
+        { status: 403 },
       );
     }
     if (error.name === "ZodError") {
@@ -166,6 +175,6 @@ export function handleError(error: unknown, context: string): NextResponse {
 
   return NextResponse.json(
     { error: `An error occurred`, code: "INTERNAL_ERROR" },
-    { status: 500 }
+    { status: 500 },
   );
 }

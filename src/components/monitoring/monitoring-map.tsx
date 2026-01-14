@@ -1,8 +1,8 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 interface MonitoringMapProps {
@@ -11,7 +11,11 @@ interface MonitoringMapProps {
   onDriverSelect?: (driverId: string) => void;
 }
 
-export function MonitoringMap({ jobId, selectedDriverId, onDriverSelect }: MonitoringMapProps) {
+export function MonitoringMap({
+  jobId,
+  selectedDriverId,
+  onDriverSelect,
+}: MonitoringMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,7 +67,6 @@ export function MonitoringMap({ jobId, selectedDriverId, onDriverSelect }: Monit
           setError("Failed to load map");
           setIsLoading(false);
         });
-
       } catch (err) {
         console.error("Failed to initialize map:", err);
         setError("Failed to initialize map");
@@ -128,8 +131,12 @@ export function MonitoringMap({ jobId, selectedDriverId, onDriverSelect }: Monit
       });
 
       // Separate routes and stops
-      const routes = geojson.data.features.filter((f: any) => f.properties.type === "route");
-      const stops = geojson.data.features.filter((f: any) => f.properties.type === "stop");
+      const routes = geojson.data.features.filter(
+        (f: any) => f.properties.type === "route",
+      );
+      const stops = geojson.data.features.filter(
+        (f: any) => f.properties.type === "stop",
+      );
 
       // Add route lines
       if (routes.length > 0) {
@@ -252,7 +259,6 @@ export function MonitoringMap({ jobId, selectedDriverId, onDriverSelect }: Monit
           canvas.style.cursor = "";
         }
       });
-
     } catch (err) {
       console.error("Failed to load map data:", err);
       setError("Failed to load monitoring data");
@@ -262,7 +268,10 @@ export function MonitoringMap({ jobId, selectedDriverId, onDriverSelect }: Monit
   return (
     <Card className="h-full">
       <CardContent className="p-0 h-full">
-        <div ref={mapContainer} className="w-full h-full min-h-[400px] relative">
+        <div
+          ref={mapContainer}
+          className="w-full h-full min-h-[400px] relative"
+        >
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />

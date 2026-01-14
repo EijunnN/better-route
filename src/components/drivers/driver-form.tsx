@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { DriverInput } from "@/lib/validations/driver";
-import { isExpiringSoon, isExpired } from "@/lib/validations/driver";
+import { isExpired, isExpiringSoon } from "@/lib/validations/driver";
 
 interface DriverFormProps {
   onSubmit: (data: DriverInput) => Promise<void>;
@@ -59,9 +59,9 @@ export function DriverForm({
   const [formData, setFormData] = useState<DriverInput>(defaultData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedLicenseCategories, setSelectedLicenseCategories] = useState<string[]>(
-    initialData?.licenseCategories?.split(",").map((c) => c.trim()) || []
-  );
+  const [selectedLicenseCategories, setSelectedLicenseCategories] = useState<
+    string[]
+  >(initialData?.licenseCategories?.split(",").map((c) => c.trim()) || []);
 
   // Calculate license status for alert display
   const licenseStatus = useMemo(() => {
@@ -162,7 +162,11 @@ export function DriverForm({
             value={formData.name}
             onChange={(e) => updateField("name", e.target.value)}
             disabled={isSubmitting}
-            className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.name
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
             placeholder="Ej: Juan Pérez"
           />
           {errors.name && (
@@ -178,7 +182,11 @@ export function DriverForm({
             value={formData.identification}
             onChange={(e) => updateField("identification", e.target.value)}
             disabled={isSubmitting}
-            className={errors.identification ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.identification
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
             placeholder="Ej: 12345678"
           />
           {errors.identification && (
@@ -195,7 +203,11 @@ export function DriverForm({
             value={formData.email}
             onChange={(e) => updateField("email", e.target.value)}
             disabled={isSubmitting}
-            className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.email
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
             placeholder="Ej: juan.perez@empresa.com"
           />
           {errors.email && (
@@ -212,7 +224,11 @@ export function DriverForm({
             value={formData.phone}
             onChange={(e) => updateField("phone", e.target.value)}
             disabled={isSubmitting}
-            className={errors.phone ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.phone
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
             placeholder="Ej: +1234567890"
           />
           {errors.phone && (
@@ -229,7 +245,11 @@ export function DriverForm({
             value={formData.birthDate ? formData.birthDate.slice(0, 10) : ""}
             onChange={(e) => updateField("birthDate", e.target.value || "")}
             disabled={isSubmitting}
-            className={errors.birthDate ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.birthDate
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
           />
           {errors.birthDate && (
             <p className="text-sm text-destructive">{errors.birthDate}</p>
@@ -245,7 +265,11 @@ export function DriverForm({
             value={formData.photo ?? ""}
             onChange={(e) => updateField("photo", e.target.value || "")}
             disabled={isSubmitting}
-            className={errors.photo ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.photo
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
             placeholder="Ej: https://ejemplo.com/foto.jpg"
           />
           {errors.photo && (
@@ -261,7 +285,11 @@ export function DriverForm({
             value={formData.licenseNumber}
             onChange={(e) => updateField("licenseNumber", e.target.value)}
             disabled={isSubmitting}
-            className={errors.licenseNumber ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.licenseNumber
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
             placeholder="Ej: LIC-12345"
           />
           {errors.licenseNumber && (
@@ -275,10 +303,16 @@ export function DriverForm({
           <Input
             id="licenseExpiry"
             type="datetime-local"
-            value={formData.licenseExpiry ? formData.licenseExpiry.slice(0, 16) : ""}
+            value={
+              formData.licenseExpiry ? formData.licenseExpiry.slice(0, 16) : ""
+            }
             onChange={(e) => updateField("licenseExpiry", e.target.value)}
             disabled={isSubmitting}
-            className={errors.licenseExpiry ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.licenseExpiry
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
           />
           {errors.licenseExpiry && (
             <p className="text-sm text-destructive">{errors.licenseExpiry}</p>
@@ -330,14 +364,19 @@ export function DriverForm({
                   disabled={isSubmitting}
                   className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
                 />
-                <Label htmlFor={`license-${category.value}`} className="text-sm cursor-pointer">
+                <Label
+                  htmlFor={`license-${category.value}`}
+                  className="text-sm cursor-pointer"
+                >
                   {category.label}
                 </Label>
               </div>
             ))}
           </div>
           {errors.licenseCategories && (
-            <p className="text-sm text-destructive">{errors.licenseCategories}</p>
+            <p className="text-sm text-destructive">
+              {errors.licenseCategories}
+            </p>
           )}
         </div>
 
@@ -347,7 +386,9 @@ export function DriverForm({
           <textarea
             id="certifications"
             value={formData.certifications ?? ""}
-            onChange={(e) => updateField("certifications", e.target.value || "")}
+            onChange={(e) =>
+              updateField("certifications", e.target.value || "")
+            }
             disabled={isSubmitting}
             rows={3}
             className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors resize-y"

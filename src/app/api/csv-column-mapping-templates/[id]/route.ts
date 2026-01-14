@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { setTenantContext, requireTenantContext } from "@/lib/tenant";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import { updateCsvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
-import { z } from "zod";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -16,7 +16,7 @@ function extractTenantContext(request: NextRequest) {
 // GET - Get a specific column mapping template
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -24,7 +24,7 @@ export async function GET(
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -37,14 +37,14 @@ export async function GET(
       .where(
         and(
           eq(csvColumnMappingTemplates.id, id),
-          eq(csvColumnMappingTemplates.companyId, context.companyId)
-        )
+          eq(csvColumnMappingTemplates.companyId, context.companyId),
+        ),
       );
 
     if (template.length === 0) {
       return NextResponse.json(
         { error: "Template not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -59,7 +59,7 @@ export async function GET(
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to fetch template" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -67,7 +67,7 @@ export async function GET(
 // PATCH - Update a column mapping template
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -75,7 +75,7 @@ export async function PATCH(
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -89,14 +89,14 @@ export async function PATCH(
       .where(
         and(
           eq(csvColumnMappingTemplates.id, id),
-          eq(csvColumnMappingTemplates.companyId, context.companyId)
-        )
+          eq(csvColumnMappingTemplates.companyId, context.companyId),
+        ),
       );
 
     if (existing.length === 0) {
       return NextResponse.json(
         { error: "Template not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -111,14 +111,14 @@ export async function PATCH(
         .where(
           and(
             eq(csvColumnMappingTemplates.companyId, context.companyId),
-            eq(csvColumnMappingTemplates.name, validatedData.name)
-          )
+            eq(csvColumnMappingTemplates.name, validatedData.name),
+          ),
         );
 
       if (nameConflict.length > 0) {
         return NextResponse.json(
           { error: "Template with this name already exists" },
-          { status: 409 }
+          { status: 409 },
         );
       }
     }
@@ -126,14 +126,16 @@ export async function PATCH(
     // Build update object
     const updateData: any = {};
     if (validatedData.name !== undefined) updateData.name = validatedData.name;
-    if (validatedData.description !== undefined) updateData.description = validatedData.description;
+    if (validatedData.description !== undefined)
+      updateData.description = validatedData.description;
     if (validatedData.columnMapping !== undefined) {
       updateData.columnMapping = JSON.stringify(validatedData.columnMapping);
     }
     if (validatedData.requiredFields !== undefined) {
       updateData.requiredFields = JSON.stringify(validatedData.requiredFields);
     }
-    if (validatedData.active !== undefined) updateData.active = validatedData.active;
+    if (validatedData.active !== undefined)
+      updateData.active = validatedData.active;
     updateData.updatedAt = new Date();
 
     // Update template
@@ -143,8 +145,8 @@ export async function PATCH(
       .where(
         and(
           eq(csvColumnMappingTemplates.id, id),
-          eq(csvColumnMappingTemplates.companyId, context.companyId)
-        )
+          eq(csvColumnMappingTemplates.companyId, context.companyId),
+        ),
       )
       .returning();
 
@@ -160,12 +162,12 @@ export async function PATCH(
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Validation failed", details: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: error.message || "Failed to update template" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -173,7 +175,7 @@ export async function PATCH(
 // DELETE - Delete (deactivate) a column mapping template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -181,7 +183,7 @@ export async function DELETE(
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -195,14 +197,14 @@ export async function DELETE(
       .where(
         and(
           eq(csvColumnMappingTemplates.id, id),
-          eq(csvColumnMappingTemplates.companyId, context.companyId)
-        )
+          eq(csvColumnMappingTemplates.companyId, context.companyId),
+        ),
       );
 
     if (existing.length === 0) {
       return NextResponse.json(
         { error: "Template not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -219,7 +221,7 @@ export async function DELETE(
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to delete template" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,12 +1,12 @@
 "use client";
 
+import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
-import maplibregl, { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { MapPin, Navigation } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { MapPin, Navigation } from "lucide-react";
 
 // Using OpenStreetMap tiles (free, no API key required)
 const DEFAULT_STYLE: maplibregl.StyleSpecification = {
@@ -42,7 +42,11 @@ interface DepotSelectorProps {
   className?: string;
 }
 
-export function DepotSelector({ value, onChange, className = "" }: DepotSelectorProps) {
+export function DepotSelector({
+  value,
+  onChange,
+  className = "",
+}: DepotSelectorProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const marker = useRef<maplibregl.Marker | null>(null);
@@ -66,7 +70,7 @@ export function DepotSelector({ value, onChange, className = "" }: DepotSelector
 
     mapInstance.addControl(
       new maplibregl.AttributionControl({ compact: true }),
-      "bottom-right"
+      "bottom-right",
     );
 
     mapInstance.addControl(new maplibregl.NavigationControl(), "top-right");
@@ -201,11 +205,15 @@ export function DepotSelector({ value, onChange, className = "" }: DepotSelector
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        updateDepotLocation(latitude.toString(), longitude.toString(), "Current location");
+        updateDepotLocation(
+          latitude.toString(),
+          longitude.toString(),
+          "Current location",
+        );
       },
       (error) => {
         alert(`Unable to get your location: ${error.message}`);
-      }
+      },
     );
   };
 
@@ -228,7 +236,9 @@ export function DepotSelector({ value, onChange, className = "" }: DepotSelector
         <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="depot-lat" className="text-sm">Latitude</Label>
+              <Label htmlFor="depot-lat" className="text-sm">
+                Latitude
+              </Label>
               <Input
                 id="depot-lat"
                 type="number"
@@ -240,7 +250,9 @@ export function DepotSelector({ value, onChange, className = "" }: DepotSelector
               />
             </div>
             <div>
-              <Label htmlFor="depot-lng" className="text-sm">Longitude</Label>
+              <Label htmlFor="depot-lng" className="text-sm">
+                Longitude
+              </Label>
               <Input
                 id="depot-lng"
                 type="number"
@@ -253,7 +265,9 @@ export function DepotSelector({ value, onChange, className = "" }: DepotSelector
             </div>
           </div>
           <div>
-            <Label htmlFor="depot-address" className="text-sm">Address (optional)</Label>
+            <Label htmlFor="depot-address" className="text-sm">
+              Address (optional)
+            </Label>
             <Input
               id="depot-address"
               value={manualAddress}
@@ -266,11 +280,7 @@ export function DepotSelector({ value, onChange, className = "" }: DepotSelector
             <Button type="button" onClick={handleManualSubmit}>
               Set Location
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleLocateUser}
-            >
+            <Button type="button" variant="outline" onClick={handleLocateUser}>
               <Navigation className="w-4 h-4 mr-2" />
               Use My Location
             </Button>
@@ -283,7 +293,8 @@ export function DepotSelector({ value, onChange, className = "" }: DepotSelector
             className="w-full h-80 rounded-lg overflow-hidden border cursor-crosshair"
           />
           <p className="text-sm text-muted-foreground">
-            Click on the map to set the depot location, or use the Manual Input button to enter coordinates.
+            Click on the map to set the depot location, or use the Manual Input
+            button to enter coordinates.
           </p>
 
           {value.latitude && value.longitude && (

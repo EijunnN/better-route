@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { DRIVER_STATUS, DRIVER_STATUS_TRANSITIONS } from "@/db/schema";
+import { type DRIVER_STATUS, DRIVER_STATUS_TRANSITIONS } from "@/db/schema";
 import type { DriverStatusTransitionInput } from "@/lib/validations/driver-status";
 import { STATUS_DISPLAY_NAMES } from "@/lib/validations/driver-status";
 
@@ -25,7 +25,10 @@ interface DriverStatusModalProps {
   driverId: string;
   currentStatus: keyof typeof DRIVER_STATUS;
   driverName: string;
-  onStatusChange: (driverId: string, data: DriverStatusTransitionInput) => Promise<void>;
+  onStatusChange: (
+    driverId: string,
+    data: DriverStatusTransitionInput,
+  ) => Promise<void>;
 }
 
 export function DriverStatusModal({
@@ -75,7 +78,9 @@ export function DriverStatusModal({
       if (response.status === 409) {
         // Conflict - has active routes
         setError(errorData.reason || "No se puede cambiar el estado");
-        setWarning("El conductor tiene rutas activas. Marque 'Forzar cambio' para continuar después de reasignar las rutas.");
+        setWarning(
+          "El conductor tiene rutas activas. Marque 'Forzar cambio' para continuar después de reasignar las rutas.",
+        );
       } else if (errorData.error) {
         setError(errorData.error);
       } else {
@@ -100,7 +105,10 @@ export function DriverStatusModal({
     selectedStatus === "UNAVAILABLE" ||
     selectedStatus === "ABSENT" ||
     (currentStatus === "ASSIGNED" && selectedStatus !== "ASSIGNED") ||
-    (currentStatus === "IN_ROUTE" && selectedStatus !== "IN_ROUTE" && selectedStatus !== "ON_PAUSE" && selectedStatus !== "COMPLETED");
+    (currentStatus === "IN_ROUTE" &&
+      selectedStatus !== "IN_ROUTE" &&
+      selectedStatus !== "ON_PAUSE" &&
+      selectedStatus !== "COMPLETED");
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -108,8 +116,9 @@ export function DriverStatusModal({
         <DialogHeader>
           <DialogTitle>Cambiar Estado del Conductor</DialogTitle>
           <DialogDescription>
-            Cambie el estado operativo del conductor <strong>{driverName}</strong>.
-            Estado actual: <strong>{STATUS_LABELS[currentStatus]}</strong>
+            Cambie el estado operativo del conductor{" "}
+            <strong>{driverName}</strong>. Estado actual:{" "}
+            <strong>{STATUS_LABELS[currentStatus]}</strong>
           </DialogDescription>
         </DialogHeader>
 
@@ -197,10 +206,7 @@ export function DriverStatusModal({
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={!selectedStatus || isSubmitting}
-            >
+            <Button type="submit" disabled={!selectedStatus || isSubmitting}>
               {isSubmitting ? "Cambiando..." : "Cambiar Estado"}
             </Button>
           </DialogFooter>

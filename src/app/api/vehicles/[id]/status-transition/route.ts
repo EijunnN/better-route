@@ -1,18 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { vehicles, vehicleStatusHistory } from "@/db/schema";
-import { vehicleStatusTransitionSchema } from "@/lib/validations/vehicle-status";
-import { VEHICLE_STATUS } from "@/lib/validations/vehicle";
-import { eq, and, desc } from "drizzle-orm";
-import { setTenantContext } from "@/lib/tenant";
+import { vehicleStatusHistory, vehicles } from "@/db/schema";
 import { logUpdate } from "@/lib/audit";
+import { setTenantContext } from "@/lib/tenant";
+import { VEHICLE_STATUS } from "@/lib/validations/vehicle";
 import {
-  validateStatusTransition,
   requiresActiveRouteCheck,
   STATUS_DISPLAY_NAMES,
   STATUS_TRANSITION_RULES,
-  type StatusTransitionError,
   type StatusChangeResult,
+  type StatusTransitionError,
+  validateStatusTransition,
+  vehicleStatusTransitionSchema,
 } from "@/lib/validations/vehicle-status";
 
 function extractTenantContext(request: NextRequest) {
@@ -33,12 +33,7 @@ async function getVehicle(id: string, companyId: string) {
   const [vehicle] = await db
     .select()
     .from(vehicles)
-    .where(
-      and(
-        eq(vehicles.id, id),
-        eq(vehicles.companyId, companyId)
-      )
-    )
+    .where(and(eq(vehicles.id, id), eq(vehicles.companyId, companyId)))
     .limit(1);
 
   return vehicle;
@@ -50,14 +45,14 @@ async function getVehicle(id: string, companyId: string) {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -67,10 +62,7 @@ export async function POST(
     const existingVehicle = await getVehicle(id, tenantCtx.companyId);
 
     if (!existingVehicle) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
     const body = await request.json();
@@ -80,17 +72,18 @@ export async function POST(
     const newStatus = validatedData.newStatus;
 
     // Validate status transition rules
-    const transitionValidation = validateStatusTransition(currentStatus, newStatus);
+    const transitionValidation = validateStatusTransition(
+      currentStatus,
+      newStatus,
+    );
     if (!transitionValidation.valid) {
       const errorResponse: StatusTransitionError = {
         valid: false,
         reason: transitionValidation.reason || "Transición de estado no válida",
-        suggestedAlternativeStatuses: STATUS_TRANSITION_RULES[currentStatus] || [],
+        suggestedAlternativeStatuses:
+          STATUS_TRANSITION_RULES[currentStatus] || [],
       };
-      return NextResponse.json(
-        errorResponse,
-        { status: 400 }
-      );
+      return NextResponse.json(errorResponse, { status: 400 });
     }
 
     // Check for active routes/assignments if required
@@ -102,14 +95,12 @@ export async function POST(
           reason: `El vehículo tiene rutas activas asignadas. Use el parámetro 'force: true' para forzar el cambio después de reasignar las rutas.`,
           requiresReassignment: true,
           activeRouteCount: 0, // TODO: Get actual count from planifications
-          suggestedAlternativeStatuses: STATUS_TRANSITION_RULES[currentStatus]?.filter(
-            s => s !== newStatus && s !== "INACTIVE"
-          ) || [],
+          suggestedAlternativeStatuses:
+            STATUS_TRANSITION_RULES[currentStatus]?.filter(
+              (s) => s !== newStatus && s !== "INACTIVE",
+            ) || [],
         };
-        return NextResponse.json(
-          errorResponse,
-          { status: 409 }
-        );
+        return NextResponse.json(errorResponse, { status: 409 });
       }
     }
 
@@ -145,7 +136,9 @@ export async function POST(
       previousStatus: currentStatus,
       newStatus: newStatus,
       message: `Estado cambiado de ${STATUS_DISPLAY_NAMES[currentStatus] || currentStatus} a ${STATUS_DISPLAY_NAMES[newStatus] || newStatus}`,
-      warning: validatedData.force ? "El cambio de estado fue forzado a pesar de tener rutas activas" : undefined,
+      warning: validatedData.force
+        ? "El cambio de estado fue forzado a pesar de tener rutas activas"
+        : undefined,
     };
 
     return NextResponse.json(result);
@@ -154,12 +147,12 @@ export async function POST(
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Invalid input", details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: "Error updating vehicle status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

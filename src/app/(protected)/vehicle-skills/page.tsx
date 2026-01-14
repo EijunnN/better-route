@@ -19,9 +19,12 @@ interface VehicleSkill {
 
 const CATEGORY_BADGE_COLORS: Record<string, string> = {
   EQUIPMENT: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  TEMPERATURE: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400",
-  CERTIFICATIONS: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-  SPECIAL: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+  TEMPERATURE:
+    "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400",
+  CERTIFICATIONS:
+    "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+  SPECIAL:
+    "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
 };
 
 export default function VehicleSkillsPage() {
@@ -154,13 +157,18 @@ export default function VehicleSkillsPage() {
           <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
             <VehicleSkillForm
               onSubmit={editingSkill ? handleUpdate : handleCreate}
-              initialData={editingSkill ? {
-                code: editingSkill.code,
-                name: editingSkill.name,
-                category: editingSkill.category as VehicleSkillInput["category"],
-                description: editingSkill.description,
-                active: editingSkill.active,
-              } : undefined}
+              initialData={
+                editingSkill
+                  ? {
+                      code: editingSkill.code,
+                      name: editingSkill.name,
+                      category:
+                        editingSkill.category as VehicleSkillInput["category"],
+                      description: editingSkill.description,
+                      active: editingSkill.active,
+                    }
+                  : undefined
+              }
               submitLabel={editingSkill ? "Actualizar" : "Crear"}
             />
             <div className="mt-4">
@@ -200,7 +208,10 @@ export default function VehicleSkillsPage() {
         <div className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label htmlFor="search" className="block text-sm font-medium text-foreground mb-1">
+              <label
+                htmlFor="search"
+                className="block text-sm font-medium text-foreground mb-1"
+              >
                 Buscar
               </label>
               <input
@@ -213,7 +224,10 @@ export default function VehicleSkillsPage() {
               />
             </div>
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-foreground mb-1">
+              <label
+                htmlFor="category"
+                className="block text-sm font-medium text-foreground mb-1"
+              >
                 Categoría
               </label>
               <select
@@ -223,15 +237,20 @@ export default function VehicleSkillsPage() {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">Todas</option>
-                {Object.entries(VEHICLE_SKILL_CATEGORY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
+                {Object.entries(VEHICLE_SKILL_CATEGORY_LABELS).map(
+                  ([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ),
+                )}
               </select>
             </div>
             <div>
-              <label htmlFor="active" className="block text-sm font-medium text-foreground mb-1">
+              <label
+                htmlFor="active"
+                className="block text-sm font-medium text-foreground mb-1"
+              >
                 Estado
               </label>
               <select
@@ -288,7 +307,10 @@ export default function VehicleSkillsPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {skills.map((skill) => (
-                    <tr key={skill.id} className="hover:bg-muted/50 transition-colors">
+                    <tr
+                      key={skill.id}
+                      className="hover:bg-muted/50 transition-colors"
+                    >
                       <td className="whitespace-nowrap px-4 py-4 text-sm font-mono font-medium text-foreground">
                         {skill.code}
                       </td>
@@ -298,10 +320,12 @@ export default function VehicleSkillsPage() {
                       <td className="whitespace-nowrap px-4 py-4">
                         <span
                           className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                            CATEGORY_BADGE_COLORS[skill.category] || "bg-gray-100 text-gray-800"
+                            CATEGORY_BADGE_COLORS[skill.category] ||
+                            "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {VEHICLE_SKILL_CATEGORY_LABELS[skill.category] || skill.category}
+                          {VEHICLE_SKILL_CATEGORY_LABELS[skill.category] ||
+                            skill.category}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-sm text-muted-foreground max-w-xs truncate">

@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { AUTH_ERRORS } from "@/lib/validations/auth";
 import {
-  getRefreshToken,
-  verifyToken,
   generateTokenPair,
+  getRefreshToken,
   setAuthCookies,
+  verifyToken,
 } from "@/lib/auth";
+import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 /**
  * POST /api/auth/refresh
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     if (!refreshToken) {
       return NextResponse.json(
         { error: AUTH_ERRORS.INVALID_TOKEN },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     if (!payload || payload.type !== "refresh") {
       return NextResponse.json(
         { error: AUTH_ERRORS.INVALID_TOKEN },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     if (!user || !user.active) {
       return NextResponse.json(
         { error: AUTH_ERRORS.USER_INACTIVE },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     console.error("Token refresh error:", error);
     return NextResponse.json(
       { error: "Error al refrescar token" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

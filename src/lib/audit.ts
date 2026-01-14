@@ -23,7 +23,11 @@ export async function createAuditLog(entry: AuditLogEntry) {
   return log;
 }
 
-export async function logCreate(entityType: string, entityId: string, data: any) {
+export async function logCreate(
+  entityType: string,
+  entityId: string,
+  data: any,
+) {
   return createAuditLog({
     entityType,
     entityId,
@@ -32,7 +36,11 @@ export async function logCreate(entityType: string, entityId: string, data: any)
   });
 }
 
-export async function logUpdate(entityType: string, entityId: string, changes: any) {
+export async function logUpdate(
+  entityType: string,
+  entityId: string,
+  changes: any,
+) {
   return createAuditLog({
     entityType,
     entityId,
@@ -41,7 +49,11 @@ export async function logUpdate(entityType: string, entityId: string, changes: a
   });
 }
 
-export async function logDelete(entityType: string, entityId: string, data?: any) {
+export async function logDelete(
+  entityType: string,
+  entityId: string,
+  data?: any,
+) {
   return createAuditLog({
     entityType,
     entityId,

@@ -1,12 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
-import { companySchema, companyQuerySchema } from "@/lib/validations/company";
-import { eq, and, desc, gte, lte } from "drizzle-orm";
-import { withTenantFilter, verifyTenantAccess, getAuditLogContext } from "@/db/tenant-aware";
+import {
+  getAuditLogContext,
+  verifyTenantAccess,
+  withTenantFilter,
+} from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/authorization";
+import {
+  checkPermissionOrError,
+  handleError,
+  setupAuthContext,
+  unauthorizedResponse,
+} from "@/lib/route-helpers";
 import { setTenantContext } from "@/lib/tenant";
-import { setupAuthContext, checkPermissionOrError, unauthorizedResponse, handleError } from "@/lib/route-helpers";
-import { EntityType, Action } from "@/lib/authorization";
+import { companyQuerySchema, companySchema } from "@/lib/validations/company";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +25,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user can read companies
-    const permError = checkPermissionOrError(authResult.user, EntityType.COMPANY, Action.READ);
+    const permError = checkPermissionOrError(
+      authResult.user,
+      EntityType.COMPANY,
+      Action.READ,
+    );
     if (permError) return permError;
 
     const { searchParams } = new URL(request.url);
@@ -63,7 +76,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching companies:", error);
     return NextResponse.json(
       { error: "Error fetching companies" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -76,7 +89,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user can create companies
-    const permError = checkPermissionOrError(authResult.user, EntityType.COMPANY, Action.CREATE);
+    const permError = checkPermissionOrError(
+      authResult.user,
+      EntityType.COMPANY,
+      Action.CREATE,
+    );
     if (permError) return permError;
 
     const body = await request.json();
@@ -91,20 +108,27 @@ export async function POST(request: NextRequest) {
     if (existingCompany.length > 0 && existingCompany[0].active) {
       return NextResponse.json(
         { error: "Ya existe una empresa activa con este nombre legal" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const existingEmail = await db
       .select()
       .from(companies)
-      .where(and(eq(companies.email, validatedData.email), eq(companies.active, true)))
+      .where(
+        and(
+          eq(companies.email, validatedData.email),
+          eq(companies.active, true),
+        ),
+      )
       .limit(1);
 
     if (existingEmail.length > 0) {
       return NextResponse.json(
-        { error: "El correo electrónico ya está en uso por otra empresa activa" },
-        { status: 400 }
+        {
+          error: "El correo electrónico ya está en uso por otra empresa activa",
+        },
+        { status: 400 },
       );
     }
 

@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq, or } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicleSkills } from "@/db/schema";
-import { updateVehicleSkillSchema } from "@/lib/validations/vehicle-skill";
-import { eq, and, or } from "drizzle-orm";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { logDelete, logUpdate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
-import { logUpdate, logDelete } from "@/lib/audit";
+import { updateVehicleSkillSchema } from "@/lib/validations/vehicle-skill";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -23,14 +23,14 @@ function extractTenantContext(request: NextRequest) {
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -47,15 +47,15 @@ export async function PATCH(
       .where(
         and(
           eq(vehicleSkills.id, id),
-          eq(vehicleSkills.companyId, tenantCtx.companyId)
-        )
+          eq(vehicleSkills.companyId, tenantCtx.companyId),
+        ),
       )
       .limit(1);
 
     if (existingSkill.length === 0) {
       return NextResponse.json(
         { error: "Habilidad no encontrada" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -70,7 +70,7 @@ export async function PATCH(
       if (duplicateCode.length > 0) {
         return NextResponse.json(
           { error: "Ya existe una habilidad con este código" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -96,26 +96,26 @@ export async function PATCH(
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Invalid input", details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: "Error updating vehicle skill" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -130,15 +130,15 @@ export async function DELETE(
       .where(
         and(
           eq(vehicleSkills.id, id),
-          eq(vehicleSkills.companyId, tenantCtx.companyId)
-        )
+          eq(vehicleSkills.companyId, tenantCtx.companyId),
+        ),
       )
       .limit(1);
 
     if (existingSkill.length === 0) {
       return NextResponse.json(
         { error: "Habilidad no encontrada" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -155,7 +155,7 @@ export async function DELETE(
     console.error("Error deleting vehicle skill:", error);
     return NextResponse.json(
       { error: "Error deleting vehicle skill" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

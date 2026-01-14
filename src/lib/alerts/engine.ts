@@ -5,11 +5,18 @@
  * based on various conditions in the system.
  */
 
+import { and, eq, gte, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { alerts, alertRules, drivers, vehicles, optimizationJobs } from "@/db/schema";
-import { withTenantFilter, getAuditLogContext } from "@/db/tenant-aware";
+import {
+  alertRules,
+  alerts,
+  optimizationJobs,
+  USER_ROLES,
+  users,
+  vehicles,
+} from "@/db/schema";
+import { getAuditLogContext, withTenantFilter } from "@/db/tenant-aware";
 import { requireTenantContext } from "@/lib/tenant";
-import { eq, and, sql, lt, gte, or } from "drizzle-orm";
 
 export interface AlertContext {
   companyId: string;
@@ -57,7 +64,7 @@ async function hasActiveAlert(
   context: AlertContext,
   type: string,
   entityType: string,
-  entityId: string
+  entityId: string,
 ): Promise<boolean> {
   const existing = await db.query.alerts.findFirst({
     where: and(
@@ -65,7 +72,7 @@ async function hasActiveAlert(
       eq(alerts.type, type as any),
       eq(alerts.entityType, entityType),
       eq(alerts.entityId, entityId),
-      eq(alerts.status, "ACTIVE")
+      eq(alerts.status, "ACTIVE"),
     ),
   });
 
@@ -77,32 +84,47 @@ async function hasActiveAlert(
  */
 export async function evaluateDriverLicenseAlerts(
   context: AlertContext,
-  daysThreshold: number = 30
+  daysThreshold: number = 30,
 ) {
   const thresholdDate = new Date();
   thresholdDate.setDate(thresholdDate.getDate() + daysThreshold);
 
-  const expiringDrivers = await db.query.drivers.findMany({
+  const expiringDrivers = await db.query.users.findMany({
     where: and(
-      eq(drivers.companyId, context.companyId),
-      eq(drivers.active, true),
-      sql`${drivers.licenseExpiry} <= ${thresholdDate}`
+      eq(users.companyId, context.companyId),
+      eq(users.role, USER_ROLES.CONDUCTOR),
+      eq(users.active, true),
+      sql`${users.licenseExpiry} <= ${thresholdDate}`,
     ),
   });
 
-  const createdAlerts: typeof alerts.$inferSelect[] = [];
+  const createdAlerts: (typeof alerts.$inferSelect)[] = [];
 
   for (const driver of expiringDrivers) {
+    // Skip if no license expiry date
+    if (!driver.licenseExpiry) continue;
+
     const expiryDate = new Date(driver.licenseExpiry);
-    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = Math.ceil(
+      (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+    );
 
     // Skip if alert already exists
-    if (await hasActiveAlert(context, "DRIVER_LICENSE_EXPIRING", "DRIVER", driver.id)) {
+    if (
+      await hasActiveAlert(
+        context,
+        "DRIVER_LICENSE_EXPIRING",
+        "DRIVER",
+        driver.id,
+      )
+    ) {
       continue;
     }
 
     const isExpired = daysUntilExpiry <= 0;
-    const alertType = isExpired ? "DRIVER_LICENSE_EXPIRED" : "DRIVER_LICENSE_EXPIRING";
+    const alertType = isExpired
+      ? "DRIVER_LICENSE_EXPIRED"
+      : "DRIVER_LICENSE_EXPIRING";
     const severity = isExpired ? "CRITICAL" : "WARNING";
 
     const alert = await createAlert(context, {
@@ -135,7 +157,7 @@ export async function evaluateDriverLicenseAlerts(
  */
 export async function evaluateVehicleDocumentAlerts(
   context: AlertContext,
-  daysThreshold: number = 30
+  daysThreshold: number = 30,
 ) {
   const thresholdDate = new Date();
   thresholdDate.setDate(thresholdDate.getDate() + daysThreshold);
@@ -145,7 +167,7 @@ export async function evaluateVehicleDocumentAlerts(
     where: and(
       eq(vehicles.companyId, context.companyId),
       eq(vehicles.active, true),
-      sql`${vehicles.insuranceExpiry} <= ${thresholdDate}`
+      sql`${vehicles.insuranceExpiry} <= ${thresholdDate}`,
     ),
   });
 
@@ -154,19 +176,28 @@ export async function evaluateVehicleDocumentAlerts(
     where: and(
       eq(vehicles.companyId, context.companyId),
       eq(vehicles.active, true),
-      sql`${vehicles.inspectionExpiry} <= ${thresholdDate}`
+      sql`${vehicles.inspectionExpiry} <= ${thresholdDate}`,
     ),
   });
 
-  const createdAlerts: typeof alerts.$inferSelect[] = [];
+  const createdAlerts: (typeof alerts.$inferSelect)[] = [];
 
   for (const vehicle of expiringInsurance) {
-    if (await hasActiveAlert(context, "VEHICLE_INSURANCE_EXPIRING", "VEHICLE", vehicle.id)) {
+    if (
+      await hasActiveAlert(
+        context,
+        "VEHICLE_INSURANCE_EXPIRING",
+        "VEHICLE",
+        vehicle.id,
+      )
+    ) {
       continue;
     }
 
     const expiryDate = new Date(vehicle.insuranceExpiry!);
-    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = Math.ceil(
+      (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+    );
     const isExpired = daysUntilExpiry <= 0;
 
     const alert = await createAlert(context, {
@@ -193,12 +224,21 @@ export async function evaluateVehicleDocumentAlerts(
   }
 
   for (const vehicle of expiringInspection) {
-    if (await hasActiveAlert(context, "VEHICLE_INSPECTION_EXPIRING", "VEHICLE", vehicle.id)) {
+    if (
+      await hasActiveAlert(
+        context,
+        "VEHICLE_INSPECTION_EXPIRING",
+        "VEHICLE",
+        vehicle.id,
+      )
+    ) {
       continue;
     }
 
     const expiryDate = new Date(vehicle.inspectionExpiry!);
-    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = Math.ceil(
+      (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+    );
     const isExpired = daysUntilExpiry <= 0;
 
     const alert = await createAlert(context, {
@@ -231,14 +271,15 @@ export async function evaluateVehicleDocumentAlerts(
  * Evaluate and create alerts for absent drivers
  */
 export async function evaluateDriverAbsentAlerts(context: AlertContext) {
-  const absentDrivers = await db.query.drivers.findMany({
+  const absentDrivers = await db.query.users.findMany({
     where: and(
-      eq(drivers.companyId, context.companyId),
-      eq(drivers.status, "ABSENT")
+      eq(users.companyId, context.companyId),
+      eq(users.role, USER_ROLES.CONDUCTOR),
+      eq(users.driverStatus, "ABSENT"),
     ),
   });
 
-  const createdAlerts: typeof alerts.$inferSelect[] = [];
+  const createdAlerts: (typeof alerts.$inferSelect)[] = [];
 
   for (const driver of absentDrivers) {
     if (await hasActiveAlert(context, "DRIVER_ABSENT", "DRIVER", driver.id)) {
@@ -254,7 +295,7 @@ export async function evaluateDriverAbsentAlerts(context: AlertContext) {
       description: `Driver ${driver.name} has been marked as absent. Route reassignment may be required.`,
       metadata: {
         driverName: driver.name,
-        status: driver.status,
+        status: driver.driverStatus,
       },
     });
 
@@ -271,13 +312,13 @@ export async function evaluateOptimizationFailedAlerts(context: AlertContext) {
   const failedJobs = await db.query.optimizationJobs.findMany({
     where: and(
       eq(optimizationJobs.companyId, context.companyId),
-      eq(optimizationJobs.status, "FAILED")
+      eq(optimizationJobs.status, "FAILED"),
     ),
     orderBy: (jobs) => jobs.createdAt,
     limit: 10,
   });
 
-  const createdAlerts: typeof alerts.$inferSelect[] = [];
+  const createdAlerts: (typeof alerts.$inferSelect)[] = [];
 
   for (const job of failedJobs) {
     if (await hasActiveAlert(context, "OPTIMIZATION_FAILED", "JOB", job.id)) {
@@ -338,7 +379,7 @@ export async function runAllAlertEvaluations(context: AlertContext) {
 export async function resolveAlertsForEntity(
   context: AlertContext,
   entityType: string,
-  entityId: string
+  entityId: string,
 ) {
   const now = new Date();
 
@@ -354,8 +395,8 @@ export async function resolveAlertsForEntity(
         eq(alerts.companyId, context.companyId),
         eq(alerts.entityType, entityType),
         eq(alerts.entityId, entityId),
-        eq(alerts.status, "ACTIVE")
-      )
+        eq(alerts.status, "ACTIVE"),
+      ),
     )
     .returning();
 

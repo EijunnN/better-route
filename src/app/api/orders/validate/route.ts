@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq, or } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, timeWindowPresets } from "@/db/schema";
-import { eq, and, or } from "drizzle-orm";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext, requireTenantContext } from "@/lib/tenant";
+import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import {
-  validateTimeWindowStrictness,
   getEffectiveStrictness,
   isStrictnessOverridden,
+  validateTimeWindowStrictness,
 } from "@/lib/time-window-strictness";
 
 function extractTenantContext(request: NextRequest) {
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -69,16 +69,16 @@ export async function POST(request: NextRequest) {
         presetToleranceMinutes: timeWindowPresets.toleranceMinutes,
       })
       .from(orders)
-      .leftJoin(timeWindowPresets, eq(orders.timeWindowPresetId, timeWindowPresets.id))
+      .leftJoin(
+        timeWindowPresets,
+        eq(orders.timeWindowPresetId, timeWindowPresets.id),
+      )
       .where(
         and(
           eq(orders.companyId, context.companyId),
           eq(orders.active, true),
-          or(
-            eq(orders.status, "PENDING"),
-            eq(orders.status, "ASSIGNED")
-          )
-        )
+          or(eq(orders.status, "PENDING"), eq(orders.status, "ASSIGNED")),
+        ),
       );
 
     // Analyze each order
@@ -90,11 +90,11 @@ export async function POST(request: NextRequest) {
     for (const order of ordersData) {
       const effectiveStrictness = getEffectiveStrictness(
         order.strictness,
-        order.presetStrictness || "HARD"
+        order.presetStrictness || "HARD",
       );
       const isOverridden = isStrictnessOverridden(
         order.strictness,
-        order.presetStrictness || "HARD"
+        order.presetStrictness || "HARD",
       );
 
       // Order info for response
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
           arrivalMinutes,
           windowStart,
           windowEnd,
-          order.presetToleranceMinutes
+          order.presetToleranceMinutes,
         );
 
         if (validationResult.reason === "HARD_CONSTRAINT_VIOLATION") {
@@ -206,7 +206,8 @@ export async function POST(request: NextRequest) {
         assignable: assignableOrders.length,
         unassignable: unassignableOrders.length,
         softMode: softModeOrders.length,
-        hardConstraint: assignableOrders.filter((o) => o.strictness === "HARD").length,
+        hardConstraint: assignableOrders.filter((o) => o.strictness === "HARD")
+          .length,
       },
       violations: unassignableOrders,
       softModeOrders,
@@ -218,7 +219,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to validate orders" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -236,7 +237,7 @@ export async function GET(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -252,13 +253,16 @@ export async function GET(request: NextRequest) {
         count: orders.id,
       })
       .from(orders)
-      .leftJoin(timeWindowPresets, eq(orders.timeWindowPresetId, timeWindowPresets.id))
+      .leftJoin(
+        timeWindowPresets,
+        eq(orders.timeWindowPresetId, timeWindowPresets.id),
+      )
       .where(
         and(
           eq(orders.companyId, context.companyId),
           eq(orders.active, true),
-          eq(orders.status, "PENDING")
-        )
+          eq(orders.status, "PENDING"),
+        ),
       );
 
     let hardCount = 0;
@@ -283,8 +287,8 @@ export async function GET(request: NextRequest) {
           eq(orders.companyId, context.companyId),
           eq(orders.active, true),
           eq(orders.status, "PENDING"),
-          eq(orders.timeWindowPresetId, null as any)
-        )
+          eq(orders.timeWindowPresetId, null as any),
+        ),
       );
 
     return NextResponse.json({
@@ -299,7 +303,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to get validation summary" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

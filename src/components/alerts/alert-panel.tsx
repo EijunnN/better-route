@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+  AlertCircle,
+  AlertTriangle,
+  Filter,
+  Info,
+  RefreshCw,
+  X,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -18,16 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertItem, Alert } from "./alert-item";
-import {
-  AlertTriangle,
-  AlertCircle,
-  Info,
-  RefreshCw,
-  X,
-  Filter,
-} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { type Alert, AlertItem } from "./alert-item";
 
 interface AlertPanelProps {
   companyId: string;
@@ -38,9 +33,13 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [filteredAlerts, setFilteredAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"all" | "critical" | "warning" | "info">("all");
+  const [activeTab, setActiveTab] = useState<
+    "all" | "critical" | "warning" | "info"
+  >("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "ACKNOWLEDGED" | "all">("ACTIVE");
+  const [statusFilter, setStatusFilter] = useState<
+    "ACTIVE" | "ACKNOWLEDGED" | "all"
+  >("ACTIVE");
   const { toast } = useToast();
 
   // Fetch alerts
@@ -53,7 +52,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
           headers: {
             "x-company-id": companyId,
           },
-        }
+        },
       );
 
       if (!response.ok) throw new Error("Failed to fetch alerts");
@@ -94,7 +93,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
         (a) =>
           a.title.toLowerCase().includes(query) ||
           a.description?.toLowerCase().includes(query) ||
-          a.type.toLowerCase().includes(query)
+          a.type.toLowerCase().includes(query),
       );
     }
 
@@ -102,9 +101,15 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
   }, [alerts, activeTab, searchQuery]);
 
   // Get counts
-  const criticalCount = alerts.filter((a) => a.severity === "CRITICAL" && a.status === "ACTIVE").length;
-  const warningCount = alerts.filter((a) => a.severity === "WARNING" && a.status === "ACTIVE").length;
-  const infoCount = alerts.filter((a) => a.severity === "INFO" && a.status === "ACTIVE").length;
+  const criticalCount = alerts.filter(
+    (a) => a.severity === "CRITICAL" && a.status === "ACTIVE",
+  ).length;
+  const warningCount = alerts.filter(
+    (a) => a.severity === "WARNING" && a.status === "ACTIVE",
+  ).length;
+  const infoCount = alerts.filter(
+    (a) => a.severity === "INFO" && a.status === "ACTIVE",
+  ).length;
 
   // Handle acknowledge
   const handleAcknowledge = async (alertId: string, note?: string) => {
@@ -188,7 +193,9 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
             onClick={fetchAlerts}
             disabled={isLoading}
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+            />
           </Button>
         </div>
 
@@ -211,7 +218,10 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
               </button>
             )}
           </div>
-          <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+          <Select
+            value={statusFilter}
+            onValueChange={(v: any) => setStatusFilter(v)}
+          >
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -225,7 +235,11 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="flex-1 flex flex-col">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v: any) => setActiveTab(v)}
+        className="flex-1 flex flex-col"
+      >
         <div className="px-4 pt-2">
           <TabsList className="w-full">
             <TabsTrigger value="all" className="flex-1">

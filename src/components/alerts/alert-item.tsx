@@ -1,23 +1,18 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Check,
+  Clock,
+  Info,
+  MoreVertical,
+  X,
+} from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  AlertTriangle,
-  AlertCircle,
-  Info,
-  X,
-  Check,
-  MoreVertical,
-  Clock,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -26,8 +21,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
 
 export type AlertSeverity = "CRITICAL" | "WARNING" | "INFO";
 export type AlertStatus = "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED" | "DISMISSED";
@@ -149,7 +149,9 @@ export function AlertItem({
         <div className="p-4">
           <div className="flex items-start gap-3">
             {/* Severity Icon */}
-            <div className={`mt-0.5 ${severityConfig.color} rounded-full p-1.5`}>
+            <div
+              className={`mt-0.5 ${severityConfig.color} rounded-full p-1.5`}
+            >
               <SeverityIcon className="w-4 h-4 text-white" />
             </div>
 
@@ -159,7 +161,10 @@ export function AlertItem({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-medium truncate">{alert.title}</h4>
-                    <Badge variant={severityConfig.badgeVariant} className="text-xs">
+                    <Badge
+                      variant={severityConfig.badgeVariant}
+                      className="text-xs"
+                    >
                       {severityConfig.label}
                     </Badge>
                     {alert.status !== "ACTIVE" && (
@@ -180,13 +185,9 @@ export function AlertItem({
                       <Clock className="w-3 h-3" />
                       <span>{getTimeSince(alert.createdAt)}</span>
                     </div>
-                    <span className="uppercase">
-                      {alert.entityType}
-                    </span>
+                    <span className="uppercase">{alert.entityType}</span>
                     {alert.acknowledgedBy && (
-                      <span>
-                        Acknowledged by {alert.acknowledgedBy.name}
-                      </span>
+                      <span>Acknowledged by {alert.acknowledgedBy.name}</span>
                     )}
                   </div>
                 </div>
@@ -194,7 +195,10 @@ export function AlertItem({
                 {/* Actions */}
                 {alert.status === "ACTIVE" && (onAcknowledge || onDismiss) && (
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuTrigger
+                      asChild
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                         <MoreVertical className="w-4 h-4" />
                       </Button>
@@ -232,7 +236,10 @@ export function AlertItem({
       </Card>
 
       {/* Acknowledge Dialog */}
-      <Dialog open={acknowledgeDialogOpen} onOpenChange={setAcknowledgeDialogOpen}>
+      <Dialog
+        open={acknowledgeDialogOpen}
+        onOpenChange={setAcknowledgeDialogOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Acknowledge Alert</DialogTitle>
@@ -269,7 +276,8 @@ export function AlertItem({
           <DialogHeader>
             <DialogTitle>Dismiss Alert</DialogTitle>
             <DialogDescription>
-              Dismissing this alert will hide it from the active list. Add an optional note.
+              Dismissing this alert will hide it from the active list. Add an
+              optional note.
             </DialogDescription>
           </DialogHeader>
           <Textarea
@@ -288,7 +296,11 @@ export function AlertItem({
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDismiss} disabled={isLoading}>
+            <Button
+              variant="destructive"
+              onClick={handleDismiss}
+              disabled={isLoading}
+            >
               {isLoading ? "Dismissing..." : "Dismiss"}
             </Button>
           </DialogFooter>

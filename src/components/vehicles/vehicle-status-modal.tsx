@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VEHICLE_STATUS } from "@/lib/validations/vehicle";
@@ -35,7 +35,10 @@ interface VehicleStatusModalProps {
   vehicleId: string;
   currentStatus: string;
   vehiclePlate: string;
-  onStatusChange: (vehicleId: string, data: VehicleStatusTransitionInput) => Promise<void>;
+  onStatusChange: (
+    vehicleId: string,
+    data: VehicleStatusTransitionInput,
+  ) => Promise<void>;
 }
 
 export function VehicleStatusModal({
@@ -82,7 +85,9 @@ export function VehicleStatusModal({
       if (response.status === 409) {
         // Conflict - has active routes
         setError(errorData.reason || "No se puede cambiar el estado");
-        setWarning("El vehículo tiene rutas activas. Marque 'Forzar cambio' para continuar después de reasignar las rutas.");
+        setWarning(
+          "El vehículo tiene rutas activas. Marque 'Forzar cambio' para continuar después de reasignar las rutas.",
+        );
       } else if (errorData.error) {
         setError(errorData.error);
       } else {
@@ -108,8 +113,9 @@ export function VehicleStatusModal({
         <DialogHeader>
           <DialogTitle>Cambiar Estado del Vehículo</DialogTitle>
           <DialogDescription>
-            Cambie el estado operativo del vehículo <strong>{vehiclePlate}</strong>.
-            Estado actual: <strong>{STATUS_LABELS[currentStatus] || currentStatus}</strong>
+            Cambie el estado operativo del vehículo{" "}
+            <strong>{vehiclePlate}</strong>. Estado actual:{" "}
+            <strong>{STATUS_LABELS[currentStatus] || currentStatus}</strong>
           </DialogDescription>
         </DialogHeader>
 
@@ -145,7 +151,8 @@ export function VehicleStatusModal({
             </div>
 
             {(selectedStatus === "INACTIVE" ||
-              (currentStatus === "ASSIGNED" && selectedStatus !== "ASSIGNED")) && (
+              (currentStatus === "ASSIGNED" &&
+                selectedStatus !== "ASSIGNED")) && (
               <div className="flex items-center space-x-2 rounded-md border border-orange-200 bg-orange-50 p-3 dark:border-orange-900 dark:bg-orange-950">
                 <input
                   id="force"
@@ -185,10 +192,7 @@ export function VehicleStatusModal({
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={!selectedStatus || isSubmitting}
-            >
+            <Button type="submit" disabled={!selectedStatus || isSubmitting}>
               {isSubmitting ? "Cambiando..." : "Cambiar Estado"}
             </Button>
           </DialogFooter>

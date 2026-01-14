@@ -1,8 +1,8 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 interface RouteStop {
@@ -22,6 +22,7 @@ interface Route {
   stops: RouteStop[];
   totalDistance: number;
   totalDuration: number;
+  geometry?: string; // Encoded polyline from VROOM/OSRM
 }
 
 interface RouteMapProps {
@@ -32,6 +33,54 @@ interface RouteMapProps {
   };
   selectedRouteId?: string | null;
   onRouteSelect?: (routeId: string) => void;
+}
+
+/**
+ * Decode Google Polyline Algorithm Format
+ * OSRM uses precision 5 (like Google Maps), VROOM passes it through
+ * @see https://developers.google.com/maps/documentation/utilities/polylinealgorithm
+ */
+function decodePolyline(
+  encoded: string,
+  precision: number = 5,
+): [number, number][] {
+  const coordinates: [number, number][] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  const factor = 10 ** precision;
+
+  while (index < encoded.length) {
+    let shift = 0;
+    let result = 0;
+    let byte: number;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLat = result & 1 ? ~(result >> 1) : result >> 1;
+    lat += deltaLat;
+
+    shift = 0;
+    result = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLng = result & 1 ? ~(result >> 1) : result >> 1;
+    lng += deltaLng;
+
+    // [longitude, latitude] format for GeoJSON
+    coordinates.push([lng / factor, lat / factor]);
+  }
+
+  return coordinates;
 }
 
 // Color palette for routes
@@ -48,7 +97,12 @@ const ROUTE_COLORS = [
   "#6366f1", // indigo
 ];
 
-export function RouteMap({ routes, depot, selectedRouteId, onRouteSelect }: RouteMapProps) {
+export function RouteMap({
+  routes,
+  depot,
+  selectedRouteId,
+  onRouteSelect,
+}: RouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -73,8 +127,12 @@ export function RouteMap({ routes, depot, selectedRouteId, onRouteSelect }: Rout
           centerLng = depot.longitude;
         } else if (routes.length > 0 && routes[0].stops.length > 0) {
           const allStops = routes.flatMap((r) => r.stops);
-          const avgLat = allStops.reduce((sum, s) => sum + parseFloat(s.latitude), 0) / allStops.length;
-          const avgLng = allStops.reduce((sum, s) => sum + parseFloat(s.longitude), 0) / allStops.length;
+          const avgLat =
+            allStops.reduce((sum, s) => sum + parseFloat(s.latitude), 0) /
+            allStops.length;
+          const avgLng =
+            allStops.reduce((sum, s) => sum + parseFloat(s.longitude), 0) /
+            allStops.length;
           centerLat = avgLat;
           centerLng = avgLng;
         }
@@ -132,10 +190,14 @@ export function RouteMap({ routes, depot, selectedRouteId, onRouteSelect }: Rout
                 </svg>
               </div>
             `;
-            
+
             new maplibregl.Marker({ element: depotEl })
               .setLngLat([depot.longitude, depot.latitude])
-              .setPopup(new maplibregl.Popup().setHTML("<strong>Depot</strong><br/>Punto de inicio/fin"))
+              .setPopup(
+                new maplibregl.Popup().setHTML(
+                  "<strong>Depot</strong><br/>Punto de inicio/fin",
+                ),
+              )
               .addTo(map.current);
           }
 
@@ -145,30 +207,48 @@ export function RouteMap({ routes, depot, selectedRouteId, onRouteSelect }: Rout
             const color = ROUTE_COLORS[routeIndex % ROUTE_COLORS.length];
             const isSelected = route.routeId === selectedRouteId;
 
-            // Build route coordinates
-            const coordinates: [number, number][] = [];
-            
-            // Start from depot if available
-            if (depot) {
-              coordinates.push([depot.longitude, depot.latitude]);
-            }
+            // Use decoded polyline from VROOM/OSRM if available, otherwise fallback to straight lines
+            let coordinates: [number, number][] = [];
 
-            // Add all stops
-            route.stops
-              .sort((a, b) => a.sequence - b.sequence)
-              .forEach((stop) => {
-                coordinates.push([parseFloat(stop.longitude), parseFloat(stop.latitude)]);
-              });
+            if (route.geometry) {
+              // Decode the polyline from OSRM (real road geometry)
+              coordinates = decodePolyline(route.geometry);
+              console.log(
+                `[RouteMap] Route ${route.routeId} using OSRM geometry with ${coordinates.length} points`,
+              );
+            } else {
+              // Fallback: straight lines between stops
+              console.log(
+                `[RouteMap] Route ${route.routeId} using straight lines (no geometry)`,
+              );
 
-            // Return to depot
-            if (depot) {
-              coordinates.push([depot.longitude, depot.latitude]);
+              if (depot) {
+                coordinates.push([depot.longitude, depot.latitude]);
+              }
+
+              route.stops
+                .sort((a, b) => a.sequence - b.sequence)
+                .forEach((stop) => {
+                  coordinates.push([
+                    parseFloat(stop.longitude),
+                    parseFloat(stop.latitude),
+                  ]);
+                });
+
+              if (depot) {
+                coordinates.push([depot.longitude, depot.latitude]);
+              }
             }
 
             // Add route line
             if (coordinates.length >= 2) {
               const sourceId = `route-${route.routeId}`;
               const layerId = `route-line-${route.routeId}`;
+
+              // Check if source already exists (prevent duplicates)
+              if (map.current.getSource(sourceId)) {
+                return;
+              }
 
               map.current.addSource(sourceId, {
                 type: "geojson",
@@ -203,7 +283,8 @@ export function RouteMap({ routes, depot, selectedRouteId, onRouteSelect }: Rout
               });
 
               map.current.on("mouseenter", layerId, () => {
-                if (map.current) map.current.getCanvas().style.cursor = "pointer";
+                if (map.current)
+                  map.current.getCanvas().style.cursor = "pointer";
               });
 
               map.current.on("mouseleave", layerId, () => {
@@ -243,7 +324,10 @@ export function RouteMap({ routes, depot, selectedRouteId, onRouteSelect }: Rout
               `);
 
               const marker = new maplibregl.Marker({ element: markerEl })
-                .setLngLat([parseFloat(stop.longitude), parseFloat(stop.latitude)])
+                .setLngLat([
+                  parseFloat(stop.longitude),
+                  parseFloat(stop.latitude),
+                ])
                 .setPopup(popup)
                 .addTo(map.current!);
 
@@ -254,21 +338,24 @@ export function RouteMap({ routes, depot, selectedRouteId, onRouteSelect }: Rout
           // Fit bounds to show all markers
           if (routes.length > 0) {
             const allCoords: [number, number][] = [];
-            
+
             if (depot) {
               allCoords.push([depot.longitude, depot.latitude]);
             }
-            
+
             routes.forEach((route) => {
               route.stops.forEach((stop) => {
-                allCoords.push([parseFloat(stop.longitude), parseFloat(stop.latitude)]);
+                allCoords.push([
+                  parseFloat(stop.longitude),
+                  parseFloat(stop.latitude),
+                ]);
               });
             });
 
             if (allCoords.length > 0) {
               const bounds = allCoords.reduce(
                 (bounds, coord) => bounds.extend(coord as [number, number]),
-                new maplibregl.LngLatBounds(allCoords[0], allCoords[0])
+                new maplibregl.LngLatBounds(allCoords[0], allCoords[0]),
               );
 
               map.current.fitBounds(bounds, { padding: 50 });
@@ -319,7 +406,8 @@ export function RouteMap({ routes, depot, selectedRouteId, onRouteSelect }: Rout
           Mapa de Rutas
           {routes.length > 0 && (
             <span className="text-sm font-normal text-muted-foreground">
-              ({routes.length} rutas, {routes.reduce((sum, r) => sum + r.stops.length, 0)} paradas)
+              ({routes.length} rutas,{" "}
+              {routes.reduce((sum, r) => sum + r.stops.length, 0)} paradas)
             </span>
           )}
         </CardTitle>
@@ -333,7 +421,7 @@ export function RouteMap({ routes, depot, selectedRouteId, onRouteSelect }: Rout
           )}
           <div ref={mapContainer} className="h-full w-full" />
         </div>
-        
+
         {/* Legend */}
         {routes.length > 0 && (
           <div className="p-3 border-t flex flex-wrap gap-3">
@@ -349,10 +437,14 @@ export function RouteMap({ routes, depot, selectedRouteId, onRouteSelect }: Rout
               >
                 <div
                   className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: ROUTE_COLORS[i % ROUTE_COLORS.length] }}
+                  style={{
+                    backgroundColor: ROUTE_COLORS[i % ROUTE_COLORS.length],
+                  }}
                 />
                 <span>{route.vehiclePlate}</span>
-                <span className="text-muted-foreground">({route.stops.length})</span>
+                <span className="text-muted-foreground">
+                  ({route.stops.length})
+                </span>
               </button>
             ))}
           </div>

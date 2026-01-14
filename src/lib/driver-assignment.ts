@@ -1,6 +1,15 @@
+import { and, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { drivers, driverSkills, driverAvailability, driverSecondaryFleets, vehicles, orders, vehicleSkills } from "@/db/schema";
-import { eq, and, inArray, or, sql, lt, gte } from "drizzle-orm";
+import {
+  orders,
+  USER_ROLES,
+  userAvailability,
+  userSecondaryFleets,
+  userSkills,
+  users,
+  vehicleSkills,
+  vehicles,
+} from "@/db/schema";
 
 /**
  * Driver assignment quality score
@@ -10,11 +19,11 @@ export interface AssignmentScore {
   driverId: string;
   score: number;
   factors: {
-    skillsMatch: number;      // 0-100: Skills compatibility
-    availability: number;     // 0-100: Current availability
-    licenseValid: number;     // 0-100: License not expired
-    fleetMatch: number;       // 0-100: Fleet compatibility
-    workload: number;         // 0-100: Balanced workload
+    skillsMatch: number; // 0-100: Skills compatibility
+    availability: number; // 0-100: Current availability
+    licenseValid: number; // 0-100: License not expired
+    fleetMatch: number; // 0-100: Fleet compatibility
+    workload: number; // 0-100: Balanced workload
   };
   warnings: string[];
   errors: string[];
@@ -48,11 +57,11 @@ export interface DriverAssignmentResult {
  * Assignment strategy options
  */
 export type AssignmentStrategy =
-  | "BALANCED"       // Balance all factors equally
-  | "SKILLS_FIRST"   // Prioritize skills matching
-  | "AVAILABILITY"   // Prioritize driver availability
-  | "WORKLOAD"       // Prioritize balanced workload
-  | "FLEET_MATCH";   // Prioritize fleet compatibility
+  | "BALANCED" // Balance all factors equally
+  | "SKILLS_FIRST" // Prioritize skills matching
+  | "AVAILABILITY" // Prioritize driver availability
+  | "WORKLOAD" // Prioritize balanced workload
+  | "FLEET_MATCH"; // Prioritize fleet compatibility
 
 /**
  * Driver assignment configuration
@@ -82,13 +91,13 @@ export const DEFAULT_ASSIGNMENT_CONFIG: DriverAssignmentConfig = {
  */
 export async function assignDriversToRoutes(
   requests: DriverAssignmentRequest[],
-  config: DriverAssignmentConfig = DEFAULT_ASSIGNMENT_CONFIG
+  config: DriverAssignmentConfig = DEFAULT_ASSIGNMENT_CONFIG,
 ): Promise<Map<string, DriverAssignmentResult>> {
   const results = new Map<string, DriverAssignmentResult>();
 
   // First, get all candidate drivers with their details
   const allDriverIds = Array.from(
-    new Set(requests.flatMap((r) => r.candidateDriverIds))
+    new Set(requests.flatMap((r) => r.candidateDriverIds)),
   );
 
   if (allDriverIds.length === 0) {
@@ -97,7 +106,7 @@ export async function assignDriversToRoutes(
 
   const candidateDrivers = await getCandidateDriversDetails(
     requests[0].companyId,
-    allDriverIds
+    allDriverIds,
   );
 
   // Calculate scores for each request
@@ -109,16 +118,21 @@ export async function assignDriversToRoutes(
 
     const requiredSkills = await getRequiredSkillsForRoute(
       request.companyId,
-      request.routeStops
+      request.routeStops,
     );
 
     const scores: AssignmentScore[] = [];
 
     for (const driver of candidateDrivers) {
-      const score = await calculateDriverScore(driver, vehicle, requiredSkills, {
-        ...config,
-        assignedDrivers: request.assignedDrivers,
-      });
+      const score = await calculateDriverScore(
+        driver,
+        vehicle,
+        requiredSkills,
+        {
+          ...config,
+          assignedDrivers: request.assignedDrivers,
+        },
+      );
       scores.push(score);
     }
 
@@ -145,7 +159,9 @@ export async function assignDriversToRoutes(
 
     // Assign the best driver
     const bestScore = sortedScores[0];
-    const bestDriver = candidateDrivers.find((d) => d.id === bestScore.driverId);
+    const bestDriver = candidateDrivers.find(
+      (d) => d.id === bestScore.driverId,
+    );
 
     if (bestDriver) {
       results.set(request.vehicleId, {
@@ -166,34 +182,41 @@ export async function assignDriversToRoutes(
 /**
  * Get candidate drivers with all their details
  */
-async function getCandidateDriversDetails(companyId: string, driverIds: string[]) {
-  const driversList = await db.query.drivers.findMany({
+async function getCandidateDriversDetails(
+  companyId: string,
+  driverIds: string[],
+) {
+  const driversList = await db.query.users.findMany({
     where: and(
-      eq(drivers.companyId, companyId),
-      inArray(drivers.id, driverIds),
-      eq(drivers.active, true)
+      eq(users.companyId, companyId),
+      inArray(users.id, driverIds),
+      eq(users.active, true),
+      eq(users.role, USER_ROLES.CONDUCTOR),
     ),
     with: {
-      fleet: true,
-      driverSkills: {
+      primaryFleet: true,
+      userSkills: {
         with: {
           skill: true,
         },
-        where: eq(driverSkills.active, true),
+        where: eq(userSkills.active, true),
       },
       availability: {
-        where: eq(driverAvailability.active, true),
+        where: eq(userAvailability.active, true),
       },
       secondaryFleets: {
-        where: eq(driverSecondaryFleets.active, true),
+        where: eq(userSecondaryFleets.active, true),
       },
     },
   });
 
   return driversList.map((driver) => ({
     ...driver,
-    skills: driver.driverSkills.map((ds) => ds.skill),
+    status: driver.driverStatus, // Map driverStatus to status for compatibility
+    fleetId: driver.primaryFleetId, // Map primaryFleetId to fleetId for compatibility
+    skills: driver.userSkills.map((ds) => ds.skill),
     secondaryFleetIds: driver.secondaryFleets.map((sf) => sf.fleetId),
+    driverSkills: driver.userSkills, // Alias for compatibility
   }));
 }
 
@@ -206,7 +229,11 @@ async function getVehicleWithSkills(vehicleId: string) {
   const vehicle = await db.query.vehicles.findFirst({
     where: eq(vehicles.id, vehicleId),
     with: {
-      fleet: true,
+      vehicleFleets: {
+        with: {
+          fleet: true,
+        },
+      },
     },
   });
 
@@ -218,7 +245,7 @@ async function getVehicleWithSkills(vehicleId: string) {
  */
 async function getRequiredSkillsForRoute(
   companyId: string,
-  routeStops: Array<{ orderId: string; promisedDate?: Date | null }>
+  routeStops: Array<{ orderId: string; promisedDate?: Date | null }>,
 ): Promise<string[]> {
   if (routeStops.length === 0) {
     return [];
@@ -226,19 +253,17 @@ async function getRequiredSkillsForRoute(
 
   const orderIds = routeStops.map((s) => s.orderId);
   const ordersList = await db.query.orders.findMany({
-    where: and(
-      eq(orders.companyId, companyId),
-      inArray(orders.id, orderIds)
-    ),
+    where: and(eq(orders.companyId, companyId), inArray(orders.id, orderIds)),
   });
 
   // Collect all required skills from orders
   const requiredSkills = new Set<string>();
   for (const order of ordersList) {
     if (order.requiredSkills) {
-      const skills = typeof order.requiredSkills === 'string'
-        ? JSON.parse(order.requiredSkills)
-        : order.requiredSkills;
+      const skills =
+        typeof order.requiredSkills === "string"
+          ? JSON.parse(order.requiredSkills)
+          : order.requiredSkills;
       skills.forEach((skill: string) => requiredSkills.add(skill));
     }
   }
@@ -253,7 +278,7 @@ async function calculateDriverScore(
   driver: any,
   vehicle: any,
   requiredSkills: string[],
-  config: DriverAssignmentConfig & { assignedDrivers: Map<string, string> }
+  config: DriverAssignmentConfig & { assignedDrivers: Map<string, string> },
 ): Promise<AssignmentScore> {
   const factors = {
     skillsMatch: 0,
@@ -270,7 +295,7 @@ async function calculateDriverScore(
   const now = new Date();
   const licenseExpiry = new Date(driver.licenseExpiry);
   const daysUntilExpiry = Math.ceil(
-    (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   if (daysUntilExpiry < 0) {
@@ -279,7 +304,7 @@ async function calculateDriverScore(
   } else if (daysUntilExpiry <= config.maxDaysLicenseNearExpiry) {
     warnings.push(`License expires in ${daysUntilExpiry} days`);
     factors.licenseValid = Math.round(
-      (daysUntilExpiry / config.maxDaysLicenseNearExpiry) * 100
+      (daysUntilExpiry / config.maxDaysLicenseNearExpiry) * 100,
     );
   } else {
     factors.licenseValid = 100;
@@ -300,7 +325,9 @@ async function calculateDriverScore(
 
   // 3. Check fleet compatibility
   const isPrimaryFleetMatch = driver.fleetId === vehicle.fleetId;
-  const isSecondaryFleetMatch = driver.secondaryFleetIds.includes(vehicle.fleetId as string);
+  const isSecondaryFleetMatch = driver.secondaryFleetIds.includes(
+    vehicle.fleetId as string,
+  );
 
   if (isPrimaryFleetMatch) {
     factors.fleetMatch = 100;
@@ -314,21 +341,19 @@ async function calculateDriverScore(
 
   // 4. Check skills matching
   if (requiredSkills.length > 0) {
-    const driverSkillIds = new Set(
-      driver.skills.map((s: any) => s.id)
-    );
+    const driverSkillIds = new Set(driver.skills.map((s: any) => s.id));
 
     const matchedSkills = requiredSkills.filter((skillId) =>
-      driverSkillIds.has(skillId)
+      driverSkillIds.has(skillId),
     );
 
     factors.skillsMatch = Math.round(
-      (matchedSkills.length / requiredSkills.length) * 100
+      (matchedSkills.length / requiredSkills.length) * 100,
     );
 
     if (factors.skillsMatch < 100) {
       warnings.push(
-        `${matchedSkills.length}/${requiredSkills.length} skills matched`
+        `${matchedSkills.length}/${requiredSkills.length} skills matched`,
       );
     }
 
@@ -350,7 +375,7 @@ async function calculateDriverScore(
 
   // 6. Check current workload (how many routes already assigned)
   const currentAssignments = Array.from(config.assignedDrivers.values()).filter(
-    (id) => id === driver.id
+    (id) => id === driver.id,
   ).length;
 
   if (config.balanceWorkload) {
@@ -422,25 +447,25 @@ function getStrategyWeights(strategy: AssignmentStrategy) {
  */
 function sortScoresByStrategy(
   scores: AssignmentScore[],
-  strategy: AssignmentStrategy
+  strategy: AssignmentStrategy,
 ): AssignmentScore[] {
   const weights = getStrategyWeights(strategy);
 
   return scores.sort((a, b) => {
     // Calculate weighted score for comparison
     const scoreA =
-      (a.factors.skillsMatch * weights.skills +
-        a.factors.availability * weights.availability +
-        a.factors.licenseValid * weights.license +
-        a.factors.fleetMatch * weights.fleet +
-        a.factors.workload * weights.workload);
+      a.factors.skillsMatch * weights.skills +
+      a.factors.availability * weights.availability +
+      a.factors.licenseValid * weights.license +
+      a.factors.fleetMatch * weights.fleet +
+      a.factors.workload * weights.workload;
 
     const scoreB =
-      (b.factors.skillsMatch * weights.skills +
-        b.factors.availability * weights.availability +
-        b.factors.licenseValid * weights.license +
-        b.factors.fleetMatch * weights.fleet +
-        b.factors.workload * weights.workload);
+      b.factors.skillsMatch * weights.skills +
+      b.factors.availability * weights.availability +
+      b.factors.licenseValid * weights.license +
+      b.factors.fleetMatch * weights.fleet +
+      b.factors.workload * weights.workload;
 
     return scoreB - scoreA;
   });
@@ -452,21 +477,22 @@ function sortScoresByStrategy(
 export async function getAvailableDriversAtTime(
   companyId: string,
   driverIds: string[],
-  dateTime: Date
+  dateTime: Date,
 ): Promise<string[]> {
   const dayOfWeek = getDayOfWeek(dateTime);
   const time = dateTime.toTimeString().slice(0, 5); // HH:MM format
 
-  const availableDrivers = await db.query.drivers.findMany({
+  const availableDrivers = await db.query.users.findMany({
     where: and(
-      eq(drivers.companyId, companyId),
-      inArray(drivers.id, driverIds),
-      eq(drivers.active, true),
-      eq(drivers.status, "AVAILABLE")
+      eq(users.companyId, companyId),
+      inArray(users.id, driverIds),
+      eq(users.active, true),
+      eq(users.role, USER_ROLES.CONDUCTOR),
+      eq(users.driverStatus, "AVAILABLE"),
     ),
     with: {
       availability: {
-        where: eq(driverAvailability.active, true),
+        where: eq(userAvailability.active, true),
       },
     },
   });
@@ -475,7 +501,7 @@ export async function getAvailableDriversAtTime(
     .filter((driver) => {
       // Check if driver has availability for this day
       const dayAvailability = driver.availability.find(
-        (a) => a.dayOfWeek === dayOfWeek
+        (a) => a.dayOfWeek === dayOfWeek,
       );
 
       if (!dayAvailability) {
@@ -524,20 +550,24 @@ export async function validateDriverAssignment(
   companyId: string,
   driverId: string,
   vehicleId: string,
-  routeStops: Array<{ orderId: string; promisedDate?: Date | null }>
+  routeStops: Array<{ orderId: string; promisedDate?: Date | null }>,
 ): Promise<AssignmentValidationResult> {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Get driver details
-  const driver = await db.query.drivers.findFirst({
-    where: and(eq(drivers.companyId, companyId), eq(drivers.id, driverId)),
+  // Get driver details (user with role CONDUCTOR)
+  const driver = await db.query.users.findFirst({
+    where: and(
+      eq(users.companyId, companyId),
+      eq(users.id, driverId),
+      eq(users.role, USER_ROLES.CONDUCTOR),
+    ),
     with: {
-      driverSkills: {
+      userSkills: {
         with: {
           skill: true,
         },
-        where: eq(driverSkills.active, true),
+        where: eq(userSkills.active, true),
       },
     },
   });
@@ -565,15 +595,19 @@ export async function validateDriverAssignment(
 
   // Check license validity
   const now = new Date();
-  const licenseExpiry = new Date(driver.licenseExpiry);
-  if (licenseExpiry < now) {
-    errors.push("Driver's license has expired");
+  if (!driver.licenseExpiry) {
+    warnings.push("Driver license expiry date not set");
   } else {
-    const daysUntilExpiry = Math.ceil(
-      (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (daysUntilExpiry <= 30) {
-      warnings.push(`License expires in ${daysUntilExpiry} days`);
+    const licenseExpiry = new Date(driver.licenseExpiry);
+    if (licenseExpiry < now) {
+      errors.push("Driver's license has expired");
+    } else {
+      const daysUntilExpiry = Math.ceil(
+        (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      if (daysUntilExpiry <= 30) {
+        warnings.push(`License expires in ${daysUntilExpiry} days`);
+      }
     }
   }
 
@@ -584,7 +618,7 @@ export async function validateDriverAssignment(
       .map((c) => c.trim());
     if (!driverCategories.includes(vehicle.licenseRequired)) {
       errors.push(
-        `Driver missing required license category: ${vehicle.licenseRequired}`
+        `Driver missing required license category: ${vehicle.licenseRequired}`,
       );
     }
   }
@@ -592,34 +626,32 @@ export async function validateDriverAssignment(
   // Check skills
   const requiredSkills = await getRequiredSkillsForRoute(companyId, routeStops);
   if (requiredSkills.length > 0) {
-    const driverSkillIds = new Set(
-      driver.driverSkills.map((ds) => ds.skillId)
-    );
+    const driverSkillIds = new Set(driver.userSkills.map((ds) => ds.skillId));
 
     const missingSkills = requiredSkills.filter(
-      (skillId) => !driverSkillIds.has(skillId)
+      (skillId) => !driverSkillIds.has(skillId),
     );
 
     if (missingSkills.length > 0) {
-      errors.push(`Driver missing required skills: ${missingSkills.join(", ")}`);
+      errors.push(
+        `Driver missing required skills: ${missingSkills.join(", ")}`,
+      );
     }
   }
 
   // Check skill expiration
-  for (const ds of driver.driverSkills) {
+  for (const ds of driver.userSkills) {
     if (ds.expiresAt && new Date(ds.expiresAt) < now) {
       warnings.push(`Skill "${ds.skill.name}" has expired`);
     }
   }
 
   // Check driver status
-  if (driver.status === "UNAVAILABLE" || driver.status === "ABSENT") {
-    errors.push(`Driver is ${driver.status.toLowerCase()}`);
-  } else if (
-    driver.status !== "AVAILABLE" &&
-    driver.status !== "COMPLETED"
-  ) {
-    warnings.push(`Driver status is ${driver.status}`);
+  const driverStatus = driver.driverStatus;
+  if (driverStatus === "UNAVAILABLE" || driverStatus === "ABSENT") {
+    errors.push(`Driver is ${driverStatus.toLowerCase()}`);
+  } else if (driverStatus !== "AVAILABLE" && driverStatus !== "COMPLETED") {
+    warnings.push(`Driver status is ${driverStatus}`);
   }
 
   return {
@@ -644,53 +676,46 @@ export interface AssignmentQualityMetrics {
 }
 
 export async function getAssignmentQualityMetrics(
-  assignments: DriverAssignmentResult[]
+  assignments: DriverAssignmentResult[],
 ): Promise<AssignmentQualityMetrics> {
   const totalAssignments = assignments.length;
 
   const assignmentsWithWarnings = assignments.filter(
-    (a) => a.score.warnings.length > 0
+    (a) => a.score.warnings.length > 0,
   ).length;
 
   const assignmentsWithErrors = assignments.filter(
-    (a) => a.score.errors.length > 0
+    (a) => a.score.errors.length > 0,
   ).length;
 
   const averageScore =
     totalAssignments > 0
-      ? assignments.reduce((sum, a) => sum + a.score.score, 0) / totalAssignments
+      ? assignments.reduce((sum, a) => sum + a.score.score, 0) /
+        totalAssignments
       : 0;
 
   const skillCoverage =
     totalAssignments > 0
-      ? assignments.reduce(
-          (sum, a) => sum + a.score.factors.skillsMatch,
-          0
-        ) / totalAssignments
+      ? assignments.reduce((sum, a) => sum + a.score.factors.skillsMatch, 0) /
+        totalAssignments
       : 0;
 
   const licenseCompliance =
     totalAssignments > 0
-      ? assignments.reduce(
-          (sum, a) => sum + a.score.factors.licenseValid,
-          0
-        ) / totalAssignments
+      ? assignments.reduce((sum, a) => sum + a.score.factors.licenseValid, 0) /
+        totalAssignments
       : 0;
 
   const fleetAlignment =
     totalAssignments > 0
-      ? assignments.reduce(
-          (sum, a) => sum + a.score.factors.fleetMatch,
-          0
-        ) / totalAssignments
+      ? assignments.reduce((sum, a) => sum + a.score.factors.fleetMatch, 0) /
+        totalAssignments
       : 0;
 
   const workloadBalance =
     totalAssignments > 0
-      ? assignments.reduce(
-          (sum, a) => sum + a.score.factors.workload,
-          0
-        ) / totalAssignments
+      ? assignments.reduce((sum, a) => sum + a.score.factors.workload, 0) /
+        totalAssignments
       : 0;
 
   return {

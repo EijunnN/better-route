@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { logDelete, logUpdate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
-import { logUpdate, logDelete } from "@/lib/audit";
 import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-config";
-import { eq, and } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -17,11 +17,14 @@ function extractTenantContext(request: NextRequest) {
 // GET - Get single optimization configuration
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -31,11 +34,19 @@ export async function GET(
     const [config] = await db
       .select()
       .from(optimizationConfigurations)
-      .where(and(eq(optimizationConfigurations.id, id), withTenantFilter(optimizationConfigurations)))
+      .where(
+        and(
+          eq(optimizationConfigurations.id, id),
+          withTenantFilter(optimizationConfigurations),
+        ),
+      )
       .limit(1);
 
     if (!config) {
-      return NextResponse.json({ error: "Configuration not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Configuration not found" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({ data: config });
@@ -43,7 +54,7 @@ export async function GET(
     console.error("Error fetching optimization configuration:", error);
     return NextResponse.json(
       { error: "Failed to fetch configuration" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -51,11 +62,14 @@ export async function GET(
 // PATCH - Update optimization configuration
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -69,18 +83,29 @@ export async function PATCH(
     const [existing] = await db
       .select()
       .from(optimizationConfigurations)
-      .where(and(eq(optimizationConfigurations.id, id), withTenantFilter(optimizationConfigurations)))
+      .where(
+        and(
+          eq(optimizationConfigurations.id, id),
+          withTenantFilter(optimizationConfigurations),
+        ),
+      )
       .limit(1);
 
     if (!existing) {
-      return NextResponse.json({ error: "Configuration not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Configuration not found" },
+        { status: 404 },
+      );
     }
 
     // Don't allow updates to configurations that are already being processed
     if (existing.status === "OPTIMIZING") {
       return NextResponse.json(
-        { error: "Cannot modify configuration while optimization is in progress" },
-        { status: 400 }
+        {
+          error:
+            "Cannot modify configuration while optimization is in progress",
+        },
+        { status: 400 },
       );
     }
 
@@ -104,13 +129,13 @@ export async function PATCH(
     if (error instanceof Error && "name" in error) {
       return NextResponse.json(
         { error: "Validation error", details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
     console.error("Error updating optimization configuration:", error);
     return NextResponse.json(
       { error: "Failed to update configuration" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -118,11 +143,14 @@ export async function PATCH(
 // DELETE - Delete optimization configuration
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -133,18 +161,29 @@ export async function DELETE(
     const [existing] = await db
       .select()
       .from(optimizationConfigurations)
-      .where(and(eq(optimizationConfigurations.id, id), withTenantFilter(optimizationConfigurations)))
+      .where(
+        and(
+          eq(optimizationConfigurations.id, id),
+          withTenantFilter(optimizationConfigurations),
+        ),
+      )
       .limit(1);
 
     if (!existing) {
-      return NextResponse.json({ error: "Configuration not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Configuration not found" },
+        { status: 404 },
+      );
     }
 
     // Don't allow deletion of configurations that are being processed
     if (existing.status === "OPTIMIZING") {
       return NextResponse.json(
-        { error: "Cannot delete configuration while optimization is in progress" },
-        { status: 400 }
+        {
+          error:
+            "Cannot delete configuration while optimization is in progress",
+        },
+        { status: 400 },
       );
     }
 
@@ -162,7 +201,7 @@ export async function DELETE(
     console.error("Error deleting optimization configuration:", error);
     return NextResponse.json(
       { error: "Failed to delete configuration" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,6 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Search,
+  Shield,
+  User,
+  Users,
+  Wrench,
+  XCircle,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -9,24 +24,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  User,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Search,
-  Shield,
-  Wrench,
-  Clock,
-  Users,
-  Loader2,
-} from "lucide-react";
 
 export interface DriverOption {
   driverId: string;
@@ -62,7 +62,7 @@ export interface ManualDriverAssignmentDialogProps {
   onAssign: (
     driverId: string,
     overrideWarnings: boolean,
-    reason?: string
+    reason?: string,
   ) => Promise<void>;
   onRemove?: () => Promise<void>;
 }
@@ -80,7 +80,7 @@ export function ManualDriverAssignmentDialog({
 }: ManualDriverAssignmentDialogProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(
-    currentDriverId || null
+    currentDriverId || null,
   );
   const [overrideWarnings, setOverrideWarnings] = useState(false);
   const [reason, setReason] = useState("");
@@ -200,14 +200,14 @@ export function ManualDriverAssignmentDialog({
   const selectedDriver = drivers.find((d) => d.driverId === selectedDriverId);
   const hasBlockingErrors = validation?.errors && validation.errors.length > 0;
   const canProceed =
-    selectedDriverId &&
-    (!hasBlockingErrors || overrideWarnings) &&
-    !assigning;
+    selectedDriverId && (!hasBlockingErrors || overrideWarnings) && !assigning;
 
   const filteredDrivers = drivers.filter(
     (d) =>
       d.driverName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.details.identification.toLowerCase().includes(searchQuery.toLowerCase())
+      d.details.identification
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -216,7 +216,8 @@ export function ManualDriverAssignmentDialog({
         <DialogHeader>
           <DialogTitle>Manual Driver Assignment</DialogTitle>
           <DialogDescription>
-            Assign a driver to vehicle {vehiclePlate}. Changes will be logged for audit purposes.
+            Assign a driver to vehicle {vehiclePlate}. Changes will be logged
+            for audit purposes.
           </DialogDescription>
         </DialogHeader>
 
@@ -282,7 +283,9 @@ export function ManualDriverAssignmentDialog({
               {/* Warnings */}
               {validation.warnings.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-yellow-700">Warnings:</p>
+                  <p className="text-xs font-medium text-yellow-700">
+                    Warnings:
+                  </p>
                   <ul className="space-y-1">
                     {validation.warnings.map((warning, idx) => (
                       <li
@@ -377,11 +380,7 @@ export function ManualDriverAssignmentDialog({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            onClick={handleAssign}
-            disabled={!canProceed}
-          >
+          <Button type="button" onClick={handleAssign} disabled={!canProceed}>
             {assigning ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -456,7 +455,10 @@ function DriverCard({ driver, selected, onClick }: DriverCardProps) {
             </Badge>
           )}
           {hasWarnings && (
-            <Badge variant="outline" className="text-xs border-yellow-300 text-yellow-700">
+            <Badge
+              variant="outline"
+              className="text-xs border-yellow-300 text-yellow-700"
+            >
               {driver.warnings.length}
             </Badge>
           )}
@@ -465,10 +467,26 @@ function DriverCard({ driver, selected, onClick }: DriverCardProps) {
 
       {/* Quick Stats */}
       <div className="mt-2 grid grid-cols-4 gap-2">
-        <StatItem icon={Shield} label="License" value={driver.factors.licenseValid} />
-        <StatItem icon={Wrench} label="Skills" value={driver.factors.skillsMatch} />
-        <StatItem icon={Clock} label="Available" value={driver.factors.availability} />
-        <StatItem icon={Users} label="Fleet" value={driver.factors.fleetMatch} />
+        <StatItem
+          icon={Shield}
+          label="License"
+          value={driver.factors.licenseValid}
+        />
+        <StatItem
+          icon={Wrench}
+          label="Skills"
+          value={driver.factors.skillsMatch}
+        />
+        <StatItem
+          icon={Clock}
+          label="Available"
+          value={driver.factors.availability}
+        />
+        <StatItem
+          icon={Users}
+          label="Fleet"
+          value={driver.factors.fleetMatch}
+        />
       </div>
     </div>
   );

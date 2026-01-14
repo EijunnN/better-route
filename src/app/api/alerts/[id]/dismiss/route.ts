@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { alerts } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { eq, and } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -15,15 +15,21 @@ function extractTenantContext(request: NextRequest) {
 // POST - Dismiss alert
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   if (!tenantCtx.userId) {
-    return NextResponse.json({ error: "Missing user context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing user context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -35,10 +41,7 @@ export async function POST(
 
     // First get the alert to verify tenant access
     const existingAlert = await db.query.alerts.findFirst({
-      where: and(
-        withTenantFilter(alerts),
-        eq(alerts.id, id)
-      ),
+      where: and(withTenantFilter(alerts), eq(alerts.id, id)),
     });
 
     if (!existingAlert) {
@@ -46,7 +49,10 @@ export async function POST(
     }
 
     if (existingAlert.status === "DISMISSED") {
-      return NextResponse.json({ error: "Alert already dismissed" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Alert already dismissed" },
+        { status: 400 },
+      );
     }
 
     // Update the alert
@@ -71,7 +77,7 @@ export async function POST(
     console.error("Error dismissing alert:", error);
     return NextResponse.json(
       { error: "Failed to dismiss alert" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

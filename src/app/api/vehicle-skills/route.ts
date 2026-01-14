@@ -1,11 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, ilike, like, or } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicleSkills } from "@/db/schema";
-import { vehicleSkillSchema, vehicleSkillQuerySchema } from "@/lib/validations/vehicle-skill";
-import { eq, and, desc, or, like, ilike } from "drizzle-orm";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { logCreate, logDelete, logUpdate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
-import { logCreate, logUpdate, logDelete } from "@/lib/audit";
+import {
+  vehicleSkillQuerySchema,
+  vehicleSkillSchema,
+} from "@/lib/validations/vehicle-skill";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -27,14 +30,16 @@ export async function GET(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     setTenantContext(tenantCtx);
 
     const { searchParams } = new URL(request.url);
-    const query = vehicleSkillQuerySchema.parse(Object.fromEntries(searchParams));
+    const query = vehicleSkillQuerySchema.parse(
+      Object.fromEntries(searchParams),
+    );
 
     const conditions: any[] = [];
 
@@ -49,13 +54,16 @@ export async function GET(request: NextRequest) {
         or(
           ilike(vehicleSkills.name, `%${query.search}%`),
           ilike(vehicleSkills.code, `%${query.search}%`),
-          ilike(vehicleSkills.description, `%${query.search}%`)
-        )
+          ilike(vehicleSkills.description, `%${query.search}%`),
+        ),
       );
     }
 
     // Apply tenant filtering
-    const whereClause = withTenantFilter(vehicleSkills, conditions.filter(Boolean));
+    const whereClause = withTenantFilter(
+      vehicleSkills,
+      conditions.filter(Boolean),
+    );
 
     const [data, totalResult] = await Promise.all([
       db
@@ -65,7 +73,10 @@ export async function GET(request: NextRequest) {
         .orderBy(desc(vehicleSkills.createdAt))
         .limit(query.limit)
         .offset(query.offset),
-      db.select({ count: vehicleSkills.id }).from(vehicleSkills).where(whereClause),
+      db
+        .select({ count: vehicleSkills.id })
+        .from(vehicleSkills)
+        .where(whereClause),
     ]);
 
     return NextResponse.json({
@@ -80,7 +91,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching vehicle skills:", error);
     return NextResponse.json(
       { error: "Error fetching vehicle skills" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -91,7 +102,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -110,7 +121,7 @@ export async function POST(request: NextRequest) {
     if (existingSkill.length > 0) {
       return NextResponse.json(
         { error: "Ya existe una habilidad con este código" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -132,12 +143,12 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Invalid input", details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: "Error creating vehicle skill" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

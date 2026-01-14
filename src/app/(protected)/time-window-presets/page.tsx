@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   TimeWindowPresetForm,
-  TimeWindowPresetFormData,
+  type TimeWindowPresetFormData,
 } from "@/components/time-window-presets/time-window-preset-form";
-import { TIME_WINDOW_TYPES, TIME_WINDOW_STRICTNESS } from "@/lib/validations/time-window-preset";
+import { Button } from "@/components/ui/button";
+import type {
+  TIME_WINDOW_STRICTNESS,
+  TIME_WINDOW_TYPES,
+} from "@/lib/validations/time-window-preset";
 
 const DEMO_COMPANY_ID = "demo-company-id";
 
@@ -28,7 +31,9 @@ export default function TimeWindowPresetsPage() {
   const [presets, setPresets] = useState<TimeWindowPreset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingPreset, setEditingPreset] = useState<TimeWindowPreset | null>(null);
+  const [editingPreset, setEditingPreset] = useState<TimeWindowPreset | null>(
+    null,
+  );
 
   const fetchPresets = async () => {
     setIsLoading(true);
@@ -71,14 +76,17 @@ export default function TimeWindowPresetsPage() {
   const handleUpdate = async (data: TimeWindowPresetFormData) => {
     if (!editingPreset) return;
 
-    const response = await fetch(`/api/time-window-presets/${editingPreset.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": DEMO_COMPANY_ID,
+    const response = await fetch(
+      `/api/time-window-presets/${editingPreset.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": DEMO_COMPANY_ID,
+        },
+        body: JSON.stringify({ ...data, id: editingPreset.id }),
       },
-      body: JSON.stringify({ ...data, id: editingPreset.id }),
-    });
+    );
 
     if (!response.ok) {
       const error = await response.json();
@@ -141,7 +149,9 @@ export default function TimeWindowPresetsPage() {
           <div className="text-center py-12">Loading...</div>
         ) : presets.length === 0 ? (
           <div className="text-center py-12 border rounded-lg bg-muted/30">
-            <p className="text-muted-foreground">No time window presets found.</p>
+            <p className="text-muted-foreground">
+              No time window presets found.
+            </p>
             <p className="text-sm text-muted-foreground mt-1">
               Create your first preset to get started.
             </p>

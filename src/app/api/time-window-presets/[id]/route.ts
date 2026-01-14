@@ -1,14 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { timeWindowPresets } from "@/db/schema";
+import { verifyTenantAccess, withTenantFilter } from "@/db/tenant-aware";
+import { logDelete, logUpdate } from "@/lib/audit";
+import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import { updateTimeWindowPresetSchema } from "@/lib/validations/time-window-preset";
-import { eq, and } from "drizzle-orm";
-import { withTenantFilter, verifyTenantAccess } from "@/db/tenant-aware";
-import {
-  setTenantContext,
-  requireTenantContext,
-} from "@/lib/tenant";
-import { logUpdate, logDelete } from "@/lib/audit";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -32,14 +29,14 @@ async function getTimeWindowPreset(id: string, companyId: string) {
 // GET - Get by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -51,7 +48,7 @@ export async function GET(
     if (!record) {
       return NextResponse.json(
         { error: "Time window preset not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -59,7 +56,7 @@ export async function GET(
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to fetch time window preset" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -67,14 +64,14 @@ export async function GET(
 // PATCH - Update
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -86,7 +83,7 @@ export async function PATCH(
     if (!existing) {
       return NextResponse.json(
         { error: "Time window preset not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -103,15 +100,15 @@ export async function PATCH(
           and(
             eq(timeWindowPresets.companyId, context.companyId),
             eq(timeWindowPresets.name, validatedData.name),
-            eq(timeWindowPresets.active, true)
-          )
+            eq(timeWindowPresets.active, true),
+          ),
         )
         .limit(1);
 
       if (nameConflict.length > 0) {
         return NextResponse.json(
           { error: "A time window preset with this name already exists" },
-          { status: 409 }
+          { status: 409 },
         );
       }
     }
@@ -135,12 +132,12 @@ export async function PATCH(
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Validation failed", details: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: error.message || "Failed to update time window preset" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -148,14 +145,14 @@ export async function PATCH(
 // DELETE - Soft delete
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -167,7 +164,7 @@ export async function DELETE(
     if (!existing) {
       return NextResponse.json(
         { error: "Time window preset not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -182,7 +179,7 @@ export async function DELETE(
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to delete time window preset" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

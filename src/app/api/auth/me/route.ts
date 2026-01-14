@@ -1,8 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { getCurrentUser, extractTokenFromAuthHeader, verifyToken } from "@/lib/auth";
+import {
+  extractTokenFromAuthHeader,
+  getCurrentUser,
+  verifyToken,
+} from "@/lib/auth";
 import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 /**
@@ -29,7 +33,7 @@ export async function GET(request: NextRequest) {
     if (!payload || payload.type !== "access") {
       return NextResponse.json(
         { error: AUTH_ERRORS.UNAUTHORIZED },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -53,7 +57,7 @@ export async function GET(request: NextRequest) {
     if (!user || !user.active) {
       return NextResponse.json(
         { error: AUTH_ERRORS.USER_INACTIVE },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -70,7 +74,7 @@ export async function GET(request: NextRequest) {
     console.error("Get current user error:", error);
     return NextResponse.json(
       { error: "Error al obtener información del usuario" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

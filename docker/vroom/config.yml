@@ -1,19 +1,21 @@
-# VROOM Configuration
-# https://github.com/VROOM-Project/vroom/blob/master/docs/API.md
-
-clusgeo: false
-geometry: true
-override: true
-
-# Routing backend configuration
-routing:
+cliArgs:
+  geometry: true
+  planmode: false
+  threads: 4
+  explore: 5
+  limit: '10mb'
+  logdir: '/..'
+  logsize: '100M'
+  maxlocations: 5000
+  maxvehicles: 200
+  override: true
+  path: ''
+  port: 3000
+  router: 'osrm'
+  timeout: 300000
+  baseurl: '/'
+routingServers:
   osrm:
-    host: osrm-backend
-    port: 5000
-    threads: 4
-
-# Limits
-max_jobs: 1000
-max_vehicles: 200
-max_locations: 5000
-max_alternatives: 3
+    car:
+      host: 'osrm-backend'
+      port: '5000'

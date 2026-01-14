@@ -1,12 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { getReassignmentHistory } from "@/lib/reassignment";
 import { setTenantContext } from "@/lib/tenant";
 import {
-  reassignmentHistoryQuerySchema,
   type ReassignmentHistoryQuerySchema,
+  reassignmentHistoryQuerySchema,
 } from "@/lib/validations/reassignment";
-import {
-  getReassignmentHistory,
-} from "@/lib/reassignment";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -28,7 +26,7 @@ export async function GET(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -51,7 +49,7 @@ export async function GET(request: NextRequest) {
           error: "Validation failed",
           details: validationResult.error.issues,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -63,7 +61,7 @@ export async function GET(request: NextRequest) {
       data.jobId,
       data.driverId,
       data.limit,
-      data.offset
+      data.offset,
     );
 
     return NextResponse.json({
@@ -82,7 +80,7 @@ export async function GET(request: NextRequest) {
     console.error("Error getting reassignment history:", error);
     return NextResponse.json(
       { error: "Error getting reassignment history" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

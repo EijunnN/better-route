@@ -40,12 +40,9 @@ export function validateDriverSkillsCompatibility(
   options: {
     allowExpiringSoon?: boolean;
     requireActiveOnly?: boolean;
-  } = {}
+  } = {},
 ): DriverSkillsCompatibilityResult {
-  const {
-    allowExpiringSoon = true,
-    requireActiveOnly = true,
-  } = options;
+  const { allowExpiringSoon = true, requireActiveOnly = true } = options;
 
   const result: DriverSkillsCompatibilityResult = {
     compatible: true,
@@ -76,7 +73,7 @@ export function validateDriverSkillsCompatibility(
       result.missingSkills.push(requiredCode);
       result.compatible = false;
       result.errors.push(
-        `El conductor no posee la habilidad requerida: ${requiredCode}`
+        `El conductor no posee la habilidad requerida: ${requiredCode}`,
       );
       continue;
     }
@@ -86,7 +83,7 @@ export function validateDriverSkillsCompatibility(
       result.expiredSkills.push(requiredCode);
       result.compatible = false;
       result.errors.push(
-        `La habilidad ${requiredCode} (${skill.name}) ha vencido el ${new Date(skill.expiresAt).toLocaleDateString()}`
+        `La habilidad ${requiredCode} (${skill.name}) ha vencido el ${new Date(skill.expiresAt).toLocaleDateString()}`,
       );
       continue;
     }
@@ -95,7 +92,7 @@ export function validateDriverSkillsCompatibility(
     if (skill.expiresAt && isExpiringSoon(skill.expiresAt.toString())) {
       result.expiringSoonSkills.push(requiredCode);
       result.warnings.push(
-        `La habilidad ${requiredCode} (${skill.name}) vence pronto: ${new Date(skill.expiresAt).toLocaleDateString()}`
+        `La habilidad ${requiredCode} (${skill.name}) vence pronto: ${new Date(skill.expiresAt).toLocaleDateString()}`,
       );
     }
 
@@ -107,7 +104,7 @@ export function validateDriverSkillsCompatibility(
   if (!allowExpiringSoon && result.expiringSoonSkills.length > 0) {
     result.compatible = false;
     result.errors.push(
-      `${result.expiringSoonSkills.length} habilidad(es) vence(n) pronto y no son aceptadas`
+      `${result.expiringSoonSkills.length} habilidad(es) vence(n) pronto y no son aceptadas`,
     );
   }
 
@@ -121,19 +118,21 @@ export function validateDriverSkillsCompatibility(
  * @param requiredSkillCodes - Array of skill codes required
  * @returns Array of driver IDs who are compatible
  */
-export function filterDriversByRequiredSkills<T extends { id: string; skills: SkillWithExpiry[] }>(
+export function filterDriversByRequiredSkills<
+  T extends { id: string; skills: SkillWithExpiry[] },
+>(
   driversWithSkills: T[],
-  requiredSkillCodes: string[]
+  requiredSkillCodes: string[],
 ): Array<T & { compatibilityResult: DriverSkillsCompatibilityResult }> {
   return driversWithSkills
-    .map(driver => ({
+    .map((driver) => ({
       ...driver,
       compatibilityResult: validateDriverSkillsCompatibility(
         driver.skills,
-        requiredSkillCodes
+        requiredSkillCodes,
       ),
     }))
-    .filter(driver => driver.compatibilityResult.compatible);
+    .filter((driver) => driver.compatibilityResult.compatible);
 }
 
 /**
@@ -145,11 +144,11 @@ export function filterDriversByRequiredSkills<T extends { id: string; skills: Sk
  */
 export function canDriverHandleOrder(
   driverSkills: SkillWithExpiry[],
-  orderRequiredSkills: string[]
+  orderRequiredSkills: string[],
 ): boolean {
   const result = validateDriverSkillsCompatibility(
     driverSkills,
-    orderRequiredSkills
+    orderRequiredSkills,
   );
   return result.compatible;
 }
@@ -158,7 +157,7 @@ export function canDriverHandleOrder(
  * Formats compatibility result for API response
  */
 export function formatDriverSkillsCompatibilityResponse(
-  result: DriverSkillsCompatibilityResult
+  result: DriverSkillsCompatibilityResult,
 ): {
   compatible: boolean;
   message: string;
@@ -188,7 +187,8 @@ export function formatDriverSkillsCompatibilityResponse(
       message = "El conductor no es compatible con los requisitos";
     }
   } else if (result.expiringSoonSkills.length > 0) {
-    message = "El conductor tiene todas las habilidades, pero algunas vencen pronto";
+    message =
+      "El conductor tiene todas las habilidades, pero algunas vencen pronto";
   }
 
   return {
@@ -213,15 +213,14 @@ export function formatDriverSkillsCompatibilityResponse(
  * @returns Score from 0 to 100
  */
 export function calculateDriverSkillsQualityScore(
-  result: DriverSkillsCompatibilityResult
+  result: DriverSkillsCompatibilityResult,
 ): number {
   if (!result.compatible) {
     return 0;
   }
 
   const totalSkills =
-    result.validSkills.length +
-    result.expiringSoonSkills.length;
+    result.validSkills.length + result.expiringSoonSkills.length;
 
   if (totalSkills === 0) {
     return 100;
@@ -229,7 +228,7 @@ export function calculateDriverSkillsQualityScore(
 
   // Deduct points for expiring skills
   const penaltyPerExpiring = 10;
-  const score = 100 - (result.expiringSoonSkills.length * penaltyPerExpiring);
+  const score = 100 - result.expiringSoonSkills.length * penaltyPerExpiring;
 
   return Math.max(0, score);
 }

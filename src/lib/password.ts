@@ -20,7 +20,7 @@ export async function hashPassword(password: string): Promise<string> {
  */
 export async function verifyPassword(
   password: string,
-  hash: string
+  hash: string,
 ): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
@@ -51,9 +51,10 @@ export function generateRandomPassword(length: number = 12): string {
  * Validate password strength
  * Returns object with validity and reasons for invalidity
  */
-export function validatePasswordStrength(
-  password: string
-): { valid: boolean; reasons: string[] } {
+export function validatePasswordStrength(password: string): {
+  valid: boolean;
+  reasons: string[];
+} {
   const reasons: string[] = [];
 
   if (password.length < 8) {
@@ -74,7 +75,7 @@ export function validatePasswordStrength(
 
   if (!/[!@#$%^&*]/.test(password)) {
     reasons.push(
-      "La contraseña debe contener al menos un carácter especial (!@#$%^&*)"
+      "La contraseña debe contener al menos un carácter especial (!@#$%^&*)",
     );
   }
 

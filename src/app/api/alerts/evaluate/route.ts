@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { setTenantContext } from "@/lib/tenant";
 
 function extractTenantContext(request: NextRequest) {
@@ -12,7 +12,10 @@ function extractTenantContext(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -27,19 +30,27 @@ export async function POST(request: NextRequest) {
     let result;
 
     if (type === "driver-license") {
-      const { evaluateDriverLicenseAlerts } = await import("@/lib/alerts/engine");
+      const { evaluateDriverLicenseAlerts } = await import(
+        "@/lib/alerts/engine"
+      );
       const alerts = await evaluateDriverLicenseAlerts(tenantCtx);
       result = { created: alerts.length, alerts };
     } else if (type === "vehicle-documents") {
-      const { evaluateVehicleDocumentAlerts } = await import("@/lib/alerts/engine");
+      const { evaluateVehicleDocumentAlerts } = await import(
+        "@/lib/alerts/engine"
+      );
       const alerts = await evaluateVehicleDocumentAlerts(tenantCtx);
       result = { created: alerts.length, alerts };
     } else if (type === "driver-absent") {
-      const { evaluateDriverAbsentAlerts } = await import("@/lib/alerts/engine");
+      const { evaluateDriverAbsentAlerts } = await import(
+        "@/lib/alerts/engine"
+      );
       const alerts = await evaluateDriverAbsentAlerts(tenantCtx);
       result = { created: alerts.length, alerts };
     } else if (type === "optimization-failed") {
-      const { evaluateOptimizationFailedAlerts } = await import("@/lib/alerts/engine");
+      const { evaluateOptimizationFailedAlerts } = await import(
+        "@/lib/alerts/engine"
+      );
       const alerts = await evaluateOptimizationFailedAlerts(tenantCtx);
       result = { created: alerts.length, alerts };
     } else {
@@ -55,7 +66,7 @@ export async function POST(request: NextRequest) {
     console.error("Error evaluating alerts:", error);
     return NextResponse.json(
       { error: "Failed to evaluate alerts", details: String(error) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

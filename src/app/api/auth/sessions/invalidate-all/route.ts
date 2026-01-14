@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-api";
+import { Action, authorize, EntityType } from "@/lib/authorization";
 import { invalidateAllSessions } from "@/lib/session";
-import { authorize, EntityType, Action } from "@/lib/authorization";
 
 /**
  * POST /api/auth/sessions/invalidate-all
@@ -16,13 +16,16 @@ export async function POST(request: NextRequest) {
     const canInvalidateAll = authorize(
       user,
       EntityType.SESSION,
-      Action.INVALIDATE_ALL
+      Action.INVALIDATE_ALL,
     );
 
     if (!canInvalidateAll) {
       return NextResponse.json(
-        { error: "Access denied. Only system administrators can perform this action." },
-        { status: 403 }
+        {
+          error:
+            "Access denied. Only system administrators can perform this action.",
+        },
+        { status: 403 },
       );
     }
 
@@ -36,7 +39,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to invalidate all sessions" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 }

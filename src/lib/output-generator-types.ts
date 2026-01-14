@@ -6,12 +6,12 @@ import type { OUTPUT_FORMAT } from "@/db/schema";
 export interface DriverRouteOutput {
   driverId: string;
   driverName: string;
-  driverIdentification: string;
+  driverIdentification: string | null;
   driverPhone: string | null;
   vehicleId: string;
-  vehiclePlate: string;
-  vehicleBrand: string;
-  vehicleModel: string;
+  vehiclePlate: string | null;
+  vehicleBrand: string | null;
+  vehicleModel: string | null;
   stops: RouteStopOutput[];
   totalStops: number;
   pendingStops: number;

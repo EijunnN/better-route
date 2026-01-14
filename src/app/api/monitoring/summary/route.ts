@@ -1,9 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, optimizationConfigurations, drivers, alerts, routeStops } from "@/db/schema";
+import {
+  alerts,
+  optimizationConfigurations,
+  optimizationJobs,
+  routeStops,
+  USER_ROLES,
+  users,
+} from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { eq, and, desc, sql } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -16,7 +23,10 @@ function extractTenantContext(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -26,7 +36,7 @@ export async function GET(request: NextRequest) {
     const confirmedJob = await db.query.optimizationJobs.findFirst({
       where: and(
         withTenantFilter(optimizationJobs),
-        eq(optimizationJobs.status, "COMPLETED")
+        eq(optimizationJobs.status, "COMPLETED"),
       ),
       with: {
         configuration: true,
@@ -34,30 +44,33 @@ export async function GET(request: NextRequest) {
       orderBy: [desc(optimizationJobs.createdAt)],
     });
 
-    // Get all driver statuses from the company (regardless of active plan)
-    const allDrivers = await db.query.drivers.findMany({
-      where: withTenantFilter(drivers),
+    // Get all driver (users with CONDUCTOR role) statuses from the company (regardless of active plan)
+    const allDrivers = await db.query.users.findMany({
+      where: and(withTenantFilter(users), eq(users.role, USER_ROLES.CONDUCTOR)),
       columns: {
         id: true,
         name: true,
-        status: true,
-        fleetId: true,
+        driverStatus: true,
+        primaryFleetId: true,
       },
     });
 
     // Count driver statuses
-    const driversInRoute = allDrivers.filter((d) => d.status === "IN_ROUTE").length;
-    const driversAvailable = allDrivers.filter((d) => d.status === "AVAILABLE").length;
-    const driversOnPause = allDrivers.filter((d) => d.status === "ON_PAUSE").length;
+    const driversInRoute = allDrivers.filter(
+      (d) => d.driverStatus === "IN_ROUTE",
+    ).length;
+    const driversAvailable = allDrivers.filter(
+      (d) => d.driverStatus === "AVAILABLE",
+    ).length;
+    const driversOnPause = allDrivers.filter(
+      (d) => d.driverStatus === "ON_PAUSE",
+    ).length;
 
     // Get active alerts count
     const activeAlertsResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(alerts)
-      .where(and(
-        withTenantFilter(alerts),
-        eq(alerts.status, "ACTIVE")
-      ));
+      .where(and(withTenantFilter(alerts), eq(alerts.status, "ACTIVE")));
     const activeAlerts = activeAlertsResult[0]?.count || 0;
 
     if (!confirmedJob) {
@@ -107,16 +120,19 @@ export async function GET(request: NextRequest) {
     if (dbStops.length > 0) {
       // Use actual stop data from database
       totalStops = dbStops.length;
-      completedStops = dbStops.filter(s => s.status === "COMPLETED").length;
+      completedStops = dbStops.filter((s) => s.status === "COMPLETED").length;
 
       // Count delayed stops (completed after time window or failed/skipped)
       const now = new Date();
-      delayedStops = dbStops.filter(s => {
+      delayedStops = dbStops.filter((s) => {
         if (s.status === "FAILED" || s.status === "SKIPPED") return true;
         if (s.status === "COMPLETED" && s.completedAt && s.timeWindowEnd) {
           return s.completedAt > s.timeWindowEnd;
         }
-        if ((s.status === "PENDING" || s.status === "IN_PROGRESS") && s.timeWindowEnd) {
+        if (
+          (s.status === "PENDING" || s.status === "IN_PROGRESS") &&
+          s.timeWindowEnd
+        ) {
           return now > s.timeWindowEnd;
         }
         return false;
@@ -124,13 +140,17 @@ export async function GET(request: NextRequest) {
     } else if (parsedResult?.routes) {
       // Fallback to parsed result if no stops in database yet
       routesCount = parsedResult.routes.length;
-      totalStops = parsedResult.routes.reduce((sum: number, route: any) => sum + (route.stops?.length || 0), 0);
+      totalStops = parsedResult.routes.reduce(
+        (sum: number, route: any) => sum + (route.stops?.length || 0),
+        0,
+      );
       // Mock data for when stops haven't been created yet
       completedStops = 0;
       delayedStops = 0;
     }
 
-    const completenessPercentage = totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
+    const completenessPercentage =
+      totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
 
     return NextResponse.json({
       data: {
@@ -158,7 +178,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching monitoring summary:", error);
     return NextResponse.json(
       { error: "Failed to fetch monitoring summary" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

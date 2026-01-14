@@ -1,20 +1,24 @@
 /**
  * VROOM Optimizer - Converts our domain model to VROOM format and back
- * 
+ *
  * This module bridges our application's data model with VROOM's API,
  * falling back to a simple nearest-neighbor algorithm when VROOM is unavailable.
  */
 
 import {
-  isVroomAvailable,
-  solveVRP,
+  type Coordinates,
+  calculateDistance,
+  calculateRouteDistance,
+} from "./geospatial";
+import {
   createVroomJob,
   createVroomVehicle,
+  isVroomAvailable,
+  solveVRP,
   type VroomRequest,
   type VroomResponse,
   type VroomRoute,
 } from "./vroom-client";
-import { calculateDistance, calculateRouteDistance, type Coordinates } from "./geospatial";
 
 // Our domain types
 export interface OrderForOptimization {
@@ -75,6 +79,7 @@ export interface OptimizedRoute {
   totalDuration: number;
   totalWeight: number;
   totalVolume: number;
+  geometry?: string; // Encoded polyline from VROOM/OSRM
 }
 
 export interface OptimizationOutput {
@@ -111,7 +116,7 @@ function getSkillId(skillName: string): number {
 export async function optimizeRoutes(
   orders: OrderForOptimization[],
   vehicles: VehicleForOptimization[],
-  config: OptimizationConfig
+  config: OptimizationConfig,
 ): Promise<OptimizationOutput> {
   const startTime = Date.now();
 
@@ -122,7 +127,10 @@ export async function optimizeRoutes(
     try {
       return await optimizeWithVroom(orders, vehicles, config, startTime);
     } catch (error) {
-      console.warn("VROOM optimization failed, falling back to nearest-neighbor:", error);
+      console.warn(
+        "VROOM optimization failed, falling back to nearest-neighbor:",
+        error,
+      );
     }
   }
 
@@ -137,7 +145,7 @@ async function optimizeWithVroom(
   orders: OrderForOptimization[],
   vehicles: VehicleForOptimization[],
   config: OptimizationConfig,
-  startTime: number
+  startTime: number,
 ): Promise<OptimizationOutput> {
   // Build order ID to index mapping
   const orderIdToIndex = new Map<number, string>();
@@ -154,7 +162,10 @@ async function optimizeWithVroom(
     return createVroomJob(jobId, order.longitude, order.latitude, {
       description: order.trackingId,
       service: order.serviceTime || 300, // 5 min default
-      delivery: [Math.round(order.weightRequired), Math.round(order.volumeRequired)],
+      delivery: [
+        Math.round(order.weightRequired),
+        Math.round(order.volumeRequired),
+      ],
       skills,
       priority: order.priority,
       timeWindowStart: order.timeWindowStart,
@@ -170,14 +181,22 @@ async function optimizeWithVroom(
     // Map skills to numbers
     const skills = vehicle.skills?.map((s) => getSkillId(s));
 
-    return createVroomVehicle(vehicleId, config.depot.longitude, config.depot.latitude, {
-      description: vehicle.plate,
-      capacity: [Math.round(vehicle.maxWeight), Math.round(vehicle.maxVolume)],
-      skills,
-      timeWindowStart: config.depot.timeWindowStart,
-      timeWindowEnd: config.depot.timeWindowEnd,
-      speedFactor: vehicle.speedFactor,
-    });
+    return createVroomVehicle(
+      vehicleId,
+      config.depot.longitude,
+      config.depot.latitude,
+      {
+        description: vehicle.plate,
+        capacity: [
+          Math.round(vehicle.maxWeight),
+          Math.round(vehicle.maxVolume),
+        ],
+        skills,
+        timeWindowStart: config.depot.timeWindowStart,
+        timeWindowEnd: config.depot.timeWindowEnd,
+        speedFactor: vehicle.speedFactor,
+      },
+    );
   });
 
   // Build VROOM request
@@ -193,7 +212,14 @@ async function optimizeWithVroom(
   const response = await solveVRP(request);
 
   // Convert response to our format
-  return convertVroomResponse(response, orders, vehicles, orderIdToIndex, vehicleIdToIndex, startTime);
+  return convertVroomResponse(
+    response,
+    orders,
+    vehicles,
+    orderIdToIndex,
+    vehicleIdToIndex,
+    startTime,
+  );
 }
 
 /**
@@ -205,7 +231,7 @@ function convertVroomResponse(
   vehicles: VehicleForOptimization[],
   orderIdToIndex: Map<number, string>,
   vehicleIdToIndex: Map<number, string>,
-  startTime: number
+  startTime: number,
 ): OptimizationOutput {
   const orderMap = new Map(orders.map((o) => [o.id, o]));
   const vehicleMap = new Map(vehicles.map((v) => [v.id, v]));
@@ -258,6 +284,7 @@ function convertVroomResponse(
         totalDuration: vroomRoute.duration || 0,
         totalWeight,
         totalVolume,
+        geometry: vroomRoute.geometry, // Encoded polyline from OSRM
       });
     }
   }
@@ -279,8 +306,12 @@ function convertVroomResponse(
     routes,
     unassigned,
     metrics: {
-      totalDistance: summary?.distance || routes.reduce((sum, r) => sum + r.totalDistance, 0),
-      totalDuration: summary?.duration || routes.reduce((sum, r) => sum + r.totalDuration, 0),
+      totalDistance:
+        summary?.distance ||
+        routes.reduce((sum, r) => sum + r.totalDistance, 0),
+      totalDuration:
+        summary?.duration ||
+        routes.reduce((sum, r) => sum + r.totalDuration, 0),
       totalRoutes: routes.length,
       totalStops: routes.reduce((sum, r) => sum + r.stops.length, 0),
       computingTimeMs: Date.now() - startTime,
@@ -296,7 +327,7 @@ function optimizeWithNearestNeighbor(
   orders: OrderForOptimization[],
   vehicles: VehicleForOptimization[],
   config: OptimizationConfig,
-  startTime: number
+  startTime: number,
 ): OptimizationOutput {
   const depot: Coordinates = {
     latitude: config.depot.latitude,
@@ -305,11 +336,15 @@ function optimizeWithNearestNeighbor(
 
   const routes: OptimizedRoute[] = [];
   const assigned = new Set<string>();
-  const unassigned: Array<{ orderId: string; trackingId: string; reason: string }> = [];
+  const unassigned: Array<{
+    orderId: string;
+    trackingId: string;
+    reason: string;
+  }> = [];
 
   // Sort vehicles by capacity (largest first)
   const sortedVehicles = [...vehicles].sort(
-    (a, b) => b.maxWeight + b.maxVolume - (a.maxWeight + a.maxVolume)
+    (a, b) => b.maxWeight + b.maxVolume - (a.maxWeight + a.maxVolume),
   );
 
   for (const vehicle of sortedVehicles) {
@@ -322,7 +357,7 @@ function optimizeWithNearestNeighbor(
     // Filter available orders
     const availableOrders = orders.filter((o) => {
       if (assigned.has(o.id)) return false;
-      
+
       // Check capacity
       if (currentWeight + o.weightRequired > vehicle.maxWeight) return false;
       if (currentVolume + o.volumeRequired > vehicle.maxVolume) return false;
@@ -344,7 +379,7 @@ function optimizeWithNearestNeighbor(
 
       for (let i = 0; i < availableOrders.length; i++) {
         const order = availableOrders[i];
-        
+
         // Check capacity
         if (currentWeight + order.weightRequired > vehicle.maxWeight) continue;
         if (currentVolume + order.volumeRequired > vehicle.maxVolume) continue;
@@ -355,7 +390,7 @@ function optimizeWithNearestNeighbor(
         };
 
         const distance = calculateDistance(currentLocation, orderCoords);
-        
+
         if (distance < nearestDistance) {
           nearestDistance = distance;
           nearestIndex = i;
@@ -380,7 +415,10 @@ function optimizeWithNearestNeighbor(
 
       currentWeight += order.weightRequired;
       currentVolume += order.volumeRequired;
-      currentLocation = { latitude: order.latitude, longitude: order.longitude };
+      currentLocation = {
+        latitude: order.latitude,
+        longitude: order.longitude,
+      };
     }
 
     if (stops.length > 0) {

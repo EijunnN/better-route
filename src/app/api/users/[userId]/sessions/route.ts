@@ -1,10 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-api";
-import {
-  getUserSessions,
-  invalidateUserSessions,
-} from "@/lib/session";
-import { authorize, EntityType, Action } from "@/lib/authorization";
+import { Action, authorize, EntityType } from "@/lib/authorization";
+import { getUserSessions, invalidateUserSessions } from "@/lib/session";
 
 interface RouteContext {
   params: Promise<{ userId: string }>;
@@ -28,10 +25,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       authorize(user, EntityType.USER, Action.READ, userId);
 
     if (!canView) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     const sessions = await getUserSessions(userId);
@@ -50,7 +44,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to get user sessions" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 }
@@ -73,10 +67,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       authorize(user, EntityType.USER, Action.INVALIDATE_SESSIONS, userId);
 
     if (!canInvalidate) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     await invalidateUserSessions(userId);
@@ -88,7 +79,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to invalidate user sessions" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 }

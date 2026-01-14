@@ -1,13 +1,30 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  XCircle,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, XCircle, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
-export type JobStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
+export type JobStatus =
+  | "PENDING"
+  | "RUNNING"
+  | "COMPLETED"
+  | "FAILED"
+  | "CANCELLED";
 
 export interface OptimizationJobData {
   id: string;
@@ -83,7 +100,9 @@ export function JobProgress({
       setJobData(json.data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch job status");
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch job status",
+      );
     }
   }, [jobId, companyId, userId]);
 
@@ -145,8 +164,13 @@ export function JobProgress({
   const getElapsedTime = () => {
     if (!jobData) return null;
 
-    const start = jobData.startedAt ? new Date(jobData.startedAt) : new Date(jobData.createdAt);
-    const end = jobData.completedAt || jobData.cancelledAt ? new Date(jobData.completedAt || jobData.cancelledAt!) : new Date();
+    const start = jobData.startedAt
+      ? new Date(jobData.startedAt)
+      : new Date(jobData.createdAt);
+    const end =
+      jobData.completedAt || jobData.cancelledAt
+        ? new Date(jobData.completedAt || jobData.cancelledAt!)
+        : new Date();
     const elapsed = Math.floor((end.getTime() - start.getTime()) / 1000);
 
     if (elapsed < 60) return `${elapsed}s`;
@@ -158,7 +182,8 @@ export function JobProgress({
     return null;
   }
 
-  const canCancel = jobData.status === "PENDING" || jobData.status === "RUNNING";
+  const canCancel =
+    jobData.status === "PENDING" || jobData.status === "RUNNING";
 
   return (
     <Card className="w-full">
@@ -168,12 +193,15 @@ export function JobProgress({
             {STATUS_ICONS[jobData.status]}
             <div>
               <CardTitle className="text-lg">Optimization Progress</CardTitle>
-              <CardDescription className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                 <span>Job ID: {jobId.slice(0, 8)}...</span>
-                <Badge variant="outline" className={STATUS_COLORS[jobData.status]}>
+                <Badge
+                  variant="outline"
+                  className={STATUS_COLORS[jobData.status]}
+                >
                   {jobData.status}
                 </Badge>
-              </CardDescription>
+              </div>
             </div>
           </div>
           {canCancel && (
@@ -222,7 +250,9 @@ export function JobProgress({
 
         {jobData.status === "FAILED" && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-800 font-medium">Optimization failed</p>
+            <p className="text-sm text-red-800 font-medium">
+              Optimization failed
+            </p>
             {jobData.error && (
               <p className="text-sm text-red-700 mt-1">{jobData.error}</p>
             )}
@@ -259,7 +289,11 @@ export function JobProgress({
           {(jobData.completedAt || jobData.cancelledAt) && (
             <div className="flex justify-between">
               <span>Ended:</span>
-              <span>{new Date(jobData.completedAt || jobData.cancelledAt!).toLocaleString()}</span>
+              <span>
+                {new Date(
+                  jobData.completedAt || jobData.cancelledAt!,
+                ).toLocaleString()}
+              </span>
             </div>
           )}
         </div>

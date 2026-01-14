@@ -1,33 +1,47 @@
-import { 
-  Package, 
-  Truck, 
-  Users, 
-  Route, 
-  TrendingUp, 
-  Clock,
-  CheckCircle2,
+import { and, count, eq, sql } from "drizzle-orm";
+import {
   AlertTriangle,
+  ArrowDownRight,
   ArrowUpRight,
-  ArrowDownRight
+  CheckCircle2,
+  Clock,
+  Package,
+  Route,
+  TrendingUp,
+  Truck,
+  Users,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { cookies } from "next/headers";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { db } from "@/db";
-import { orders, drivers, vehicles, DRIVER_STATUS, VEHICLE_STATUS, ORDER_STATUS } from "@/db/schema";
-import { eq, and, count, sql } from "drizzle-orm";
-import { cookies } from "next/headers";
+import {
+  DRIVER_STATUS,
+  ORDER_STATUS,
+  orders,
+  USER_ROLES,
+  users,
+  VEHICLE_STATUS,
+  vehicles,
+} from "@/db/schema";
 import { verifyToken } from "@/lib/auth";
 
 async function getCompanyId(): Promise<string | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
   if (!token) return null;
-  
+
   const payload = await verifyToken(token);
   if (!payload || payload.type !== "access") return null;
-  
+
   return payload.companyId;
 }
 
@@ -40,26 +54,33 @@ interface MetricCardProps {
     value: number;
     isPositive: boolean;
   };
-  variant: 'chart1' | 'chart2' | 'chart3' | 'chart4' | 'chart5';
+  variant: "chart1" | "chart2" | "chart3" | "chart4" | "chart5";
 }
 
 const variantStyles = {
-  chart1: 'bg-[hsl(var(--chart-1))]/10 text-[hsl(var(--chart-1))]',
-  chart2: 'bg-[hsl(var(--chart-2))]/10 text-[hsl(var(--chart-2))]',
-  chart3: 'bg-[hsl(var(--chart-3))]/10 text-[hsl(var(--chart-3))]',
-  chart4: 'bg-[hsl(var(--chart-4))]/10 text-[hsl(var(--chart-4))]',
-  chart5: 'bg-[hsl(var(--chart-5))]/10 text-[hsl(var(--chart-5))]',
+  chart1: "bg-[hsl(var(--chart-1))]/10 text-[hsl(var(--chart-1))]",
+  chart2: "bg-[hsl(var(--chart-2))]/10 text-[hsl(var(--chart-2))]",
+  chart3: "bg-[hsl(var(--chart-3))]/10 text-[hsl(var(--chart-3))]",
+  chart4: "bg-[hsl(var(--chart-4))]/10 text-[hsl(var(--chart-4))]",
+  chart5: "bg-[hsl(var(--chart-5))]/10 text-[hsl(var(--chart-5))]",
 };
 
 const iconBgStyles = {
-  chart1: 'bg-[hsl(var(--chart-1))]',
-  chart2: 'bg-[hsl(var(--chart-2))]',
-  chart3: 'bg-[hsl(var(--chart-3))]',
-  chart4: 'bg-[hsl(var(--chart-4))]',
-  chart5: 'bg-[hsl(var(--chart-5))]',
+  chart1: "bg-[hsl(var(--chart-1))]",
+  chart2: "bg-[hsl(var(--chart-2))]",
+  chart3: "bg-[hsl(var(--chart-3))]",
+  chart4: "bg-[hsl(var(--chart-4))]",
+  chart5: "bg-[hsl(var(--chart-5))]",
 };
 
-function MetricCard({ title, value, description, icon: Icon, trend, variant }: MetricCardProps) {
+function MetricCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+  trend,
+  variant,
+}: MetricCardProps) {
   return (
     <Card className="relative overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -74,7 +95,9 @@ function MetricCard({ title, value, description, icon: Icon, trend, variant }: M
         <div className="text-3xl font-bold">{value}</div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {trend && (
-            <span className={`flex items-center font-medium ${trend.isPositive ? 'text-[hsl(var(--chart-2))]' : 'text-destructive'}`}>
+            <span
+              className={`flex items-center font-medium ${trend.isPositive ? "text-[hsl(var(--chart-2))]" : "text-destructive"}`}
+            >
               {trend.isPositive ? (
                 <ArrowUpRight className="h-3 w-3" />
               ) : (
@@ -97,17 +120,28 @@ interface OrderItemProps {
   status: string;
 }
 
-function RecentOrderItem({ trackingId, customerName, address, status }: OrderItemProps) {
-  const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
-    PENDING: { label: 'Pendiente', variant: 'secondary' },
-    ASSIGNED: { label: 'Asignado', variant: 'default' },
-    IN_PROGRESS: { label: 'En Ruta', variant: 'default' },
-    COMPLETED: { label: 'Completado', variant: 'secondary' },
-    FAILED: { label: 'Fallido', variant: 'destructive' },
-    CANCELLED: { label: 'Cancelado', variant: 'secondary' },
+function RecentOrderItem({
+  trackingId,
+  customerName,
+  address,
+  status,
+}: OrderItemProps) {
+  const statusConfig: Record<
+    string,
+    { label: string; variant: "default" | "secondary" | "destructive" }
+  > = {
+    PENDING: { label: "Pendiente", variant: "secondary" },
+    ASSIGNED: { label: "Asignado", variant: "default" },
+    IN_PROGRESS: { label: "En Ruta", variant: "default" },
+    COMPLETED: { label: "Completado", variant: "secondary" },
+    FAILED: { label: "Fallido", variant: "destructive" },
+    CANCELLED: { label: "Cancelado", variant: "secondary" },
   };
 
-  const config = statusConfig[status] || { label: status, variant: 'secondary' as const };
+  const config = statusConfig[status] || {
+    label: status,
+    variant: "secondary" as const,
+  };
 
   return (
     <div className="flex items-center justify-between py-3">
@@ -117,12 +151,12 @@ function RecentOrderItem({ trackingId, customerName, address, status }: OrderIte
         </div>
         <div>
           <p className="font-medium">{customerName || trackingId}</p>
-          <p className="text-sm text-muted-foreground line-clamp-1">{address}</p>
+          <p className="text-sm text-muted-foreground line-clamp-1">
+            {address}
+          </p>
         </div>
       </div>
-      <Badge variant={config.variant}>
-        {config.label}
-      </Badge>
+      <Badge variant={config.variant}>{config.label}</Badge>
     </div>
   );
 }
@@ -135,16 +169,16 @@ interface DriverItemProps {
 
 function ActiveDriverItem({ name, status, fleetName }: DriverItemProps) {
   const statusConfig: Record<string, { label: string; color: string }> = {
-    AVAILABLE: { label: 'Disponible', color: 'bg-[hsl(var(--chart-2))]' },
-    ASSIGNED: { label: 'Asignado', color: 'bg-[hsl(var(--chart-3))]' },
-    IN_ROUTE: { label: 'En Ruta', color: 'bg-[hsl(var(--chart-1))]' },
-    ON_PAUSE: { label: 'En Pausa', color: 'bg-[hsl(var(--chart-4))]' },
-    COMPLETED: { label: 'Completado', color: 'bg-[hsl(var(--chart-2))]' },
-    UNAVAILABLE: { label: 'No Disponible', color: 'bg-muted' },
-    ABSENT: { label: 'Ausente', color: 'bg-destructive' },
+    AVAILABLE: { label: "Disponible", color: "bg-[hsl(var(--chart-2))]" },
+    ASSIGNED: { label: "Asignado", color: "bg-[hsl(var(--chart-3))]" },
+    IN_ROUTE: { label: "En Ruta", color: "bg-[hsl(var(--chart-1))]" },
+    ON_PAUSE: { label: "En Pausa", color: "bg-[hsl(var(--chart-4))]" },
+    COMPLETED: { label: "Completado", color: "bg-[hsl(var(--chart-2))]" },
+    UNAVAILABLE: { label: "No Disponible", color: "bg-muted" },
+    ABSENT: { label: "Ausente", color: "bg-destructive" },
   };
 
-  const config = statusConfig[status] || { label: status, color: 'bg-muted' };
+  const config = statusConfig[status] || { label: status, color: "bg-muted" };
 
   return (
     <div className="flex items-center justify-between py-3">
@@ -194,16 +228,22 @@ export default async function DashboardPage() {
       .from(orders)
       .where(and(eq(orders.companyId, companyId), eq(orders.active, true)));
 
-    // Obtener métricas de conductores
+    // Obtener métricas de conductores (usuarios con rol CONDUCTOR)
     const [driverStats] = await db
       .select({
         total: count(),
-        available: sql<number>`count(*) filter (where ${drivers.status} = 'AVAILABLE')`,
-        inRoute: sql<number>`count(*) filter (where ${drivers.status} = 'IN_ROUTE')`,
-        assigned: sql<number>`count(*) filter (where ${drivers.status} = 'ASSIGNED')`,
+        available: sql<number>`count(*) filter (where ${users.driverStatus} = 'AVAILABLE')`,
+        inRoute: sql<number>`count(*) filter (where ${users.driverStatus} = 'IN_ROUTE')`,
+        assigned: sql<number>`count(*) filter (where ${users.driverStatus} = 'ASSIGNED')`,
       })
-      .from(drivers)
-      .where(and(eq(drivers.companyId, companyId), eq(drivers.active, true)));
+      .from(users)
+      .where(
+        and(
+          eq(users.companyId, companyId),
+          eq(users.active, true),
+          eq(users.role, USER_ROLES.CONDUCTOR),
+        ),
+      );
 
     // Obtener métricas de vehículos
     const [vehicleStats] = await db
@@ -219,7 +259,8 @@ export default async function DashboardPage() {
     metrics = {
       totalOrders: orderStats?.total || 0,
       pendingOrders: Number(orderStats?.pending) || 0,
-      activeDrivers: Number(driverStats?.inRoute) + Number(driverStats?.assigned) || 0,
+      activeDrivers:
+        Number(driverStats?.inRoute) + Number(driverStats?.assigned) || 0,
       totalDrivers: driverStats?.total || 0,
       vehiclesInRoute: Number(vehicleStats?.assigned) || 0,
       totalVehicles: vehicleStats?.total || 0,
@@ -241,211 +282,239 @@ export default async function DashboardPage() {
 
     recentOrders = recentOrdersData;
 
-    // Obtener conductores activos con sus flotas
-    const driversWithFleets = await db.query.drivers.findMany({
-      where: and(eq(drivers.companyId, companyId), eq(drivers.active, true)),
+    // Obtener conductores activos con sus flotas (usuarios con rol CONDUCTOR)
+    const driversWithFleets = await db.query.users.findMany({
+      where: and(
+        eq(users.companyId, companyId),
+        eq(users.active, true),
+        eq(users.role, USER_ROLES.CONDUCTOR),
+      ),
       with: {
-        fleet: true,
+        primaryFleet: true,
       },
       limit: 5,
-      orderBy: sql`${drivers.updatedAt} desc`,
+      orderBy: sql`${users.updatedAt} desc`,
     });
 
-    activeDriversList = driversWithFleets.map(d => ({
+    activeDriversList = driversWithFleets.map((d) => ({
       name: d.name,
-      status: d.status,
-      fleetName: d.fleet?.name || 'Sin flota',
+      status: d.driverStatus || "AVAILABLE",
+      fleetName: d.primaryFleet?.name || "Sin flota",
     }));
   }
 
-  const completionRate = metrics.totalOrders > 0 
-    ? Math.round((metrics.completedOrders / metrics.totalOrders) * 100) 
-    : 0;
+  const completionRate =
+    metrics.totalOrders > 0
+      ? Math.round((metrics.completedOrders / metrics.totalOrders) * 100)
+      : 0;
 
   return (
     <div className="space-y-6">
-        {/* Metrics Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            title="Pedidos Totales"
-            value={metrics.totalOrders}
-            description={`${metrics.pendingOrders} pendientes`}
-            icon={Package}
-            variant="chart1"
-          />
-          <MetricCard
-            title="Conductores Activos"
-            value={metrics.activeDrivers}
-            description={`de ${metrics.totalDrivers} disponibles`}
-            icon={Users}
-            variant="chart2"
-          />
-          <MetricCard
-            title="Vehículos Asignados"
-            value={metrics.vehiclesInRoute}
-            description={`de ${metrics.totalVehicles} operativos`}
-            icon={Truck}
-            variant="chart3"
-          />
-          <MetricCard
-            title="Tasa de Cumplimiento"
-            value={`${completionRate}%`}
-            description={`${metrics.completedOrders} completados`}
-            icon={CheckCircle2}
-            variant="chart4"
-          />
-        </div>
+      {/* Metrics Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Pedidos Totales"
+          value={metrics.totalOrders}
+          description={`${metrics.pendingOrders} pendientes`}
+          icon={Package}
+          variant="chart1"
+        />
+        <MetricCard
+          title="Conductores Activos"
+          value={metrics.activeDrivers}
+          description={`de ${metrics.totalDrivers} disponibles`}
+          icon={Users}
+          variant="chart2"
+        />
+        <MetricCard
+          title="Vehículos Asignados"
+          value={metrics.vehiclesInRoute}
+          description={`de ${metrics.totalVehicles} operativos`}
+          icon={Truck}
+          variant="chart3"
+        />
+        <MetricCard
+          title="Tasa de Cumplimiento"
+          value={`${completionRate}%`}
+          description={`${metrics.completedOrders} completados`}
+          icon={CheckCircle2}
+          variant="chart4"
+        />
+      </div>
 
-        {/* Quick Actions */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Link href="/orders">
-            <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className={`rounded-xl p-3 ${iconBgStyles.chart1}`}>
-                  <Package className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Gestionar Pedidos</h3>
-                  <p className="text-sm text-muted-foreground">Crear y editar pedidos</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/optimization">
-            <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className={`rounded-xl p-3 ${iconBgStyles.chart2}`}>
-                  <Route className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Optimizar Rutas</h3>
-                  <p className="text-sm text-muted-foreground">Generar plan óptimo</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/monitoring">
-            <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className={`rounded-xl p-3 ${iconBgStyles.chart4}`}>
-                  <TrendingUp className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Monitorear</h3>
-                  <p className="text-sm text-muted-foreground">Ver estado en tiempo real</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Recent Orders */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+      {/* Quick Actions */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Link href="/orders">
+          <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className={`rounded-xl p-3 ${iconBgStyles.chart1}`}>
+                <Package className="h-6 w-6 text-primary-foreground" />
+              </div>
               <div>
-                <CardTitle>Pedidos Recientes</CardTitle>
-                <CardDescription>Últimos pedidos ingresados</CardDescription>
+                <h3 className="font-semibold">Gestionar Pedidos</h3>
+                <p className="text-sm text-muted-foreground">
+                  Crear y editar pedidos
+                </p>
               </div>
-              <Link href="/orders">
-                <Button variant="outline" size="sm">
-                  Ver todos
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {recentOrders.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  <Package className="mx-auto h-12 w-12 opacity-50" />
-                  <p className="mt-2">No hay pedidos registrados</p>
-                  <Link href="/orders">
-                    <Button variant="link" className="mt-2">
-                      Crear primer pedido
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {recentOrders.map((order) => (
-                    <RecentOrderItem key={order.trackingId} {...order} />
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
-
-          {/* Active Drivers */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+        </Link>
+        <Link href="/optimization">
+          <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className={`rounded-xl p-3 ${iconBgStyles.chart2}`}>
+                <Route className="h-6 w-6 text-primary-foreground" />
+              </div>
               <div>
-                <CardTitle>Conductores</CardTitle>
-                <CardDescription>Estado actual del equipo</CardDescription>
+                <h3 className="font-semibold">Optimizar Rutas</h3>
+                <p className="text-sm text-muted-foreground">
+                  Generar plan óptimo
+                </p>
               </div>
-              <Link href="/drivers">
-                <Button variant="outline" size="sm">
-                  Ver todos
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {activeDriversList.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  <Users className="mx-auto h-12 w-12 opacity-50" />
-                  <p className="mt-2">No hay conductores registrados</p>
-                  <Link href="/drivers">
-                    <Button variant="link" className="mt-2">
-                      Agregar conductor
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {activeDriversList.map((driver, index) => (
-                    <ActiveDriverItem key={index} {...driver} />
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
-        </div>
+        </Link>
+        <Link href="/monitoring">
+          <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className={`rounded-xl p-3 ${iconBgStyles.chart4}`}>
+                <TrendingUp className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Monitorear</h3>
+                <p className="text-sm text-muted-foreground">
+                  Ver estado en tiempo real
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
-        {/* Info Section */}
-        {metrics.totalOrders === 0 && (
-          <Card className="border-[hsl(var(--chart-4))]/30 bg-[hsl(var(--chart-4))]/5">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-[hsl(var(--chart-4))]" />
-                <CardTitle className="text-[hsl(var(--chart-4))]">Primeros pasos</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 md:grid-cols-3">
-                <Link href="/fleets" className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors">
-                  <Truck className="h-5 w-5 text-[hsl(var(--chart-4))]" />
-                  <div>
-                    <p className="font-medium">1. Crear flotas</p>
-                    <p className="text-sm text-muted-foreground">Organiza tus vehículos</p>
-                  </div>
-                </Link>
-                <Link href="/vehicles" className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors">
-                  <Truck className="h-5 w-5 text-[hsl(var(--chart-4))]" />
-                  <div>
-                    <p className="font-medium">2. Agregar vehículos</p>
-                    <p className="text-sm text-muted-foreground">Registra tu flota</p>
-                  </div>
-                </Link>
-                <Link href="/drivers" className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors">
-                  <Users className="h-5 w-5 text-[hsl(var(--chart-4))]" />
-                  <div>
-                    <p className="font-medium">3. Agregar conductores</p>
-                    <p className="text-sm text-muted-foreground">Asigna tu equipo</p>
-                  </div>
+      {/* Main Content */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Recent Orders */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Pedidos Recientes</CardTitle>
+              <CardDescription>Últimos pedidos ingresados</CardDescription>
+            </div>
+            <Link href="/orders">
+              <Button variant="outline" size="sm">
+                Ver todos
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {recentOrders.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <Package className="mx-auto h-12 w-12 opacity-50" />
+                <p className="mt-2">No hay pedidos registrados</p>
+                <Link href="/orders">
+                  <Button variant="link" className="mt-2">
+                    Crear primer pedido
+                  </Button>
                 </Link>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="divide-y divide-border">
+                {recentOrders.map((order) => (
+                  <RecentOrderItem key={order.trackingId} {...order} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Active Drivers */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Conductores</CardTitle>
+              <CardDescription>Estado actual del equipo</CardDescription>
+            </div>
+            <Link href="/users">
+              <Button variant="outline" size="sm">
+                Ver todos
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {activeDriversList.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <Users className="mx-auto h-12 w-12 opacity-50" />
+                <p className="mt-2">No hay conductores registrados</p>
+                <Link href="/users">
+                  <Button variant="link" className="mt-2">
+                    Agregar conductor
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {activeDriversList.map((driver, index) => (
+                  <ActiveDriverItem key={index} {...driver} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Info Section */}
+      {metrics.totalOrders === 0 && (
+        <Card className="border-[hsl(var(--chart-4))]/30 bg-[hsl(var(--chart-4))]/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+              <CardTitle className="text-[hsl(var(--chart-4))]">
+                Primeros pasos
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-3">
+              <Link
+                href="/fleets"
+                className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors"
+              >
+                <Truck className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+                <div>
+                  <p className="font-medium">1. Crear flotas</p>
+                  <p className="text-sm text-muted-foreground">
+                    Organiza tus vehículos
+                  </p>
+                </div>
+              </Link>
+              <Link
+                href="/vehicles"
+                className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors"
+              >
+                <Truck className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+                <div>
+                  <p className="font-medium">2. Agregar vehículos</p>
+                  <p className="text-sm text-muted-foreground">
+                    Registra tu flota
+                  </p>
+                </div>
+              </Link>
+              <Link
+                href="/users"
+                className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors"
+              >
+                <Users className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+                <div>
+                  <p className="font-medium">3. Agregar conductores</p>
+                  <p className="text-sm text-muted-foreground">
+                    Asigna tu equipo
+                  </p>
+                </div>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

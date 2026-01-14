@@ -1,6 +1,11 @@
-import { SignJWT, jwtVerify } from "jose";
+import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
-import { validateSession, createSession, invalidateSession, type SessionData } from "./session";
+import {
+  createSession,
+  invalidateSession,
+  type SessionData,
+  validateSession,
+} from "./session";
 
 // JWT Configuration
 const ACCESS_TOKEN_EXPIRY = "15min"; // 15 minutes
@@ -33,7 +38,9 @@ export interface TokenPayload {
 /**
  * Generate an access token (short-lived)
  */
-export async function generateAccessToken(payload: Omit<TokenPayload, "type">): Promise<string> {
+export async function generateAccessToken(
+  payload: Omit<TokenPayload, "type">,
+): Promise<string> {
   const secret = getSecretKey();
 
   return await new SignJWT({ ...payload, type: "access" })
@@ -47,7 +54,9 @@ export async function generateAccessToken(payload: Omit<TokenPayload, "type">): 
 /**
  * Generate a refresh token (long-lived)
  */
-export async function generateRefreshToken(payload: Omit<TokenPayload, "type">): Promise<string> {
+export async function generateRefreshToken(
+  payload: Omit<TokenPayload, "type">,
+): Promise<string> {
   const secret = getSecretKey();
 
   return await new SignJWT({ ...payload, type: "refresh" })
@@ -74,7 +83,10 @@ export async function verifyToken(token: string): Promise<TokenPayload | null> {
 /**
  * Set authentication cookies
  */
-export async function setAuthCookies(accessToken: string, refreshToken: string): Promise<void> {
+export async function setAuthCookies(
+  accessToken: string,
+  refreshToken: string,
+): Promise<void> {
   const cookieStore = await cookies();
 
   cookieStore.set(ACCESS_TOKEN_COOKIE, accessToken, {
@@ -157,7 +169,9 @@ export async function generateTokenPair(user: {
 /**
  * Extract token from Authorization header
  */
-export function extractTokenFromAuthHeader(authHeader: string | null): string | null {
+export function extractTokenFromAuthHeader(
+  authHeader: string | null,
+): string | null {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
   }
@@ -178,7 +192,7 @@ export async function createAuthSession(
     email: string;
     role: string;
   },
-  options?: { userAgent?: string; ipAddress?: string }
+  options?: { userAgent?: string; ipAddress?: string },
 ): Promise<string> {
   const sessionId = await createSession(
     {
@@ -187,7 +201,7 @@ export async function createAuthSession(
       email: user.email,
       role: user.role,
     },
-    options
+    options,
   );
 
   // Set session cookie

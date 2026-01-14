@@ -1,8 +1,8 @@
 "use client";
 
-import { Bell, Search, User, Moon, Sun } from "lucide-react";
+import { Bell, Moon, Search, Sun, User } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+import { Input } from "@/components/ui/input";
 
 interface HeaderProps {
   title?: string;
@@ -25,8 +25,26 @@ interface HeaderProps {
 export function Header({ title, user }: HeaderProps) {
   const [isDark, setIsDark] = useState(false);
 
+  // Cargar tema guardado al montar el componente
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
+    const shouldBeDark = savedTheme === "dark" || (!savedTheme && prefersDark);
+
+    setIsDark(shouldBeDark);
+    if (shouldBeDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
   const toggleTheme = () => {
-    setIsDark(!isDark);
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    localStorage.setItem("theme", newIsDark ? "dark" : "light");
     document.documentElement.classList.toggle("dark");
   };
 
@@ -39,11 +57,7 @@ export function Header({ title, user }: HeaderProps) {
         )}
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar..."
-            className="w-64 pl-9"
-          />
+          <Input type="search" placeholder="Buscar..." className="w-64 pl-9" />
         </div>
       </div>
 
@@ -51,11 +65,7 @@ export function Header({ title, user }: HeaderProps) {
       <div className="flex items-center gap-2">
         {/* Theme toggle */}
         <Button variant="ghost" size="icon" onClick={toggleTheme}>
-          {isDark ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
+          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
 
         {/* Notifications */}

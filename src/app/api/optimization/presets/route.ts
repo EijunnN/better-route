@@ -1,35 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { optimizationConfigurations } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/tenant";
 import { logCreate } from "@/lib/audit";
-import { eq, and, desc } from "drizzle-orm";
-import { z } from "zod";
+import { setTenantContext } from "@/lib/tenant";
 
-const presetSchema = z.object({
-  name: z.string().min(1, "Name is required").max(255, "Name too long"),
-  objective: z.enum(["DISTANCE", "TIME", "BALANCED"]).default("BALANCED"),
-  capacityEnabled: z.boolean().default(true),
-  workWindowStart: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
-  workWindowEnd: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
-  serviceTimeMinutes: z.number().int().positive().default(10),
-  timeWindowStrictness: z.enum(["HARD", "SOFT"]).default("SOFT"),
-  penaltyFactor: z.number().int().min(1).max(20).default(3),
-  maxRoutes: z.number().int().positive().optional(),
-}).refine(
-  (data) => {
-    const [startHour, startMin] = data.workWindowStart.split(':').map(Number);
-    const [endHour, endMin] = data.workWindowEnd.split(':').map(Number);
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    return endMinutes > startMinutes;
-  },
-  {
-    message: "Work window end time must be after start time",
-    path: ["workWindowEnd"],
-  }
-);
+const presetSchema = z
+  .object({
+    name: z.string().min(1, "Name is required").max(255, "Name too long"),
+    objective: z.enum(["DISTANCE", "TIME", "BALANCED"]).default("BALANCED"),
+    capacityEnabled: z.boolean().default(true),
+    workWindowStart: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+    workWindowEnd: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+    serviceTimeMinutes: z.number().int().positive().default(10),
+    timeWindowStrictness: z.enum(["HARD", "SOFT"]).default("SOFT"),
+    penaltyFactor: z.number().int().min(1).max(20).default(3),
+    maxRoutes: z.number().int().positive().optional(),
+  })
+  .refine(
+    (data) => {
+      const [startHour, startMin] = data.workWindowStart.split(":").map(Number);
+      const [endHour, endMin] = data.workWindowEnd.split(":").map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      return endMinutes > startMinutes;
+    },
+    {
+      message: "Work window end time must be after start time",
+      path: ["workWindowEnd"],
+    },
+  );
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -42,7 +44,10 @@ function extractTenantContext(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -66,8 +71,8 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           withTenantFilter(optimizationConfigurations),
-          eq(optimizationConfigurations.status, "DRAFT")
-        )
+          eq(optimizationConfigurations.status, "DRAFT"),
+        ),
       )
       .orderBy(desc(optimizationConfigurations.createdAt));
 
@@ -76,7 +81,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching presets:", error);
     return NextResponse.json(
       { error: "Failed to fetch presets" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -85,7 +90,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -127,13 +135,13 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && "name" in error) {
       return NextResponse.json(
         { error: "Validation error", details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
     console.error("Error creating preset:", error);
     return NextResponse.json(
       { error: "Failed to create preset" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

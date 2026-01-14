@@ -1,16 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import bcrypt from "bcryptjs";
-import { loginSchema, AUTH_ERRORS } from "@/lib/validations/auth";
 import {
+  generateAccessToken,
   generateTokenPair,
   setAuthCookies,
   verifyToken,
-  generateAccessToken,
 } from "@/lib/auth";
-import { checkRateLimit, getClientIp, getRateLimitHeaders, RATE_LIMITS } from "@/lib/rate-limit";
+import {
+  checkRateLimit,
+  getClientIp,
+  getRateLimitHeaders,
+  RATE_LIMITS,
+} from "@/lib/rate-limit";
+import { AUTH_ERRORS, loginSchema } from "@/lib/validations/auth";
 
 /**
  * POST /api/auth/login
@@ -30,7 +35,7 @@ export async function POST(request: NextRequest) {
         {
           status: 429,
           headers: getRateLimitHeaders(rateLimit),
-        }
+        },
       );
     }
 
@@ -40,8 +45,11 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: AUTH_ERRORS.INVALID_CREDENTIALS, details: validation.error.issues },
-        { status: 400, headers: getRateLimitHeaders(rateLimit) }
+        {
+          error: AUTH_ERRORS.INVALID_CREDENTIALS,
+          details: validation.error.issues,
+        },
+        { status: 400, headers: getRateLimitHeaders(rateLimit) },
       );
     }
 
@@ -67,7 +75,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { error: AUTH_ERRORS.USER_NOT_FOUND },
-        { status: 401, headers: getRateLimitHeaders(rateLimit) }
+        { status: 401, headers: getRateLimitHeaders(rateLimit) },
       );
     }
 
@@ -75,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (!user.active) {
       return NextResponse.json(
         { error: AUTH_ERRORS.USER_INACTIVE },
-        { status: 403, headers: getRateLimitHeaders(rateLimit) }
+        { status: 403, headers: getRateLimitHeaders(rateLimit) },
       );
     }
 
@@ -85,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (!isPasswordValid) {
       return NextResponse.json(
         { error: AUTH_ERRORS.INVALID_CREDENTIALS },
-        { status: 401, headers: getRateLimitHeaders(rateLimit) }
+        { status: 401, headers: getRateLimitHeaders(rateLimit) },
       );
     }
 
@@ -114,13 +122,13 @@ export async function POST(request: NextRequest) {
         refreshToken,
         expiresIn: 15 * 60, // 15 minutes in seconds
       },
-      { headers: getRateLimitHeaders(rateLimit) }
+      { headers: getRateLimitHeaders(rateLimit) },
     );
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

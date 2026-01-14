@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { auditLogs, optimizationJobs } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
 import { setTenantContext } from "@/lib/tenant";
 
 function extractTenantContext(request: NextRequest) {
@@ -24,14 +24,14 @@ function extractTenantContext(request: NextRequest) {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ routeId: string }> }
+  { params }: { params: Promise<{ routeId: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -43,14 +43,14 @@ export async function GET(
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
         eq(optimizationJobs.id, routeId),
-        eq(optimizationJobs.companyId, tenantCtx.companyId)
+        eq(optimizationJobs.companyId, tenantCtx.companyId),
       ),
     });
 
     if (!job) {
       return NextResponse.json(
         { error: "Route/job not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -59,7 +59,7 @@ export async function GET(
       where: and(
         eq(auditLogs.companyId, tenantCtx.companyId),
         eq(auditLogs.entityType, "DRIVER_ASSIGNMENT"),
-        eq(auditLogs.entityId, routeId)
+        eq(auditLogs.entityId, routeId),
       ),
       orderBy: [desc(auditLogs.createdAt)],
     });
@@ -88,10 +88,13 @@ export async function GET(
     // Group by action type for summary
     const summary = {
       total: formattedHistory.length,
-      byAction: formattedHistory.reduce((acc, entry) => {
-        acc[entry.action] = (acc[entry.action] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
+      byAction: formattedHistory.reduce(
+        (acc, entry) => {
+          acc[entry.action] = (acc[entry.action] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
     };
 
     return NextResponse.json({
@@ -108,7 +111,7 @@ export async function GET(
     console.error("Error getting assignment history:", error);
     return NextResponse.json(
       { error: "Error getting assignment history" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -5,7 +5,7 @@
  * Falls back to JavaScript calculation when PostGIS is not available.
  */
 
-import { cacheGet, cacheSet, CACHE_TTL } from "./cache";
+import { CACHE_TTL, cacheGet, cacheSet } from "./cache";
 
 // Distance result in meters and seconds
 export interface DistanceResult {
@@ -27,10 +27,7 @@ export interface Coordinates {
  * @param to - Ending coordinates
  * @returns Distance in meters
  */
-export function calculateDistance(
-  from: Coordinates,
-  to: Coordinates
-): number {
+export function calculateDistance(from: Coordinates, to: Coordinates): number {
   const R = 6371000; // Earth's radius in meters
   const lat1 = (from.latitude * Math.PI) / 180;
   const lat2 = (to.latitude * Math.PI) / 180;
@@ -39,7 +36,10 @@ export function calculateDistance(
 
   const a =
     Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+    Math.cos(lat1) *
+      Math.cos(lat2) *
+      Math.sin(deltaLon / 2) *
+      Math.sin(deltaLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return Math.round(R * c);
@@ -55,13 +55,15 @@ export function calculateDistance(
  */
 export function calculateDistanceWithDuration(
   from: Coordinates,
-  to: Coordinates
+  to: Coordinates,
 ): DistanceResult {
   const distanceMeters = calculateDistance(from, to);
 
   // Average urban speed: 40 km/h = ~11.11 m/s
-  const averageSpeedMetersPerSecond = 40 * 1000 / 3600;
-  const durationSeconds = Math.round(distanceMeters / averageSpeedMetersPerSecond);
+  const averageSpeedMetersPerSecond = (40 * 1000) / 3600;
+  const durationSeconds = Math.round(
+    distanceMeters / averageSpeedMetersPerSecond,
+  );
 
   return {
     distanceMeters,
@@ -78,7 +80,7 @@ export function calculateDistanceWithDuration(
  */
 export function calculateDistanceFromCoords(
   from: Coordinates,
-  to: Coordinates
+  to: Coordinates,
 ): DistanceResult {
   return calculateDistanceWithDuration(from, to);
 }
@@ -93,7 +95,7 @@ export function calculateDistanceFromCoords(
  */
 export async function calculateDistanceMatrix(
   coordinates: Coordinates[],
-  companyId: string
+  companyId: string,
 ): Promise<number[][]> {
   const n = coordinates.length;
   const matrix: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
@@ -137,7 +139,7 @@ export async function calculateDistanceMatrix(
 export function isWithinRadius(
   center: Coordinates,
   point: Coordinates,
-  radiusMeters: number
+  radiusMeters: number,
 ): boolean {
   const distance = calculateDistance(center, point);
   return distance <= radiusMeters;
@@ -149,9 +151,7 @@ export function isWithinRadius(
  * @param stops - Array of coordinates in order
  * @returns Total distance in meters and total duration in seconds
  */
-export function calculateRouteDistance(
-  stops: Coordinates[]
-): DistanceResult {
+export function calculateRouteDistance(stops: Coordinates[]): DistanceResult {
   if (stops.length < 2) {
     return { distanceMeters: 0, durationSeconds: 0 };
   }
@@ -163,8 +163,10 @@ export function calculateRouteDistance(
     totalDistance += distance;
   }
 
-  const averageSpeedMetersPerSecond = 40 * 1000 / 3600;
-  const durationSeconds = Math.round(totalDistance / averageSpeedMetersPerSecond);
+  const averageSpeedMetersPerSecond = (40 * 1000) / 3600;
+  const durationSeconds = Math.round(
+    totalDistance / averageSpeedMetersPerSecond,
+  );
 
   return {
     distanceMeters: totalDistance,
@@ -179,7 +181,7 @@ export function calculateRouteDistance(
  * @returns Array of distances in meters
  */
 export function batchCalculateDistances(
-  pairs: Array<{ from: Coordinates; to: Coordinates }>
+  pairs: Array<{ from: Coordinates; to: Coordinates }>,
 ): number[] {
   return pairs.map((p) => calculateDistance(p.from, p.to));
 }
@@ -190,7 +192,9 @@ export function batchCalculateDistances(
  *
  * @param companyId - Company ID
  */
-export async function invalidateDistanceCache(companyId: string): Promise<void> {
+export async function invalidateDistanceCache(
+  companyId: string,
+): Promise<void> {
   // Use cache pattern to invalidate - the cache will be rebuilt on next access
   // For now we rely on TTL expiration, but this function can be extended
   // to use a more explicit invalidation strategy if needed

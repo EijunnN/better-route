@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getTenantContext } from "@/db/tenant-aware";
 import {
-  getPlanMetrics,
   getHistoricalMetrics,
   getMetricsSummaryStats,
+  getPlanMetrics,
 } from "@/lib/plan-metrics";
 
 /**
@@ -13,7 +13,7 @@ import {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: jobId } = await params;
@@ -22,14 +22,17 @@ export async function GET(
     if (!tenantContext.companyId) {
       return NextResponse.json(
         { error: "Company context required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Get query parameters for historical data
     const { searchParams } = new URL(request.url);
     const includeHistorical = searchParams.get("includeHistorical") === "true";
-    const historicalLimit = parseInt(searchParams.get("historicalLimit") || "10", 10);
+    const historicalLimit = parseInt(
+      searchParams.get("historicalLimit") || "10",
+      10,
+    );
     const includeSummary = searchParams.get("includeSummary") === "true";
 
     // Get plan metrics for this job
@@ -38,7 +41,7 @@ export async function GET(
     if (!metrics) {
       return NextResponse.json(
         { error: "Plan metrics not found for this job" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -50,7 +53,7 @@ export async function GET(
     if (includeHistorical) {
       const historical = await getHistoricalMetrics(
         tenantContext.companyId,
-        historicalLimit
+        historicalLimit,
       );
       response.historical = historical;
     }
@@ -66,7 +69,7 @@ export async function GET(
     console.error("Error retrieving plan metrics:", error);
     return NextResponse.json(
       { error: "Internal server error", message: String(error) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

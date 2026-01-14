@@ -36,7 +36,7 @@ export const RATE_LIMITS = {
  */
 export function checkRateLimit(
   identifier: string,
-  config: RateLimitConfig = RATE_LIMITS.AUTH
+  config: RateLimitConfig = RATE_LIMITS.AUTH,
 ): { success: boolean; remaining: number; resetTime: number } {
   const now = Date.now();
   const entry = limitStore.get(identifier);

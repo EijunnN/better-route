@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getTenantContext } from "@/lib/tenant";
-import { setTenantContext } from "@/lib/tenant";
-import { generatePlanOutput, canGenerateOutput, convertOutputToCSV } from "@/lib/output-generator";
-import { OUTPUT_FORMAT } from "@/db/schema";
+import { type NextRequest, NextResponse } from "next/server";
+import type { OUTPUT_FORMAT } from "@/db/schema";
+import {
+  canGenerateOutput,
+  convertOutputToCSV,
+  generatePlanOutput,
+} from "@/lib/output-generator";
 import type { PlanOutput } from "@/lib/output-generator-types";
+import { getTenantContext, setTenantContext } from "@/lib/tenant";
 
 /**
  * POST /api/output
@@ -30,7 +33,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { success: false, error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -38,12 +41,15 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { jobId, format = "JSON" }: { jobId: string; format?: keyof typeof OUTPUT_FORMAT } = body;
+    const {
+      jobId,
+      format = "JSON",
+    }: { jobId: string; format?: keyof typeof OUTPUT_FORMAT } = body;
 
     if (!jobId) {
       return NextResponse.json(
         { success: false, error: "jobId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -51,7 +57,7 @@ export async function POST(request: NextRequest) {
     if (format !== "JSON" && format !== "CSV") {
       return NextResponse.json(
         { success: false, error: "format must be JSON or CSV" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -67,13 +73,18 @@ export async function POST(request: NextRequest) {
           error: "Cannot generate output",
           reason: canGenerate.reason,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Generate output (userId must be defined for database operation)
     const outputUserId = userId || "system";
-    const output = await generatePlanOutput(companyId, jobId, outputUserId, format);
+    const output = await generatePlanOutput(
+      companyId,
+      jobId,
+      outputUserId,
+      format,
+    );
 
     // Return based on format
     if (format === "CSV") {
@@ -101,7 +112,7 @@ export async function POST(request: NextRequest) {
         error: "Failed to generate output",
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -128,7 +139,7 @@ export async function GET(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { success: false, error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -164,7 +175,7 @@ export async function GET(request: NextRequest) {
         error: "Failed to fetch output history",
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

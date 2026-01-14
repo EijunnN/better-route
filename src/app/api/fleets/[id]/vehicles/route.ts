@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { fleets, vehicles } from "@/db/schema";
-import { vehicleQuerySchema, VEHICLE_STATUS } from "@/lib/validations/vehicle";
-import { eq, and, desc } from "drizzle-orm";
-import { withTenantFilter, TenantAccessDeniedError } from "@/db/tenant-aware";
+import { fleets, vehicleFleets, vehicles } from "@/db/schema";
+import { TenantAccessDeniedError, withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
+import { VEHICLE_STATUS, vehicleQuerySchema } from "@/lib/validations/vehicle";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -22,14 +22,14 @@ function extractTenantContext(request: NextRequest) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -46,19 +46,40 @@ export async function GET(
       .limit(1);
 
     if (!fleet) {
-      return NextResponse.json(
-        { error: "Fleet not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Fleet not found" }, { status: 404 });
     }
 
     const { searchParams } = new URL(request.url);
     const query = vehicleQuerySchema.parse({
       ...Object.fromEntries(searchParams),
-      fleetId: id, // Override fleetId with the route param
     });
 
-    const conditions = [eq(vehicles.fleetId, id)];
+    // Get vehicle IDs belonging to this fleet via junction table
+    const fleetVehicleRecords = await db
+      .select({ vehicleId: vehicleFleets.vehicleId })
+      .from(vehicleFleets)
+      .where(
+        and(eq(vehicleFleets.fleetId, id), eq(vehicleFleets.active, true)),
+      );
+    const vehicleIdsInFleet = fleetVehicleRecords.map((r) => r.vehicleId);
+
+    // If no vehicles in fleet, return empty result
+    if (vehicleIdsInFleet.length === 0) {
+      return NextResponse.json({
+        fleet: {
+          id: fleet.id,
+          name: fleet.name,
+        },
+        data: [],
+        meta: {
+          total: 0,
+          limit: query.limit,
+          offset: query.offset,
+        },
+      });
+    }
+
+    const conditions: any[] = [inArray(vehicles.id, vehicleIdsInFleet)];
 
     if (query.status) {
       conditions.push(eq(vehicles.status, query.status));
@@ -100,14 +121,11 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching fleet vehicles:", error);
     if (error instanceof TenantAccessDeniedError) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
     return NextResponse.json(
       { error: "Error fetching fleet vehicles" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

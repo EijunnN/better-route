@@ -1,19 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, optimizationConfigurations } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
 import { getTenantContext } from "@/db/tenant-aware";
 import {
-  planValidationRequestSchema,
-  type PlanValidationRequestSchema,
-} from "@/lib/validations/plan-confirmation";
-import {
-  validatePlanForConfirmation,
   getIssuesByCategory,
   getIssuesBySeverity,
   getValidationSummaryText,
   type PlanValidationResult,
+  validatePlanForConfirmation,
 } from "@/lib/plan-validation";
+import {
+  type PlanValidationRequestSchema,
+  planValidationRequestSchema,
+} from "@/lib/validations/plan-confirmation";
 
 /**
  * GET /api/optimization/jobs/[id]/validate
@@ -23,7 +23,7 @@ import {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: jobId } = await params;
@@ -32,7 +32,7 @@ export async function GET(
     if (!tenantContext.companyId) {
       return NextResponse.json(
         { error: "Company context required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -65,20 +65,20 @@ export async function GET(
       .from(optimizationJobs)
       .leftJoin(
         optimizationConfigurations,
-        eq(optimizationJobs.configurationId, optimizationConfigurations.id)
+        eq(optimizationJobs.configurationId, optimizationConfigurations.id),
       )
       .where(
         and(
           eq(optimizationJobs.id, jobId),
-          eq(optimizationJobs.companyId, tenantContext.companyId)
-        )
+          eq(optimizationJobs.companyId, tenantContext.companyId),
+        ),
       )
       .limit(1);
 
     if (!job) {
       return NextResponse.json(
         { error: "Optimization job not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -86,10 +86,11 @@ export async function GET(
     if (job.status !== "COMPLETED") {
       return NextResponse.json(
         {
-          error: "Plan validation is only available for completed optimization jobs",
+          error:
+            "Plan validation is only available for completed optimization jobs",
           jobStatus: job.status,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -125,14 +126,14 @@ export async function GET(
     } catch (error) {
       return NextResponse.json(
         { error: "Failed to parse optimization result" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     if (!result) {
       return NextResponse.json(
         { error: "No optimization result available" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -140,7 +141,7 @@ export async function GET(
     const validationResult = await validatePlanForConfirmation(
       tenantContext.companyId,
       result,
-      validationConfig
+      validationConfig,
     );
 
     // Enrich response with additional information
@@ -159,7 +160,7 @@ export async function GET(
     console.error("Error validating plan:", error);
     return NextResponse.json(
       { error: "Internal server error", message: String(error) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

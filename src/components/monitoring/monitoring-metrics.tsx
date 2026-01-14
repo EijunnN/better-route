@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertTriangle, CheckCircle2, Clock, Route, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Clock, Users, AlertTriangle, Route } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface MonitoringMetrics {
   totalDrivers: number;
@@ -126,8 +126,12 @@ export function MonitoringMetrics({ metrics }: MonitoringMetricsProps) {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-lg ${metrics.activeAlerts > 0 ? "bg-red-500/10" : "bg-green-500/10"}`}>
-                <AlertTriangle className={`w-6 h-6 ${metrics.activeAlerts > 0 ? "text-red-500" : "text-green-500"}`} />
+              <div
+                className={`p-3 rounded-lg ${metrics.activeAlerts > 0 ? "bg-red-500/10" : "bg-green-500/10"}`}
+              >
+                <AlertTriangle
+                  className={`w-6 h-6 ${metrics.activeAlerts > 0 ? "text-red-500" : "text-green-500"}`}
+                />
               </div>
               <div>
                 <div className="text-2xl font-bold">{metrics.activeAlerts}</div>

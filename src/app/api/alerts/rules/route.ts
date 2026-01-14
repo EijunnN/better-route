@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, or, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { alertRules } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { eq, and, desc, sql, or } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -16,7 +16,10 @@ function extractTenantContext(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -39,9 +42,10 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(alertRules.enabled, enabled === "true"));
     }
 
-    const whereClause = conditions.length > 0
-      ? and(withTenantFilter(alertRules), ...conditions)
-      : withTenantFilter(alertRules);
+    const whereClause =
+      conditions.length > 0
+        ? and(withTenantFilter(alertRules), ...conditions)
+        : withTenantFilter(alertRules);
 
     // Get rules with filters
     const rules = await db.query.alertRules.findMany({
@@ -71,7 +75,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching alert rules:", error);
     return NextResponse.json(
       { error: "Failed to fetch alert rules" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -80,7 +84,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -92,7 +99,7 @@ export async function POST(request: NextRequest) {
     if (!name || !type || !severity) {
       return NextResponse.json(
         { error: "Missing required fields: name, type, severity" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -114,7 +121,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating alert rule:", error);
     return NextResponse.json(
       { error: "Failed to create alert rule" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

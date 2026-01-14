@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { alerts, alertRules } from "@/db/schema";
+import { alertRules, alerts } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { eq, and, desc, or, sql, inArray } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -16,7 +16,10 @@ function extractTenantContext(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -52,9 +55,10 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(alerts.entityType, entityType));
     }
 
-    const whereClause = conditions.length > 0
-      ? and(withTenantFilter(alerts), ...conditions)
-      : withTenantFilter(alerts);
+    const whereClause =
+      conditions.length > 0
+        ? and(withTenantFilter(alerts), ...conditions)
+        : withTenantFilter(alerts);
 
     // Get alerts with filters
     const alertsData = await db.query.alerts.findMany({
@@ -94,7 +98,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching alerts:", error);
     return NextResponse.json(
       { error: "Failed to fetch alerts" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -103,19 +107,33 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
 
   try {
     const body = await request.json();
-    const { type, severity, entityType, entityId, title, description, metadata } = body;
+    const {
+      type,
+      severity,
+      entityType,
+      entityId,
+      title,
+      description,
+      metadata,
+    } = body;
 
     if (!type || !severity || !entityType || !entityId || !title) {
       return NextResponse.json(
-        { error: "Missing required fields: type, severity, entityType, entityId, title" },
-        { status: 400 }
+        {
+          error:
+            "Missing required fields: type, severity, entityType, entityId, title",
+        },
+        { status: 400 },
       );
     }
 
@@ -139,7 +157,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating alert:", error);
     return NextResponse.json(
       { error: "Failed to create alert" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

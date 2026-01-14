@@ -1,4 +1,4 @@
-import { TIME_WINDOW_STRICTNESS, TIME_WINDOW_TYPES } from "@/db/schema";
+import { type TIME_WINDOW_STRICTNESS, TIME_WINDOW_TYPES } from "@/db/schema";
 import type { TimeWindowValidationResult } from "./validations/order";
 
 /**
@@ -7,7 +7,7 @@ import type { TimeWindowValidationResult } from "./validations/order";
  */
 export function calculateDelayPenalty(
   delayMinutes: number,
-  penaltyFactor: number = 5
+  penaltyFactor: number = 5,
 ): number {
   return delayMinutes * penaltyFactor;
 }
@@ -24,7 +24,7 @@ export function violatesTimeWindow(
   arrivalTime: number,
   windowStart: number | null,
   windowEnd: number | null,
-  toleranceMinutes: number | null = null
+  toleranceMinutes: number | null = null,
 ): boolean {
   // For SHIFT and RANGE types
   if (windowStart !== null && windowEnd !== null) {
@@ -33,8 +33,8 @@ export function violatesTimeWindow(
 
   // For EXACT type with tolerance
   if (windowStart !== null && toleranceMinutes !== null) {
-    const earlyViolation = arrivalTime < (windowStart - toleranceMinutes);
-    const lateViolation = arrivalTime > (windowStart + toleranceMinutes);
+    const earlyViolation = arrivalTime < windowStart - toleranceMinutes;
+    const lateViolation = arrivalTime > windowStart + toleranceMinutes;
     return earlyViolation || lateViolation;
   }
 
@@ -57,13 +57,13 @@ export function validateTimeWindowStrictness(
   windowStart: number | null,
   windowEnd: number | null,
   toleranceMinutes: number | null = null,
-  penaltyFactor: number = 5
+  penaltyFactor: number = 5,
 ): TimeWindowValidationResult {
   const hasViolation = violatesTimeWindow(
     arrivalTime,
     windowStart,
     windowEnd,
-    toleranceMinutes
+    toleranceMinutes,
   );
 
   if (!hasViolation) {
@@ -121,7 +121,7 @@ export function timeToMinutes(timeString: string): number {
  */
 export function calculateComplianceRate(
   totalOrders: number,
-  onTimeOrders: number
+  onTimeOrders: number,
 ): number {
   if (totalOrders === 0) return 100;
   return Math.round((onTimeOrders / totalOrders) * 100);
@@ -133,7 +133,7 @@ export function calculateComplianceRate(
  */
 export function getEffectiveStrictness(
   orderStrictness: keyof typeof TIME_WINDOW_STRICTNESS | null | undefined,
-  presetStrictness: keyof typeof TIME_WINDOW_STRICTNESS
+  presetStrictness: keyof typeof TIME_WINDOW_STRICTNESS,
 ): keyof typeof TIME_WINDOW_STRICTNESS {
   return orderStrictness || presetStrictness;
 }
@@ -143,7 +143,7 @@ export function getEffectiveStrictness(
  */
 export function isStrictnessOverridden(
   orderStrictness: keyof typeof TIME_WINDOW_STRICTNESS | null | undefined,
-  presetStrictness: keyof typeof TIME_WINDOW_STRICTNESS
+  presetStrictness: keyof typeof TIME_WINDOW_STRICTNESS,
 ): boolean {
   return orderStrictness !== null && orderStrictness !== presetStrictness;
 }
@@ -151,14 +151,20 @@ export function isStrictnessOverridden(
 /**
  * Format strictness for display
  */
-export function formatStrictness(strictness: keyof typeof TIME_WINDOW_STRICTNESS): string {
-  return strictness === "HARD" ? "Hard (reject violations)" : "Soft (minimize delays)";
+export function formatStrictness(
+  strictness: keyof typeof TIME_WINDOW_STRICTNESS,
+): string {
+  return strictness === "HARD"
+    ? "Hard (reject violations)"
+    : "Soft (minimize delays)";
 }
 
 /**
  * Get strictness color class for UI
  */
-export function getStrictnessColorClass(strictness: keyof typeof TIME_WINDOW_STRICTNESS): string {
+export function getStrictnessColorClass(
+  strictness: keyof typeof TIME_WINDOW_STRICTNESS,
+): string {
   return strictness === "HARD"
     ? "bg-destructive/10 text-destructive"
     : "bg-yellow-500/10 text-yellow-600";

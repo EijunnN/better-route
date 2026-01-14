@@ -1,13 +1,16 @@
 /**
  * OSRM Client - Open Source Routing Machine
- * 
+ *
  * This module provides distance and duration calculations using real road networks.
  * Falls back to Haversine calculations when OSRM is not available.
- * 
+ *
  * @see http://project-osrm.org/docs/v5.24.0/api/
  */
 
-import { calculateDistance as haversineDistance, type Coordinates } from "./geospatial";
+import {
+  type Coordinates,
+  calculateDistance as haversineDistance,
+} from "./geospatial";
 
 // Configuration
 const OSRM_URL = process.env.OSRM_URL || "http://localhost:5001";
@@ -23,7 +26,7 @@ const CHECK_INTERVAL = 30000; // 30 seconds
  */
 export async function isOsrmAvailable(): Promise<boolean> {
   const now = Date.now();
-  
+
   // Use cached result if recent
   if (osrmAvailable !== null && now - lastCheck < CHECK_INTERVAL) {
     return osrmAvailable;
@@ -40,14 +43,14 @@ export async function isOsrmAvailable(): Promise<boolean> {
     try {
       const response = await fetch(
         `${OSRM_URL}/route/v1/driving/-99.1332,19.4326;-99.1333,19.4327?overview=false`,
-        { signal: AbortSignal.timeout(5000) }
+        { signal: AbortSignal.timeout(5000) },
       );
       osrmAvailable = response.ok;
     } catch {
       osrmAvailable = false;
     }
   }
-  
+
   lastCheck = now;
   return osrmAvailable;
 }
@@ -74,21 +77,21 @@ interface TableResponse {
  */
 export async function getRoute(
   from: Coordinates,
-  to: Coordinates
+  to: Coordinates,
 ): Promise<{ distance: number; duration: number } | null> {
   const available = await isOsrmAvailable();
-  
+
   if (!available) {
     // Fallback to Haversine
     const distance = haversineDistance(from, to);
     // Estimate duration at 40 km/h average urban speed
-    const duration = Math.round(distance / (40 * 1000 / 3600));
+    const duration = Math.round(distance / ((40 * 1000) / 3600));
     return { distance, duration };
   }
 
   try {
     const url = `${OSRM_URL}/route/v1/driving/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?overview=false`;
-    
+
     const response = await fetch(url, {
       signal: AbortSignal.timeout(OSRM_TIMEOUT),
     });
@@ -110,7 +113,7 @@ export async function getRoute(
   } catch (error) {
     console.warn("OSRM route failed, using Haversine fallback:", error);
     const distance = haversineDistance(from, to);
-    const duration = Math.round(distance / (40 * 1000 / 3600));
+    const duration = Math.round(distance / ((40 * 1000) / 3600));
     return { distance, duration };
   }
 }
@@ -119,16 +122,20 @@ export async function getRoute(
  * Get distance/duration matrix for multiple points using OSRM Table service
  */
 export async function getDistanceMatrix(
-  coordinates: Coordinates[]
+  coordinates: Coordinates[],
 ): Promise<{ distances: number[][]; durations: number[][] }> {
   const n = coordinates.length;
-  
+
   // Initialize matrices
-  const distances: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
-  const durations: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
+  const distances: number[][] = Array.from({ length: n }, () =>
+    Array(n).fill(0),
+  );
+  const durations: number[][] = Array.from({ length: n }, () =>
+    Array(n).fill(0),
+  );
 
   const available = await isOsrmAvailable();
-  
+
   if (!available || n < 2) {
     // Fallback to Haversine
     for (let i = 0; i < n; i++) {
@@ -136,7 +143,7 @@ export async function getDistanceMatrix(
         if (i !== j) {
           const dist = haversineDistance(coordinates[i], coordinates[j]);
           distances[i][j] = dist;
-          durations[i][j] = Math.round(dist / (40 * 1000 / 3600));
+          durations[i][j] = Math.round(dist / ((40 * 1000) / 3600));
         }
       }
     }
@@ -150,7 +157,7 @@ export async function getDistanceMatrix(
       .join(";");
 
     const url = `${OSRM_URL}/table/v1/driving/${coordStr}?annotations=distance,duration`;
-    
+
     const response = await fetch(url, {
       signal: AbortSignal.timeout(OSRM_TIMEOUT),
     });
@@ -178,14 +185,14 @@ export async function getDistanceMatrix(
     return { distances, durations };
   } catch (error) {
     console.warn("OSRM table failed, using Haversine fallback:", error);
-    
+
     // Fallback to Haversine
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
         if (i !== j) {
           const dist = haversineDistance(coordinates[i], coordinates[j]);
           distances[i][j] = dist;
-          durations[i][j] = Math.round(dist / (40 * 1000 / 3600));
+          durations[i][j] = Math.round(dist / ((40 * 1000) / 3600));
         }
       }
     }
@@ -198,14 +205,14 @@ export async function getDistanceMatrix(
  */
 export async function getOptimizedTrip(
   coordinates: Coordinates[],
-  roundtrip = true
+  roundtrip = true,
 ): Promise<{
   distance: number;
   duration: number;
   waypoints: Array<{ waypointIndex: number; tripIndex: number }>;
 } | null> {
   const available = await isOsrmAvailable();
-  
+
   if (!available || coordinates.length < 2) {
     return null;
   }
@@ -216,7 +223,7 @@ export async function getOptimizedTrip(
       .join(";");
 
     const url = `${OSRM_URL}/trip/v1/driving/${coordStr}?roundtrip=${roundtrip}&overview=false`;
-    
+
     const response = await fetch(url, {
       signal: AbortSignal.timeout(OSRM_TIMEOUT),
     });

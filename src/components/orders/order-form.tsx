@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ORDER_STATUS, TIME_WINDOW_STRICTNESS } from "@/lib/validations/order";
-import { TIME_WINDOW_TYPES } from "@/lib/validations/time-window-preset";
+import type {
+  ORDER_STATUS,
+  TIME_WINDOW_STRICTNESS,
+} from "@/lib/validations/order";
+import type { TIME_WINDOW_TYPES } from "@/lib/validations/time-window-preset";
 
 export interface OrderFormData {
   trackingId: string;
@@ -92,8 +95,12 @@ export function OrderForm({
   onCancel,
 }: FormProps) {
   const [formData, setFormData] = useState<OrderFormData>(defaultData);
-  const [timeWindowPresets, setTimeWindowPresets] = useState<TimeWindowPreset[]>([]);
-  const [selectedPreset, setSelectedPreset] = useState<TimeWindowPreset | null>(null);
+  const [timeWindowPresets, setTimeWindowPresets] = useState<
+    TimeWindowPreset[]
+  >([]);
+  const [selectedPreset, setSelectedPreset] = useState<TimeWindowPreset | null>(
+    null,
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingPresets, setIsLoadingPresets] = useState(true);
@@ -140,7 +147,9 @@ export function OrderForm({
 
       // Set selected preset
       if (initialData.timeWindowPresetId) {
-        const preset = timeWindowPresets.find((p) => p.id === initialData.timeWindowPresetId);
+        const preset = timeWindowPresets.find(
+          (p) => p.id === initialData.timeWindowPresetId,
+        );
         if (preset) setSelectedPreset(preset);
       }
     }
@@ -148,7 +157,7 @@ export function OrderForm({
 
   const handleChange = (
     field: keyof OrderFormData,
-    value: string | number | boolean | null
+    value: string | number | boolean | null,
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field
@@ -181,7 +190,7 @@ export function OrderForm({
     } else {
       handleChange(
         "strictness",
-        value as (typeof TIME_WINDOW_STRICTNESS)[number]
+        value as (typeof TIME_WINDOW_STRICTNESS)[number],
       );
     }
   };
@@ -210,7 +219,8 @@ export function OrderForm({
     }
   };
 
-  const effectiveStrictness = formData.strictness || selectedPreset?.strictness || "HARD";
+  const effectiveStrictness =
+    formData.strictness || selectedPreset?.strictness || "HARD";
   const isOverridden = formData.strictness !== null;
 
   return (
@@ -236,7 +246,9 @@ export function OrderForm({
                   placeholder="e.g., ORD-001"
                 />
                 {errors.trackingId && (
-                  <p className="text-sm text-destructive mt-1">{errors.trackingId}</p>
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.trackingId}
+                  </p>
                 )}
               </div>
 
@@ -276,7 +288,9 @@ export function OrderForm({
                 <Input
                   id="customerPhone"
                   value={formData.customerPhone}
-                  onChange={(e) => handleChange("customerPhone", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("customerPhone", e.target.value)
+                  }
                   placeholder="+1 234 567 8900"
                 />
               </div>
@@ -292,7 +306,9 @@ export function OrderForm({
                 placeholder="john@example.com"
               />
               {errors.customerEmail && (
-                <p className="text-sm text-destructive mt-1">{errors.customerEmail}</p>
+                <p className="text-sm text-destructive mt-1">
+                  {errors.customerEmail}
+                </p>
               )}
             </div>
           </div>
@@ -310,7 +326,9 @@ export function OrderForm({
                 placeholder="123 Main St, City, Country"
               />
               {errors.address && (
-                <p className="text-sm text-destructive mt-1">{errors.address}</p>
+                <p className="text-sm text-destructive mt-1">
+                  {errors.address}
+                </p>
               )}
             </div>
 
@@ -325,7 +343,9 @@ export function OrderForm({
                   step="any"
                 />
                 {errors.latitude && (
-                  <p className="text-sm text-destructive mt-1">{errors.latitude}</p>
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.latitude}
+                  </p>
                 )}
               </div>
 
@@ -339,7 +359,9 @@ export function OrderForm({
                   step="any"
                 />
                 {errors.longitude && (
-                  <p className="text-sm text-destructive mt-1">{errors.longitude}</p>
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.longitude}
+                  </p>
                 )}
               </div>
             </div>
@@ -352,7 +374,9 @@ export function OrderForm({
             <div>
               <Label htmlFor="timeWindowPresetId">Time Window Preset</Label>
               {isLoadingPresets ? (
-                <p className="text-sm text-muted-foreground">Loading presets...</p>
+                <p className="text-sm text-muted-foreground">
+                  Loading presets...
+                </p>
               ) : (
                 <select
                   id="timeWindowPresetId"
@@ -413,9 +437,9 @@ export function OrderForm({
               </select>
               {isOverridden && selectedPreset && (
                 <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
-                  <span className="font-medium">Override:</span> This order will use{" "}
-                  <span className="font-medium">{effectiveStrictness}</span> strictness
-                  instead of the preset's {selectedPreset.strictness}
+                  <span className="font-medium">Override:</span> This order will
+                  use <span className="font-medium">{effectiveStrictness}</span>{" "}
+                  strictness instead of the preset's {selectedPreset.strictness}
                 </p>
               )}
             </div>
@@ -433,7 +457,9 @@ export function OrderForm({
 
           {/* Capacity Requirements Section */}
           <div className="border-b pb-4">
-            <h3 className="font-medium mb-3">Capacity Requirements (Optional)</h3>
+            <h3 className="font-medium mb-3">
+              Capacity Requirements (Optional)
+            </h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -446,7 +472,7 @@ export function OrderForm({
                   onChange={(e) =>
                     handleChange(
                       "weightRequired",
-                      parseInt(e.target.value) || 0
+                      parseInt(e.target.value) || 0,
                     )
                   }
                 />
@@ -462,7 +488,7 @@ export function OrderForm({
                   onChange={(e) =>
                     handleChange(
                       "volumeRequired",
-                      parseInt(e.target.value) || 0
+                      parseInt(e.target.value) || 0,
                     )
                   }
                 />
@@ -470,7 +496,9 @@ export function OrderForm({
             </div>
 
             <div className="mt-3">
-              <Label htmlFor="requiredSkills">Required Skills (comma-separated)</Label>
+              <Label htmlFor="requiredSkills">
+                Required Skills (comma-separated)
+              </Label>
               <Input
                 id="requiredSkills"
                 value={formData.requiredSkills}

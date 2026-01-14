@@ -1,28 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
-import { setTenantContext, requireTenantContext } from "@/lib/tenant";
-import { db } from "@/db";
-import { orders, timeWindowPresets, csvColumnMappingTemplates } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
-import { orderSchema } from "@/lib/validations/order";
-import { csvImportWithMappingSchema } from "@/lib/validations/csv-column-mapping";
-import { suggestColumnMapping, mapCSVRow } from "@/lib/csv-column-mapping";
-import { batchInsertOrders, updateTableStatistics } from "@/lib/batch-operations";
+import { and, eq, inArray } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { db } from "@/db";
+import {
+  csvColumnMappingTemplates,
+  orders,
+  timeWindowPresets,
+} from "@/db/schema";
+import {
+  batchInsertOrders,
+  updateTableStatistics,
+} from "@/lib/batch-operations";
+import { mapCSVRow, suggestColumnMapping } from "@/lib/csv-column-mapping";
+import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+import { csvImportWithMappingSchema } from "@/lib/validations/csv-column-mapping";
+import { orderSchema } from "@/lib/validations/order";
 
 // CSV import request schema (updated to support templates)
-const csvImportRequestSchema = z.object({
-  // CSV content as base64 encoded string
-  csvContent: z.string().min(1, "CSV content is required"),
-  // Optional column mapping (maps CSV columns to order fields)
-  columnMapping: z.record(z.string(), z.string()).optional(),
-  // Optional template ID to use for column mapping
-  templateId: z.string().uuid().optional(),
-  // Whether to actually process (true) or just validate/preview (false)
-  process: z.boolean().default(false),
-}).refine(
-  (data) => !(data.columnMapping && data.templateId),
-  "Cannot provide both columnMapping and templateId. Use one or the other."
-);
+const csvImportRequestSchema = z
+  .object({
+    // CSV content as base64 encoded string
+    csvContent: z.string().min(1, "CSV content is required"),
+    // Optional column mapping (maps CSV columns to order fields)
+    columnMapping: z.record(z.string(), z.string()).optional(),
+    // Optional template ID to use for column mapping
+    templateId: z.string().uuid().optional(),
+    // Whether to actually process (true) or just validate/preview (false)
+    process: z.boolean().default(false),
+  })
+  .refine(
+    (data) => !(data.columnMapping && data.templateId),
+    "Cannot provide both columnMapping and templateId. Use one or the other.",
+  );
 
 // Error severity levels for better categorization
 const ERROR_SEVERITY = ["critical", "warning", "info"] as const;
@@ -65,7 +74,9 @@ const csvImportResultSchema = z.object({
 });
 
 type CSVValidationError = z.infer<typeof csvValidationErrorSchema>;
-type CSVRecordValidationResult = z.infer<typeof csvRecordValidationResultSchema>;
+type CSVRecordValidationResult = z.infer<
+  typeof csvRecordValidationResultSchema
+>;
 type CSVRow = Record<string, string>;
 
 // Error type constants for categorization
@@ -87,7 +98,7 @@ function createValidationError(
   message: string,
   severity: "critical" | "warning" | "info" = "critical",
   errorType: string = ERROR_TYPES.VALIDATION,
-  value?: any
+  value?: any,
 ): CSVValidationError {
   return { row, field, message, severity, errorType, value };
 }
@@ -97,7 +108,11 @@ function createValidationError(
  */
 function calculateErrorSummary(errors: CSVValidationError[]) {
   const byField: Record<string, number> = {};
-  const bySeverity: Record<string, number> = { critical: 0, warning: 0, info: 0 };
+  const bySeverity: Record<string, number> = {
+    critical: 0,
+    warning: 0,
+    info: 0,
+  };
   const byErrorType: Record<string, number> = {};
 
   for (const error of errors) {
@@ -241,7 +256,10 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
  * Map CSV row to order input (legacy function for backward compatibility)
  * @deprecated Use mapCSVRow from @/lib/csv-column-mapping instead
  */
-function mapCSVRowToOrder(row: CSVRow, customMapping?: Record<string, string>): any {
+function mapCSVRowToOrder(
+  row: CSVRow,
+  customMapping?: Record<string, string>,
+): any {
   const mapping = { ...DEFAULT_COLUMN_MAPPING, ...customMapping };
   const result: any = {};
 
@@ -264,54 +282,63 @@ function validateOrderRow(
   row: CSVRow,
   rowIndex: number,
   existingTrackingIds: Set<string>,
-  mapping: Record<string, string> = {}
+  mapping: Record<string, string> = {},
 ): CSVValidationError[] {
   const errors: CSVValidationError[] = [];
   // Use the provided mapping or fall back to default
-  const orderData = Object.keys(mapping).length > 0
-    ? mapCSVRow(row, mapping)
-    : mapCSVRowToOrder(row);
+  const orderData =
+    Object.keys(mapping).length > 0
+      ? mapCSVRow(row, mapping)
+      : mapCSVRowToOrder(row);
 
   try {
     // Check for missing required fields first (highest priority errors)
     if (!orderData.trackingId) {
-      errors.push(createValidationError(
-        rowIndex,
-        "trackingId",
-        "Tracking ID is required",
-        "critical",
-        ERROR_TYPES.REQUIRED_FIELD
-      ));
+      errors.push(
+        createValidationError(
+          rowIndex,
+          "trackingId",
+          "Tracking ID is required",
+          "critical",
+          ERROR_TYPES.REQUIRED_FIELD,
+        ),
+      );
     }
 
     if (!orderData.address) {
-      errors.push(createValidationError(
-        rowIndex,
-        "address",
-        "Address is required",
-        "critical",
-        ERROR_TYPES.REQUIRED_FIELD
-      ));
+      errors.push(
+        createValidationError(
+          rowIndex,
+          "address",
+          "Address is required",
+          "critical",
+          ERROR_TYPES.REQUIRED_FIELD,
+        ),
+      );
     }
 
     if (!orderData.latitude) {
-      errors.push(createValidationError(
-        rowIndex,
-        "latitude",
-        "Latitude is required",
-        "critical",
-        ERROR_TYPES.REQUIRED_FIELD
-      ));
+      errors.push(
+        createValidationError(
+          rowIndex,
+          "latitude",
+          "Latitude is required",
+          "critical",
+          ERROR_TYPES.REQUIRED_FIELD,
+        ),
+      );
     }
 
     if (!orderData.longitude) {
-      errors.push(createValidationError(
-        rowIndex,
-        "longitude",
-        "Longitude is required",
-        "critical",
-        ERROR_TYPES.REQUIRED_FIELD
-      ));
+      errors.push(
+        createValidationError(
+          rowIndex,
+          "longitude",
+          "Longitude is required",
+          "critical",
+          ERROR_TYPES.REQUIRED_FIELD,
+        ),
+      );
     }
 
     // Parse and validate with Zod schema for format validation
@@ -324,34 +351,46 @@ function validateOrderRow(
           // Determine error type based on field
           let errorType: string = ERROR_TYPES.VALIDATION;
           if (field === "customerEmail") errorType = ERROR_TYPES.FORMAT;
-          if (field === "latitude" || field === "longitude") errorType = ERROR_TYPES.RANGE;
+          if (field === "latitude" || field === "longitude")
+            errorType = ERROR_TYPES.RANGE;
 
-          errors.push(createValidationError(
-            rowIndex,
-            field,
-            err.message,
-            "critical",
-            errorType,
-            field === "latitude" ? orderData.latitude :
-            field === "longitude" ? orderData.longitude :
-            undefined
-          ));
+          errors.push(
+            createValidationError(
+              rowIndex,
+              field,
+              err.message,
+              "critical",
+              errorType,
+              field === "latitude"
+                ? orderData.latitude
+                : field === "longitude"
+                  ? orderData.longitude
+                  : undefined,
+            ),
+          );
         });
       }
     }
 
     // Only continue validation if required fields are present
-    if (orderData.trackingId && orderData.address && orderData.latitude && orderData.longitude) {
+    if (
+      orderData.trackingId &&
+      orderData.address &&
+      orderData.latitude &&
+      orderData.longitude
+    ) {
       // Check for duplicate tracking IDs (within CSV)
       if (existingTrackingIds.has(orderData.trackingId)) {
-        errors.push(createValidationError(
-          rowIndex,
-          "trackingId",
-          `Duplicate tracking ID within CSV: ${orderData.trackingId}`,
-          "critical",
-          ERROR_TYPES.DUPLICATE,
-          orderData.trackingId
-        ));
+        errors.push(
+          createValidationError(
+            rowIndex,
+            "trackingId",
+            `Duplicate tracking ID within CSV: ${orderData.trackingId}`,
+            "critical",
+            ERROR_TYPES.DUPLICATE,
+            orderData.trackingId,
+          ),
+        );
       } else {
         existingTrackingIds.add(orderData.trackingId);
       }
@@ -361,51 +400,59 @@ function validateOrderRow(
       const lng = parseFloat(orderData.longitude);
 
       if (isNaN(lat) || lat < -90 || lat > 90) {
-        errors.push(createValidationError(
-          rowIndex,
-          "latitude",
-          "Latitude must be between -90 and 90",
-          "critical",
-          ERROR_TYPES.RANGE,
-          orderData.latitude
-        ));
+        errors.push(
+          createValidationError(
+            rowIndex,
+            "latitude",
+            "Latitude must be between -90 and 90",
+            "critical",
+            ERROR_TYPES.RANGE,
+            orderData.latitude,
+          ),
+        );
       }
 
       if (isNaN(lng) || lng < -180 || lng > 180) {
-        errors.push(createValidationError(
-          rowIndex,
-          "longitude",
-          "Longitude must be between -180 and 180",
-          "critical",
-          ERROR_TYPES.RANGE,
-          orderData.longitude
-        ));
+        errors.push(
+          createValidationError(
+            rowIndex,
+            "longitude",
+            "Longitude must be between -180 and 180",
+            "critical",
+            ERROR_TYPES.RANGE,
+            orderData.longitude,
+          ),
+        );
       }
 
       // Validate coordinates are not (0, 0) - treat as warning (can be overridden)
       if (orderData.latitude === "0" && orderData.longitude === "0") {
-        errors.push(createValidationError(
-          rowIndex,
-          "latitude",
-          "Coordinates (0, 0) are likely invalid. Please verify the address.",
-          "warning",
-          ERROR_TYPES.RANGE,
-          "0, 0"
-        ));
+        errors.push(
+          createValidationError(
+            rowIndex,
+            "latitude",
+            "Coordinates (0, 0) are likely invalid. Please verify the address.",
+            "warning",
+            ERROR_TYPES.RANGE,
+            "0, 0",
+          ),
+        );
       }
 
       // Validate email format if provided
       if (orderData.customerEmail && orderData.customerEmail !== "") {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(orderData.customerEmail)) {
-          errors.push(createValidationError(
-            rowIndex,
-            "customerEmail",
-            "Invalid email format",
-            "warning",
-            ERROR_TYPES.FORMAT,
-            orderData.customerEmail
-          ));
+          errors.push(
+            createValidationError(
+              rowIndex,
+              "customerEmail",
+              "Invalid email format",
+              "warning",
+              ERROR_TYPES.FORMAT,
+              orderData.customerEmail,
+            ),
+          );
         }
       }
 
@@ -413,51 +460,63 @@ function validateOrderRow(
       if (orderData.weightRequired) {
         const weight = parseFloat(orderData.weightRequired);
         if (isNaN(weight) || weight <= 0) {
-          errors.push(createValidationError(
-            rowIndex,
-            "weightRequired",
-            "Weight must be a positive number",
-            "critical",
-            ERROR_TYPES.RANGE,
-            orderData.weightRequired
-          ));
+          errors.push(
+            createValidationError(
+              rowIndex,
+              "weightRequired",
+              "Weight must be a positive number",
+              "critical",
+              ERROR_TYPES.RANGE,
+              orderData.weightRequired,
+            ),
+          );
         }
       }
 
       if (orderData.volumeRequired) {
         const volume = parseFloat(orderData.volumeRequired);
         if (isNaN(volume) || volume <= 0) {
-          errors.push(createValidationError(
-            rowIndex,
-            "volumeRequired",
-            "Volume must be a positive number",
-            "critical",
-            ERROR_TYPES.RANGE,
-            orderData.volumeRequired
-          ));
+          errors.push(
+            createValidationError(
+              rowIndex,
+              "volumeRequired",
+              "Volume must be a positive number",
+              "critical",
+              ERROR_TYPES.RANGE,
+              orderData.volumeRequired,
+            ),
+          );
         }
       }
 
       // Validate strictness if provided
-      if (orderData.strictness && orderData.strictness !== "HARD" && orderData.strictness !== "SOFT") {
-        errors.push(createValidationError(
-          rowIndex,
-          "strictness",
-          "Strictness must be HARD or SOFT",
-          "critical",
-          ERROR_TYPES.FORMAT,
-          orderData.strictness
-        ));
+      if (
+        orderData.strictness &&
+        orderData.strictness !== "HARD" &&
+        orderData.strictness !== "SOFT"
+      ) {
+        errors.push(
+          createValidationError(
+            rowIndex,
+            "strictness",
+            "Strictness must be HARD or SOFT",
+            "critical",
+            ERROR_TYPES.FORMAT,
+            orderData.strictness,
+          ),
+        );
       }
     }
   } catch (error) {
-    errors.push(createValidationError(
-      rowIndex,
-      "general",
-      error instanceof Error ? error.message : "Unknown validation error",
-      "critical",
-      ERROR_TYPES.VALIDATION
-    ));
+    errors.push(
+      createValidationError(
+        rowIndex,
+        "general",
+        error instanceof Error ? error.message : "Unknown validation error",
+        "critical",
+        ERROR_TYPES.VALIDATION,
+      ),
+    );
   }
 
   return errors;
@@ -468,7 +527,7 @@ function validateOrderRow(
  */
 async function validateTimeWindowPresets(
   orderDataList: any[],
-  companyId: string
+  companyId: string,
 ): Promise<CSVValidationError[]> {
   const errors: CSVValidationError[] = [];
   const presetIds = orderDataList
@@ -487,22 +546,27 @@ async function validateTimeWindowPresets(
       and(
         eq(timeWindowPresets.companyId, companyId),
         eq(timeWindowPresets.active, true),
-        inArray(timeWindowPresets.id, uniquePresetIds)
-      )
+        inArray(timeWindowPresets.id, uniquePresetIds),
+      ),
     );
 
   const validPresetIds = new Set(presets.map((p) => p.id));
 
   orderDataList.forEach((data, index) => {
-    if (data.timeWindowPresetId && !validPresetIds.has(data.timeWindowPresetId)) {
-      errors.push(createValidationError(
-        index + 2, // +2 because index 0 is row 2 (after header)
-        "timeWindowPresetId",
-        `Time window preset not found or inactive: ${data.timeWindowPresetId}`,
-        "critical",
-        ERROR_TYPES.REFERENCE,
-        data.timeWindowPresetId
-      ));
+    if (
+      data.timeWindowPresetId &&
+      !validPresetIds.has(data.timeWindowPresetId)
+    ) {
+      errors.push(
+        createValidationError(
+          index + 2, // +2 because index 0 is row 2 (after header)
+          "timeWindowPresetId",
+          `Time window preset not found or inactive: ${data.timeWindowPresetId}`,
+          "critical",
+          ERROR_TYPES.REFERENCE,
+          data.timeWindowPresetId,
+        ),
+      );
     }
   });
 
@@ -516,7 +580,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -536,14 +600,14 @@ export async function POST(request: NextRequest) {
           and(
             eq(csvColumnMappingTemplates.id, validatedData.templateId),
             eq(csvColumnMappingTemplates.companyId, context.companyId),
-            eq(csvColumnMappingTemplates.active, true)
-          )
+            eq(csvColumnMappingTemplates.active, true),
+          ),
         );
 
       if (template.length === 0) {
         return NextResponse.json(
           { error: "Template not found or inactive" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -559,20 +623,19 @@ export async function POST(request: NextRequest) {
     // Decode base64 content
     let csvContent: string;
     try {
-      csvContent = Buffer.from(validatedData.csvContent, "base64").toString("utf-8");
+      csvContent = Buffer.from(validatedData.csvContent, "base64").toString(
+        "utf-8",
+      );
     } catch {
       return NextResponse.json(
         { error: "Invalid base64 encoding" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Verify file extension and encoding
     if (!csvContent || csvContent.trim().length === 0) {
-      return NextResponse.json(
-        { error: "CSV file is empty" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "CSV file is empty" }, { status: 400 });
     }
 
     // Detect delimiter and parse CSV
@@ -582,7 +645,7 @@ export async function POST(request: NextRequest) {
     if (rows.length === 0) {
       return NextResponse.json(
         { error: "No data rows found in CSV" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -597,9 +660,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for required headers after mapping
-    const normalizedHeaders = Object.keys(rows[0]).map((h) => h.toLowerCase().trim());
+    const normalizedHeaders = Object.keys(rows[0]).map((h) =>
+      h.toLowerCase().trim(),
+    );
     const hasTrackingId = normalizedHeaders.some((h) =>
-      ["tracking_id", "tracking id", "trackingid", "trackingid"].includes(h)
+      ["tracking_id", "tracking id", "trackingid", "trackingid"].includes(h),
     );
 
     if (!hasTrackingId) {
@@ -611,7 +676,7 @@ export async function POST(request: NextRequest) {
           foundHeaders: Object.keys(rows[0]),
           suggestedMapping: finalMapping,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -624,9 +689,10 @@ export async function POST(request: NextRequest) {
     // Check for existing tracking IDs in database BEFORE any validation
     const trackingIdsInCSV = rows
       .map((row) => {
-        const mapped = Object.keys(finalMapping).length > 0
-          ? mapCSVRow(row, finalMapping)
-          : mapCSVRowToOrder(row);
+        const mapped =
+          Object.keys(finalMapping).length > 0
+            ? mapCSVRow(row, finalMapping)
+            : mapCSVRowToOrder(row);
         return mapped.trackingId;
       })
       .filter((id): id is string => !!id);
@@ -638,30 +704,40 @@ export async function POST(request: NextRequest) {
         and(
           eq(orders.companyId, context.companyId),
           eq(orders.active, true),
-          inArray(orders.trackingId, trackingIdsInCSV)
-        )
+          inArray(orders.trackingId, trackingIdsInCSV),
+        ),
       );
 
-    const existingTrackingIds = new Set(existingOrders.map((o) => o.trackingId));
+    const existingTrackingIds = new Set(
+      existingOrders.map((o) => o.trackingId),
+    );
 
     // Validate each row and separate valid/invalid records
     rows.forEach((row, index) => {
       const rowIndex = index + 2; // +1 for 0-based index, +1 for header row
-      const rowErrors = validateOrderRow(row, rowIndex, seenTrackingIds, finalMapping);
-      const orderData = Object.keys(finalMapping).length > 0
-        ? mapCSVRow(row, finalMapping)
-        : mapCSVRowToOrder(row);
+      const rowErrors = validateOrderRow(
+        row,
+        rowIndex,
+        seenTrackingIds,
+        finalMapping,
+      );
+      const orderData =
+        Object.keys(finalMapping).length > 0
+          ? mapCSVRow(row, finalMapping)
+          : mapCSVRowToOrder(row);
 
       // Check for duplicate with existing orders in database
       if (existingTrackingIds.has(orderData.trackingId)) {
-        rowErrors.push(createValidationError(
-          rowIndex,
-          "trackingId",
-          `Tracking ID already exists in database: ${orderData.trackingId}`,
-          "critical",
-          ERROR_TYPES.DUPLICATE,
-          orderData.trackingId
-        ));
+        rowErrors.push(
+          createValidationError(
+            rowIndex,
+            "trackingId",
+            `Tracking ID already exists in database: ${orderData.trackingId}`,
+            "critical",
+            ERROR_TYPES.DUPLICATE,
+            orderData.trackingId,
+          ),
+        );
       }
 
       // Create record validation result
@@ -689,7 +765,10 @@ export async function POST(request: NextRequest) {
     });
 
     // Validate time window presets (cross-field validation)
-    const presetErrors = await validateTimeWindowPresets(orderDataList, context.companyId);
+    const presetErrors = await validateTimeWindowPresets(
+      orderDataList,
+      context.companyId,
+    );
 
     // Add preset errors to both allErrors and update affected records
     if (presetErrors.length > 0) {
@@ -697,7 +776,9 @@ export async function POST(request: NextRequest) {
 
       // Move records with preset errors from valid to invalid
       presetErrors.forEach((error) => {
-        const validRecordIndex = validRecords.findIndex((r) => r.row === error.row);
+        const validRecordIndex = validRecords.findIndex(
+          (r) => r.row === error.row,
+        );
         if (validRecordIndex !== -1) {
           const record = validRecords.splice(validRecordIndex, 1)[0];
           record.valid = false;
@@ -738,7 +819,7 @@ export async function POST(request: NextRequest) {
           csvHeaders,
           templateId: validatedData.templateId,
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
@@ -754,24 +835,39 @@ export async function POST(request: NextRequest) {
           orderDataList.map((data) => ({
             trackingId: String(data.trackingId),
             customerName: data.customerName ? String(data.customerName) : null,
-            customerPhone: data.customerPhone ? String(data.customerPhone) : null,
-            customerEmail: data.customerEmail ? String(data.customerEmail) : null,
+            customerPhone: data.customerPhone
+              ? String(data.customerPhone)
+              : null,
+            customerEmail: data.customerEmail
+              ? String(data.customerEmail)
+              : null,
             address: String(data.address),
             latitude: String(data.latitude),
             longitude: String(data.longitude),
             timeWindowPresetId: data.timeWindowPresetId || null,
-            strictness: (data.strictness === "HARD" || data.strictness === "SOFT" ? data.strictness : null) as "HARD" | "SOFT" | null,
-            promisedDate: data.promisedDate ? new Date(data.promisedDate) : null,
-            weightRequired: data.weightRequired ? parseInt(String(data.weightRequired), 10) : null,
-            volumeRequired: data.volumeRequired ? parseInt(String(data.volumeRequired), 10) : null,
-            requiredSkills: data.requiredSkills ? String(data.requiredSkills) : null,
+            strictness: (data.strictness === "HARD" ||
+            data.strictness === "SOFT"
+              ? data.strictness
+              : null) as "HARD" | "SOFT" | null,
+            promisedDate: data.promisedDate
+              ? new Date(data.promisedDate)
+              : null,
+            weightRequired: data.weightRequired
+              ? parseInt(String(data.weightRequired), 10)
+              : null,
+            volumeRequired: data.volumeRequired
+              ? parseInt(String(data.volumeRequired), 10)
+              : null,
+            requiredSkills: data.requiredSkills
+              ? String(data.requiredSkills)
+              : null,
             notes: data.notes ? String(data.notes) : null,
           })),
           context.companyId,
           {
             batchSize: 500, // Optimized for PostgreSQL
             timeout: 300000, // 5 minutes timeout
-          }
+          },
         );
 
         importedCount = batchResult.inserted;
@@ -779,13 +875,15 @@ export async function POST(request: NextRequest) {
         // Add batch errors to import errors
         if (batchResult.errors.length > 0) {
           for (const err of batchResult.errors) {
-            importErrors.push(createValidationError(
-              0,
-              "batch",
-              `Batch ${err.batch}: ${err.error}`,
-              "critical",
-              ERROR_TYPES.VALIDATION
-            ));
+            importErrors.push(
+              createValidationError(
+                0,
+                "batch",
+                `Batch ${err.batch}: ${err.error}`,
+                "critical",
+                ERROR_TYPES.VALIDATION,
+              ),
+            );
           }
         }
 
@@ -794,13 +892,15 @@ export async function POST(request: NextRequest) {
           await updateTableStatistics("orders");
         }
       } catch (error) {
-        importErrors.push(createValidationError(
-          0,
-          "general",
-          error instanceof Error ? error.message : "Failed to import orders",
-          "critical",
-          ERROR_TYPES.VALIDATION
-        ));
+        importErrors.push(
+          createValidationError(
+            0,
+            "general",
+            error instanceof Error ? error.message : "Failed to import orders",
+            "critical",
+            ERROR_TYPES.VALIDATION,
+          ),
+        );
       }
     }
 
@@ -822,18 +922,18 @@ export async function POST(request: NextRequest) {
         csvHeaders,
         templateId: validatedData.templateId,
       },
-      { status: importErrors.length === 0 ? 201 : 207 }
+      { status: importErrors.length === 0 ? 201 : 207 },
     );
   } catch (error: any) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Validation failed", details: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: error.message || "Failed to import orders" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

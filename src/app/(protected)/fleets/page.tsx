@@ -1,33 +1,44 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { FleetForm } from "@/components/fleets/fleet-form";
+import { Button } from "@/components/ui/button";
 import type { FleetInput } from "@/lib/validations/fleet";
 
 interface Fleet {
   id: string;
   name: string;
-  type: string;
-  weightCapacity: number;
-  volumeCapacity: number;
-  operationStart: string;
-  operationEnd: string;
+  description?: string | null;
+  type?: string | null;
+  weightCapacity?: number | null;
+  volumeCapacity?: number | null;
+  operationStart?: string | null;
+  operationEnd?: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  vehicleIds?: string[];
+  userIds?: string[];
 }
 
-const FLEET_TYPE_LABELS: Record<string, string> = {
-  HEAVY_LOAD: "Carga Pesada",
-  LIGHT_LOAD: "Carga Ligera",
-  EXPRESS: "Express",
-  REFRIGERATED: "Refrigerado",
-  SPECIAL: "Especial",
-};
+interface VehicleWithFleets {
+  id: string;
+  name: string;
+  plate: string | null;
+  fleets: Array<{ id: string; name: string }>;
+}
+
+interface UserWithFleets {
+  id: string;
+  name: string;
+  role: string;
+  fleets: Array<{ id: string; name: string }>;
+}
 
 export default function FleetsPage() {
   const [fleets, setFleets] = useState<Fleet[]>([]);
+  const [vehicles, setVehicles] = useState<VehicleWithFleets[]>([]);
+  const [users, setUsers] = useState<UserWithFleets[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
@@ -48,8 +59,56 @@ export default function FleetsPage() {
     }
   };
 
+  const fetchVehiclesAndUsers = async () => {
+    try {
+      // Fetch vehicles with their fleet assignments
+      const vehiclesRes = await fetch("/api/vehicles", {
+        headers: { "x-company-id": "demo-company-id" },
+      });
+      const vehiclesData = await vehiclesRes.json();
+      const vehiclesList = vehiclesData.data || [];
+
+      // Map to VehicleWithFleets format
+      const vehiclesWithFleets: VehicleWithFleets[] = vehiclesList.map(
+        (v: any) => ({
+          id: v.id,
+          name: v.name || v.plate || "Sin nombre",
+          plate: v.plate,
+          fleets: v.fleets || [],
+        }),
+      );
+      setVehicles(vehiclesWithFleets);
+
+      // Fetch users
+      const usersRes = await fetch("/api/users", {
+        headers: { "x-company-id": "demo-company-id" },
+      });
+      const usersData = await usersRes.json();
+      const usersList = usersData.data || [];
+
+      // Map to UserWithFleets format (only users who can have fleet access)
+      const usersWithFleets: UserWithFleets[] = usersList
+        .filter(
+          (u: any) =>
+            u.role === "AGENTE_SEGUIMIENTO" ||
+            u.role === "PLANIFICADOR" ||
+            u.role === "ADMIN",
+        )
+        .map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          role: u.role,
+          fleets: u.fleetPermissions || [],
+        }));
+      setUsers(usersWithFleets);
+    } catch (error) {
+      console.error("Error fetching vehicles/users:", error);
+    }
+  };
+
   useEffect(() => {
     fetchFleets();
+    fetchVehiclesAndUsers();
   }, []);
 
   const handleCreate = async (data: FleetInput) => {
@@ -128,10 +187,16 @@ export default function FleetsPage() {
           <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
             <FleetForm
               onSubmit={editingFleet ? handleUpdate : handleCreate}
-              initialData={editingFleet ? {
-                ...editingFleet,
-                type: editingFleet.type as FleetInput["type"],
-              } : undefined}
+              initialData={
+                editingFleet
+                  ? {
+                      ...editingFleet,
+                      type: (editingFleet.type as FleetInput["type"]) || null,
+                    }
+                  : undefined
+              }
+              vehicles={vehicles}
+              users={users}
               submitLabel={editingFleet ? "Actualizar" : "Crear"}
             />
             <div className="mt-4">
@@ -186,16 +251,7 @@ export default function FleetsPage() {
                     Nombre
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Tipo
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Capacidad Peso
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Capacidad Volumen
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Horario Operación
+                    Descripción
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Estado
@@ -207,21 +263,15 @@ export default function FleetsPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {fleets.map((fleet) => (
-                  <tr key={fleet.id} className="hover:bg-muted/50 transition-colors">
+                  <tr
+                    key={fleet.id}
+                    className="hover:bg-muted/50 transition-colors"
+                  >
                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-foreground">
                       {fleet.name}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
-                      {FLEET_TYPE_LABELS[fleet.type] || fleet.type}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
-                      {fleet.weightCapacity.toLocaleString()} kg
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
-                      {fleet.volumeCapacity.toLocaleString()} m³
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
-                      {fleet.operationStart} - {fleet.operationEnd}
+                    <td className="px-6 py-4 text-sm text-muted-foreground max-w-xs truncate">
+                      {fleet.description || "-"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
                       <span

@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, optimizationConfigurations } from "@/db/schema";
+import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext, getTenantContext } from "@/lib/tenant";
 import { logCreate } from "@/lib/audit";
+import { createAndExecuteJob } from "@/lib/optimization-runner";
+import { getTenantContext, setTenantContext } from "@/lib/tenant";
 import {
   optimizationJobCreateSchema,
   optimizationJobQuerySchema,
 } from "@/lib/validations/optimization-job";
-import { createAndExecuteJob } from "@/lib/optimization-runner";
-import { eq, and, desc, sql } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -22,7 +22,10 @@ function extractTenantContext(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -30,7 +33,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const query = optimizationJobQuerySchema.parse(
-      Object.fromEntries(searchParams)
+      Object.fromEntries(searchParams),
     );
 
     const conditions = [withTenantFilter(optimizationJobs)];
@@ -77,7 +80,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching optimization jobs:", error);
     return NextResponse.json(
       { error: "Failed to fetch jobs" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -86,7 +89,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -99,24 +105,27 @@ export async function POST(request: NextRequest) {
     const config = await db.query.optimizationConfigurations.findFirst({
       where: and(
         eq(optimizationConfigurations.id, data.configurationId),
-        withTenantFilter(optimizationConfigurations)
+        withTenantFilter(optimizationConfigurations),
       ),
     });
 
     if (!config) {
       return NextResponse.json(
         { error: "Configuration not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Create and execute job
-    const { jobId, cached } = await createAndExecuteJob({
-      configurationId: data.configurationId,
-      companyId: tenantCtx.companyId,
-      vehicleIds: data.vehicleIds,
-      driverIds: data.driverIds,
-    }, data.timeoutMs);
+    const { jobId, cached } = await createAndExecuteJob(
+      {
+        configurationId: data.configurationId,
+        companyId: tenantCtx.companyId,
+        vehicleIds: data.vehicleIds,
+        driverIds: data.driverIds,
+      },
+      data.timeoutMs,
+    );
 
     // Log job creation
     await logCreate("optimization_job", jobId, {
@@ -136,7 +145,7 @@ export async function POST(request: NextRequest) {
             : "Optimization job started",
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     if (error instanceof Error) {
@@ -144,14 +153,14 @@ export async function POST(request: NextRequest) {
       if (error.message.includes("Maximum concurrent jobs")) {
         return NextResponse.json(
           { error: error.message },
-          { status: 429 } // Too Many Requests
+          { status: 429 }, // Too Many Requests
         );
       }
     }
     console.error("Error creating optimization job:", error);
     return NextResponse.json(
       { error: "Failed to create optimization job" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

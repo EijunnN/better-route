@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { DriverSkillInput } from "@/lib/validations/driver-skill";
-import { isExpiringSoon, isExpired } from "@/lib/validations/driver-skill";
+import { isExpired, isExpiringSoon } from "@/lib/validations/driver-skill";
 
 interface DriverSkillFormProps {
   onSubmit: (data: DriverSkillInput) => Promise<void>;
@@ -64,7 +64,9 @@ export function DriverSkillForm({
         });
         setErrors(fieldErrors);
       } else {
-        setErrors({ form: error.error || "Error al guardar la habilidad del conductor" });
+        setErrors({
+          form: error.error || "Error al guardar la habilidad del conductor",
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -135,7 +137,8 @@ export function DriverSkillForm({
             ) : (
               skills.map((skill) => (
                 <option key={skill.id} value={skill.id}>
-                  {skill.code} - {skill.name} ({getSkillCategoryLabel(skill.category)})
+                  {skill.code} - {skill.name} (
+                  {getSkillCategoryLabel(skill.category)})
                 </option>
               ))
             )}
@@ -154,7 +157,11 @@ export function DriverSkillForm({
             value={formData.obtainedAt ? formData.obtainedAt.slice(0, 16) : ""}
             onChange={(e) => updateField("obtainedAt", e.target.value)}
             disabled={isSubmitting}
-            className={errors.obtainedAt ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.obtainedAt
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
           />
           {errors.obtainedAt && (
             <p className="text-sm text-destructive">{errors.obtainedAt}</p>
@@ -170,7 +177,11 @@ export function DriverSkillForm({
             value={formData.expiresAt ? formData.expiresAt.slice(0, 16) : ""}
             onChange={(e) => updateField("expiresAt", e.target.value || "")}
             disabled={isSubmitting}
-            className={errors.expiresAt ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.expiresAt
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
           />
           {errors.expiresAt && (
             <p className="text-sm text-destructive">{errors.expiresAt}</p>

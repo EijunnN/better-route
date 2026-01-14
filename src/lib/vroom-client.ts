@@ -1,9 +1,9 @@
 /**
  * VROOM Client - Vehicle Routing Optimization
- * 
+ *
  * This module integrates with VROOM (Vehicle Routing Open-source Optimization Machine)
  * for solving the Vehicle Routing Problem (VRP).
- * 
+ *
  * @see https://github.com/VROOM-Project/vroom/blob/master/docs/API.md
  */
 
@@ -175,7 +175,9 @@ export async function solveVRP(request: VroomRequest): Promise<VroomResponse> {
   const result: VroomResponse = await response.json();
 
   if (result.code !== 0) {
-    throw new Error(`VROOM optimization failed: ${result.error || "Unknown error"}`);
+    throw new Error(
+      `VROOM optimization failed: ${result.error || "Unknown error"}`,
+    );
   }
 
   return result;
@@ -215,7 +217,7 @@ export function createVroomJob(
     priority?: number;
     timeWindowStart?: string;
     timeWindowEnd?: string;
-  }
+  },
 ): VroomJob {
   const job: VroomJob = {
     id,
@@ -230,7 +232,10 @@ export function createVroomJob(
 
   if (options?.timeWindowStart && options?.timeWindowEnd) {
     job.time_windows = [
-      [parseTimeWindow(options.timeWindowStart), parseTimeWindow(options.timeWindowEnd)],
+      [
+        parseTimeWindow(options.timeWindowStart),
+        parseTimeWindow(options.timeWindowEnd),
+      ],
     ];
   }
 
@@ -254,7 +259,7 @@ export function createVroomVehicle(
     timeWindowEnd?: string;
     maxTasks?: number;
     speedFactor?: number;
-  }
+  },
 ): VroomVehicle {
   const vehicle: VroomVehicle = {
     id,
@@ -263,8 +268,11 @@ export function createVroomVehicle(
   };
 
   if (options?.description) vehicle.description = options.description;
-  
-  if (options?.endLongitude !== undefined && options?.endLatitude !== undefined) {
+
+  if (
+    options?.endLongitude !== undefined &&
+    options?.endLatitude !== undefined
+  ) {
     vehicle.end = [options.endLongitude, options.endLatitude];
   } else {
     // Return to depot by default

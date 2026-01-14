@@ -18,19 +18,27 @@ export type PlanConfirmationSchema = z.infer<typeof planConfirmationSchema>;
 export const planValidationRequestSchema = z.object({
   companyId: z.string().uuid(),
   jobId: z.string().uuid(),
-  config: z.object({
-    requireAllDriversAssigned: z.boolean().default(true),
-    requireMinimumAssignmentQuality: z.number().min(0).max(100).default(50),
-    requireMinimumTimeWindowCompliance: z.number().min(0).max(100).default(80),
-    allowUnassignedOrdersOverride: z.boolean().default(false),
-    checkLicenseExpiry: z.boolean().default(true),
-    licenseExpiryWarningDays: z.number().int().min(0).max(365).default(30),
-    checkSkillExpiry: z.boolean().default(true),
-    skillExpiryWarningDays: z.number().int().min(0).max(365).default(30),
-  }).optional(),
+  config: z
+    .object({
+      requireAllDriversAssigned: z.boolean().default(true),
+      requireMinimumAssignmentQuality: z.number().min(0).max(100).default(50),
+      requireMinimumTimeWindowCompliance: z
+        .number()
+        .min(0)
+        .max(100)
+        .default(80),
+      allowUnassignedOrdersOverride: z.boolean().default(false),
+      checkLicenseExpiry: z.boolean().default(true),
+      licenseExpiryWarningDays: z.number().int().min(0).max(365).default(30),
+      checkSkillExpiry: z.boolean().default(true),
+      skillExpiryWarningDays: z.number().int().min(0).max(365).default(30),
+    })
+    .optional(),
 });
 
-export type PlanValidationRequestSchema = z.infer<typeof planValidationRequestSchema>;
+export type PlanValidationRequestSchema = z.infer<
+  typeof planValidationRequestSchema
+>;
 
 /**
  * Validation schema for plan confirmation status check
@@ -39,7 +47,9 @@ export const planConfirmationStatusSchema = z.object({
   jobId: z.string().uuid(),
 });
 
-export type PlanConfirmationStatusSchema = z.infer<typeof planConfirmationStatusSchema>;
+export type PlanConfirmationStatusSchema = z.infer<
+  typeof planConfirmationStatusSchema
+>;
 
 /**
  * Plan confirmation status response
@@ -52,4 +62,6 @@ export const planConfirmationStatusResponseSchema = z.object({
   configurationId: z.string().uuid(),
 });
 
-export type PlanConfirmationStatusResponseSchema = z.infer<typeof planConfirmationStatusResponseSchema>;
+export type PlanConfirmationStatusResponseSchema = z.infer<
+  typeof planConfirmationStatusResponseSchema
+>;

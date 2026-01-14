@@ -1,12 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getTenantContext, setTenantContext } from "@/lib/tenant";
-import { generatePlanOutput, getOutputById, formatOutputForDisplay } from "@/lib/output-generator";
-import { convertOutputToCSV } from "@/lib/output-generator";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { routeStops, drivers, vehicles, optimizationJobs, optimizationConfigurations } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
-import type { PlanOutput, DriverRouteOutput, RouteStopOutput } from "@/lib/output-generator-types";
-import { OUTPUT_FORMAT } from "@/db/schema";
+import {
+  type OUTPUT_FORMAT,
+  optimizationConfigurations,
+  optimizationJobs,
+  routeStops,
+  users,
+  vehicles,
+} from "@/db/schema";
+import {
+  convertOutputToCSV,
+  formatOutputForDisplay,
+  generatePlanOutput,
+  getOutputById,
+} from "@/lib/output-generator";
+import type {
+  DriverRouteOutput,
+  PlanOutput,
+  RouteStopOutput,
+} from "@/lib/output-generator-types";
+import { getTenantContext, setTenantContext } from "@/lib/tenant";
 
 interface RouteParams {
   params: Promise<{ outputId: string }>;
@@ -31,7 +45,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!tenantCtx) {
       return NextResponse.json(
         { success: false, error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -50,7 +64,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!outputRecord) {
       return NextResponse.json(
         { success: false, error: "Output not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -62,7 +76,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           error: "Output generation failed",
           details: outputRecord.error,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -75,7 +89,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .from(optimizationJobs)
       .innerJoin(
         optimizationConfigurations,
-        eq(optimizationJobs.configurationId, optimizationConfigurations.id)
+        eq(optimizationJobs.configurationId, optimizationConfigurations.id),
       )
       .where(eq(optimizationJobs.id, outputRecord.jobId))
       .limit(1);
@@ -83,7 +97,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (jobResult.length === 0) {
       return NextResponse.json(
         { success: false, error: "Associated job not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -94,10 +108,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .select({
         stop: routeStops,
         driver: {
-          id: drivers.id,
-          name: drivers.name,
-          identification: drivers.identification,
-          phone: drivers.phone,
+          id: users.id,
+          name: users.name,
+          identification: users.identification,
+          phone: users.phone,
         },
         vehicle: {
           id: vehicles.id,
@@ -107,10 +121,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         },
       })
       .from(routeStops)
-      .innerJoin(drivers, eq(routeStops.driverId, drivers.id))
+      .innerJoin(users, eq(routeStops.userId, users.id))
       .innerJoin(vehicles, eq(routeStops.vehicleId, vehicles.id))
       .where(eq(routeStops.jobId, outputRecord.jobId))
-      .orderBy(routeStops.driverId, routeStops.sequence);
+      .orderBy(routeStops.userId, routeStops.sequence);
 
     // Group stops by driver
     const driverRoutesMap = new Map<string, DriverRouteOutput>();
@@ -146,9 +160,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         address: stop.address,
         latitude: stop.latitude,
         longitude: stop.longitude,
-        timeWindowStart: stop.timeWindowStart ? stop.timeWindowStart.toISOString() : null,
-        timeWindowEnd: stop.timeWindowEnd ? stop.timeWindowEnd.toISOString() : null,
-        estimatedArrival: stop.estimatedArrival ? stop.estimatedArrival.toISOString() : null,
+        timeWindowStart: stop.timeWindowStart
+          ? stop.timeWindowStart.toISOString()
+          : null,
+        timeWindowEnd: stop.timeWindowEnd
+          ? stop.timeWindowEnd.toISOString()
+          : null,
+        estimatedArrival: stop.estimatedArrival
+          ? stop.estimatedArrival.toISOString()
+          : null,
         estimatedServiceTime: stop.estimatedServiceTime,
         status: stop.status,
         notes: stop.notes,
@@ -182,11 +202,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       totalRoutes: driverRoutes.length,
       totalStops: driverRoutes.reduce((sum, r) => sum + r.totalStops, 0),
       pendingStops: driverRoutes.reduce((sum, r) => sum + r.pendingStops, 0),
-      inProgressStops: driverRoutes.reduce((sum, r) => sum + r.inProgressStops, 0),
-      completedStops: driverRoutes.reduce((sum, r) => sum + r.completedStops, 0),
+      inProgressStops: driverRoutes.reduce(
+        (sum, r) => sum + r.inProgressStops,
+        0,
+      ),
+      completedStops: driverRoutes.reduce(
+        (sum, r) => sum + r.completedStops,
+        0,
+      ),
       failedStops: driverRoutes.reduce((sum, r) => sum + r.failedStops, 0),
-      uniqueDrivers: new Set(driverRoutes.map(r => r.driverId)).size,
-      uniqueVehicles: new Set(driverRoutes.map(r => r.vehicleId)).size,
+      uniqueDrivers: new Set(driverRoutes.map((r) => r.driverId)).size,
+      uniqueVehicles: new Set(driverRoutes.map((r) => r.vehicleId)).size,
     };
 
     const output: PlanOutput = {
@@ -236,7 +262,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         error: "Failed to fetch output",
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -264,7 +290,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!tenantCtx) {
       return NextResponse.json(
         { success: false, error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -283,7 +309,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!existingOutput) {
       return NextResponse.json(
         { success: false, error: "Output not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -294,7 +320,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (outputFormat !== "JSON" && outputFormat !== "CSV") {
       return NextResponse.json(
         { success: false, error: "format must be JSON or CSV" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -304,7 +330,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       companyId,
       existingOutput.jobId,
       outputUserId,
-      outputFormat
+      outputFormat,
     );
 
     // Return based on format
@@ -333,7 +359,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         error: "Failed to regenerate output",
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -349,7 +375,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (!tenantCtx) {
       return NextResponse.json(
         { success: false, error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -367,7 +393,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({
       success: true,
-      message: "Output deletion not implemented - outputs are kept for audit trail",
+      message:
+        "Output deletion not implemented - outputs are kept for audit trail",
     });
   } catch (error) {
     console.error("Error deleting output:", error);
@@ -377,7 +404,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         error: "Failed to delete output",
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

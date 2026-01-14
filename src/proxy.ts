@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { extractTokenFromAuthHeader, verifyToken } from "./lib/auth";
 import { setTenantContext } from "./lib/tenant";
-import { verifyToken, extractTokenFromAuthHeader } from "./lib/auth";
 import { AUTH_ERRORS } from "./lib/validations/auth";
 
 const PUBLIC_API_ROUTES = [
@@ -23,7 +23,9 @@ function isPublicApiRoute(pathname: string): boolean {
 }
 
 function isPublicPageRoute(pathname: string): boolean {
-  return PUBLIC_PAGE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  return PUBLIC_PAGE_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
 }
 
 function isOptionalAuthRoute(pathname: string): boolean {
@@ -48,7 +50,7 @@ export async function proxy(request: NextRequest) {
     const isOptionalAuth = isOptionalAuthRoute(pathname);
 
     let payload = null;
-    
+
     // Try to get token from Authorization header first
     const authHeader = request.headers.get("authorization");
     if (authHeader) {
@@ -57,7 +59,7 @@ export async function proxy(request: NextRequest) {
         payload = await verifyToken(token);
       }
     }
-    
+
     // If no Authorization header, try cookie (for browser requests)
     if (!payload) {
       const accessToken = request.cookies.get("access_token")?.value;
@@ -69,7 +71,7 @@ export async function proxy(request: NextRequest) {
     if (!isPublic && !isOptionalAuth && !payload) {
       return NextResponse.json(
         { error: AUTH_ERRORS.UNAUTHORIZED },
-        { status: 401 }
+        { status: 401 },
       );
     }
 

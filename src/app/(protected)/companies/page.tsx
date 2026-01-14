@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { CompanyForm } from "@/components/companies/company-form";
+import { Button } from "@/components/ui/button";
 import type { CompanyInput } from "@/lib/validations/company";
 
 interface Company {
@@ -187,7 +187,10 @@ export default function CompaniesPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {companies.map((company) => (
-                  <tr key={company.id} className="hover:bg-muted/50 transition-colors">
+                  <tr
+                    key={company.id}
+                    className="hover:bg-muted/50 transition-colors"
+                  >
                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-foreground">
                       {company.legalName}
                     </td>

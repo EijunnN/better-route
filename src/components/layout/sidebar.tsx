@@ -1,25 +1,26 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import {
-  Building2,
-  Users,
-  Truck,
-  Package,
-  Map,
-  Settings,
-  BarChart3,
-  Clock,
   Award,
-  Route,
+  BarChart3,
+  Building2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   LogOut,
+  Map,
+  MapPin,
+  Package,
+  Route,
+  Settings,
+  Truck,
+  Users,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   title: string;
@@ -33,16 +34,17 @@ const navItems: NavItem[] = [
   { title: "Pedidos", href: "/orders", icon: Package },
   { title: "Optimización", href: "/optimization", icon: Route },
   { title: "Monitoreo", href: "/monitoring", icon: Map },
-  { title: "Conductores", href: "/drivers", icon: Users },
+  { title: "Usuarios", href: "/users", icon: Users },
   { title: "Vehículos", href: "/vehicles", icon: Truck },
   { title: "Flotas", href: "/fleets", icon: Building2 },
+  { title: "Zonas", href: "/zones", icon: MapPin },
   { title: "Empresas", href: "/companies", icon: Building2 },
 ];
 
 const configItems: NavItem[] = [
   { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock },
   { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award },
-  { title: "Habilidades Conductores", href: "/driver-skills", icon: Award },
+  { title: "Habilidades Usuarios", href: "/user-skills", icon: Award },
 ];
 
 export function Sidebar() {
@@ -60,7 +62,7 @@ export function Sidebar() {
     <aside
       className={cn(
         "flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
+        collapsed ? "w-16" : "w-64",
       )}
     >
       {/* Logo */}
@@ -106,7 +108,7 @@ export function Sidebar() {
                 isActive(item.href)
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                collapsed && "justify-center px-2"
+                collapsed && "justify-center px-2",
               )}
               title={collapsed ? item.title : undefined}
             >
@@ -136,7 +138,7 @@ export function Sidebar() {
                 isActive(item.href)
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                collapsed && "justify-center px-2"
+                collapsed && "justify-center px-2",
               )}
               title={collapsed ? item.title : undefined}
             >
@@ -153,7 +155,7 @@ export function Sidebar() {
           variant="ghost"
           className={cn(
             "w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            collapsed && "justify-center px-2"
+            collapsed && "justify-center px-2",
           )}
           onClick={() => {
             // Logout logic

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { alerts, alertNotifications } from "@/db/schema";
-import { withTenantFilter, verifyTenantAccess } from "@/db/tenant-aware";
+import { alertNotifications, alerts } from "@/db/schema";
+import { verifyTenantAccess, withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { eq, and } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -15,11 +15,14 @@ function extractTenantContext(request: NextRequest) {
 // GET - Get alert details
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -28,10 +31,7 @@ export async function GET(
     const { id } = await params;
 
     const alert = await db.query.alerts.findFirst({
-      where: and(
-        withTenantFilter(alerts),
-        eq(alerts.id, id)
-      ),
+      where: and(withTenantFilter(alerts), eq(alerts.id, id)),
       with: {
         rule: true,
         acknowledgedByUser: true,
@@ -58,7 +58,7 @@ export async function GET(
     console.error("Error fetching alert:", error);
     return NextResponse.json(
       { error: "Failed to fetch alert" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -66,11 +66,14 @@ export async function GET(
 // PATCH - Update alert (for generic updates)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -82,10 +85,7 @@ export async function PATCH(
 
     // First get the alert to verify tenant access
     const existingAlert = await db.query.alerts.findFirst({
-      where: and(
-        withTenantFilter(alerts),
-        eq(alerts.id, id)
-      ),
+      where: and(withTenantFilter(alerts), eq(alerts.id, id)),
     });
 
     if (!existingAlert) {
@@ -118,7 +118,7 @@ export async function PATCH(
     console.error("Error updating alert:", error);
     return NextResponse.json(
       { error: "Failed to update alert" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -126,11 +126,14 @@ export async function PATCH(
 // DELETE - Delete alert (typically not used, prefer to dismiss)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -140,10 +143,7 @@ export async function DELETE(
 
     // First verify the alert exists and belongs to tenant
     const existingAlert = await db.query.alerts.findFirst({
-      where: and(
-        withTenantFilter(alerts),
-        eq(alerts.id, id)
-      ),
+      where: and(withTenantFilter(alerts), eq(alerts.id, id)),
     });
 
     if (!existingAlert) {
@@ -157,7 +157,7 @@ export async function DELETE(
     console.error("Error deleting alert:", error);
     return NextResponse.json(
       { error: "Failed to delete alert" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

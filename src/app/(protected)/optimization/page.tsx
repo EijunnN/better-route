@@ -1,20 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  FolderOpen,
+  Loader2,
+  Package,
+  Save,
+  Settings,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
+import { useEffect, useState } from "react";
+import { CapacityConstraintsSummary } from "@/components/optimization/capacity-constraints-summary";
+import { DepotSelector } from "@/components/optimization/depot-selector";
+import { DriverSelector } from "@/components/optimization/driver-selector";
+import { VehicleSelector } from "@/components/optimization/vehicle-selector";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DepotSelector } from "@/components/optimization/depot-selector";
-import { VehicleSelector } from "@/components/optimization/vehicle-selector";
-import { DriverSelector } from "@/components/optimization/driver-selector";
-import { CapacityConstraintsSummary } from "@/components/optimization/capacity-constraints-summary";
-import { Loader2, Settings, ArrowRight, Save, FolderOpen, Package, AlertTriangle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
 import type { DepotLocationInput } from "@/lib/validations/optimization-config";
-
 
 // Preset interface
 interface OptimizationPreset {
@@ -33,15 +52,31 @@ interface OptimizationPreset {
 
 // Time window strictness options
 const STRICTNESS_OPTIONS = [
-  { value: "HARD", label: "Hard", description: "Reject any violations of time windows" },
-  { value: "SOFT", label: "Soft", description: "Minimize delays with penalty factor" },
+  {
+    value: "HARD",
+    label: "Hard",
+    description: "Reject any violations of time windows",
+  },
+  {
+    value: "SOFT",
+    label: "Soft",
+    description: "Minimize delays with penalty factor",
+  },
 ];
 
 // Optimization objective options
 const OBJECTIVE_OPTIONS = [
-  { value: "DISTANCE", label: "Distance", description: "Minimize total distance traveled" },
+  {
+    value: "DISTANCE",
+    label: "Distance",
+    description: "Minimize total distance traveled",
+  },
   { value: "TIME", label: "Time", description: "Minimize total time" },
-  { value: "BALANCED", label: "Balanced", description: "Balance distance and time" },
+  {
+    value: "BALANCED",
+    label: "Balanced",
+    description: "Balance distance and time",
+  },
 ];
 
 export default function OptimizationPage() {
@@ -53,13 +88,17 @@ export default function OptimizationPage() {
 
   // Presets management
   const [presets, setPresets] = useState<OptimizationPreset[]>([]);
-  const [showPresetDialog, setShowPresetDialog] = useState<"save" | "load" | null>(null);
+  const [showPresetDialog, setShowPresetDialog] = useState<
+    "save" | "load" | null
+  >(null);
   const [presetName, setPresetName] = useState("");
   const [isLoadingPresets, setIsLoadingPresets] = useState(false);
   const [presetError, setPresetError] = useState<string | null>(null);
 
   // Pending orders state
-  const [pendingOrdersCount, setPendingOrdersCount] = useState<number | null>(null);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number | null>(
+    null,
+  );
   const [pendingOrdersLoading, setPendingOrdersLoading] = useState(true);
 
   // Load presets and pending orders count when companyId is available
@@ -101,7 +140,9 @@ export default function OptimizationPage() {
       const data = await response.json();
       setPresets(data.data || []);
     } catch (err) {
-      setPresetError(err instanceof Error ? err.message : "Failed to load presets");
+      setPresetError(
+        err instanceof Error ? err.message : "Failed to load presets",
+      );
     } finally {
       setIsLoadingPresets(false);
     }
@@ -145,7 +186,9 @@ export default function OptimizationPage() {
       setShowPresetDialog(null);
       setPresetName("");
     } catch (err) {
-      setPresetError(err instanceof Error ? err.message : "Failed to save preset");
+      setPresetError(
+        err instanceof Error ? err.message : "Failed to save preset",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -253,7 +296,8 @@ export default function OptimizationPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Route Optimization</h1>
         <p className="text-muted-foreground mt-2">
-          Configure your depot location, select vehicles and drivers, then customize optimization settings.
+          Configure your depot location, select vehicles and drivers, then
+          customize optimization settings.
         </p>
       </div>
 
@@ -284,8 +328,8 @@ export default function OptimizationPage() {
             step === "settings"
               ? "bg-primary text-primary-foreground"
               : canProceedToSettings
-              ? "bg-muted text-muted-foreground hover:bg-muted/80"
-              : "bg-muted/50 text-muted-foreground cursor-not-allowed"
+                ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                : "bg-muted/50 text-muted-foreground cursor-not-allowed"
           }`}
         >
           <Settings className="w-4 h-4" />
@@ -296,7 +340,13 @@ export default function OptimizationPage() {
       {step === "resources" && (
         <div className="space-y-8">
           {/* Pending Orders Alert */}
-          <Card className={pendingOrdersCount === 0 ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20" : "border-green-500 bg-green-50 dark:bg-green-950/20"}>
+          <Card
+            className={
+              pendingOrdersCount === 0
+                ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20"
+                : "border-green-500 bg-green-50 dark:bg-green-950/20"
+            }
+          >
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
                 {pendingOrdersCount === 0 ? (
@@ -306,22 +356,24 @@ export default function OptimizationPage() {
                 )}
                 <div>
                   <CardTitle className="text-lg">
-                    {pendingOrdersLoading ? (
-                      "Cargando órdenes..."
-                    ) : pendingOrdersCount === 0 ? (
-                      "No hay órdenes para planificar"
-                    ) : (
-                      `${pendingOrdersCount} órdenes pendientes para planificar`
-                    )}
+                    {pendingOrdersLoading
+                      ? "Cargando órdenes..."
+                      : pendingOrdersCount === 0
+                        ? "No hay órdenes para planificar"
+                        : `${pendingOrdersCount} órdenes pendientes para planificar`}
                   </CardTitle>
                   <CardDescription>
                     {pendingOrdersCount === 0 ? (
                       <>
                         Para planificar rutas, primero debes crear órdenes en{" "}
-                        <a href="/orders" className="text-primary underline font-medium">
+                        <a
+                          href="/orders"
+                          className="text-primary underline font-medium"
+                        >
                           la página de órdenes
                         </a>
-                        . Las órdenes con status "PENDING" serán incluidas en la optimización.
+                        . Las órdenes con status "PENDING" serán incluidas en la
+                        optimización.
                       </>
                     ) : (
                       "Estas órdenes serán distribuidas automáticamente en rutas según la configuración que definas."
@@ -337,7 +389,8 @@ export default function OptimizationPage() {
             <CardHeader>
               <CardTitle>Depot Location</CardTitle>
               <CardDescription>
-                Set the starting point for all routes. Click on the map or enter coordinates manually.
+                Set the starting point for all routes. Click on the map or enter
+                coordinates manually.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -353,7 +406,8 @@ export default function OptimizationPage() {
             <CardHeader>
               <CardTitle>Vehicle Selection</CardTitle>
               <CardDescription>
-                Select available vehicles for route optimization. Vehicles must be in AVAILABLE status.
+                Select available vehicles for route optimization. Vehicles must
+                be in AVAILABLE status.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -370,7 +424,8 @@ export default function OptimizationPage() {
             <CardHeader>
               <CardTitle>Driver Selection</CardTitle>
               <CardDescription>
-                Select available drivers. Drivers with expired licenses are automatically filtered out.
+                Select available drivers. Drivers with expired licenses are
+                automatically filtered out.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -445,7 +500,8 @@ export default function OptimizationPage() {
             <CardHeader>
               <CardTitle>Optimization Strategy</CardTitle>
               <CardDescription>
-                Choose what the optimization algorithm should prioritize and configure constraint behavior.
+                Choose what the optimization algorithm should prioritize and
+                configure constraint behavior.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -467,7 +523,9 @@ export default function OptimizationPage() {
                       }`}
                     >
                       <p className="font-medium">{option.label}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{option.description}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {option.description}
+                      </p>
                     </button>
                   ))}
                 </div>
@@ -476,7 +534,8 @@ export default function OptimizationPage() {
               <div className="space-y-2">
                 <Label htmlFor="max-routes">Maximum Routes (optional)</Label>
                 <p className="text-sm text-muted-foreground">
-                  Limit the number of routes created. Leave empty for unlimited routes.
+                  Limit the number of routes created. Leave empty for unlimited
+                  routes.
                 </p>
                 <Input
                   id="max-routes"
@@ -484,15 +543,22 @@ export default function OptimizationPage() {
                   min="1"
                   placeholder="Unlimited"
                   value={maxRoutes || ""}
-                  onChange={(e) => setMaxRoutes(e.target.value ? Number(e.target.value) : undefined)}
+                  onChange={(e) =>
+                    setMaxRoutes(
+                      e.target.value ? Number(e.target.value) : undefined,
+                    )
+                  }
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="penalty-factor">Penalty Factor: {penaltyFactor}x</Label>
+                <Label htmlFor="penalty-factor">
+                  Penalty Factor: {penaltyFactor}x
+                </Label>
                 <p className="text-sm text-muted-foreground">
-                  Higher values prioritize meeting time windows and constraints over route efficiency (1-20).
-                  Used in SOFT mode to minimize delays and constraint violations.
+                  Higher values prioritize meeting time windows and constraints
+                  over route efficiency (1-20). Used in SOFT mode to minimize
+                  delays and constraint violations.
                 </p>
                 <input
                   id="penalty-factor"
@@ -517,7 +583,8 @@ export default function OptimizationPage() {
             <CardHeader>
               <CardTitle>Capacity Constraints</CardTitle>
               <CardDescription>
-                Configure capacity and skill restrictions for route optimization.
+                Configure capacity and skill restrictions for route
+                optimization.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -537,7 +604,8 @@ export default function OptimizationPage() {
                     >
                       <p className="font-medium">Capacitated</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Respects vehicle weight/volume limits and required skills. May result in unassigned orders.
+                        Respects vehicle weight/volume limits and required
+                        skills. May result in unassigned orders.
                       </p>
                     </button>
                     <button
@@ -551,7 +619,8 @@ export default function OptimizationPage() {
                     >
                       <p className="font-medium">Non-Capacitated</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Faster optimization without capacity constraints. All orders will be assigned.
+                        Faster optimization without capacity constraints. All
+                        orders will be assigned.
                       </p>
                     </button>
                   </div>
@@ -568,7 +637,8 @@ export default function OptimizationPage() {
             <CardHeader>
               <CardTitle>Time Settings</CardTitle>
               <CardDescription>
-                Configure the work window, service time, and time window handling.
+                Configure the work window, service time, and time window
+                handling.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -603,14 +673,18 @@ export default function OptimizationPage() {
                   type="number"
                   min="1"
                   value={serviceTimeMinutes}
-                  onChange={(e) => setServiceTimeMinutes(Number(e.target.value))}
+                  onChange={(e) =>
+                    setServiceTimeMinutes(Number(e.target.value))
+                  }
                 />
               </div>
 
               <div className="space-y-2">
                 <Label>Time Window Strictness</Label>
                 <p className="text-sm text-muted-foreground">
-                  Choose how the optimizer should handle promised delivery times. When using SOFT mode, the penalty factor from Strategy settings will be applied.
+                  Choose how the optimizer should handle promised delivery
+                  times. When using SOFT mode, the penalty factor from Strategy
+                  settings will be applied.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {STRICTNESS_OPTIONS.map((option) => (
@@ -625,7 +699,9 @@ export default function OptimizationPage() {
                       }`}
                     >
                       <p className="font-medium">{option.label}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{option.description}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {option.description}
+                      </p>
                     </button>
                   ))}
                 </div>
@@ -666,10 +742,7 @@ export default function OptimizationPage() {
 
           {/* Actions */}
           <div className="flex justify-between">
-            <Button
-              variant="outline"
-              onClick={() => setStep("resources")}
-            >
+            <Button variant="outline" onClick={() => setStep("resources")}>
               Back to Resources
             </Button>
             <Button
@@ -696,7 +769,9 @@ export default function OptimizationPage() {
           <div className="bg-background rounded-lg shadow-lg max-w-md w-full max-h-[80vh] overflow-auto">
             <div className="p-6">
               <h2 className="text-xl font-bold mb-4">
-                {showPresetDialog === "save" ? "Save Configuration as Preset" : "Load Configuration Preset"}
+                {showPresetDialog === "save"
+                  ? "Save Configuration as Preset"
+                  : "Load Configuration Preset"}
               </h2>
 
               {presetError && (
@@ -718,7 +793,8 @@ export default function OptimizationPage() {
                     />
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    This will save your current optimization settings (objective, capacity, time settings) as a reusable preset.
+                    This will save your current optimization settings
+                    (objective, capacity, time settings) as a reusable preset.
                   </div>
                 </div>
               ) : (
@@ -729,7 +805,8 @@ export default function OptimizationPage() {
                     </div>
                   ) : presets.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No saved presets found. Create one by saving your current configuration.
+                      No saved presets found. Create one by saving your current
+                      configuration.
                     </div>
                   ) : (
                     presets.map((preset) => (
@@ -739,13 +816,19 @@ export default function OptimizationPage() {
                         onClick={() => loadPreset(preset)}
                         className="w-full p-3 rounded-lg border text-left hover:bg-accent transition-colors"
                       >
-                        <div className="font-medium">{preset.name.replace("Preset: ", "")}</div>
+                        <div className="font-medium">
+                          {preset.name.replace("Preset: ", "")}
+                        </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {preset.objective} • {preset.capacityEnabled ? "Capacitated" : "Non-Capacitated"} •{" "}
-                          {preset.workWindowStart}-{preset.workWindowEnd}
+                          {preset.objective} •{" "}
+                          {preset.capacityEnabled
+                            ? "Capacitated"
+                            : "Non-Capacitated"}{" "}
+                          • {preset.workWindowStart}-{preset.workWindowEnd}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Penalty: {preset.penaltyFactor}x • {preset.timeWindowStrictness}
+                          Penalty: {preset.penaltyFactor}x •{" "}
+                          {preset.timeWindowStrictness}
                         </div>
                       </button>
                     ))

@@ -1,6 +1,6 @@
+import { and, desc, eq, lt } from "drizzle-orm";
 import { db } from "@/db";
-import { planMetrics, optimizationJobs } from "@/db/schema";
-import { eq, and, desc, lt } from "drizzle-orm";
+import { optimizationJobs, planMetrics } from "@/db/schema";
 import type { OptimizationResult } from "./optimization-runner";
 import type { PlanValidationResult } from "./plan-validation";
 
@@ -84,7 +84,7 @@ export function calculatePlanMetrics(
   jobId: string,
   configurationId: string,
   result: OptimizationResult,
-  validationResult: PlanValidationResult
+  validationResult: PlanValidationResult,
 ): PlanMetricsData {
   const routes = result.routes || [];
   const metrics = result.metrics || {};
@@ -94,20 +94,22 @@ export function calculatePlanMetrics(
 
   // Calculate utilization rates
   const utilizationRates = routes
-    .map(r => r.utilizationPercentage || 0)
-    .filter(rate => rate > 0);
+    .map((r) => r.utilizationPercentage || 0)
+    .filter((rate) => rate > 0);
 
-  const averageUtilizationRate = utilizationRates.length > 0
-    ? Math.round(utilizationRates.reduce((sum, r) => sum + r, 0) / utilizationRates.length)
-    : 0;
+  const averageUtilizationRate =
+    utilizationRates.length > 0
+      ? Math.round(
+          utilizationRates.reduce((sum, r) => sum + r, 0) /
+            utilizationRates.length,
+        )
+      : 0;
 
-  const maxUtilizationRate = utilizationRates.length > 0
-    ? Math.max(...utilizationRates)
-    : 0;
+  const maxUtilizationRate =
+    utilizationRates.length > 0 ? Math.max(...utilizationRates) : 0;
 
-  const minUtilizationRate = utilizationRates.length > 0
-    ? Math.min(...utilizationRates)
-    : 0;
+  const minUtilizationRate =
+    utilizationRates.length > 0 ? Math.min(...utilizationRates) : 0;
 
   // Count assignments with warnings and errors
   let assignmentsWithWarnings = 0;
@@ -115,10 +117,16 @@ export function calculatePlanMetrics(
 
   for (const route of routes) {
     if (route.assignmentQuality) {
-      if (route.assignmentQuality.warnings && route.assignmentQuality.warnings.length > 0) {
+      if (
+        route.assignmentQuality.warnings &&
+        route.assignmentQuality.warnings.length > 0
+      ) {
         assignmentsWithWarnings++;
       }
-      if (route.assignmentQuality.errors && route.assignmentQuality.errors.length > 0) {
+      if (
+        route.assignmentQuality.errors &&
+        route.assignmentQuality.errors.length > 0
+      ) {
         assignmentsWithErrors++;
       }
     }
@@ -129,23 +137,37 @@ export function calculatePlanMetrics(
     jobId,
     configurationId,
     totalRoutes: metrics.totalRoutes || routes.length,
-    totalStops: metrics.totalStops || routes.reduce((sum, r) => sum + (r.stops?.length || 0), 0),
-    totalDistance: metrics.totalDistance || routes.reduce((sum, r) => sum + (r.totalDistance || 0), 0),
-    totalDuration: metrics.totalDuration || routes.reduce((sum, r) => sum + (r.totalDuration || 0), 0),
+    totalStops:
+      metrics.totalStops ||
+      routes.reduce((sum, r) => sum + (r.stops?.length || 0), 0),
+    totalDistance:
+      metrics.totalDistance ||
+      routes.reduce((sum, r) => sum + (r.totalDistance || 0), 0),
+    totalDuration:
+      metrics.totalDuration ||
+      routes.reduce((sum, r) => sum + (r.totalDuration || 0), 0),
     averageUtilizationRate,
     maxUtilizationRate,
     minUtilizationRate,
     timeWindowComplianceRate: metrics.timeWindowComplianceRate || 100,
-    totalTimeWindowViolations: routes.reduce((sum, r) => sum + (r.timeWindowViolations || 0), 0),
-    driverAssignmentCoverage: Math.round(validationMetrics.driverAssignmentCoverage || 0),
-    averageAssignmentQuality: Math.round(validationMetrics.averageAssignmentQuality || 0),
+    totalTimeWindowViolations: routes.reduce(
+      (sum, r) => sum + (r.timeWindowViolations || 0),
+      0,
+    ),
+    driverAssignmentCoverage: Math.round(
+      validationMetrics.driverAssignmentCoverage || 0,
+    ),
+    averageAssignmentQuality: Math.round(
+      validationMetrics.averageAssignmentQuality || 0,
+    ),
     assignmentsWithWarnings,
     assignmentsWithErrors,
     skillCoverage: assignmentMetrics?.skillCoverage || 100,
     licenseCompliance: assignmentMetrics?.licenseCompliance || 100,
     fleetAlignment: assignmentMetrics?.fleetAlignment || 100,
     workloadBalance: assignmentMetrics?.workloadBalance || 100,
-    unassignedOrders: summary.unassignedOrders || result.unassignedOrders?.length || 0,
+    unassignedOrders:
+      summary.unassignedOrders || result.unassignedOrders?.length || 0,
     objective: result.summary?.objective,
     processingTimeMs: result.summary?.processingTimeMs || 0,
   };
@@ -157,7 +179,7 @@ export function calculatePlanMetrics(
 export async function findPreviousJobForComparison(
   companyId: string,
   currentJobId: string,
-  configurationId?: string
+  configurationId?: string,
 ): Promise<string | null> {
   const query = db
     .select({ id: optimizationJobs.id })
@@ -171,13 +193,15 @@ export async function findPreviousJobForComparison(
           ? eq(optimizationJobs.configurationId, configurationId)
           : undefined,
         // Exclude current job
-        lt(optimizationJobs.createdAt, (
+        lt(
+          optimizationJobs.createdAt,
           db
             .select({ createdAt: optimizationJobs.createdAt })
             .from(optimizationJobs)
             .where(eq(optimizationJobs.id, currentJobId))
-        ).as("current_job_created"))
-      )
+            .as("current_job_created"),
+        ),
+      ),
     )
     .orderBy(desc(optimizationJobs.createdAt))
     .limit(1);
@@ -200,13 +224,13 @@ function calculatePercentChange(oldValue: number, newValue: number): number {
 export async function calculateComparisonMetrics(
   companyId: string,
   currentMetrics: PlanMetricsData,
-  currentJobId: string
+  currentJobId: string,
 ): Promise<MetricsComparison> {
   // Find previous job for comparison
   const previousJobId = await findPreviousJobForComparison(
     companyId,
     currentJobId,
-    currentMetrics.configurationId
+    currentMetrics.configurationId,
   );
 
   if (!previousJobId) {
@@ -220,8 +244,8 @@ export async function calculateComparisonMetrics(
     .where(
       and(
         eq(planMetrics.companyId, companyId),
-        eq(planMetrics.jobId, previousJobId)
-      )
+        eq(planMetrics.jobId, previousJobId),
+      ),
     )
     .limit(1);
 
@@ -233,15 +257,15 @@ export async function calculateComparisonMetrics(
     comparedToJobId: previousJobId,
     distanceChangePercent: calculatePercentChange(
       previousMetricsRecord.totalDistance,
-      currentMetrics.totalDistance
+      currentMetrics.totalDistance,
     ),
     durationChangePercent: calculatePercentChange(
       previousMetricsRecord.totalDuration,
-      currentMetrics.totalDuration
+      currentMetrics.totalDuration,
     ),
     complianceChangePercent: calculatePercentChange(
       previousMetricsRecord.timeWindowComplianceRate,
-      currentMetrics.timeWindowComplianceRate
+      currentMetrics.timeWindowComplianceRate,
     ),
   };
 }
@@ -251,7 +275,7 @@ export async function calculateComparisonMetrics(
  */
 export async function savePlanMetrics(
   metrics: PlanMetricsData,
-  comparison?: MetricsComparison
+  comparison?: MetricsComparison,
 ): Promise<string> {
   const [inserted] = await db
     .insert(planMetrics)
@@ -294,16 +318,13 @@ export async function savePlanMetrics(
  */
 export async function getPlanMetrics(
   companyId: string,
-  jobId: string
+  jobId: string,
 ): Promise<PlanMetricsWithComparison | null> {
   const [metricsRecord] = await db
     .select()
     .from(planMetrics)
     .where(
-      and(
-        eq(planMetrics.companyId, companyId),
-        eq(planMetrics.jobId, jobId)
-      )
+      and(eq(planMetrics.companyId, companyId), eq(planMetrics.jobId, jobId)),
     )
     .limit(1);
 
@@ -350,7 +371,7 @@ export async function getPlanMetrics(
 export async function getHistoricalMetrics(
   companyId: string,
   limit: number = 10,
-  offset: number = 0
+  offset: number = 0,
 ): Promise<HistoricalMetrics[]> {
   const records = await db
     .select({
@@ -375,9 +396,7 @@ export async function getHistoricalMetrics(
 /**
  * Get metrics summary statistics for a company
  */
-export async function getMetricsSummaryStats(
-  companyId: string
-): Promise<{
+export async function getMetricsSummaryStats(companyId: string): Promise<{
   totalSessions: number;
   averageDistance: number;
   averageDuration: number;
@@ -407,16 +426,18 @@ export async function getMetricsSummaryStats(
   return {
     totalSessions: records.length,
     averageDistance: Math.round(
-      records.reduce((sum, r) => sum + r.totalDistance, 0) / records.length
+      records.reduce((sum, r) => sum + r.totalDistance, 0) / records.length,
     ),
     averageDuration: Math.round(
-      records.reduce((sum, r) => sum + r.totalDuration, 0) / records.length
+      records.reduce((sum, r) => sum + r.totalDuration, 0) / records.length,
     ),
     averageCompliance: Math.round(
-      records.reduce((sum, r) => sum + r.timeWindowComplianceRate, 0) / records.length
+      records.reduce((sum, r) => sum + r.timeWindowComplianceRate, 0) /
+        records.length,
     ),
     averageUtilization: Math.round(
-      records.reduce((sum, r) => sum + r.averageUtilizationRate, 0) / records.length
+      records.reduce((sum, r) => sum + r.averageUtilizationRate, 0) /
+        records.length,
     ),
   };
 }

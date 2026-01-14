@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq, inArray } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { vehicles, fleets } from "@/db/schema";
-import { vehicleAvailabilityQuerySchema } from "@/lib/validations/vehicle-status";
-import { VEHICLE_STATUS } from "@/lib/validations/vehicle";
-import { eq, and, or, gte, lte } from "drizzle-orm";
+import { vehicleFleets, vehicles } from "@/db/schema";
 import { setTenantContext } from "@/lib/tenant";
+import { vehicleAvailabilityQuerySchema } from "@/lib/validations/vehicle-status";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -47,10 +46,6 @@ export async function GET(request: NextRequest) {
       offset: searchParams.get("offset") || "0",
     });
 
-    // Parse dates if provided (for future filtering by planifications)
-    const startDate = queryParams.startDate ? new Date(queryParams.startDate) : undefined;
-    const endDate = queryParams.endDate ? new Date(queryParams.endDate) : undefined;
-
     // Build query conditions
     const conditions = [
       eq(vehicles.companyId, tenantCtx.companyId),
@@ -59,36 +54,87 @@ export async function GET(request: NextRequest) {
       eq(vehicles.status, "AVAILABLE" as const),
     ];
 
-    // Filter by fleet if specified
+    // If fleetId is specified, get vehicle IDs that belong to that fleet
+    let vehicleIdsInFleet: string[] | null = null;
     if (queryParams.fleetId) {
-      conditions.push(eq(vehicles.fleetId, queryParams.fleetId));
+      const vehiclesInFleet = await db
+        .select({ vehicleId: vehicleFleets.vehicleId })
+        .from(vehicleFleets)
+        .where(
+          and(
+            eq(vehicleFleets.fleetId, queryParams.fleetId),
+            eq(vehicleFleets.companyId, tenantCtx.companyId),
+          ),
+        );
+      vehicleIdsInFleet = vehiclesInFleet.map((v) => v.vehicleId);
+
+      if (vehicleIdsInFleet.length === 0) {
+        // No vehicles in this fleet
+        return NextResponse.json({
+          data: [],
+          vehicles: [],
+          total: 0,
+          limit: queryParams.limit,
+          offset: queryParams.offset,
+          dateRange:
+            queryParams.startDate && queryParams.endDate
+              ? {
+                  startDate: queryParams.startDate,
+                  endDate: queryParams.endDate,
+                }
+              : null,
+        });
+      }
+
+      conditions.push(inArray(vehicles.id, vehicleIdsInFleet));
     }
 
     // Fetch available vehicles
-    const availableVehicles = await db
-      .select({
-        id: vehicles.id,
-        plate: vehicles.plate,
-        brand: vehicles.brand,
-        model: vehicles.model,
-        year: vehicles.year,
-        type: vehicles.type,
-        status: vehicles.status,
-        weightCapacity: vehicles.weightCapacity,
-        volumeCapacity: vehicles.volumeCapacity,
-        refrigerated: vehicles.refrigerated,
-        heated: vehicles.heated,
-        lifting: vehicles.lifting,
-        licenseRequired: vehicles.licenseRequired,
-        fleetId: vehicles.fleetId,
-        fleetName: fleets.name,
-        fleetType: fleets.type,
-      })
-      .from(vehicles)
-      .leftJoin(fleets, eq(vehicles.fleetId, fleets.id))
-      .where(and(...conditions))
-      .limit(queryParams.limit)
-      .offset(queryParams.offset);
+    const availableVehicles = await db.query.vehicles.findMany({
+      where: and(...conditions),
+      limit: queryParams.limit,
+      offset: queryParams.offset,
+      with: {
+        vehicleFleets: {
+          with: {
+            fleet: true,
+          },
+        },
+        assignedDriver: true,
+      },
+    });
+
+    // Transform to include fleet info
+    const vehiclesWithFleets = availableVehicles.map((vehicle) => ({
+      id: vehicle.id,
+      name: vehicle.name,
+      plate: vehicle.plate,
+      brand: vehicle.brand,
+      model: vehicle.model,
+      year: vehicle.year,
+      type: vehicle.type,
+      status: vehicle.status,
+      weightCapacity: vehicle.weightCapacity,
+      volumeCapacity: vehicle.volumeCapacity,
+      maxOrders: vehicle.maxOrders,
+      loadType: vehicle.loadType,
+      refrigerated: vehicle.refrigerated,
+      heated: vehicle.heated,
+      lifting: vehicle.lifting,
+      licenseRequired: vehicle.licenseRequired,
+      fleetIds: vehicle.vehicleFleets?.map((vf) => vf.fleetId) || [],
+      fleets:
+        vehicle.vehicleFleets?.map((vf) => ({
+          id: vf.fleet?.id,
+          name: vf.fleet?.name,
+        })) || [],
+      assignedDriver: vehicle.assignedDriver
+        ? {
+            id: vehicle.assignedDriver.id,
+            name: vehicle.assignedDriver.name,
+          }
+        : null,
+    }));
 
     // Get total count
     const countResult = await db
@@ -98,32 +144,31 @@ export async function GET(request: NextRequest) {
 
     const total = countResult.length;
 
-    // TODO: Filter out vehicles that have planifications in the date range
-    // This would require joining with a planifications/routes table
-    // For now, we return all AVAILABLE vehicles
-
     return NextResponse.json({
-      data: availableVehicles,
-      vehicles: availableVehicles, // Keep for backwards compatibility
+      data: vehiclesWithFleets,
+      vehicles: vehiclesWithFleets,
       total,
       limit: queryParams.limit,
       offset: queryParams.offset,
-      dateRange: queryParams.startDate && queryParams.endDate ? {
-        startDate: queryParams.startDate,
-        endDate: queryParams.endDate,
-      } : null,
+      dateRange:
+        queryParams.startDate && queryParams.endDate
+          ? {
+              startDate: queryParams.startDate,
+              endDate: queryParams.endDate,
+            }
+          : null,
     });
   } catch (error) {
     console.error("Error fetching available vehicles:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Invalid query parameters", details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: "Error fetching available vehicles" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

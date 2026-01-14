@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useState } from "react";
 import { DriverSkillForm } from "@/components/driver-skills/driver-skill-form";
+import { Button } from "@/components/ui/button";
 import type { DriverSkillInput } from "@/lib/validations/driver-skill";
 import { isExpired, isExpiringSoon } from "@/lib/validations/driver-skill";
 
@@ -90,7 +90,8 @@ export default function DriverSkillsPage() {
   const [skills, setSkills] = useState<VehicleSkill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingDriverSkill, setEditingDriverSkill] = useState<DriverSkill | null>(null);
+  const [editingDriverSkill, setEditingDriverSkill] =
+    useState<DriverSkill | null>(null);
   const [filterDriver, setFilterDriver] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("");
@@ -173,14 +174,17 @@ export default function DriverSkillsPage() {
   const handleUpdate = async (data: DriverSkillInput) => {
     if (!editingDriverSkill) return;
 
-    const response = await fetch(`/api/driver-skills/${editingDriverSkill.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+    const response = await fetch(
+      `/api/driver-skills/${editingDriverSkill.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": "demo-company-id",
+        },
+        body: JSON.stringify(data),
       },
-      body: JSON.stringify(data),
-    });
+    );
 
     if (!response.ok) {
       const error = await response.json();
@@ -192,7 +196,8 @@ export default function DriverSkillsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Está seguro de desactivar esta habilidad del conductor?")) return;
+    if (!confirm("¿Está seguro de desactivar esta habilidad del conductor?"))
+      return;
 
     const response = await fetch(`/api/driver-skills/${id}`, {
       method: "DELETE",
@@ -246,7 +251,9 @@ export default function DriverSkillsPage() {
         <div className="mx-auto max-w-3xl">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-foreground">
-              {editingDriverSkill ? "Editar Habilidad de Conductor" : "Asignar Nueva Habilidad"}
+              {editingDriverSkill
+                ? "Editar Habilidad de Conductor"
+                : "Asignar Nueva Habilidad"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {editingDriverSkill
@@ -257,13 +264,17 @@ export default function DriverSkillsPage() {
           <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
             <DriverSkillForm
               onSubmit={editingDriverSkill ? handleUpdate : handleCreate}
-              initialData={editingDriverSkill ? {
-                driverId: editingDriverSkill.driverId,
-                skillId: editingDriverSkill.skillId,
-                obtainedAt: editingDriverSkill.obtainedAt,
-                expiresAt: editingDriverSkill.expiresAt || "",
-                active: editingDriverSkill.active,
-              } : undefined}
+              initialData={
+                editingDriverSkill
+                  ? {
+                      driverId: editingDriverSkill.driverId,
+                      skillId: editingDriverSkill.skillId,
+                      obtainedAt: editingDriverSkill.obtainedAt,
+                      expiresAt: editingDriverSkill.expiresAt || "",
+                      active: editingDriverSkill.active,
+                    }
+                  : undefined
+              }
               drivers={drivers}
               skills={skills}
               submitLabel={editingDriverSkill ? "Actualizar" : "Asignar"}
@@ -295,7 +306,8 @@ export default function DriverSkillsPage() {
               Gestión de Habilidades de Conductores
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Asigne y administre las habilidades y certificaciones de los conductores
+              Asigne y administre las habilidades y certificaciones de los
+              conductores
             </p>
           </div>
           <Button onClick={() => setShowForm(true)}>Asignar Habilidad</Button>
@@ -305,7 +317,9 @@ export default function DriverSkillsPage() {
         <div className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Conductor</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Conductor
+              </label>
               <select
                 value={filterDriver}
                 onChange={(e) => setFilterDriver(e.target.value)}
@@ -320,22 +334,28 @@ export default function DriverSkillsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Categoría</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Categoría
+              </label>
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">Todas</option>
-                {Object.entries(VEHICLE_SKILL_CATEGORY_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
+                {Object.entries(VEHICLE_SKILL_CATEGORY_LABELS).map(
+                  ([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ),
+                )}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Estado</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Estado
+              </label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -347,7 +367,9 @@ export default function DriverSkillsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Vencimiento</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Vencimiento
+              </label>
               <select
                 value={filterExpiry}
                 onChange={(e) => setFilterExpiry(e.target.value)}
@@ -369,7 +391,8 @@ export default function DriverSkillsPage() {
         ) : filteredDriverSkills.length === 0 ? (
           <div className="rounded-lg border border-border bg-card p-12 text-center shadow-sm">
             <p className="text-muted-foreground">
-              No hay habilidades asignadas. Asigne la primera habilidad a un conductor.
+              No hay habilidades asignadas. Asigne la primera habilidad a un
+              conductor.
             </p>
           </div>
         ) : (
@@ -403,19 +426,26 @@ export default function DriverSkillsPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredDriverSkills.map((driverSkill) => (
-                    <tr key={driverSkill.id} className="hover:bg-muted/50 transition-colors">
+                    <tr
+                      key={driverSkill.id}
+                      className="hover:bg-muted/50 transition-colors"
+                    >
                       <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-foreground">
                         {driverSkill.driver.name}
                       </td>
                       <td className="px-4 py-4 text-sm text-muted-foreground">
-                        <div className="font-medium text-foreground">{driverSkill.skill.name}</div>
+                        <div className="font-medium text-foreground">
+                          {driverSkill.skill.name}
+                        </div>
                         <div className="text-xs">{driverSkill.skill.code}</div>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4">
                         <span
                           className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getCategoryColor(driverSkill.skill.category)}`}
                         >
-                          {VEHICLE_SKILL_CATEGORY_LABELS[driverSkill.skill.category] || driverSkill.skill.category}
+                          {VEHICLE_SKILL_CATEGORY_LABELS[
+                            driverSkill.skill.category
+                          ] || driverSkill.skill.category}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-muted-foreground">
@@ -424,20 +454,35 @@ export default function DriverSkillsPage() {
                       <td className="whitespace-nowrap px-4 py-4 text-sm">
                         {driverSkill.expiresAt ? (
                           <div className="flex flex-col">
-                            <span>{new Date(driverSkill.expiresAt).toLocaleDateString()}</span>
+                            <span>
+                              {new Date(
+                                driverSkill.expiresAt,
+                              ).toLocaleDateString()}
+                            </span>
                             <span
                               className={`text-xs ${driverSkill.expiryStatus === "expired" ? "text-destructive" : driverSkill.expiryStatus === "expiring_soon" ? "text-orange-500" : "text-muted-foreground"}`}
                             >
-                              {EXPIRY_STATUS_LABELS[driverSkill.expiryStatus || "valid"]}
+                              {
+                                EXPIRY_STATUS_LABELS[
+                                  driverSkill.expiryStatus || "valid"
+                                ]
+                              }
                             </span>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">Sin vencimiento</span>
+                          <span className="text-muted-foreground">
+                            Sin vencimiento
+                          </span>
                         )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4">
                         <button
-                          onClick={() => handleToggleActive(driverSkill.id, driverSkill.active)}
+                          onClick={() =>
+                            handleToggleActive(
+                              driverSkill.id,
+                              driverSkill.active,
+                            )
+                          }
                           className={`inline-flex rounded-full px-2 text-xs font-semibold transition-colors ${
                             driverSkill.active
                               ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"

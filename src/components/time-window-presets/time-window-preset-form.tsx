@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  TIME_WINDOW_TYPES,
+import type {
   TIME_WINDOW_STRICTNESS,
-  type TimeWindowPresetInput,
+  TIME_WINDOW_TYPES,
+  TimeWindowPresetInput,
 } from "@/lib/validations/time-window-preset";
 
 export interface TimeWindowPresetFormData {
@@ -69,7 +69,7 @@ export function TimeWindowPresetForm({
           strictness: initialData.strictness,
           active: initialData.active,
         }
-      : defaultData
+      : defaultData,
   );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -92,7 +92,7 @@ export function TimeWindowPresetForm({
 
   const handleChange = (
     field: keyof TimeWindowPresetFormData,
-    value: string | number | boolean
+    value: string | number | boolean,
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field
@@ -137,7 +137,10 @@ export function TimeWindowPresetForm({
   };
 
   const handleStrictnessChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    handleChange("strictness", e.target.value as (typeof TIME_WINDOW_STRICTNESS)[number]);
+    handleChange(
+      "strictness",
+      e.target.value as (typeof TIME_WINDOW_STRICTNESS)[number],
+    );
   };
 
   const handleToleranceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,7 +151,9 @@ export function TimeWindowPresetForm({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-background rounded-lg shadow-lg max-w-md w-full p-6">
         <h2 className="text-xl font-semibold mb-4">
-          {initialData ? "Edit Time Window Preset" : "Create Time Window Preset"}
+          {initialData
+            ? "Edit Time Window Preset"
+            : "Create Time Window Preset"}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -177,7 +182,9 @@ export function TimeWindowPresetForm({
             >
               <option value="SHIFT">Shift (recurring time range)</option>
               <option value="RANGE">Range (one-time time range)</option>
-              <option value="EXACT">Exact (specific time with tolerance)</option>
+              <option value="EXACT">
+                Exact (specific time with tolerance)
+              </option>
             </select>
             {errors.type && (
               <p className="text-sm text-destructive mt-1">{errors.type}</p>
@@ -196,7 +203,9 @@ export function TimeWindowPresetForm({
                   onChange={(e) => handleChange("startTime", e.target.value)}
                 />
                 {errors.startTime && (
-                  <p className="text-sm text-destructive mt-1">{errors.startTime}</p>
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.startTime}
+                  </p>
                 )}
               </div>
 
@@ -209,7 +218,9 @@ export function TimeWindowPresetForm({
                   onChange={(e) => handleChange("endTime", e.target.value)}
                 />
                 {errors.endTime && (
-                  <p className="text-sm text-destructive mt-1">{errors.endTime}</p>
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.endTime}
+                  </p>
                 )}
               </div>
             </>
@@ -227,7 +238,9 @@ export function TimeWindowPresetForm({
                   onChange={(e) => handleChange("exactTime", e.target.value)}
                 />
                 {errors.exactTime && (
-                  <p className="text-sm text-destructive mt-1">{errors.exactTime}</p>
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.exactTime}
+                  </p>
                 )}
               </div>
 
@@ -241,7 +254,9 @@ export function TimeWindowPresetForm({
                   onChange={handleToleranceChange}
                 />
                 {errors.toleranceMinutes && (
-                  <p className="text-sm text-destructive mt-1">{errors.toleranceMinutes}</p>
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.toleranceMinutes}
+                  </p>
                 )}
               </div>
             </>
@@ -260,7 +275,9 @@ export function TimeWindowPresetForm({
               <option value="SOFT">Soft (minimize delays)</option>
             </select>
             {errors.strictness && (
-              <p className="text-sm text-destructive mt-1">{errors.strictness}</p>
+              <p className="text-sm text-destructive mt-1">
+                {errors.strictness}
+              </p>
             )}
           </div>
 

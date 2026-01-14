@@ -1,15 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationConfigurations, vehicles, drivers, fleets } from "@/db/schema";
-import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/tenant";
-import { logCreate, logUpdate, logDelete } from "@/lib/audit";
 import {
-  optimizationConfigSchema,
+  DRIVER_STATUS,
+  fleets,
+  optimizationConfigurations,
+  USER_ROLES,
+  users,
+  VEHICLE_STATUS,
+  vehicles,
+} from "@/db/schema";
+import { withTenantFilter } from "@/db/tenant-aware";
+import { logCreate, logDelete, logUpdate } from "@/lib/audit";
+import { setTenantContext } from "@/lib/tenant";
+import {
   optimizationConfigQuerySchema,
+  optimizationConfigSchema,
 } from "@/lib/validations/optimization-config";
-import { eq, and, inArray, desc, sql } from "drizzle-orm";
-import { VEHICLE_STATUS, DRIVER_STATUS } from "@/db/schema";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -22,7 +29,10 @@ function extractTenantContext(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -30,7 +40,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const query = optimizationConfigQuerySchema.parse(
-      Object.fromEntries(searchParams)
+      Object.fromEntries(searchParams),
     );
 
     const conditions = [withTenantFilter(optimizationConfigurations)];
@@ -88,7 +98,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching optimization configurations:", error);
     return NextResponse.json(
       { error: "Failed to fetch configurations" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -97,7 +107,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -114,13 +127,13 @@ export async function POST(request: NextRequest) {
         if (!Array.isArray(vehicleIds) || vehicleIds.length === 0) {
           return NextResponse.json(
             { error: "At least one vehicle must be selected" },
-            { status: 400 }
+            { status: 400 },
           );
         }
       } catch {
         return NextResponse.json(
           { error: "Invalid vehicle IDs format" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -133,13 +146,13 @@ export async function POST(request: NextRequest) {
         if (!Array.isArray(driverIds) || driverIds.length === 0) {
           return NextResponse.json(
             { error: "At least one driver must be selected" },
-            { status: 400 }
+            { status: 400 },
           );
         }
       } catch {
         return NextResponse.json(
           { error: "Invalid driver IDs format" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -154,104 +167,103 @@ export async function POST(request: NextRequest) {
     if (!isPreset && vehicleIds.length > 0) {
       // Validate that all vehicles exist and are available
       vehiclesResult = await db
-      .select({
-        id: vehicles.id,
-        plate: vehicles.plate,
-        status: vehicles.status,
-        fleet: {
-          id: fleets.id,
-          name: fleets.name,
-        },
-      })
-      .from(vehicles)
-      .leftJoin(fleets, eq(vehicles.fleetId, fleets.id))
-      .where(
-        and(
-          inArray(vehicles.id, vehicleIds),
-          withTenantFilter(vehicles),
-          eq(vehicles.active, true)
-        )
-      );
+        .select({
+          id: vehicles.id,
+          plate: vehicles.plate,
+          name: vehicles.name,
+          status: vehicles.status,
+        })
+        .from(vehicles)
+        .where(
+          and(
+            inArray(vehicles.id, vehicleIds),
+            withTenantFilter(vehicles),
+            eq(vehicles.active, true),
+          ),
+        );
 
-    if (vehiclesResult.length !== vehicleIds.length) {
-      return NextResponse.json(
-        { error: "Some selected vehicles not found or inactive" },
-        { status: 400 }
+      if (vehiclesResult.length !== vehicleIds.length) {
+        return NextResponse.json(
+          { error: "Some selected vehicles not found or inactive" },
+          { status: 400 },
+        );
+      }
+
+      // Check for unavailable vehicles
+      const unavailableVehicles = vehiclesResult.filter(
+        (v) => v.status !== VEHICLE_STATUS.AVAILABLE,
       );
+      if (unavailableVehicles.length > 0) {
+        return NextResponse.json(
+          {
+            error: "Some vehicles are not available",
+            unavailable: unavailableVehicles.map((v) => v.plate),
+          },
+          { status: 400 },
+        );
+      }
     }
 
-    // Check for unavailable vehicles
-    const unavailableVehicles = vehiclesResult.filter(
-      (v) => v.status !== VEHICLE_STATUS.AVAILABLE
-    );
-    if (unavailableVehicles.length > 0) {
-      return NextResponse.json(
-        {
-          error: "Some vehicles are not available",
-          unavailable: unavailableVehicles.map((v) => v.plate),
-        },
-        { status: 400 }
-      );
-    }
-    }
-
-    // Only validate drivers if not a preset
+    // Only validate drivers (users with CONDUCTOR role) if not a preset
     if (!isPreset && driverIds.length > 0) {
       // Validate that all drivers exist and are available
       driversResult = await db
-      .select({
-        id: drivers.id,
-        name: drivers.name,
-        status: drivers.status,
-        licenseExpiry: drivers.licenseExpiry,
-        fleet: {
-          id: fleets.id,
-          name: fleets.name,
-        },
-      })
-      .from(drivers)
-      .leftJoin(fleets, eq(drivers.fleetId, fleets.id))
-      .where(
-        and(
-          inArray(drivers.id, driverIds),
-          withTenantFilter(drivers),
-          eq(drivers.active, true)
-        )
-      );
+        .select({
+          id: users.id,
+          name: users.name,
+          status: users.driverStatus,
+          licenseExpiry: users.licenseExpiry,
+          fleet: {
+            id: fleets.id,
+            name: fleets.name,
+          },
+        })
+        .from(users)
+        .leftJoin(fleets, eq(users.primaryFleetId, fleets.id))
+        .where(
+          and(
+            inArray(users.id, driverIds),
+            withTenantFilter(users),
+            eq(users.active, true),
+            eq(users.role, USER_ROLES.CONDUCTOR),
+          ),
+        );
 
-    if (driversResult.length !== driverIds.length) {
-      return NextResponse.json(
-        { error: "Some selected drivers not found or inactive" },
-        { status: 400 }
-      );
-    }
+      if (driversResult.length !== driverIds.length) {
+        return NextResponse.json(
+          { error: "Some selected drivers not found or inactive" },
+          { status: 400 },
+        );
+      }
 
-    // Check for unavailable drivers
-    const unavailableDrivers = driversResult.filter((d) => d.status !== DRIVER_STATUS.AVAILABLE);
-    if (unavailableDrivers.length > 0) {
-      return NextResponse.json(
-        {
-          error: "Some drivers are not available",
-          unavailable: unavailableDrivers.map((d) => d.name),
-        },
-        { status: 400 }
+      // Check for unavailable drivers
+      const unavailableDrivers = driversResult.filter(
+        (d) => d.status !== DRIVER_STATUS.AVAILABLE,
       );
-    }
+      if (unavailableDrivers.length > 0) {
+        return NextResponse.json(
+          {
+            error: "Some drivers are not available",
+            unavailable: unavailableDrivers.map((d) => d.name),
+          },
+          { status: 400 },
+        );
+      }
 
-    // Check for expired licenses
-    const now = new Date();
-    const driversWithExpiredLicenses = driversResult.filter(
-      (d) => d.licenseExpiry && new Date(d.licenseExpiry) < now
-    );
-    if (driversWithExpiredLicenses.length > 0) {
-      return NextResponse.json(
-        {
-          error: "Some drivers have expired licenses",
-          expired: driversWithExpiredLicenses.map((d) => d.name),
-        },
-        { status: 400 }
+      // Check for expired licenses
+      const now = new Date();
+      const driversWithExpiredLicenses = driversResult.filter(
+        (d) => d.licenseExpiry && new Date(d.licenseExpiry) < now,
       );
-    }
+      if (driversWithExpiredLicenses.length > 0) {
+        return NextResponse.json(
+          {
+            error: "Some drivers have expired licenses",
+            expired: driversWithExpiredLicenses.map((d) => d.name),
+          },
+          { status: 400 },
+        );
+      }
     }
 
     // Validate depot coordinates (only if provided)
@@ -261,7 +273,7 @@ export async function POST(request: NextRequest) {
       if (isNaN(lat) || isNaN(lng)) {
         return NextResponse.json(
           { error: "Invalid depot coordinates" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -305,19 +317,19 @@ export async function POST(request: NextRequest) {
         vehicles: vehiclesResult,
         drivers: driversResult,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     if (error instanceof Error && "name" in error) {
       return NextResponse.json(
         { error: "Validation error", details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
     console.error("Error creating optimization configuration:", error);
     return NextResponse.json(
       { error: "Failed to create configuration" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

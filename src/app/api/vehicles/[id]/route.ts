@@ -1,15 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq, inArray, or } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { vehicles, fleets, vehicleFleetHistory } from "@/db/schema";
+import { fleets, vehicleFleetHistory, vehicleFleets, vehicles } from "@/db/schema";
+import { withTenantFilter } from "@/db/tenant-aware";
+import { logDelete, logUpdate } from "@/lib/audit";
+import { setTenantContext } from "@/lib/tenant";
 import { updateVehicleSchema } from "@/lib/validations/vehicle";
-import { eq, and, or } from "drizzle-orm";
-import { withTenantFilter, verifyTenantAccess } from "@/db/tenant-aware";
-import { setTenantContext, getTenantContext } from "@/lib/tenant";
-import { logUpdate, logDelete } from "@/lib/audit";
-import {
-  validateVehicleFleetCompatibility,
-  formatCompatibilityResponse,
-} from "@/lib/validations/compatibility";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -29,12 +25,7 @@ async function getVehicle(id: string, companyId: string) {
   const [vehicle] = await db
     .select()
     .from(vehicles)
-    .where(
-      and(
-        eq(vehicles.id, id),
-        eq(vehicles.companyId, companyId)
-      )
-    )
+    .where(and(eq(vehicles.id, id), eq(vehicles.companyId, companyId)))
     .limit(1);
 
   return vehicle;
@@ -42,14 +33,14 @@ async function getVehicle(id: string, companyId: string) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -59,10 +50,7 @@ export async function GET(
     const vehicle = await getVehicle(id, tenantCtx.companyId);
 
     if (!vehicle) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
     return NextResponse.json(vehicle);
@@ -70,21 +58,21 @@ export async function GET(
     console.error("Error fetching vehicle:", error);
     return NextResponse.json(
       { error: "Error fetching vehicle" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -94,10 +82,7 @@ export async function PATCH(
     const existingVehicle = await getVehicle(id, tenantCtx.companyId);
 
     if (!existingVehicle) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
     const body = await request.json();
@@ -112,80 +97,66 @@ export async function PATCH(
           and(
             eq(vehicles.companyId, tenantCtx.companyId),
             eq(vehicles.plate, validatedData.plate),
-            or(
-              eq(vehicles.active, true),
-              eq(vehicles.active, false)
-            )
-          )
+            or(eq(vehicles.active, true), eq(vehicles.active, false)),
+          ),
         )
         .limit(1);
 
       if (duplicateVehicle.length > 0) {
         return NextResponse.json(
           { error: "Ya existe un vehículo con esta matrícula en la empresa" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
 
-    // Fleet change validation and history tracking
-    let compatibilityCheck = null;
-    if (validatedData.fleetId && validatedData.fleetId !== existingVehicle.fleetId) {
-      // Get the new fleet details
-      const [newFleet] = await db
-        .select()
-        .from(fleets)
-        .where(
-          and(
-            eq(fleets.id, validatedData.fleetId),
-            eq(fleets.companyId, tenantCtx.companyId)
-          )
-        )
-        .limit(1);
+    // Handle fleet IDs (M:N relationship via vehicleFleets)
+    let fleetIdsToUpdate: string[] | null = null;
+    if (validatedData.fleetIds !== undefined) {
+      try {
+        fleetIdsToUpdate = typeof validatedData.fleetIds === "string"
+          ? JSON.parse(validatedData.fleetIds)
+          : validatedData.fleetIds;
 
-      if (!newFleet) {
-        return NextResponse.json(
-          { error: "Flota no encontrada" },
-          { status: 404 }
-        );
-      }
+        // Validate that all fleet IDs exist and belong to this company
+        if (fleetIdsToUpdate && fleetIdsToUpdate.length > 0) {
+          const validFleets = await db
+            .select({ id: fleets.id })
+            .from(fleets)
+            .where(
+              and(
+                inArray(fleets.id, fleetIdsToUpdate),
+                eq(fleets.companyId, tenantCtx.companyId),
+              ),
+            );
 
-      // Validate compatibility
-      const vehicleWithUpdate = { ...existingVehicle, ...validatedData } as Partial<typeof vehicles.$inferSelect>;
-      const compatibilityResult = validateVehicleFleetCompatibility(
-        vehicleWithUpdate,
-        newFleet
-      );
-      compatibilityCheck = formatCompatibilityResponse(compatibilityResult);
-
-      // Check for active planifications (warning only - we'll allow with warning)
-      if (existingVehicle.status === "ASSIGNED") {
-        const hasActivePlanifications = true; // TODO: Check actual planifications table
-        if (hasActivePlanifications) {
-          compatibilityCheck.warnings.push(
-            "El vehículo tiene planificaciones activas. Reasignar puede afectar las rutas asignadas."
-          );
+          if (validFleets.length !== fleetIdsToUpdate.length) {
+            return NextResponse.json(
+              { error: "Una o más flotas no encontradas o no pertenecen a esta empresa" },
+              { status: 400 },
+            );
+          }
         }
-      }
-
-      // If not compatible but user allows override with force flag, continue
-      if (!compatibilityResult.compatible && !body.forceAssign) {
+      } catch {
         return NextResponse.json(
-          {
-            error: "El vehículo no es compatible con la flota seleccionada",
-            compatibility: compatibilityCheck,
-          },
-          { status: 400 }
+          { error: "Formato inválido para fleetIds" },
+          { status: 400 },
         );
       }
     }
 
-    const updateData: any = { ...validatedData };
+    // Remove fleetIds from updateData as it's handled via junction table
+    const { fleetIds: _, ...restValidatedData } = validatedData;
+    const updateData: any = { ...restValidatedData };
     if (validatedData.insuranceExpiry !== undefined) {
-      updateData.insuranceExpiry = validatedData.insuranceExpiry ? new Date(validatedData.insuranceExpiry) : null;
+      updateData.insuranceExpiry = validatedData.insuranceExpiry
+        ? new Date(validatedData.insuranceExpiry)
+        : null;
     }
     if (validatedData.inspectionExpiry !== undefined) {
-      updateData.inspectionExpiry = validatedData.inspectionExpiry ? new Date(validatedData.inspectionExpiry) : null;
+      updateData.inspectionExpiry = validatedData.inspectionExpiry
+        ? new Date(validatedData.inspectionExpiry)
+        : null;
     }
     updateData.updatedAt = new Date();
 
@@ -195,16 +166,70 @@ export async function PATCH(
       .where(eq(vehicles.id, id))
       .returning();
 
-    // Record fleet change history if fleet was changed
-    if (validatedData.fleetId && validatedData.fleetId !== existingVehicle.fleetId) {
-      await db.insert(vehicleFleetHistory).values({
-        companyId: tenantCtx.companyId,
-        vehicleId: id,
-        previousFleetId: existingVehicle.fleetId,
-        newFleetId: validatedData.fleetId,
-        userId: tenantCtx.userId,
-        reason: body.reason || null,
-      });
+    // Update vehicleFleets M:N relationship if fleetIds was provided
+    if (fleetIdsToUpdate !== null) {
+      // Get current fleet IDs for this vehicle
+      const currentVehicleFleets = await db
+        .select({ fleetId: vehicleFleets.fleetId })
+        .from(vehicleFleets)
+        .where(
+          and(
+            eq(vehicleFleets.vehicleId, id),
+            eq(vehicleFleets.companyId, tenantCtx.companyId),
+          ),
+        );
+      const currentFleetIds = currentVehicleFleets.map((vf) => vf.fleetId);
+
+      // Find fleets to add and remove
+      const fleetsToAdd = fleetIdsToUpdate.filter((fid) => !currentFleetIds.includes(fid));
+      const fleetsToRemove = currentFleetIds.filter((fid) => !fleetIdsToUpdate.includes(fid));
+
+      // Remove old fleet associations
+      if (fleetsToRemove.length > 0) {
+        await db
+          .delete(vehicleFleets)
+          .where(
+            and(
+              eq(vehicleFleets.vehicleId, id),
+              inArray(vehicleFleets.fleetId, fleetsToRemove),
+            ),
+          );
+
+        // Record history for removed fleets
+        for (const fleetId of fleetsToRemove) {
+          await db.insert(vehicleFleetHistory).values({
+            companyId: tenantCtx.companyId,
+            vehicleId: id,
+            previousFleetId: fleetId,
+            newFleetId: null,
+            userId: tenantCtx.userId,
+            reason: body.reason || "Vehículo removido de la flota",
+          });
+        }
+      }
+
+      // Add new fleet associations
+      if (fleetsToAdd.length > 0) {
+        await db.insert(vehicleFleets).values(
+          fleetsToAdd.map((fleetId) => ({
+            companyId: tenantCtx.companyId,
+            vehicleId: id,
+            fleetId,
+          })),
+        );
+
+        // Record history for added fleets
+        for (const fleetId of fleetsToAdd) {
+          await db.insert(vehicleFleetHistory).values({
+            companyId: tenantCtx.companyId,
+            vehicleId: id,
+            previousFleetId: null,
+            newFleetId: fleetId,
+            userId: tenantCtx.userId,
+            reason: body.reason || "Vehículo asignado a la flota",
+          });
+        }
+      }
     }
 
     // Log update
@@ -213,10 +238,16 @@ export async function PATCH(
       after: updatedVehicle,
     });
 
-    const response: any = { ...updatedVehicle };
-    if (compatibilityCheck) {
-      response.compatibility = compatibilityCheck;
-    }
+    // Get updated fleet associations
+    const updatedVehicleFleets = await db
+      .select({ fleetId: vehicleFleets.fleetId })
+      .from(vehicleFleets)
+      .where(eq(vehicleFleets.vehicleId, id));
+
+    const response: any = {
+      ...updatedVehicle,
+      fleetIds: updatedVehicleFleets.map((vf) => vf.fleetId),
+    };
 
     return NextResponse.json(response);
   } catch (error) {
@@ -224,26 +255,26 @@ export async function PATCH(
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Invalid input", details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: "Error updating vehicle" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -253,10 +284,7 @@ export async function DELETE(
     const existingVehicle = await getVehicle(id, tenantCtx.companyId);
 
     if (!existingVehicle) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
     // Soft delete by setting active to false
@@ -277,7 +305,7 @@ export async function DELETE(
     console.error("Error deleting vehicle:", error);
     return NextResponse.json(
       { error: "Error deleting vehicle" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

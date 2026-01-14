@@ -122,7 +122,11 @@ export function CompanyForm({
             value={formData.legalName}
             onChange={(e) => updateField("legalName", e.target.value)}
             disabled={isSubmitting}
-            className={errors.legalName ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.legalName
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
           />
           {errors.legalName && (
             <p className="text-sm text-destructive">{errors.legalName}</p>
@@ -136,7 +140,11 @@ export function CompanyForm({
             value={formData.commercialName}
             onChange={(e) => updateField("commercialName", e.target.value)}
             disabled={isSubmitting}
-            className={errors.commercialName ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.commercialName
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
           />
           {errors.commercialName && (
             <p className="text-sm text-destructive">{errors.commercialName}</p>
@@ -151,7 +159,11 @@ export function CompanyForm({
             value={formData.email}
             onChange={(e) => updateField("email", e.target.value)}
             disabled={isSubmitting}
-            className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={
+              errors.email
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
+            }
           />
           {errors.email && (
             <p className="text-sm text-destructive">{errors.email}</p>

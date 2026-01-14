@@ -1,5 +1,9 @@
-import { NextRequest } from "next/server";
-import { verifyToken, extractTokenFromAuthHeader, getCurrentUser } from "@/lib/auth";
+import type { NextRequest } from "next/server";
+import {
+  extractTokenFromAuthHeader,
+  getCurrentUser,
+  verifyToken,
+} from "@/lib/auth";
 import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 /**
@@ -20,7 +24,7 @@ export interface AuthenticatedUser {
  * @returns Authenticated user information or throws error
  */
 export async function getAuthenticatedUser(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<AuthenticatedUser> {
   // Try cookies first
   let payload = await getCurrentUser();
@@ -53,7 +57,7 @@ export async function getAuthenticatedUser(
  * Optional authentication - returns user if authenticated, null otherwise
  */
 export async function getOptionalUser(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<AuthenticatedUser | null> {
   try {
     return await getAuthenticatedUser(request);
@@ -65,7 +69,10 @@ export async function getOptionalUser(
 /**
  * Check if user has required role
  */
-export function hasRole(user: AuthenticatedUser, allowedRoles: string[]): boolean {
+export function hasRole(
+  user: AuthenticatedUser,
+  allowedRoles: string[],
+): boolean {
   return allowedRoles.includes(user.role);
 }
 
@@ -74,7 +81,7 @@ export function hasRole(user: AuthenticatedUser, allowedRoles: string[]): boolea
  */
 export function requireRole(
   user: AuthenticatedUser,
-  allowedRoles: string[]
+  allowedRoles: string[],
 ): void {
   if (!hasRole(user, allowedRoles)) {
     throw new Error("Insufficient permissions");
@@ -135,7 +142,7 @@ export const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
  */
 export function hasPermission(
   user: AuthenticatedUser,
-  permission: string
+  permission: string,
 ): boolean {
   const permissions = ROLE_PERMISSIONS[user.role] || [];
 
@@ -152,7 +159,7 @@ export function hasPermission(
  */
 export function requirePermission(
   user: AuthenticatedUser,
-  permission: string
+  permission: string,
 ): void {
   if (!hasPermission(user, permission)) {
     throw new Error(`Permission denied: ${permission}`);

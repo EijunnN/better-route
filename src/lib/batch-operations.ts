@@ -5,9 +5,9 @@
  * large datasets without blocking or memory issues.
  */
 
+import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { orders, routeStops } from "@/db/schema";
-import { sql } from "drizzle-orm";
 
 // Default batch size optimized for PostgreSQL
 const DEFAULT_BATCH_SIZE = 500;
@@ -63,7 +63,7 @@ export async function batchInsertOrders(
     notes?: string | null;
   }>,
   companyId: string,
-  config: BatchConfig = {}
+  config: BatchConfig = {},
 ): Promise<BatchResult> {
   const {
     batchSize = DEFAULT_BATCH_SIZE,
@@ -108,9 +108,15 @@ export async function batchInsertOrders(
             ? data.strictness
             : null,
         promisedDate: data.promisedDate ? new Date(data.promisedDate) : null,
-        weightRequired: data.weightRequired ? parseInt(String(data.weightRequired), 10) : null,
-        volumeRequired: data.volumeRequired ? parseInt(String(data.volumeRequired), 10) : null,
-        requiredSkills: data.requiredSkills ? String(data.requiredSkills) : null,
+        weightRequired: data.weightRequired
+          ? parseInt(String(data.weightRequired), 10)
+          : null,
+        volumeRequired: data.volumeRequired
+          ? parseInt(String(data.volumeRequired), 10)
+          : null,
+        requiredSkills: data.requiredSkills
+          ? String(data.requiredSkills)
+          : null,
         notes: data.notes ? String(data.notes) : null,
         status: "PENDING" as const,
         active: true,
@@ -118,7 +124,10 @@ export async function batchInsertOrders(
 
       // Insert batch using optimized INSERT with multiple VALUES
       // This is more efficient than individual inserts
-      const result = await db.insert(orders).values(recordsToInsert).returning();
+      const result = await db
+        .insert(orders)
+        .values(recordsToInsert)
+        .returning();
       inserted += result.length;
     } catch (error) {
       errors.push({
@@ -157,7 +166,8 @@ export async function batchInsertRouteStops(
   stopData: Array<{
     jobId: string;
     routeId: string;
-    driverId: string;
+    driverId?: string;
+    userId?: string;
     vehicleId: string;
     orderId: string;
     sequence: number;
@@ -171,7 +181,7 @@ export async function batchInsertRouteStops(
     metadata?: Record<string, string | number | boolean | null> | null;
   }>,
   companyId: string,
-  config: BatchConfig = {}
+  config: BatchConfig = {},
 ): Promise<BatchResult> {
   const {
     batchSize = DEFAULT_BATCH_SIZE,
@@ -198,26 +208,43 @@ export async function batchInsertRouteStops(
     const batchNumber = Math.floor(i / batchSize);
 
     try {
-      const recordsToInsert = batch.map((data) => ({
-        companyId,
-        jobId: data.jobId,
-        routeId: data.routeId,
-        driverId: data.driverId,
-        vehicleId: data.vehicleId,
-        orderId: data.orderId,
-        sequence: data.sequence,
-        address: String(data.address),
-        latitude: String(data.latitude),
-        longitude: String(data.longitude),
-        estimatedArrival: data.estimatedArrival ? new Date(data.estimatedArrival) : null,
-        estimatedServiceTime: data.estimatedServiceTime ? parseInt(String(data.estimatedServiceTime), 10) : null,
-        timeWindowStart: data.timeWindowStart ? new Date(data.timeWindowStart) : null,
-        timeWindowEnd: data.timeWindowEnd ? new Date(data.timeWindowEnd) : null,
-        status: "PENDING" as const,
-        metadata: data.metadata || null,
-      }));
+      const recordsToInsert = batch.map((data) => {
+        const userId = data.driverId || data.userId;
+        if (!userId) {
+          throw new Error("userId or driverId is required for route stop");
+        }
+        return {
+          companyId,
+          jobId: data.jobId,
+          routeId: data.routeId,
+          userId,
+          vehicleId: data.vehicleId,
+          orderId: data.orderId,
+          sequence: data.sequence,
+          address: String(data.address),
+          latitude: String(data.latitude),
+          longitude: String(data.longitude),
+          estimatedArrival: data.estimatedArrival
+            ? new Date(data.estimatedArrival)
+            : null,
+          estimatedServiceTime: data.estimatedServiceTime
+            ? parseInt(String(data.estimatedServiceTime), 10)
+            : null,
+          timeWindowStart: data.timeWindowStart
+            ? new Date(data.timeWindowStart)
+            : null,
+          timeWindowEnd: data.timeWindowEnd
+            ? new Date(data.timeWindowEnd)
+            : null,
+          status: "PENDING" as const,
+          metadata: data.metadata || null,
+        };
+      });
 
-      const result = await db.insert(routeStops).values(recordsToInsert).returning();
+      const result = await db
+        .insert(routeStops)
+        .values(recordsToInsert)
+        .returning();
       inserted += result.length;
     } catch (error) {
       errors.push({
@@ -283,7 +310,7 @@ export function createTempOrdersTable(tableName: string): string {
 export async function batchInsertWithCopy(
   tableName: string,
   columns: string[],
-  data: Array<Array<string | number | boolean | null | undefined>>
+  data: Array<Array<string | number | boolean | null | undefined>>,
 ): Promise<number> {
   if (data.length === 0) {
     return 0;
@@ -299,12 +326,16 @@ export async function batchInsertWithCopy(
           }
           const strValue = String(value);
           // Escape quotes and wrap in quotes if contains comma or quote
-          if (strValue.includes(",") || strValue.includes('"') || strValue.includes("\n")) {
+          if (
+            strValue.includes(",") ||
+            strValue.includes('"') ||
+            strValue.includes("\n")
+          ) {
             return `"${strValue.replace(/"/g, '""')}"`;
           }
           return strValue;
         })
-        .join(",")
+        .join(","),
     )
     .join("\n");
 
@@ -321,7 +352,10 @@ export async function batchInsertWithCopy(
 
     return data.length;
   } catch (error) {
-    console.error("COPY command failed, falling back to regular insert:", error);
+    console.error(
+      "COPY command failed, falling back to regular insert:",
+      error,
+    );
     // Fallback to regular insert if COPY fails
     throw error;
   }
@@ -336,7 +370,7 @@ export async function batchInsertWithCopy(
  */
 export function estimateBatchSize(
   avgRecordSize: number,
-  maxMemoryMB: number = 100
+  maxMemoryMB: number = 100,
 ): number {
   const maxMemoryBytes = maxMemoryMB * 1024 * 1024;
   const calculatedBatchSize = Math.floor(maxMemoryBytes / avgRecordSize);

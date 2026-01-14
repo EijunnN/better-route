@@ -1,7 +1,7 @@
-import { db } from "@/db";
-import { optimizationJobs, OPTIMIZATION_JOB_STATUS } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
 import { createHash } from "crypto";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { type OPTIMIZATION_JOB_STATUS, optimizationJobs } from "@/db/schema";
 
 // Job queue state (in-memory for simplicity, can be migrated to Redis/BullMQ later)
 interface JobState {
@@ -21,7 +21,7 @@ export function calculateInputHash(
   configurationId: string,
   vehicleIds: string[],
   driverIds: string[],
-  pendingOrderIds: string[]
+  pendingOrderIds: string[],
 ): string {
   const data = JSON.stringify({
     configurationId,
@@ -37,7 +37,7 @@ export function calculateInputHash(
  */
 export function canStartJob(): boolean {
   const runningCount = Array.from(activeJobs.values()).filter(
-    (job) => job.status === "RUNNING"
+    (job) => job.status === "RUNNING",
   ).length;
   return runningCount < MAX_CONCURRENT_JOBS;
 }
@@ -47,7 +47,7 @@ export function canStartJob(): boolean {
  */
 export function getActiveJobCount(): number {
   return Array.from(activeJobs.values()).filter(
-    (job) => job.status === "RUNNING"
+    (job) => job.status === "RUNNING",
   ).length;
 }
 
@@ -56,7 +56,7 @@ export function getActiveJobCount(): number {
  */
 export function registerJob(
   jobId: string,
-  abortController: AbortController
+  abortController: AbortController,
 ): void {
   activeJobs.set(jobId, {
     id: jobId,
@@ -86,7 +86,7 @@ export function unregisterJob(jobId: string): void {
 export function setJobTimeout(
   jobId: string,
   timeoutMs: number,
-  onTimeout: () => void
+  onTimeout: () => void,
 ): void {
   const job = activeJobs.get(jobId);
   if (!job) return;
@@ -103,7 +103,10 @@ export function setJobTimeout(
 /**
  * Cancel a running job with optional partial results
  */
-export async function cancelJob(jobId: string, partialResults?: unknown): Promise<boolean> {
+export async function cancelJob(
+  jobId: string,
+  partialResults?: unknown,
+): Promise<boolean> {
   const job = activeJobs.get(jobId);
   if (!job) {
     return false; // Job not found or not running
@@ -152,7 +155,7 @@ export async function cancelJob(jobId: string, partialResults?: unknown): Promis
  */
 export async function updateJobProgress(
   jobId: string,
-  progress: number
+  progress: number,
 ): Promise<void> {
   await db
     .update(optimizationJobs)
@@ -168,7 +171,7 @@ export async function updateJobProgress(
  */
 export async function completeJob(
   jobId: string,
-  result: unknown
+  result: unknown,
 ): Promise<void> {
   await db
     .update(optimizationJobs)
@@ -206,13 +209,13 @@ export async function failJob(jobId: string, error: string): Promise<void> {
  */
 export async function getCachedResult(
   inputHash: string,
-  companyId: string
+  companyId: string,
 ): Promise<unknown | null> {
   const cached = await db.query.optimizationJobs.findFirst({
     where: and(
       eq(optimizationJobs.inputHash, inputHash),
       eq(optimizationJobs.companyId, companyId),
-      eq(optimizationJobs.status, "COMPLETED")
+      eq(optimizationJobs.status, "COMPLETED"),
     ),
     orderBy: (jobs, { desc }) => [desc(jobs.createdAt)],
   });

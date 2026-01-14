@@ -1,9 +1,11 @@
-import { eq, and, SQL } from "drizzle-orm";
+import { and, eq, type SQL } from "drizzle-orm";
 import { requireTenantContext } from "../lib/tenant";
 import { companies, users } from "./schema";
 
 export class TenantAccessDeniedError extends Error {
-  constructor(message: string = "Access denied: cross-tenant access not allowed") {
+  constructor(
+    message: string = "Access denied: cross-tenant access not allowed",
+  ) {
     super(message);
     this.name = "TenantAccessDeniedError";
   }
@@ -23,16 +25,12 @@ export function withTenantFilter(table: any, conditions: SQL[] = []) {
   }
 
   // For other tables, add tenantId filter
-  // @ts-ignore - dynamic tenantId column
   if (table.tenantId) {
-    // @ts-ignore
     return and(eq(table.tenantId, context.companyId), ...conditions);
   }
 
   // If table has companyId instead of tenantId
-  // @ts-ignore - dynamic companyId column
   if (table.companyId) {
-    // @ts-ignore
     return and(eq(table.companyId, context.companyId), ...conditions);
   }
 

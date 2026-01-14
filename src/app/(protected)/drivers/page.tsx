@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useState } from "react";
 import { DriverForm } from "@/components/drivers/driver-form";
 import { DriverStatusModal } from "@/components/drivers/driver-status-modal";
+import { Button } from "@/components/ui/button";
 import type { DriverInput } from "@/lib/validations/driver";
-import type { DriverStatusTransitionInput } from "@/lib/validations/driver-status";
 import { isExpired, isExpiringSoon } from "@/lib/validations/driver";
+import type { DriverStatusTransitionInput } from "@/lib/validations/driver-status";
 import { STATUS_COLOR_CLASSES } from "@/lib/validations/driver-status";
 
 interface Driver {
@@ -61,7 +61,9 @@ export default function DriversPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
-  const [statusModalDriver, setStatusModalDriver] = useState<Driver | null>(null);
+  const [statusModalDriver, setStatusModalDriver] = useState<Driver | null>(
+    null,
+  );
 
   const fetchDrivers = async () => {
     try {
@@ -157,7 +159,10 @@ export default function DriversPage() {
     await fetchDrivers();
   };
 
-  const handleStatusChange = async (driverId: string, data: DriverStatusTransitionInput) => {
+  const handleStatusChange = async (
+    driverId: string,
+    data: DriverStatusTransitionInput,
+  ) => {
     const response = await fetch(`/api/drivers/${driverId}/status-transition`, {
       method: "POST",
       headers: {
@@ -194,46 +199,50 @@ export default function DriversPage() {
           </p>
         </div>
         <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-            <DriverForm
-              onSubmit={editingDriver ? handleUpdate : handleCreate}
-              initialData={editingDriver ? {
-                fleetId: editingDriver.fleetId,
-                name: editingDriver.name,
-                identification: editingDriver.identification,
-                email: editingDriver.email,
-                phone: editingDriver.phone || "",
-                birthDate: editingDriver.birthDate || "",
-                photo: editingDriver.photo || "",
-                licenseNumber: editingDriver.licenseNumber,
-                licenseExpiry: editingDriver.licenseExpiry,
-                licenseCategories: editingDriver.licenseCategories,
-                certifications: editingDriver.certifications || "",
-                status: editingDriver.status as DriverInput["status"],
-                active: editingDriver.active,
-              } : undefined}
-              fleets={fleets}
-              submitLabel={editingDriver ? "Actualizar" : "Crear"}
-            />
-            <div className="mt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingDriver(null);
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
+          <DriverForm
+            onSubmit={editingDriver ? handleUpdate : handleCreate}
+            initialData={
+              editingDriver
+                ? {
+                    fleetId: editingDriver.fleetId,
+                    name: editingDriver.name,
+                    identification: editingDriver.identification,
+                    email: editingDriver.email,
+                    phone: editingDriver.phone || "",
+                    birthDate: editingDriver.birthDate || "",
+                    photo: editingDriver.photo || "",
+                    licenseNumber: editingDriver.licenseNumber,
+                    licenseExpiry: editingDriver.licenseExpiry,
+                    licenseCategories: editingDriver.licenseCategories,
+                    certifications: editingDriver.certifications || "",
+                    status: editingDriver.status as DriverInput["status"],
+                    active: editingDriver.active,
+                  }
+                : undefined
+            }
+            fleets={fleets}
+            submitLabel={editingDriver ? "Actualizar" : "Crear"}
+          />
+          <div className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowForm(false);
+                setEditingDriver(null);
+              }}
+            >
+              Cancelar
+            </Button>
           </div>
+        </div>
       </div>
     );
   }
 
   return (
     <>
-    <div className="space-y-6">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
@@ -290,7 +299,10 @@ export default function DriversPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {drivers.map((driver) => (
-                    <tr key={driver.id} className="hover:bg-muted/50 transition-colors">
+                    <tr
+                      key={driver.id}
+                      className="hover:bg-muted/50 transition-colors"
+                    >
                       <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-foreground">
                         {driver.name}
                       </td>
@@ -299,17 +311,25 @@ export default function DriversPage() {
                       </td>
                       <td className="px-4 py-4 text-sm text-muted-foreground">
                         <div>{driver.email}</div>
-                        {driver.phone && <div className="text-xs">{driver.phone}</div>}
+                        {driver.phone && (
+                          <div className="text-xs">{driver.phone}</div>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-muted-foreground">
                         {getFleetName(driver.fleetId)}
                       </td>
                       <td className="px-4 py-4 text-sm text-muted-foreground">
                         <div>{driver.licenseNumber}</div>
-                        <div className="text-xs">{driver.licenseCategories}</div>
+                        <div className="text-xs">
+                          {driver.licenseCategories}
+                        </div>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm">
-                        <span className={getLicenseStatusColor(driver.licenseExpiry)}>
+                        <span
+                          className={getLicenseStatusColor(
+                            driver.licenseExpiry,
+                          )}
+                        >
                           {getLicenseStatusLabel(driver.licenseExpiry)}
                         </span>
                       </td>
@@ -317,7 +337,9 @@ export default function DriversPage() {
                         <button
                           onClick={() => setStatusModalDriver(driver)}
                           className={`inline-flex cursor-pointer rounded-full px-3 py-1 text-xs font-semibold transition-colors hover:opacity-80 ${
-                            STATUS_COLOR_CLASSES[driver.status as keyof typeof STATUS_COLOR_CLASSES] ||
+                            STATUS_COLOR_CLASSES[
+                              driver.status as keyof typeof STATUS_COLOR_CLASSES
+                            ] ||
                             "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
                           }`}
                         >
@@ -347,18 +369,18 @@ export default function DriversPage() {
             </div>
           </div>
         )}
-    </div>
+      </div>
 
-    {statusModalDriver && (
-      <DriverStatusModal
-        open={!!statusModalDriver}
-        onOpenChange={(open) => !open && setStatusModalDriver(null)}
-        driverId={statusModalDriver.id}
-        driverName={statusModalDriver.name}
-        currentStatus={statusModalDriver.status as any}
-        onStatusChange={handleStatusChange}
-      />
-    )}
+      {statusModalDriver && (
+        <DriverStatusModal
+          open={!!statusModalDriver}
+          onOpenChange={(open) => !open && setStatusModalDriver(null)}
+          driverId={statusModalDriver.id}
+          driverName={statusModalDriver.name}
+          currentStatus={statusModalDriver.status as any}
+          onStatusChange={handleStatusChange}
+        />
+      )}
     </>
   );
 }

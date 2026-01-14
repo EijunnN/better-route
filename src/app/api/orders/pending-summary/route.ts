@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, vehicleSkills } from "@/db/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { ORDER_STATUS, orders, vehicleSkills } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext, requireTenantContext } from "@/lib/tenant";
-import { ORDER_STATUS } from "@/db/schema";
+import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -20,7 +19,7 @@ export async function GET(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -39,10 +38,10 @@ export async function GET(request: NextRequest) {
       })
       .from(orders)
       .where(
-        withTenantFilter(
-          orders,
-          [eq(orders.status, ORDER_STATUS.PENDING), eq(orders.active, true)]
-        )
+        withTenantFilter(orders, [
+          eq(orders.status, ORDER_STATUS.PENDING),
+          eq(orders.active, true),
+        ]),
       )
       .orderBy(desc(orders.createdAt));
 
@@ -50,22 +49,22 @@ export async function GET(request: NextRequest) {
     const totalOrders = pendingOrders.length;
 
     const ordersWithWeight = pendingOrders.filter(
-      (o) => o.weightRequired !== null && o.weightRequired !== undefined
+      (o) => o.weightRequired !== null && o.weightRequired !== undefined,
     );
     const totalWeight = ordersWithWeight.reduce(
       (sum, o) => sum + (o.weightRequired || 0),
-      0
+      0,
     );
     const maxWeight = ordersWithWeight.length
       ? Math.max(...ordersWithWeight.map((o) => o.weightRequired || 0))
       : 0;
 
     const ordersWithVolume = pendingOrders.filter(
-      (o) => o.volumeRequired !== null && o.volumeRequired !== undefined
+      (o) => o.volumeRequired !== null && o.volumeRequired !== undefined,
     );
     const totalVolume = ordersWithVolume.reduce(
       (sum, o) => sum + (o.volumeRequired || 0),
-      0
+      0,
     );
     const maxVolume = ordersWithVolume.length
       ? Math.max(...ordersWithVolume.map((o) => o.volumeRequired || 0))
@@ -76,9 +75,10 @@ export async function GET(request: NextRequest) {
     pendingOrders.forEach((order) => {
       if (order.requiredSkills) {
         try {
-          const skills = typeof order.requiredSkills === "string"
-            ? JSON.parse(order.requiredSkills)
-            : order.requiredSkills;
+          const skills =
+            typeof order.requiredSkills === "string"
+              ? JSON.parse(order.requiredSkills)
+              : order.requiredSkills;
           if (Array.isArray(skills)) {
             skills.forEach((skill) => skillCodes.add(skill));
           }
@@ -103,8 +103,8 @@ export async function GET(request: NextRequest) {
           and(
             eq(vehicleSkills.companyId, context.companyId),
             eq(vehicleSkills.active, true),
-            sql`${vehicleSkills.code} = ANY(${Array.from(skillCodes)})`
-          )
+            sql`${vehicleSkills.code} = ANY(${Array.from(skillCodes)})`,
+          ),
         );
     }
 
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to fetch pending orders summary" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

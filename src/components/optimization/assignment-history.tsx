@@ -1,6 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Loader2,
+  User,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,18 +20,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Clock,
-  User,
-  AlertTriangle,
-  CheckCircle2,
-  ArrowRight,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-} from "lucide-react";
 
 export interface AssignmentHistoryEntry {
   id: string;
@@ -48,7 +48,10 @@ export interface AssignmentHistoryProps {
   open?: boolean;
 }
 
-export function AssignmentHistory({ routeId, open = false }: AssignmentHistoryProps) {
+export function AssignmentHistory({
+  routeId,
+  open = false,
+}: AssignmentHistoryProps) {
   const [history, setHistory] = useState<AssignmentHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -66,13 +69,16 @@ export function AssignmentHistory({ routeId, open = false }: AssignmentHistoryPr
   async function loadHistory() {
     setLoading(true);
     try {
-      const response = await fetch(`/api/driver-assignment/history/${routeId}`, {
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": localStorage.getItem("companyId") || "",
-          "x-user-id": localStorage.getItem("userId") || "",
+      const response = await fetch(
+        `/api/driver-assignment/history/${routeId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": localStorage.getItem("companyId") || "",
+            "x-user-id": localStorage.getItem("userId") || "",
+          },
         },
-      });
+      );
 
       if (response.ok) {
         const result = await response.json();
@@ -172,7 +178,11 @@ export function AssignmentHistory({ routeId, open = false }: AssignmentHistoryPr
               {/* Timeline */}
               <div className="space-y-3">
                 {history.map((entry, idx) => (
-                  <HistoryEntry key={entry.id} entry={entry} showConnector={idx < history.length - 1} />
+                  <HistoryEntry
+                    key={entry.id}
+                    entry={entry}
+                    showConnector={idx < history.length - 1}
+                  />
                 ))}
               </div>
             </div>
@@ -276,7 +286,9 @@ function HistoryEntry({ entry, showConnector }: HistoryEntryProps) {
             <div className="mt-2 space-y-1">
               {entry.changes.validation.warnings.length > 0 && (
                 <div className="text-xs">
-                  <span className="font-medium text-yellow-700">Warnings: </span>
+                  <span className="font-medium text-yellow-700">
+                    Warnings:{" "}
+                  </span>
                   <span className="text-yellow-600">
                     {entry.changes.validation.warnings.join(", ")}
                   </span>

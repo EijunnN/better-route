@@ -33,7 +33,7 @@ function getRedisClient(): Redis {
 
     if (!url || !token) {
       throw new Error(
-        "Upstash Redis credentials not configured. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables."
+        "Upstash Redis credentials not configured. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.",
       );
     }
 
@@ -70,8 +70,11 @@ export interface SessionData {
  * @returns The session ID
  */
 export async function createSession(
-  sessionData: Omit<SessionData, "sessionId" | "createdAt" | "lastActivityAt" | "refreshTokenId">,
-  options?: { userAgent?: string; ipAddress?: string }
+  sessionData: Omit<
+    SessionData,
+    "sessionId" | "createdAt" | "lastActivityAt" | "refreshTokenId"
+  >,
+  options?: { userAgent?: string; ipAddress?: string },
 ): Promise<string> {
   const redis = getRedisClient();
 
@@ -115,7 +118,9 @@ export async function createSession(
  * @param sessionId - Session ID
  * @returns Session data or null if not found/expired
  */
-export async function getSession(sessionId: string): Promise<SessionData | null> {
+export async function getSession(
+  sessionId: string,
+): Promise<SessionData | null> {
   const redis = getRedisClient();
 
   const sessionData = await redis.get<string>(`${SESSION_PREFIX}${sessionId}`);
@@ -133,7 +138,9 @@ export async function getSession(sessionId: string): Promise<SessionData | null>
  * @param sessionId - Session ID
  * @returns Session data if valid, null otherwise
  */
-export async function validateSession(sessionId: string): Promise<SessionData | null> {
+export async function validateSession(
+  sessionId: string,
+): Promise<SessionData | null> {
   const session = await getSession(sessionId);
 
   if (!session) {
@@ -174,10 +181,14 @@ export async function updateSessionActivity(sessionId: string): Promise<void> {
  * @param refreshTokenId - Refresh token ID
  * @returns Session data or null if not found/expired
  */
-export async function getSessionByRefreshToken(refreshTokenId: string): Promise<SessionData | null> {
+export async function getSessionByRefreshToken(
+  refreshTokenId: string,
+): Promise<SessionData | null> {
   const redis = getRedisClient();
 
-  const sessionId = await redis.get<string>(`${REFRESH_TOKEN_PREFIX}${refreshTokenId}`);
+  const sessionId = await redis.get<string>(
+    `${REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
+  );
 
   if (!sessionId) {
     return null;
@@ -221,7 +232,9 @@ export async function invalidateUserSessions(userId: string): Promise<void> {
   const redis = getRedisClient();
 
   // Get all user's session IDs
-  const sessionIds = await redis.smembers<string[]>(`${USER_SESSIONS_PREFIX}${userId}`);
+  const sessionIds = await redis.smembers<string[]>(
+    `${USER_SESSIONS_PREFIX}${userId}`,
+  );
 
   // Invalidate each session
   for (const sessionId of sessionIds) {
@@ -260,7 +273,9 @@ export async function invalidateAllSessions(): Promise<number> {
 export async function getUserSessions(userId: string): Promise<SessionData[]> {
   const redis = getRedisClient();
 
-  const sessionIds = await redis.smembers<string[]>(`${USER_SESSIONS_PREFIX}${userId}`);
+  const sessionIds = await redis.smembers<string[]>(
+    `${USER_SESSIONS_PREFIX}${userId}`,
+  );
 
   const sessions: SessionData[] = [];
 
@@ -283,7 +298,9 @@ export async function getUserSessions(userId: string): Promise<SessionData[]> {
 export async function getUserSessionCount(userId: string): Promise<number> {
   const redis = getRedisClient();
 
-  const sessionIds = await redis.smembers<string[]>(`${USER_SESSIONS_PREFIX}${userId}`);
+  const sessionIds = await redis.smembers<string[]>(
+    `${USER_SESSIONS_PREFIX}${userId}`,
+  );
 
   // Filter out expired sessions
   let activeCount = 0;
@@ -354,10 +371,14 @@ export async function cleanupExpiredSessions(): Promise<number> {
  * @param refreshTokenId - Refresh token ID
  * @returns True if valid, false otherwise
  */
-export async function isRefreshTokenValid(refreshTokenId: string): Promise<boolean> {
+export async function isRefreshTokenValid(
+  refreshTokenId: string,
+): Promise<boolean> {
   const redis = getRedisClient();
 
-  const sessionId = await redis.get<string>(`${REFRESH_TOKEN_PREFIX}${refreshTokenId}`);
+  const sessionId = await redis.get<string>(
+    `${REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
+  );
 
   return sessionId !== null;
 }
@@ -367,10 +388,14 @@ export async function isRefreshTokenValid(refreshTokenId: string): Promise<boole
  *
  * @param refreshTokenId - Refresh token ID
  */
-export async function invalidateRefreshToken(refreshTokenId: string): Promise<void> {
+export async function invalidateRefreshToken(
+  refreshTokenId: string,
+): Promise<void> {
   const redis = getRedisClient();
 
-  const sessionId = await redis.get<string>(`${REFRESH_TOKEN_PREFIX}${refreshTokenId}`);
+  const sessionId = await redis.get<string>(
+    `${REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
+  );
 
   if (sessionId) {
     await invalidateSession(sessionId);

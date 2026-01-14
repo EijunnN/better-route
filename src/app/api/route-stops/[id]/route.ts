@@ -1,9 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { routeStops, routeStopHistory, STOP_STATUS_TRANSITIONS } from "@/db/schema";
+import {
+  routeStopHistory,
+  routeStops,
+  STOP_STATUS_TRANSITIONS,
+} from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { eq, and } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -15,11 +19,14 @@ function extractTenantContext(request: NextRequest) {
 // GET - Get a single route stop with details
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -27,12 +34,9 @@ export async function GET(
 
   try {
     const stop = await db.query.routeStops.findFirst({
-      where: and(
-        eq(routeStops.id, stopId),
-        withTenantFilter(routeStops)
-      ),
+      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops)),
       with: {
-        driver: true,
+        user: true,
         vehicle: true,
         order: true,
         job: true,
@@ -54,7 +58,7 @@ export async function GET(
     console.error("Error fetching route stop:", error);
     return NextResponse.json(
       { error: "Failed to fetch route stop" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -62,11 +66,14 @@ export async function GET(
 // PATCH - Update stop status (with validation and history)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -79,16 +86,13 @@ export async function PATCH(
     if (!status) {
       return NextResponse.json(
         { error: "Status is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Get current stop
     const currentStop = await db.query.routeStops.findFirst({
-      where: and(
-        eq(routeStops.id, stopId),
-        withTenantFilter(routeStops)
-      ),
+      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops)),
     });
 
     if (!currentStop) {
@@ -96,14 +100,20 @@ export async function PATCH(
     }
 
     // Validate status transition
-    const validTransitions = STOP_STATUS_TRANSITIONS[currentStop.status as keyof typeof STOP_STATUS_TRANSITIONS] || [];
-    if (status !== currentStop.status && !validTransitions.includes(status as any)) {
+    const validTransitions =
+      STOP_STATUS_TRANSITIONS[
+        currentStop.status as keyof typeof STOP_STATUS_TRANSITIONS
+      ] || [];
+    if (
+      status !== currentStop.status &&
+      !validTransitions.includes(status as any)
+    ) {
       return NextResponse.json(
         {
           error: `Invalid status transition from ${currentStop.status} to ${status}`,
           validTransitions,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -131,7 +141,8 @@ export async function PATCH(
     }
 
     // Update stop
-    const updatedStop = await db.update(routeStops)
+    const updatedStop = await db
+      .update(routeStops)
       .set(updateData)
       .where(eq(routeStops.id, stopId))
       .returning();
@@ -162,13 +173,13 @@ export async function PATCH(
           title: `Stop #${currentStop.sequence} ${status.toLowerCase()}: ${currentStop.address}`,
           description: `The stop at ${currentStop.address} was marked as ${status.toLowerCase()}.`,
           metadata: {
-            driverId: currentStop.driverId,
+            userId: currentStop.userId,
             vehicleId: currentStop.vehicleId,
             orderId: currentStop.orderId,
             routeId: currentStop.routeId,
             sequence: currentStop.sequence,
           },
-        }
+        },
       );
     }
 
@@ -177,7 +188,7 @@ export async function PATCH(
     console.error("Error updating route stop:", error);
     return NextResponse.json(
       { error: "Failed to update route stop" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -185,11 +196,14 @@ export async function PATCH(
 // DELETE - Delete a route stop (should be rare, mainly for cleanup)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
-    return NextResponse.json({ error: "Missing tenant context" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing tenant context" },
+      { status: 401 },
+    );
   }
 
   setTenantContext(tenantCtx);
@@ -198,10 +212,7 @@ export async function DELETE(
   try {
     // Check if stop exists and belongs to tenant
     const stop = await db.query.routeStops.findFirst({
-      where: and(
-        eq(routeStops.id, stopId),
-        withTenantFilter(routeStops)
-      ),
+      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops)),
     });
 
     if (!stop) {
@@ -212,7 +223,7 @@ export async function DELETE(
     if (stop.status === "IN_PROGRESS" || stop.status === "COMPLETED") {
       return NextResponse.json(
         { error: "Cannot delete stop that is in progress or completed" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -224,7 +235,7 @@ export async function DELETE(
     console.error("Error deleting route stop:", error);
     return NextResponse.json(
       { error: "Failed to delete route stop" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

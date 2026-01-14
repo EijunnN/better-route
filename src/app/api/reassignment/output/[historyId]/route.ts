@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   reassignmentsHistory,
   routeStops,
-  drivers,
+  USER_ROLES,
+  users,
   vehicles,
 } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
 import { setTenantContext } from "@/lib/tenant";
 
 function extractTenantContext(request: NextRequest) {
@@ -111,17 +112,20 @@ export async function GET(
         : historyRecord.reassignments;
 
     // Collect all unique driver IDs to generate routes for
-    const driverIds = [...new Set(reassignmentsData.map((r: any) => r.driverId))] as string[];
+    const driverIds = [
+      ...new Set(reassignmentsData.map((r: any) => r.driverId)),
+    ] as string[];
 
     // Generate route output for each replacement driver
     const driverRoutes: DriverRouteOutput[] = [];
 
     for (const driverId of driverIds) {
       // Get driver info
-      const driver = await db.query.drivers.findFirst({
+      const driver = await db.query.users.findFirst({
         where: and(
-          eq(drivers.id, driverId),
-          eq(drivers.companyId, tenantCtx.companyId),
+          eq(users.id, driverId),
+          eq(users.companyId, tenantCtx.companyId),
+          eq(users.role, USER_ROLES.CONDUCTOR),
         ),
       });
 
@@ -135,7 +139,7 @@ export async function GET(
       const stops = await db.query.routeStops.findMany({
         where: and(
           eq(routeStops.companyId, tenantCtx.companyId),
-          eq(routeStops.driverId, driverId),
+          eq(routeStops.userId, driverId),
         ),
         with: {
           vehicle: true,
@@ -153,7 +157,7 @@ export async function GET(
         const allDriverStops = await db.query.routeStops.findMany({
           where: and(
             eq(routeStops.companyId, tenantCtx.companyId),
-            eq(routeStops.driverId, driverId),
+            eq(routeStops.userId, driverId),
           ),
           with: {
             vehicle: true,
@@ -187,9 +191,8 @@ export async function GET(
                 notes: stop.notes,
               })),
             totalStops: allDriverStops.length,
-            pendingStops: allDriverStops.filter(
-              (s) => s.status === "PENDING",
-            ).length,
+            pendingStops: allDriverStops.filter((s) => s.status === "PENDING")
+              .length,
             completedStops: allDriverStops.filter(
               (s) => s.status === "COMPLETED",
             ).length,
@@ -221,12 +224,10 @@ export async function GET(
               notes: stop.notes,
             })),
           totalStops: relevantStops.length,
-          pendingStops: relevantStops.filter(
-            (s) => s.status === "PENDING",
-          ).length,
-          completedStops: relevantStops.filter(
-            (s) => s.status === "COMPLETED",
-          ).length,
+          pendingStops: relevantStops.filter((s) => s.status === "PENDING")
+            .length,
+          completedStops: relevantStops.filter((s) => s.status === "COMPLETED")
+            .length,
         });
       }
     }
@@ -241,8 +242,8 @@ export async function GET(
       reassignmentHistoryId: historyId,
       generatedAt: new Date().toISOString(),
       generatedBy: tenantCtx.userId || "system",
-      absentDriverId: historyRecord.absentDriverId,
-      absentDriverName: historyRecord.absentDriverName,
+      absentDriverId: historyRecord.absentUserId,
+      absentDriverName: historyRecord.absentUserName,
       reason: historyRecord.reason,
       driverRoutes,
       summary: {
@@ -317,15 +318,18 @@ export async function POST(
         : historyRecord.reassignments;
 
     // Get unique driver IDs
-    const driverIds = [...new Set(reassignmentsData.map((r: any) => r.driverId))] as string[];
+    const driverIds = [
+      ...new Set(reassignmentsData.map((r: any) => r.driverId)),
+    ] as string[];
 
     // Get driver details for notifications
     const notifiedDrivers = [];
     for (const driverId of driverIds) {
-      const driver = await db.query.drivers.findFirst({
+      const driver = await db.query.users.findFirst({
         where: and(
-          eq(drivers.id, driverId),
-          eq(drivers.companyId, tenantCtx.companyId),
+          eq(users.id, driverId),
+          eq(users.companyId, tenantCtx.companyId),
+          eq(users.role, USER_ROLES.CONDUCTOR),
         ),
       });
 

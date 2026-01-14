@@ -26,7 +26,15 @@
       "Bash(bun biome:*)",
       "Bash(bun test:*)",
       "Bash(find:*)",
-      "Bash(npx drizzle-kit generate:*)"
+      "Bash(npx drizzle-kit generate:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(ls -la \"C:\\\\Users\\\\vicen\\\\desktop\\\\projects\\\\bun\\\\planeamiento\\\\docker\"\" 2>/dev/null || echo \"Docker directory not found \")",
+      "Bash(docker ps:*)",
+      "Bash(curl:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker exec:*)",
+      "Bash(findstr:*)",
+      "Bash(grep:*)"
     ]
   }
 }

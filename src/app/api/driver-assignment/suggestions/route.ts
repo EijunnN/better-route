@@ -1,13 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { drivers, vehicles, orders, driverSkills, driverAvailability } from "@/db/schema";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import {
+  orders,
+  USER_ROLES,
+  userAvailability,
+  userSkills,
+  users,
+  vehicles,
+} from "@/db/schema";
+import { DEFAULT_ASSIGNMENT_CONFIG } from "@/lib/driver-assignment";
 import { setTenantContext } from "@/lib/tenant";
 import {
-  assignmentSuggestionsSchema,
   type AssignmentSuggestionsSchema,
+  assignmentSuggestionsSchema,
 } from "@/lib/validations/driver-assignment";
-import { DEFAULT_ASSIGNMENT_CONFIG } from "@/lib/driver-assignment";
 import { getDayOfWeek } from "@/lib/validations/driver-availability";
 
 function extractTenantContext(request: NextRequest) {
@@ -30,7 +37,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -46,31 +53,33 @@ export async function POST(request: NextRequest) {
           error: "Validation failed",
           details: validationResult.error.issues,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const data: AssignmentSuggestionsSchema = validationResult.data;
 
-    // Get vehicle details
+    // Get vehicle details with fleets
     const vehicle = await db.query.vehicles.findFirst({
       where: eq(vehicles.id, data.vehicleId),
       with: {
-        fleet: true,
+        vehicleFleets: {
+          with: {
+            fleet: true,
+          },
+          where: (vf, { eq }) => eq(vf.active, true),
+        },
       },
     });
 
     if (!vehicle) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
     if (vehicle.companyId !== tenantCtx.companyId) {
       return NextResponse.json(
         { error: "Vehicle does not belong to this company" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -79,7 +88,7 @@ export async function POST(request: NextRequest) {
     const ordersList = await db.query.orders.findMany({
       where: and(
         eq(orders.companyId, tenantCtx.companyId),
-        inArray(orders.id, orderIds)
+        inArray(orders.id, orderIds),
       ),
     });
 
@@ -87,35 +96,50 @@ export async function POST(request: NextRequest) {
     const requiredSkills = new Set<string>();
     for (const order of ordersList) {
       if (order.requiredSkills) {
-        const skills = typeof order.requiredSkills === 'string'
-          ? JSON.parse(order.requiredSkills)
-          : order.requiredSkills;
+        const skills =
+          typeof order.requiredSkills === "string"
+            ? JSON.parse(order.requiredSkills)
+            : order.requiredSkills;
         skills.forEach((skill: string) => requiredSkills.add(skill));
       }
     }
 
-    // Get available drivers from same fleet or secondary fleets
-    const availableDrivers = await db.query.drivers.findMany({
+    // Get vehicle fleet IDs
+    const vehicleFleetIds =
+      vehicle.vehicleFleets?.map((vf) => vf.fleetId) || [];
+    const primaryVehicleFleetId = vehicleFleetIds[0] || null;
+
+    // Get available drivers (users with CONDUCTOR role) from same fleet or secondary fleets
+    const availableDrivers = await db.query.users.findMany({
       where: and(
-        eq(drivers.companyId, tenantCtx.companyId),
-        eq(drivers.active, true),
-        sql`(${drivers.fleetId} = ${vehicle.fleetId} OR ${drivers.id} IN (
-          SELECT driver_id FROM driver_secondary_fleets
-          WHERE fleet_id = ${vehicle.fleetId}
+        eq(users.companyId, tenantCtx.companyId),
+        eq(users.role, USER_ROLES.CONDUCTOR),
+        eq(users.active, true),
+        vehicleFleetIds.length > 0
+          ? sql`(${users.primaryFleetId} IN (${sql.join(
+              vehicleFleetIds.map((id) => sql`${id}`),
+              sql`, `,
+            )}) OR ${users.id} IN (
+          SELECT user_id FROM user_secondary_fleets
+          WHERE fleet_id IN (${sql.join(
+            vehicleFleetIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})
           AND active = true
           AND company_id = ${tenantCtx.companyId}
         ))`
+          : sql`1=1`,
       ),
       with: {
-        fleet: true,
-        driverSkills: {
+        primaryFleet: true,
+        userSkills: {
           with: {
             skill: true,
           },
-          where: eq(driverSkills.active, true),
+          where: eq(userSkills.active, true),
         },
         availability: {
-          where: eq(driverAvailability.active, true),
+          where: eq(userAvailability.active, true),
         },
       },
     });
@@ -125,37 +149,46 @@ export async function POST(request: NextRequest) {
 
     for (const driver of availableDrivers) {
       // Check status
-      if (driver.status === "UNAVAILABLE" || driver.status === "ABSENT") {
+      if (
+        driver.driverStatus === "UNAVAILABLE" ||
+        driver.driverStatus === "ABSENT"
+      ) {
         continue;
       }
 
       // Check license
       const now = new Date();
-      const licenseExpiry = new Date(driver.licenseExpiry);
-      const daysUntilExpiry = Math.ceil(
-        (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const licenseExpiry = driver.licenseExpiry
+        ? new Date(driver.licenseExpiry)
+        : null;
+      const daysUntilExpiry = licenseExpiry
+        ? Math.ceil(
+            (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+          )
+        : -1;
 
-      if (daysUntilExpiry < 0 && DEFAULT_ASSIGNMENT_CONFIG.requireLicenseValid) {
+      if (
+        daysUntilExpiry < 0 &&
+        DEFAULT_ASSIGNMENT_CONFIG.requireLicenseValid
+      ) {
         continue; // Skip expired licenses
       }
 
       // Calculate skills match
-      const driverSkillIds = new Set(
-        driver.driverSkills.map((ds) => ds.skillId)
-      );
+      const driverSkillIds = new Set(driver.userSkills.map((ds) => ds.skillId));
 
       const matchedSkills = Array.from(requiredSkills).filter((skillId) =>
-        driverSkillIds.has(skillId)
+        driverSkillIds.has(skillId),
       );
 
-      const skillsMatch = requiredSkills.size > 0
-        ? (matchedSkills.length / requiredSkills.size) * 100
-        : 100;
+      const skillsMatch =
+        requiredSkills.size > 0
+          ? (matchedSkills.length / requiredSkills.size) * 100
+          : 100;
 
       // Check skill expiration
       let hasExpiredSkills = false;
-      for (const ds of driver.driverSkills) {
+      for (const ds of driver.userSkills) {
         if (ds.expiresAt && new Date(ds.expiresAt) < now) {
           hasExpiredSkills = true;
           break;
@@ -164,7 +197,10 @@ export async function POST(request: NextRequest) {
 
       // Calculate fleet match score
       let fleetMatch = 25;
-      if (driver.fleetId === vehicle.fleetId) {
+      if (
+        driver.primaryFleetId &&
+        vehicleFleetIds.includes(driver.primaryFleetId)
+      ) {
         fleetMatch = 100;
       } else {
         // Secondary fleet match is already filtered in the query
@@ -173,15 +209,15 @@ export async function POST(request: NextRequest) {
 
       // Calculate license score
       let licenseScore = 100;
-      if (daysUntilExpiry <= 30) {
+      if (daysUntilExpiry <= 30 && daysUntilExpiry > 0) {
         licenseScore = Math.round((daysUntilExpiry / 30) * 100);
       }
 
       // Calculate availability score
       let availabilityScore = 100;
-      if (driver.status === "COMPLETED") {
+      if (driver.driverStatus === "COMPLETED") {
         availabilityScore = 50;
-      } else if (driver.status !== "AVAILABLE") {
+      } else if (driver.driverStatus !== "AVAILABLE") {
         availabilityScore = 50;
       }
 
@@ -192,7 +228,10 @@ export async function POST(request: NextRequest) {
           availabilityScore * weights.availability +
           licenseScore * weights.license +
           fleetMatch * weights.fleet) /
-        (weights.skills + weights.availability + weights.license + weights.fleet)
+          (weights.skills +
+            weights.availability +
+            weights.license +
+            weights.fleet),
       );
 
       // Collect warnings
@@ -204,9 +243,14 @@ export async function POST(request: NextRequest) {
         warnings.push(`License expires in ${daysUntilExpiry} days`);
       }
       if (skillsMatch < 100 && requiredSkills.size > 0) {
-        warnings.push(`${matchedSkills.length}/${requiredSkills.size} skills matched`);
+        warnings.push(
+          `${matchedSkills.length}/${requiredSkills.size} skills matched`,
+        );
       }
-      if (driver.fleetId !== vehicle.fleetId) {
+      if (
+        !driver.primaryFleetId ||
+        !vehicleFleetIds.includes(driver.primaryFleetId)
+      ) {
         warnings.push("Driver from secondary fleet");
       }
 
@@ -234,9 +278,9 @@ export async function POST(request: NextRequest) {
         errors,
         details: {
           identification: driver.identification,
-          status: driver.status,
-          fleetId: driver.fleetId,
-          fleetName: driver.fleet?.name,
+          status: driver.driverStatus,
+          fleetId: driver.primaryFleetId,
+          fleetName: driver.primaryFleet?.name,
           licenseNumber: driver.licenseNumber,
           licenseExpiry: driver.licenseExpiry,
         },
@@ -263,7 +307,7 @@ export async function POST(request: NextRequest) {
     console.error("Error getting assignment suggestions:", error);
     return NextResponse.json(
       { error: "Error getting assignment suggestions" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

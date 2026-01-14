@@ -1,32 +1,45 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  MapPin,
-  Truck,
-  User,
-  Package,
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock,
+  MapPin,
+  Package,
   Ruler,
   Scale,
   TrendingUp,
-  ChevronDown,
-  ChevronUp,
+  Truck,
+  User,
 } from "lucide-react";
-import { DriverAssignmentDisplay, AssignmentMetricsCard } from "./driver-assignment-quality";
-import { ManualDriverAssignmentDialog } from "./manual-driver-assignment-dialog";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AssignmentHistory } from "./assignment-history";
+import {
+  AssignmentMetricsCard,
+  DriverAssignmentDisplay,
+} from "./driver-assignment-quality";
+import { ManualDriverAssignmentDialog } from "./manual-driver-assignment-dialog";
 import { PlanConfirmationDialog } from "./plan-confirmation-dialog";
 import { RouteMap } from "./route-map";
 
 // Re-export types from optimization-runner
-export type { OptimizationResult, OptimizationRoute, OptimizationStop } from "@/lib/optimization-runner";
+export type {
+  OptimizationResult,
+  OptimizationRoute,
+  OptimizationStop,
+} from "@/lib/optimization-runner";
 
 interface OptimizationResultsProps {
   jobId?: string;
@@ -56,6 +69,7 @@ interface OptimizationResultsProps {
       totalVolume: number;
       utilizationPercentage: number;
       timeWindowViolations: number;
+      geometry?: string; // Encoded polyline from VROOM/OSRM
       assignmentQuality?: {
         score: number;
         warnings: string[];
@@ -102,7 +116,13 @@ interface OptimizationResultsProps {
 }
 
 // Scroll area component
-const ScrollArea = ({ className, children }: { className?: string; children: React.ReactNode }) => (
+const ScrollArea = ({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) => (
   <div className={className} style={{ overflowY: "auto", maxHeight: "400px" }}>
     {children}
   </div>
@@ -136,7 +156,11 @@ function MetricCard({
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="text-lg font-semibold">
           {value}
-          {unit && <span className="text-sm font-normal text-muted-foreground ml-1">{unit}</span>}
+          {unit && (
+            <span className="text-sm font-normal text-muted-foreground ml-1">
+              {unit}
+            </span>
+          )}
         </p>
       </div>
     </div>
@@ -172,11 +196,13 @@ function RouteCard({
     route.utilizationPercentage >= 80
       ? "text-green-600"
       : route.utilizationPercentage >= 50
-      ? "text-yellow-600"
-      : "text-red-600";
+        ? "text-yellow-600"
+        : "text-red-600";
 
   return (
-    <Card className={`overflow-hidden ${hasViolations ? "border-orange-300" : ""}`}>
+    <Card
+      className={`overflow-hidden ${hasViolations ? "border-orange-300" : ""}`}
+    >
       <CardHeader
         className="cursor-pointer hover:bg-accent/50 transition-colors"
         onClick={onToggle}
@@ -200,9 +226,13 @@ function RouteCard({
           </div>
           <div className="flex items-center gap-2">
             {hasViolations && (
-              <Badge variant="outline" className="border-orange-300 text-orange-700">
+              <Badge
+                variant="outline"
+                className="border-orange-300 text-orange-700"
+              >
                 <AlertTriangle className="h-3 w-3 mr-1" />
-                {route.timeWindowViolations} violation{route.timeWindowViolations > 1 ? "s" : ""}
+                {route.timeWindowViolations} violation
+                {route.timeWindowViolations > 1 ? "s" : ""}
               </Badge>
             )}
             {isSelected ? (
@@ -225,15 +255,21 @@ function RouteCard({
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Ruler className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{formatDistance(route.totalDistance)}</span>
+              <span className="font-medium">
+                {formatDistance(route.totalDistance)}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{formatDuration(route.totalDuration)}</span>
+              <span className="font-medium">
+                {formatDuration(route.totalDuration)}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <TrendingUp className={`h-4 w-4 ${utilizationColor}`} />
-              <span className={`font-medium ${utilizationColor}`}>{route.utilizationPercentage}%</span>
+              <span className={`font-medium ${utilizationColor}`}>
+                {route.utilizationPercentage}%
+              </span>
               <span className="text-muted-foreground">utilization</span>
             </div>
           </div>
@@ -282,26 +318,37 @@ function RouteCard({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-sm">{stop.trackingId}</span>
+                      <span className="font-medium text-sm">
+                        {stop.trackingId}
+                      </span>
                       {stop.timeWindow && (
                         <Badge variant="outline" className="text-xs">
                           <Clock className="h-2 w-2 mr-1" />
-                          {new Date(stop.timeWindow.start).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {new Date(stop.timeWindow.start).toLocaleTimeString(
+                            [],
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
                           {" - "}
-                          {new Date(stop.timeWindow.end).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {new Date(stop.timeWindow.end).toLocaleTimeString(
+                            [],
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">{stop.address}</p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {stop.address}
+                    </p>
                     {stop.estimatedArrival && (
                       <p className="text-xs text-muted-foreground">
-                        ETA: {new Date(stop.estimatedArrival).toLocaleTimeString()}
+                        ETA:{" "}
+                        {new Date(stop.estimatedArrival).toLocaleTimeString()}
                       </p>
                     )}
                   </div>
@@ -344,7 +391,9 @@ function UnassignedOrdersList({
             <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm">{order.trackingId}</p>
-              <p className="text-xs text-muted-foreground mt-1">{order.reason}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {order.reason}
+              </p>
             </div>
           </div>
         ))}
@@ -371,9 +420,18 @@ function RouteMapPlaceholder() {
   );
 }
 
-export function OptimizationResults({ result, onReoptimize, onConfirm, onReassignDriver, isPlanConfirmed, jobId }: OptimizationResultsProps) {
+export function OptimizationResults({
+  result,
+  onReoptimize,
+  onConfirm,
+  onReassignDriver,
+  isPlanConfirmed,
+  jobId,
+}: OptimizationResultsProps) {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"routes" | "unassigned" | "map">("routes");
+  const [activeTab, setActiveTab] = useState<"routes" | "unassigned" | "map">(
+    "routes",
+  );
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedRouteForAssignment, setSelectedRouteForAssignment] = useState<{
@@ -384,10 +442,14 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
     driverName?: string;
   } | null>(null);
 
-  const selectedRoute = result.routes.find((r) => r.routeId === selectedRouteId);
+  const selectedRoute = result.routes.find(
+    (r) => r.routeId === selectedRouteId,
+  );
 
   const handleReassignDriver = (routeId: string, vehicleId: string) => {
-    const route = result.routes.find((r) => r.routeId === routeId && r.vehicleId === vehicleId);
+    const route = result.routes.find(
+      (r) => r.routeId === routeId && r.vehicleId === vehicleId,
+    );
     if (route) {
       setSelectedRouteForAssignment({
         routeId: route.routeId,
@@ -440,14 +502,26 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
               label="Utilization Rate"
               value={result.metrics.utilizationRate}
               unit="%"
-              color={result.metrics.utilizationRate >= 80 ? "success" : result.metrics.utilizationRate >= 50 ? "warning" : "default"}
+              color={
+                result.metrics.utilizationRate >= 80
+                  ? "success"
+                  : result.metrics.utilizationRate >= 50
+                    ? "warning"
+                    : "default"
+              }
             />
             <MetricCard
               icon={CheckCircle2}
               label="Time Window Compliance"
               value={result.metrics.timeWindowComplianceRate}
               unit="%"
-              color={result.metrics.timeWindowComplianceRate >= 95 ? "success" : result.metrics.timeWindowComplianceRate >= 80 ? "warning" : "danger"}
+              color={
+                result.metrics.timeWindowComplianceRate >= 95
+                  ? "success"
+                  : result.metrics.timeWindowComplianceRate >= 80
+                    ? "warning"
+                    : "danger"
+              }
             />
           </div>
 
@@ -456,8 +530,9 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
               <div className="flex items-center gap-2 text-orange-800">
                 <AlertTriangle className="h-4 w-4" />
                 <span className="font-medium text-sm">
-                  {result.unassignedOrders.length} order{result.unassignedOrders.length > 1 ? "s" : ""}{" "}
-                  could not be assigned
+                  {result.unassignedOrders.length} order
+                  {result.unassignedOrders.length > 1 ? "s" : ""} could not be
+                  assigned
                 </span>
               </div>
               <p className="text-xs text-orange-700 mt-1">
@@ -490,7 +565,9 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
             <Card>
               <CardContent className="py-12 text-center">
                 <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-lg font-medium text-muted-foreground">No routes generated</p>
+                <p className="text-lg font-medium text-muted-foreground">
+                  No routes generated
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -501,9 +578,13 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
                   route={route}
                   isSelected={selectedRouteId === route.routeId}
                   onToggle={() =>
-                    setSelectedRouteId(selectedRouteId === route.routeId ? null : route.routeId)
+                    setSelectedRouteId(
+                      selectedRouteId === route.routeId ? null : route.routeId,
+                    )
                   }
-                  onReassignDriver={onReassignDriver ? handleReassignDriver : undefined}
+                  onReassignDriver={
+                    onReassignDriver ? handleReassignDriver : undefined
+                  }
                 />
               ))}
             </div>
@@ -515,7 +596,8 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
             <CardHeader>
               <CardTitle>Unassigned Orders</CardTitle>
               <CardDescription>
-                Orders that could not be included in any route due to constraints
+                Orders that could not be included in any route due to
+                constraints
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -546,7 +628,10 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
             </Button>
           )}
           {onConfirm && jobId && !isPlanConfirmed && (
-            <Button onClick={() => setConfirmDialogOpen(true)} disabled={result.unassignedOrders.length > 0}>
+            <Button
+              onClick={() => setConfirmDialogOpen(true)}
+              disabled={result.unassignedOrders.length > 0}
+            >
               Confirm Plan
             </Button>
           )}
@@ -594,7 +679,10 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
 
             // Trigger callback to refresh the results
             if (onReassignDriver) {
-              onReassignDriver(selectedRouteForAssignment.routeId, selectedRouteForAssignment.vehicleId);
+              onReassignDriver(
+                selectedRouteForAssignment.routeId,
+                selectedRouteForAssignment.vehicleId,
+              );
             }
           }}
           onRemove={async () => {
@@ -608,7 +696,7 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
                   "x-company-id": localStorage.getItem("companyId") || "",
                   "x-user-id": localStorage.getItem("userId") || "",
                 },
-              }
+              },
             );
 
             if (!response.ok) {
@@ -617,7 +705,10 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
 
             // Trigger callback to refresh the results
             if (onReassignDriver) {
-              onReassignDriver(selectedRouteForAssignment.routeId, selectedRouteForAssignment.vehicleId);
+              onReassignDriver(
+                selectedRouteForAssignment.routeId,
+                selectedRouteForAssignment.vehicleId,
+              );
             }
           }}
         />

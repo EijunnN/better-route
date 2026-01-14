@@ -1,6 +1,17 @@
 "use client";
 
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  MapPin,
+  SkipForward,
+  XCircle,
+} from "lucide-react";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,20 +20,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  MapPin,
-  Clock,
-  AlertTriangle,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  SkipForward,
-} from "lucide-react";
-import { STOP_STATUS } from "@/db/schema";
+import type { STOP_STATUS } from "@/db/schema";
 
 export interface StopInfo {
   id: string;
@@ -98,7 +98,7 @@ export function StopStatusUpdateDialog({
   onUpdate,
 }: StopStatusUpdateDialogProps) {
   const [selectedStatus, setSelectedStatus] = useState<string>(
-    stop?.status || "PENDING"
+    stop?.status || "PENDING",
   );
   const [notes, setNotes] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -165,7 +165,9 @@ export function StopStatusUpdateDialog({
                     #{stop.sequence}
                   </Badge>
                   <span className="font-medium text-sm">{stop.trackingId}</span>
-                  <Badge className={`text-xs ${currentStatusConfig?.bgColor} ${currentStatusConfig?.color}`}>
+                  <Badge
+                    className={`text-xs ${currentStatusConfig?.bgColor} ${currentStatusConfig?.color}`}
+                  >
                     {currentStatusConfig?.label}
                   </Badge>
                 </div>
@@ -202,9 +204,10 @@ export function StopStatusUpdateDialog({
                       onClick={() => setSelectedStatus(option.value)}
                       className={`
                         flex items-start gap-3 p-3 rounded-lg border text-left transition-all
-                        ${isSelected
-                          ? `border-primary bg-primary/5 ring-2 ring-primary/20`
-                          : `border-border hover:bg-muted/50`
+                        ${
+                          isSelected
+                            ? `border-primary bg-primary/5 ring-2 ring-primary/20`
+                            : `border-border hover:bg-muted/50`
                         }
                         ${isCurrent ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
                       `}

@@ -37,7 +37,7 @@ export const STATUS_DISPLAY_NAMES: Record<string, string> = {
  */
 export function validateStatusTransition(
   fromStatus: string,
-  toStatus: string
+  toStatus: string,
 ): { valid: boolean; reason?: string } {
   // Same status is not a transition
   if (fromStatus === toStatus) {
@@ -67,9 +67,11 @@ export function validateStatusTransition(
  */
 export function requiresActiveRouteCheck(
   fromStatus: string,
-  toStatus: string
+  toStatus: string,
 ): boolean {
-  const transitionKey = `${fromStatus}_TO_${toStatus}`.toUpperCase().replace(/\s+/g, "_");
+  const transitionKey = `${fromStatus}_TO_${toStatus}`
+    .toUpperCase()
+    .replace(/\s+/g, "_");
   return REQUIRES_ACTIVE_ROUTE_CHECK.has(transitionKey);
 }
 
@@ -104,9 +106,15 @@ export const vehicleAvailabilityQuerySchema = z.object({
   offset: z.coerce.number().int().nonnegative().default(0),
 });
 
-export type VehicleStatusTransitionInput = z.infer<typeof vehicleStatusTransitionSchema>;
-export type VehicleStatusHistoryQuery = z.infer<typeof vehicleStatusHistoryQuerySchema>;
-export type VehicleAvailabilityQuery = z.infer<typeof vehicleAvailabilityQuerySchema>;
+export type VehicleStatusTransitionInput = z.infer<
+  typeof vehicleStatusTransitionSchema
+>;
+export type VehicleStatusHistoryQuery = z.infer<
+  typeof vehicleStatusHistoryQuerySchema
+>;
+export type VehicleAvailabilityQuery = z.infer<
+  typeof vehicleAvailabilityQuerySchema
+>;
 
 /**
  * Status transition error response structure

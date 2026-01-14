@@ -1,23 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
-  drivers,
-  routeStops,
   optimizationJobs,
   reassignmentsHistory,
+  routeStops,
+  USER_ROLES,
+  users,
 } from "@/db/schema";
-import { eq, and, inArray, sql } from "drizzle-orm";
-import { setTenantContext } from "@/lib/tenant";
 import { createAuditLog } from "@/lib/audit";
 import {
-  executeReassignmentSchema,
-  type ExecuteReassignmentSchema,
-} from "@/lib/validations/reassignment";
-import {
-  getAffectedRoutesForAbsentDriver,
   calculateReassignmentImpact,
   executeReassignment,
+  getAffectedRoutesForAbsentDriver,
 } from "@/lib/reassignment";
+import { setTenantContext } from "@/lib/tenant";
+import {
+  type ExecuteReassignmentSchema,
+  executeReassignmentSchema,
+} from "@/lib/validations/reassignment";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -81,10 +82,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate absent driver exists and belongs to company
-    const absentDriver = await db.query.drivers.findFirst({
+    const absentDriver = await db.query.users.findFirst({
       where: and(
-        eq(drivers.id, data.absentDriverId),
-        eq(drivers.companyId, tenantCtx.companyId),
+        eq(users.id, data.absentDriverId),
+        eq(users.companyId, tenantCtx.companyId),
+        eq(users.role, USER_ROLES.CONDUCTOR),
       ),
     });
 
@@ -126,8 +128,11 @@ export async function POST(request: NextRequest) {
 
       // Create individual audit logs for each reassignment
       for (const reassignment of data.reassignments) {
-        const replacementDriver = await db.query.drivers.findFirst({
-          where: eq(drivers.id, reassignment.toDriverId),
+        const replacementDriver = await db.query.users.findFirst({
+          where: and(
+            eq(users.id, reassignment.toDriverId),
+            eq(users.role, USER_ROLES.CONDUCTOR),
+          ),
         });
 
         if (replacementDriver) {
@@ -227,10 +232,11 @@ export async function GET(request: NextRequest) {
     setTenantContext(tenantCtx);
 
     // Get count of drivers currently absent
-    const absentDrivers = await db.query.drivers.findMany({
+    const absentDrivers = await db.query.users.findMany({
       where: and(
-        eq(drivers.companyId, tenantCtx.companyId),
-        eq(drivers.status, "ABSENT"),
+        eq(users.companyId, tenantCtx.companyId),
+        eq(users.role, USER_ROLES.CONDUCTOR),
+        eq(users.driverStatus, "ABSENT"),
       ),
     });
 

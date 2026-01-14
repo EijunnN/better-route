@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Eye, EyeOff, Loader2, Route } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Route, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface FormErrors {
   email?: string;
@@ -96,9 +102,7 @@ export default function LoginPage() {
             <CardTitle className="text-2xl font-bold text-foreground">
               Planeamiento
             </CardTitle>
-            <CardDescription>
-              Sistema de Gestión de Rutas
-            </CardDescription>
+            <CardDescription>Sistema de Gestión de Rutas</CardDescription>
           </div>
         </CardHeader>
 
@@ -113,9 +117,7 @@ export default function LoginPage() {
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">
-                Correo Electrónico
-              </Label>
+              <Label htmlFor="email">Correo Electrónico</Label>
               <Input
                 id="email"
                 type="email"
@@ -132,9 +134,7 @@ export default function LoginPage() {
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password">
-                Contraseña
-              </Label>
+              <Label htmlFor="password">Contraseña</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -187,10 +187,12 @@ export default function LoginPage() {
             </p>
             <div className="space-y-1 text-sm text-foreground">
               <p>
-                <span className="text-muted-foreground">Email:</span> admin@planeamiento.com
+                <span className="text-muted-foreground">Email:</span>{" "}
+                admin@planeamiento.com
               </p>
               <p>
-                <span className="text-muted-foreground">Password:</span> admin123
+                <span className="text-muted-foreground">Password:</span>{" "}
+                admin123
               </p>
             </div>
           </div>

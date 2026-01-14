@@ -16,15 +16,13 @@ services:
 
   # VROOM - Vehicle Routing Optimization
   vroom:
-    image: vroomvrp/vroom-docker:v1.14.0
+    image: ghcr.io/vroom-project/vroom-docker:v1.14.0
     container_name: vroom
     restart: unless-stopped
     ports:
       - "5000:3000"
-    environment:
-      - VROOM_ROUTER=osrm
     volumes:
-      - ./docker/vroom/config.yml:/etc/vroom/config.yml:ro
+      - ./docker/vroom/config.yml:/conf/config.yml:ro
     depends_on:
       - osrm-backend
     profiles:

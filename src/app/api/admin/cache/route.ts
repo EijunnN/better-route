@@ -9,14 +9,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { withAuthAndAudit } from "@/lib/api-middleware";
-import {
-  getCacheStats,
-  invalidateAllCache,
-  warmupCache,
-} from "@/lib/cache";
-import { EntityType, Action, isAdmin } from "@/lib/authorization";
 import type { AuthenticatedRequest } from "@/lib/api-middleware";
+import { withAuthAndAudit } from "@/lib/api-middleware";
+import { Action, EntityType, isAdmin } from "@/lib/authorization";
+import { getCacheStats, invalidateAllCache, warmupCache } from "@/lib/cache";
 
 /**
  * GET /api/admin/cache
@@ -35,7 +31,7 @@ export const GET = withAuthAndAudit(
       metrics: stats.metrics,
       timestamp: Date.now(),
     });
-  }
+  },
 );
 
 /**
@@ -51,7 +47,7 @@ export const DELETE = withAuthAndAudit(
     if (!isAdmin(request.user)) {
       return NextResponse.json(
         { error: "Forbidden. Requires system administrator privileges." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -62,7 +58,7 @@ export const DELETE = withAuthAndAudit(
       message: "All cache has been invalidated",
       timestamp: Date.now(),
     });
-  }
+  },
 );
 
 /**
@@ -81,7 +77,7 @@ export const POST = withAuthAndAudit(
       if (!companyId) {
         return NextResponse.json(
           { error: "companyId is required" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -96,8 +92,8 @@ export const POST = withAuthAndAudit(
     } catch {
       return NextResponse.json(
         { error: "Invalid request body" },
-        { status: 400 }
+        { status: 400 },
       );
     }
-  }
+  },
 );

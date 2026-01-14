@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { MonitoringMetrics } from "@/components/monitoring/monitoring-metrics";
+import { AlertCircle, Bell, Loader2, RefreshCw, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AlertPanel } from "@/components/alerts/alert-panel";
 import { DriverListItem } from "@/components/monitoring/driver-list-item";
 import { DriverRouteDetail } from "@/components/monitoring/driver-route-detail";
 import { MonitoringMap } from "@/components/monitoring/monitoring-map";
-import { AlertPanel } from "@/components/alerts/alert-panel";
-import { Loader2, RefreshCw, AlertCircle, Bell, X } from "lucide-react";
+import { MonitoringMetrics } from "@/components/monitoring/monitoring-metrics";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 
 const POLLING_INTERVAL = 10000; // 10 seconds
@@ -72,10 +72,14 @@ interface DriverDetailData {
 
 export default function MonitoringPage() {
   const { companyId, isLoading: isAuthLoading } = useAuth();
-  const [monitoringData, setMonitoringData] = useState<MonitoringData | null>(null);
+  const [monitoringData, setMonitoringData] = useState<MonitoringData | null>(
+    null,
+  );
   const [driversData, setDriversData] = useState<DriverMonitoringData[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
-  const [driverDetail, setDriverDetail] = useState<DriverDetailData | null>(null);
+  const [driverDetail, setDriverDetail] = useState<DriverDetailData | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDrivers, setIsLoadingDrivers] = useState(true);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -100,7 +104,9 @@ export default function MonitoringPage() {
       setLastUpdate(new Date());
     } catch (err) {
       console.error("Error fetching monitoring data:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch monitoring data");
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch monitoring data",
+      );
     }
   }, [companyId]);
 
@@ -123,25 +129,28 @@ export default function MonitoringPage() {
     }
   }, [companyId]);
 
-  const fetchDriverDetail = useCallback(async (driverId: string) => {
-    if (!companyId) return;
-    setIsLoadingDetail(true);
-    try {
-      const response = await fetch(`/api/monitoring/drivers/${driverId}`, {
-        headers: { "x-company-id": companyId },
-      });
+  const fetchDriverDetail = useCallback(
+    async (driverId: string) => {
+      if (!companyId) return;
+      setIsLoadingDetail(true);
+      try {
+        const response = await fetch(`/api/monitoring/drivers/${driverId}`, {
+          headers: { "x-company-id": companyId },
+        });
 
-      if (!response.ok) throw new Error("Failed to fetch driver detail");
+        if (!response.ok) throw new Error("Failed to fetch driver detail");
 
-      const result = await response.json();
-      setDriverDetail(result.data);
-      setView("detail");
-    } catch (err) {
-      console.error("Error fetching driver detail:", err);
-    } finally {
-      setIsLoadingDetail(false);
-    }
-  }, [companyId]);
+        const result = await response.json();
+        setDriverDetail(result.data);
+        setView("detail");
+      } catch (err) {
+        console.error("Error fetching driver detail:", err);
+      } finally {
+        setIsLoadingDetail(false);
+      }
+    },
+    [companyId],
+  );
 
   // Initial load
   useEffect(() => {
@@ -203,7 +212,9 @@ export default function MonitoringPage() {
         <Card>
           <CardContent className="py-8 text-center">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
-            <h2 className="text-lg font-semibold mb-2">Failed to load monitoring data</h2>
+            <h2 className="text-lg font-semibold mb-2">
+              Failed to load monitoring data
+            </h2>
             <p className="text-muted-foreground mb-4">{error}</p>
             <Button onClick={() => window.location.reload()}>Retry</Button>
           </CardContent>
@@ -257,10 +268,14 @@ export default function MonitoringPage() {
       {view === "overview" ? (
         <>
           {/* Metrics */}
-          {monitoringData && <MonitoringMetrics metrics={monitoringData.metrics} />}
+          {monitoringData && (
+            <MonitoringMetrics metrics={monitoringData.metrics} />
+          )}
 
           {/* Main Content: Map, Driver List, and Alerts */}
-          <div className={`grid gap-6 mt-6 ${showAlerts ? "grid-cols-1 lg:grid-cols-4" : "grid-cols-1 lg:grid-cols-3"}`}>
+          <div
+            className={`grid gap-6 mt-6 ${showAlerts ? "grid-cols-1 lg:grid-cols-4" : "grid-cols-1 lg:grid-cols-3"}`}
+          >
             {/* Map - takes 2 columns (or 2 of 4 when alerts open) */}
             <div className={showAlerts ? "lg:col-span-2" : "lg:col-span-2"}>
               <div className="h-[500px]">

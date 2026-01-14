@@ -1,9 +1,27 @@
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { outputHistory, routeStops, drivers, vehicles, optimizationJobs, optimizationConfigurations, OUTPUT_FORMAT } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
-import type { PlanOutput, DriverRouteOutput, RouteStopOutput, PlanOutputSummary } from "./output-generator-types";
+import {
+  type OUTPUT_FORMAT,
+  optimizationConfigurations,
+  optimizationJobs,
+  outputHistory,
+  routeStops,
+  users,
+  vehicles,
+} from "@/db/schema";
+import type {
+  DriverRouteOutput,
+  PlanOutput,
+  PlanOutputSummary,
+  RouteStopOutput,
+} from "./output-generator-types";
 
-export type { PlanOutput, DriverRouteOutput, RouteStopOutput, PlanOutputSummary } from "./output-generator-types";
+export type {
+  DriverRouteOutput,
+  PlanOutput,
+  PlanOutputSummary,
+  RouteStopOutput,
+} from "./output-generator-types";
 
 /**
  * Generate output data for a confirmed plan
@@ -18,7 +36,7 @@ export async function generatePlanOutput(
   companyId: string,
   jobId: string,
   userId: string,
-  format: keyof typeof OUTPUT_FORMAT = "JSON"
+  format: keyof typeof OUTPUT_FORMAT = "JSON",
 ): Promise<PlanOutput> {
   // Fetch the optimization job with configuration
   const jobResult = await db
@@ -29,13 +47,13 @@ export async function generatePlanOutput(
     .from(optimizationJobs)
     .innerJoin(
       optimizationConfigurations,
-      eq(optimizationJobs.configurationId, optimizationConfigurations.id)
+      eq(optimizationJobs.configurationId, optimizationConfigurations.id),
     )
     .where(
       and(
         eq(optimizationJobs.id, jobId),
-        eq(optimizationJobs.companyId, companyId)
-      )
+        eq(optimizationJobs.companyId, companyId),
+      ),
     )
     .limit(1);
 
@@ -47,11 +65,15 @@ export async function generatePlanOutput(
 
   // Check if job is completed and configuration is confirmed
   if (job.status !== "COMPLETED") {
-    throw new Error(`Cannot generate output for job with status: ${job.status}`);
+    throw new Error(
+      `Cannot generate output for job with status: ${job.status}`,
+    );
   }
 
   if (configuration.status !== "CONFIRMED") {
-    throw new Error(`Cannot generate output for configuration with status: ${configuration.status}`);
+    throw new Error(
+      `Cannot generate output for configuration with status: ${configuration.status}`,
+    );
   }
 
   // Fetch all route stops for this job with driver and vehicle information
@@ -59,10 +81,10 @@ export async function generatePlanOutput(
     .select({
       stop: routeStops,
       driver: {
-        id: drivers.id,
-        name: drivers.name,
-        identification: drivers.identification,
-        phone: drivers.phone,
+        id: users.id,
+        name: users.name,
+        identification: users.identification,
+        phone: users.phone,
       },
       vehicle: {
         id: vehicles.id,
@@ -72,15 +94,12 @@ export async function generatePlanOutput(
       },
     })
     .from(routeStops)
-    .innerJoin(drivers, eq(routeStops.driverId, drivers.id))
+    .innerJoin(users, eq(routeStops.userId, users.id))
     .innerJoin(vehicles, eq(routeStops.vehicleId, vehicles.id))
     .where(
-      and(
-        eq(routeStops.jobId, jobId),
-        eq(routeStops.companyId, companyId)
-      )
+      and(eq(routeStops.jobId, jobId), eq(routeStops.companyId, companyId)),
     )
-    .orderBy(routeStops.driverId, routeStops.sequence);
+    .orderBy(routeStops.userId, routeStops.sequence);
 
   if (stopsResult.length === 0) {
     throw new Error("No route stops found for this job");
@@ -120,9 +139,15 @@ export async function generatePlanOutput(
       address: stop.address,
       latitude: stop.latitude,
       longitude: stop.longitude,
-      timeWindowStart: stop.timeWindowStart ? stop.timeWindowStart.toISOString() : null,
-      timeWindowEnd: stop.timeWindowEnd ? stop.timeWindowEnd.toISOString() : null,
-      estimatedArrival: stop.estimatedArrival ? stop.estimatedArrival.toISOString() : null,
+      timeWindowStart: stop.timeWindowStart
+        ? stop.timeWindowStart.toISOString()
+        : null,
+      timeWindowEnd: stop.timeWindowEnd
+        ? stop.timeWindowEnd.toISOString()
+        : null,
+      estimatedArrival: stop.estimatedArrival
+        ? stop.estimatedArrival.toISOString()
+        : null,
       estimatedServiceTime: stop.estimatedServiceTime,
       status: stop.status,
       notes: stop.notes,
@@ -156,11 +181,14 @@ export async function generatePlanOutput(
     totalRoutes: driverRoutes.length,
     totalStops: driverRoutes.reduce((sum, r) => sum + r.totalStops, 0),
     pendingStops: driverRoutes.reduce((sum, r) => sum + r.pendingStops, 0),
-    inProgressStops: driverRoutes.reduce((sum, r) => sum + r.inProgressStops, 0),
+    inProgressStops: driverRoutes.reduce(
+      (sum, r) => sum + r.inProgressStops,
+      0,
+    ),
     completedStops: driverRoutes.reduce((sum, r) => sum + r.completedStops, 0),
     failedStops: driverRoutes.reduce((sum, r) => sum + r.failedStops, 0),
-    uniqueDrivers: new Set(driverRoutes.map(r => r.driverId)).size,
-    uniqueVehicles: new Set(driverRoutes.map(r => r.vehicleId)).size,
+    uniqueDrivers: new Set(driverRoutes.map((r) => r.driverId)).size,
+    uniqueVehicles: new Set(driverRoutes.map((r) => r.vehicleId)).size,
   };
 
   // Create output history record
@@ -236,11 +264,11 @@ export function convertOutputToCSV(output: PlanOutput): string {
       rows.push([
         route.driverId,
         route.driverName,
-        route.driverIdentification,
+        route.driverIdentification || "",
         route.driverPhone || "",
-        route.vehiclePlate,
-        route.vehicleBrand,
-        route.vehicleModel,
+        route.vehiclePlate || "",
+        route.vehicleBrand || "",
+        route.vehicleModel || "",
         stop.sequence.toString(),
         stop.orderId,
         stop.trackingId,
@@ -252,7 +280,9 @@ export function convertOutputToCSV(output: PlanOutput): string {
         stop.timeWindowStart || "",
         stop.timeWindowEnd || "",
         stop.estimatedArrival || "",
-        stop.estimatedServiceTime ? (stop.estimatedServiceTime / 60).toString() : "",
+        stop.estimatedServiceTime
+          ? (stop.estimatedServiceTime / 60).toString()
+          : "",
         stop.status,
         stop.notes || "",
         stop.customerNotes || "",
@@ -260,7 +290,9 @@ export function convertOutputToCSV(output: PlanOutput): string {
     }
   }
 
-  return rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(",")).join("\n");
+  return rows
+    .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
+    .join("\n");
 }
 
 /**
@@ -276,12 +308,15 @@ export async function getOutputHistory(
     jobId?: string;
     limit?: number;
     offset?: number;
-  } = {}
+  } = {},
 ) {
   const { jobId, limit = 50, offset = 0 } = options;
 
   const whereCondition = jobId
-    ? and(eq(outputHistory.companyId, companyId), eq(outputHistory.jobId, jobId))
+    ? and(
+        eq(outputHistory.companyId, companyId),
+        eq(outputHistory.jobId, jobId),
+      )
     : eq(outputHistory.companyId, companyId);
 
   return await db
@@ -315,8 +350,8 @@ export async function getOutputById(companyId: string, outputId: string) {
     .where(
       and(
         eq(outputHistory.id, outputId),
-        eq(outputHistory.companyId, companyId)
-      )
+        eq(outputHistory.companyId, companyId),
+      ),
     )
     .limit(1);
 
@@ -332,7 +367,7 @@ export async function getOutputById(companyId: string, outputId: string) {
  */
 export async function canGenerateOutput(
   companyId: string,
-  jobId: string
+  jobId: string,
 ): Promise<{
   canGenerate: boolean;
   reason?: string;
@@ -346,13 +381,13 @@ export async function canGenerateOutput(
     .from(optimizationJobs)
     .innerJoin(
       optimizationConfigurations,
-      eq(optimizationJobs.configurationId, optimizationConfigurations.id)
+      eq(optimizationJobs.configurationId, optimizationConfigurations.id),
     )
     .where(
       and(
         eq(optimizationJobs.id, jobId),
-        eq(optimizationJobs.companyId, companyId)
-      )
+        eq(optimizationJobs.companyId, companyId),
+      ),
     )
     .limit(1);
 
@@ -384,10 +419,7 @@ export async function canGenerateOutput(
     .select({ count: routeStops.id })
     .from(routeStops)
     .where(
-      and(
-        eq(routeStops.jobId, jobId),
-        eq(routeStops.companyId, companyId)
-      )
+      and(eq(routeStops.jobId, jobId), eq(routeStops.companyId, companyId)),
     );
 
   if (stopsCount.length === 0) {
@@ -411,7 +443,7 @@ export async function canGenerateOutput(
 export function formatOutputForDisplay(output: PlanOutput): string {
   const lines: string[] = [];
 
-  lines.push("=" .repeat(80));
+  lines.push("=".repeat(80));
   lines.push("ROUTE PLAN OUTPUT");
   lines.push("=".repeat(80));
   lines.push(`Generated: ${output.generatedAt}`);
@@ -435,18 +467,28 @@ export function formatOutputForDisplay(output: PlanOutput): string {
     lines.push("=".repeat(80));
     lines.push(`DRIVER: ${route.driverName} (${route.driverIdentification})`);
     lines.push(`Phone: ${route.driverPhone || "N/A"}`);
-    lines.push(`Vehicle: ${route.vehiclePlate} - ${route.vehicleBrand} ${route.vehicleModel}`);
-    lines.push(`Stops: ${route.totalStops} total (${route.completedStops} completed)`);
+    lines.push(
+      `Vehicle: ${route.vehiclePlate} - ${route.vehicleBrand} ${route.vehicleModel}`,
+    );
+    lines.push(
+      `Stops: ${route.totalStops} total (${route.completedStops} completed)`,
+    );
     lines.push("=".repeat(80));
     lines.push("");
 
     for (const stop of route.stops) {
       lines.push(`Stop #${stop.sequence}`);
       lines.push(`  Order: ${stop.trackingId}`);
-      lines.push(`  Customer: ${stop.customerName || "N/A"} - ${stop.customerPhone || "N/A"}`);
+      lines.push(
+        `  Customer: ${stop.customerName || "N/A"} - ${stop.customerPhone || "N/A"}`,
+      );
       lines.push(`  Address: ${stop.address}`);
-      lines.push(`  Time Window: ${stop.timeWindowStart ? stop.timeWindowStart.slice(11, 16) : "N/A"} - ${stop.timeWindowEnd ? stop.timeWindowEnd.slice(11, 16) : "N/A"}`);
-      lines.push(`  ETA: ${stop.estimatedArrival ? stop.estimatedArrival.slice(11, 16) : "N/A"}`);
+      lines.push(
+        `  Time Window: ${stop.timeWindowStart ? stop.timeWindowStart.slice(11, 16) : "N/A"} - ${stop.timeWindowEnd ? stop.timeWindowEnd.slice(11, 16) : "N/A"}`,
+      );
+      lines.push(
+        `  ETA: ${stop.estimatedArrival ? stop.estimatedArrival.slice(11, 16) : "N/A"}`,
+      );
       lines.push(`  Status: ${stop.status}`);
       if (stop.notes) {
         lines.push(`  Notes: ${stop.notes}`);

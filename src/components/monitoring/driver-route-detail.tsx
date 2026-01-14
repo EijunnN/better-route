@@ -1,26 +1,26 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  MapPin,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Loader2,
+  AlertTriangle,
   ArrowLeft,
+  CheckCircle2,
+  Clock,
+  Edit3,
+  Loader2,
+  MapPin,
+  MoreVertical,
   Truck,
   User,
-  AlertTriangle,
-  MoreVertical,
-  Edit3,
+  XCircle,
 } from "lucide-react";
+import { useCallback, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  StopStatusUpdateDialog,
   type StopInfo,
+  StopStatusUpdateDialog,
 } from "./stop-status-update-dialog";
 
 interface Stop {
@@ -189,7 +189,7 @@ export function DriverRouteDetail({
         setUpdatingStatus(false);
       }
     },
-    [onRefresh]
+    [onRefresh],
   );
 
   const openStatusDialog = (stop: Stop) => {
@@ -211,9 +211,11 @@ export function DriverRouteDetail({
     setStatusDialogOpen(true);
   };
 
-  const completedStops = route?.stops.filter((s) => s.status === "COMPLETED").length || 0;
+  const completedStops =
+    route?.stops.filter((s) => s.status === "COMPLETED").length || 0;
   const totalStops = route?.stops.length || 0;
-  const progressPercentage = totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
+  const progressPercentage =
+    totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
 
   return (
     <>
@@ -293,7 +295,9 @@ export function DriverRouteDetail({
                     <Badge variant="outline" className="text-sm">
                       {completedStops} / {totalStops} stops
                     </Badge>
-                    <Badge className="text-sm">{progressPercentage}% complete</Badge>
+                    <Badge className="text-sm">
+                      {progressPercentage}% complete
+                    </Badge>
                   </div>
                 </div>
               </CardHeader>
@@ -314,20 +318,36 @@ export function DriverRouteDetail({
                 {/* Route Metrics */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <div className="text-sm text-muted-foreground">Total Distance</div>
-                    <div className="text-lg font-semibold">{formatDistance(route.metrics.totalDistance)}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Total Distance
+                    </div>
+                    <div className="text-lg font-semibold">
+                      {formatDistance(route.metrics.totalDistance)}
+                    </div>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">Duration</div>
-                    <div className="text-lg font-semibold">{formatDuration(route.metrics.totalDuration)}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Duration
+                    </div>
+                    <div className="text-lg font-semibold">
+                      {formatDuration(route.metrics.totalDuration)}
+                    </div>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">Capacity Used</div>
-                    <div className="text-lg font-semibold">{route.metrics.utilizationPercentage}%</div>
+                    <div className="text-sm text-muted-foreground">
+                      Capacity Used
+                    </div>
+                    <div className="text-lg font-semibold">
+                      {route.metrics.utilizationPercentage}%
+                    </div>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">Time Violations</div>
-                    <div className="text-lg font-semibold">{route.metrics.timeWindowViolations}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Time Violations
+                    </div>
+                    <div className="text-lg font-semibold">
+                      {route.metrics.timeWindowViolations}
+                    </div>
                   </div>
                 </div>
 
@@ -337,7 +357,11 @@ export function DriverRouteDetail({
                     {route.assignmentQuality.errors.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {route.assignmentQuality.errors.map((error, index) => (
-                          <Badge key={index} variant="destructive" className="text-xs">
+                          <Badge
+                            key={index}
+                            variant="destructive"
+                            className="text-xs"
+                          >
                             <AlertTriangle className="w-3 h-3 mr-1" />
                             {error}
                           </Badge>
@@ -346,11 +370,17 @@ export function DriverRouteDetail({
                     )}
                     {route.assignmentQuality.warnings.length > 0 && (
                       <div className="flex flex-wrap gap-2">
-                        {route.assignmentQuality.warnings.map((warning, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {warning}
-                          </Badge>
-                        ))}
+                        {route.assignmentQuality.warnings.map(
+                          (warning, index) => (
+                            <Badge
+                              key={index}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {warning}
+                            </Badge>
+                          ),
+                        )}
                       </div>
                     )}
                   </div>
@@ -367,7 +397,10 @@ export function DriverRouteDetail({
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-2">
                     {route.stops.map((stop) => {
-                      const statusConfig = STOP_STATUS_CONFIG[stop.status as keyof typeof STOP_STATUS_CONFIG] || STOP_STATUS_CONFIG.PENDING;
+                      const statusConfig =
+                        STOP_STATUS_CONFIG[
+                          stop.status as keyof typeof STOP_STATUS_CONFIG
+                        ] || STOP_STATUS_CONFIG.PENDING;
                       const StatusIcon = statusConfig.icon;
 
                       return (
@@ -384,8 +417,12 @@ export function DriverRouteDetail({
                                 <Badge variant="outline" className="text-xs">
                                   #{stop.sequence}
                                 </Badge>
-                                <span className="font-medium text-sm">{stop.trackingId}</span>
-                                <Badge className="text-xs">{statusConfig.label}</Badge>
+                                <span className="font-medium text-sm">
+                                  {stop.trackingId}
+                                </span>
+                                <Badge className="text-xs">
+                                  {statusConfig.label}
+                                </Badge>
                               </div>
                               <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
                                 <MapPin className="w-3 h-3 flex-shrink-0" />
@@ -394,12 +431,16 @@ export function DriverRouteDetail({
                               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
-                                  <span>ETA: {formatTime(stop.estimatedArrival)}</span>
+                                  <span>
+                                    ETA: {formatTime(stop.estimatedArrival)}
+                                  </span>
                                 </div>
                                 {stop.completedAt && (
                                   <div className="flex items-center gap-1">
                                     <CheckCircle2 className="w-3 h-3" />
-                                    <span>Completed: {formatTime(stop.completedAt)}</span>
+                                    <span>
+                                      Completed: {formatTime(stop.completedAt)}
+                                    </span>
                                   </div>
                                 )}
                               </div>

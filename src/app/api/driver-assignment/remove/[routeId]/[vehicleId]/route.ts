@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { vehicles, optimizationJobs } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { optimizationJobs, vehicles } from "@/db/schema";
+import { logCreate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
 import {
-  removeDriverAssignmentSchema,
   type RemoveDriverAssignmentSchema,
+  removeDriverAssignmentSchema,
 } from "@/lib/validations/driver-assignment";
-import { logCreate } from "@/lib/audit";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -29,14 +29,14 @@ function extractTenantContext(request: NextRequest) {
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ routeId: string; vehicleId: string }> }
+  { params }: { params: Promise<{ routeId: string; vehicleId: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -50,16 +50,13 @@ export async function DELETE(
     });
 
     if (!vehicle) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
     if (vehicle.companyId !== tenantCtx.companyId) {
       return NextResponse.json(
         { error: "Vehicle does not belong to this company" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -67,14 +64,14 @@ export async function DELETE(
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
         eq(optimizationJobs.id, routeId),
-        eq(optimizationJobs.companyId, tenantCtx.companyId)
+        eq(optimizationJobs.companyId, tenantCtx.companyId),
       ),
     });
 
     if (!job) {
       return NextResponse.json(
         { error: "Route/job not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -116,12 +113,11 @@ export async function DELETE(
             updatedAt: new Date(),
           })
           .where(eq(optimizationJobs.id, routeId));
-
       } catch (e) {
         console.error("Error updating job result:", e);
         return NextResponse.json(
           { error: "Failed to remove assignment" },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -152,7 +148,7 @@ export async function DELETE(
     console.error("Error removing driver assignment:", error);
     return NextResponse.json(
       { error: "Error removing driver assignment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -163,14 +159,14 @@ export async function DELETE(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ routeId: string; vehicleId: string }> }
+  { params }: { params: Promise<{ routeId: string; vehicleId: string }> },
 ) {
   try {
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -182,14 +178,14 @@ export async function GET(
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
         eq(optimizationJobs.id, routeId),
-        eq(optimizationJobs.companyId, tenantCtx.companyId)
+        eq(optimizationJobs.companyId, tenantCtx.companyId),
       ),
     });
 
     if (!job) {
       return NextResponse.json(
         { error: "Route/job not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -232,7 +228,7 @@ export async function GET(
     console.error("Error getting remove assignment info:", error);
     return NextResponse.json(
       { error: "Error getting remove assignment info" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

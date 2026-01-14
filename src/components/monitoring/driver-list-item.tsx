@@ -1,10 +1,16 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  User,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Clock, AlertTriangle, User, ChevronRight } from "lucide-react";
 
 interface DriverProgress {
   completedStops: number;
@@ -25,11 +31,19 @@ interface DriverListItemProps {
 }
 
 const STATUS_CONFIG = {
-  AVAILABLE: { label: "Available", color: "bg-emerald-500", icon: CheckCircle2 },
+  AVAILABLE: {
+    label: "Available",
+    color: "bg-emerald-500",
+    icon: CheckCircle2,
+  },
   ASSIGNED: { label: "Assigned", color: "bg-blue-500", icon: User },
   IN_ROUTE: { label: "In Route", color: "bg-green-500", icon: CheckCircle2 },
   ON_PAUSE: { label: "On Pause", color: "bg-amber-500", icon: Clock },
-  COMPLETED: { label: "Completed", color: "bg-emerald-500", icon: CheckCircle2 },
+  COMPLETED: {
+    label: "Completed",
+    color: "bg-emerald-500",
+    icon: CheckCircle2,
+  },
   UNAVAILABLE: { label: "Unavailable", color: "bg-gray-500", icon: User },
   ABSENT: { label: "Absent", color: "bg-red-500", icon: AlertTriangle },
 };
@@ -45,7 +59,9 @@ export function DriverListItem({
   alerts,
   onClick,
 }: DriverListItemProps) {
-  const statusConfig = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.UNAVAILABLE;
+  const statusConfig =
+    STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ||
+    STATUS_CONFIG.UNAVAILABLE;
   const StatusIcon = statusConfig.icon;
 
   return (
@@ -58,7 +74,9 @@ export function DriverListItem({
           {/* Left: Driver Info */}
           <div className="flex items-start gap-3 flex-1 min-w-0">
             {/* Status Indicator */}
-            <div className={`mt-1 w-2 h-2 rounded-full ${statusConfig.color} flex-shrink-0`} />
+            <div
+              className={`mt-1 w-2 h-2 rounded-full ${statusConfig.color} flex-shrink-0`}
+            />
 
             {/* Driver Details */}
             <div className="flex-1 min-w-0">
@@ -74,9 +92,7 @@ export function DriverListItem({
                   <StatusIcon className="w-3 h-3" />
                   <span>{statusConfig.label}</span>
                 </div>
-                {hasRoute && vehiclePlate && (
-                  <span>• {vehiclePlate}</span>
-                )}
+                {hasRoute && vehiclePlate && <span>• {vehiclePlate}</span>}
               </div>
 
               {/* Progress for drivers with routes */}
@@ -84,7 +100,9 @@ export function DriverListItem({
                 <div className="mt-3 space-y-1">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Progress</span>
-                    <span>{progress.completedStops} / {progress.totalStops}</span>
+                    <span>
+                      {progress.completedStops} / {progress.totalStops}
+                    </span>
                   </div>
                   <Progress value={progress.percentage} className="h-1.5" />
                 </div>
@@ -94,7 +112,11 @@ export function DriverListItem({
               {alerts.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
                   {alerts.map((alert, index) => (
-                    <Badge key={index} variant="destructive" className="text-xs">
+                    <Badge
+                      key={index}
+                      variant="destructive"
+                      className="text-xs"
+                    >
                       <AlertTriangle className="w-3 h-3 mr-1" />
                       {alert}
                     </Badge>

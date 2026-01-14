@@ -1,13 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq, inArray } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { drivers, vehicles, orders, driverSkills } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { orders, USER_ROLES, userSkills, users, vehicles } from "@/db/schema";
+import {
+  type AssignmentValidationResult,
+  validateDriverAssignment,
+} from "@/lib/driver-assignment";
 import { setTenantContext } from "@/lib/tenant";
 import {
-  validateDriverAssignmentSchema,
   type ValidateDriverAssignmentSchema,
+  validateDriverAssignmentSchema,
 } from "@/lib/validations/driver-assignment";
-import { validateDriverAssignment, type AssignmentValidationResult } from "@/lib/driver-assignment";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -29,7 +32,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest) {
           error: "Validation failed",
           details: validationResult.error.issues,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -53,10 +56,11 @@ export async function POST(request: NextRequest) {
 
     // Verify all entities belong to the company
     const [driver, vehicle] = await Promise.all([
-      db.query.drivers.findFirst({
+      db.query.users.findFirst({
         where: and(
-          eq(drivers.id, data.driverId),
-          eq(drivers.companyId, tenantCtx.companyId)
+          eq(users.id, data.driverId),
+          eq(users.companyId, tenantCtx.companyId),
+          eq(users.role, USER_ROLES.CONDUCTOR),
         ),
       }),
       db.query.vehicles.findFirst({
@@ -65,23 +69,17 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!driver) {
-      return NextResponse.json(
-        { error: "Driver not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Driver not found" }, { status: 404 });
     }
 
     if (!vehicle) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
     if (vehicle.companyId !== tenantCtx.companyId) {
       return NextResponse.json(
         { error: "Vehicle does not belong to this company" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -90,14 +88,14 @@ export async function POST(request: NextRequest) {
     const ordersList = await db.query.orders.findMany({
       where: and(
         eq(orders.companyId, tenantCtx.companyId),
-        inArray(orders.id, orderIds)
+        inArray(orders.id, orderIds),
       ),
     });
 
     if (ordersList.length !== orderIds.length) {
       return NextResponse.json(
         { error: "One or more orders not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -106,7 +104,7 @@ export async function POST(request: NextRequest) {
       tenantCtx.companyId,
       data.driverId,
       data.vehicleId,
-      data.routeStops
+      data.routeStops,
     );
 
     return NextResponse.json({
@@ -121,7 +119,7 @@ export async function POST(request: NextRequest) {
     console.error("Error validating driver assignment:", error);
     return NextResponse.json(
       { error: "Error validating driver assignment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

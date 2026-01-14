@@ -1,6 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Loader2,
+  XCircle,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -9,20 +20,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  AlertCircle,
-  AlertTriangle,
-  Info,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-} from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 /**
  * Validation severity from the API
@@ -92,7 +92,8 @@ export function PlanConfirmationDialog({
   jobId,
   onConfirmed,
 }: PlanConfirmationDialogProps) {
-  const [validationResult, setValidationRezult] = useState<ValidationResult | null>(null);
+  const [validationResult, setValidationRezult] =
+    useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [overrideWarnings, setOverrideWarnings] = useState(false);
@@ -193,7 +194,10 @@ export function PlanConfirmationDialog({
         return <Badge variant="destructive">Error</Badge>;
       case "WARNING":
         return (
-          <Badge variant="outline" className="border-yellow-600 text-yellow-700">
+          <Badge
+            variant="outline"
+            className="border-yellow-600 text-yellow-700"
+          >
             Warning
           </Badge>
         );
@@ -244,27 +248,37 @@ export function PlanConfirmationDialog({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground">Total Routes</p>
-                    <p className="text-2xl font-semibold">{validationResult.summary.totalRoutes}</p>
+                    <p className="text-2xl font-semibold">
+                      {validationResult.summary.totalRoutes}
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">With Drivers</p>
-                    <p className="text-2xl font-semibold text-green-600">{validationResult.summary.routesWithDrivers}</p>
+                    <p className="text-2xl font-semibold text-green-600">
+                      {validationResult.summary.routesWithDrivers}
+                    </p>
                   </div>
                   {validationResult.summary.routesWithoutDrivers > 0 && (
                     <div>
                       <p className="text-muted-foreground">Missing Drivers</p>
-                      <p className="text-2xl font-semibold text-destructive">{validationResult.summary.routesWithoutDrivers}</p>
+                      <p className="text-2xl font-semibold text-destructive">
+                        {validationResult.summary.routesWithoutDrivers}
+                      </p>
                     </div>
                   )}
                   {validationResult.summary.unassignedOrders > 0 && (
                     <div>
                       <p className="text-muted-foreground">Unassigned Orders</p>
-                      <p className="text-2xl font-semibold text-orange-600">{validationResult.summary.unassignedOrders}</p>
+                      <p className="text-2xl font-semibold text-orange-600">
+                        {validationResult.summary.unassignedOrders}
+                      </p>
                     </div>
                   )}
                 </div>
                 {validationResult.summaryText && (
-                  <p className="text-sm text-muted-foreground mt-3">{validationResult.summaryText}</p>
+                  <p className="text-sm text-muted-foreground mt-3">
+                    {validationResult.summaryText}
+                  </p>
                 )}
               </div>
 
@@ -273,19 +287,33 @@ export function PlanConfirmationDialog({
                 <h3 className="font-medium mb-3">Quality Metrics</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Driver Assignment Coverage</span>
-                    <span className="font-medium">{validationResult.metrics.driverAssignmentCoverage.toFixed(1)}%</span>
+                    <span className="text-muted-foreground">
+                      Driver Assignment Coverage
+                    </span>
+                    <span className="font-medium">
+                      {validationResult.metrics.driverAssignmentCoverage.toFixed(
+                        1,
+                      )}
+                      %
+                    </span>
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2">
                     <div
                       className="bg-primary h-2 rounded-full transition-all"
-                      style={{ width: `${validationResult.metrics.driverAssignmentCoverage}%` }}
+                      style={{
+                        width: `${validationResult.metrics.driverAssignmentCoverage}%`,
+                      }}
                     />
                   </div>
 
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Time Window Compliance</span>
-                    <span className="font-medium">{validationResult.metrics.timeWindowCompliance.toFixed(1)}%</span>
+                    <span className="text-muted-foreground">
+                      Time Window Compliance
+                    </span>
+                    <span className="font-medium">
+                      {validationResult.metrics.timeWindowCompliance.toFixed(1)}
+                      %
+                    </span>
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2">
                     <div
@@ -293,27 +321,39 @@ export function PlanConfirmationDialog({
                         validationResult.metrics.timeWindowCompliance >= 80
                           ? "bg-green-600"
                           : validationResult.metrics.timeWindowCompliance >= 60
-                          ? "bg-yellow-600"
-                          : "bg-destructive"
+                            ? "bg-yellow-600"
+                            : "bg-destructive"
                       }`}
-                      style={{ width: `${validationResult.metrics.timeWindowCompliance}%` }}
+                      style={{
+                        width: `${validationResult.metrics.timeWindowCompliance}%`,
+                      }}
                     />
                   </div>
 
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Average Assignment Quality</span>
-                    <span className="font-medium">{validationResult.metrics.averageAssignmentQuality.toFixed(1)}/100</span>
+                    <span className="text-muted-foreground">
+                      Average Assignment Quality
+                    </span>
+                    <span className="font-medium">
+                      {validationResult.metrics.averageAssignmentQuality.toFixed(
+                        1,
+                      )}
+                      /100
+                    </span>
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2">
                     <div
                       className={`h-2 rounded-full transition-all ${
                         validationResult.metrics.averageAssignmentQuality >= 70
                           ? "bg-green-600"
-                          : validationResult.metrics.averageAssignmentQuality >= 50
-                          ? "bg-yellow-600"
-                          : "bg-destructive"
+                          : validationResult.metrics.averageAssignmentQuality >=
+                              50
+                            ? "bg-yellow-600"
+                            : "bg-destructive"
                       }`}
-                      style={{ width: `${validationResult.metrics.averageAssignmentQuality}%` }}
+                      style={{
+                        width: `${validationResult.metrics.averageAssignmentQuality}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -325,38 +365,52 @@ export function PlanConfirmationDialog({
                   <h3 className="font-medium mb-3">Issues Found</h3>
                   <ScrollArea className="max-h-[200px]">
                     <div className="space-y-2 pr-4">
-                      {validationResult.issuesBySeverity?.errors?.map((issue, idx) => (
-                        <div key={idx} className="flex gap-3 p-3 bg-destructive/10 rounded-md">
-                          {getSeverityIcon(issue.severity)}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm font-medium text-destructive">{issue.message}</p>
-                              {getSeverityBadge(issue.severity)}
+                      {validationResult.issuesBySeverity?.errors?.map(
+                        (issue, idx) => (
+                          <div
+                            key={idx}
+                            className="flex gap-3 p-3 bg-destructive/10 rounded-md"
+                          >
+                            {getSeverityIcon(issue.severity)}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-sm font-medium text-destructive">
+                                  {issue.message}
+                                </p>
+                                {getSeverityBadge(issue.severity)}
+                              </div>
+                              {issue.resolution && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Resolution: {issue.resolution}
+                                </p>
+                              )}
                             </div>
-                            {issue.resolution && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Resolution: {issue.resolution}
-                              </p>
-                            )}
                           </div>
-                        </div>
-                      ))}
-                      {validationResult.issuesBySeverity?.warnings?.map((issue, idx) => (
-                        <div key={idx} className="flex gap-3 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-md">
-                          {getSeverityIcon(issue.severity)}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm font-medium">{issue.message}</p>
-                              {getSeverityBadge(issue.severity)}
+                        ),
+                      )}
+                      {validationResult.issuesBySeverity?.warnings?.map(
+                        (issue, idx) => (
+                          <div
+                            key={idx}
+                            className="flex gap-3 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-md"
+                          >
+                            {getSeverityIcon(issue.severity)}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-sm font-medium">
+                                  {issue.message}
+                                </p>
+                                {getSeverityBadge(issue.severity)}
+                              </div>
+                              {issue.resolution && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Resolution: {issue.resolution}
+                                </p>
+                              )}
                             </div>
-                            {issue.resolution && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Resolution: {issue.resolution}
-                              </p>
-                            )}
                           </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   </ScrollArea>
                 </div>
@@ -372,21 +426,24 @@ export function PlanConfirmationDialog({
                         Warnings Present
                       </p>
                       <p className="text-sm text-yellow-700 dark:text-yellow-500">
-                        This plan has {validationResult.summary.warningCount} warning(s). Review the issues above before
-                        confirming.
+                        This plan has {validationResult.summary.warningCount}{" "}
+                        warning(s). Review the issues above before confirming.
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Checkbox
                         id="override-warnings"
                         checked={overrideWarnings}
-                        onCheckedChange={(checked) => setOverrideWarnings(checked as boolean)}
+                        onCheckedChange={(checked) =>
+                          setOverrideWarnings(checked as boolean)
+                        }
                       />
                       <Label
                         htmlFor="override-warnings"
                         className="text-sm font-normal cursor-pointer"
                       >
-                        I have reviewed the warnings and want to confirm this plan anyway
+                        I have reviewed the warnings and want to confirm this
+                        plan anyway
                       </Label>
                     </div>
                   </div>
@@ -395,7 +452,9 @@ export function PlanConfirmationDialog({
 
               {/* Confirmation Note */}
               <div className="space-y-2">
-                <Label htmlFor="confirmation-note">Confirmation Note (Optional)</Label>
+                <Label htmlFor="confirmation-note">
+                  Confirmation Note (Optional)
+                </Label>
                 <Textarea
                   id="confirmation-note"
                   placeholder="Add any notes about this confirmation for audit purposes..."
@@ -407,13 +466,19 @@ export function PlanConfirmationDialog({
             </div>
           ) : (
             <div className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground">No validation data available</p>
+              <p className="text-muted-foreground">
+                No validation data available
+              </p>
             </div>
           )}
         </ScrollArea>
 
         <DialogFooter className="border-t pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isConfirming}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isConfirming}
+          >
             Cancel
           </Button>
           <Button
@@ -422,7 +487,8 @@ export function PlanConfirmationDialog({
               isValidating ||
               isConfirming ||
               !validationResult?.canConfirm ||
-              (validationResult.summary.warningCount > 0 && !overrideWarnings) ||
+              (validationResult.summary.warningCount > 0 &&
+                !overrideWarnings) ||
               !!error
             }
           >
