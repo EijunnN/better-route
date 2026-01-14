@@ -4,11 +4,11 @@ import { Action, authorize, EntityType } from "@/lib/authorization";
 import { getUserSessions, invalidateUserSessions } from "@/lib/session";
 
 interface RouteContext {
-  params: Promise<{ userId: string }>;
+  params: Promise<{ id: string }>;
 }
 
 /**
- * GET /api/users/[userId]/sessions
+ * GET /api/users/[id]/sessions
  * Get all sessions for a specific user
  * Users can view their own sessions
  * Admins can view any user's sessions
@@ -16,7 +16,7 @@ interface RouteContext {
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const user = await getAuthenticatedUser(request);
-    const { userId } = await context.params;
+    const { id: userId } = await context.params;
 
     // Check permission: users can view their own sessions
     // admins can view any user's sessions
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 /**
- * DELETE /api/users/[userId]/sessions
+ * DELETE /api/users/[id]/sessions
  * Invalidate all sessions for a specific user
  * Users can invalidate their own sessions
  * Admins can invalidate any user's sessions
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const user = await getAuthenticatedUser(request);
-    const { userId } = await context.params;
+    const { id: userId } = await context.params;
 
     // Check permission: users can invalidate their own sessions
     // admins can invalidate any user's sessions

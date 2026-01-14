@@ -34,7 +34,11 @@
       "Bash(docker logs:*)",
       "Bash(docker exec:*)",
       "Bash(findstr:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(bunx biome check:*)",
+      "Bash(bun lint:*)",
+      "Bash(bunx biome format:*)",
+      "Bash(timeout 10 bun dev:*)"
     ]
   }
 }
