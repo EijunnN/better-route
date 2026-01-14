@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Bell, Loader2, RefreshCw, X } from "lucide-react";
+import { AlertCircle, Bell, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AlertPanel } from "@/components/alerts/alert-panel";
 import { DriverListItem } from "@/components/monitoring/driver-list-item";
@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 
 const POLLING_INTERVAL = 10000; // 10 seconds
@@ -67,7 +66,45 @@ interface DriverDetailData {
       type: string;
     };
   };
-  route: any;
+  route: {
+    routeId: string;
+    jobId?: string;
+    vehicle: {
+      id: string;
+      plate: string;
+      brand: string;
+      model: string;
+    };
+    metrics: {
+      totalDistance: number;
+      totalDuration: number;
+      totalWeight: number;
+      totalVolume: number;
+      utilizationPercentage: number;
+      timeWindowViolations: number;
+    };
+    stops: Array<{
+      id?: string;
+      orderId: string;
+      trackingId: string;
+      sequence: number;
+      address: string;
+      latitude: string;
+      longitude: string;
+      status: string;
+      estimatedArrival?: string;
+      completedAt?: string | null;
+      startedAt?: string | null;
+      notes?: string | null;
+      timeWindowStart?: string | null;
+      timeWindowEnd?: string | null;
+    }>;
+    assignmentQuality?: {
+      score: number;
+      warnings: string[];
+      errors: string[];
+    };
+  } | null;
 }
 
 export default function MonitoringPage() {

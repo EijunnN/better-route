@@ -12,7 +12,6 @@ import {
   Action,
   checkPermission,
   type EntityType,
-  isSensitiveAction,
   type PermissionCheckResult,
   requirePermission,
 } from "./authorization";

@@ -2,7 +2,6 @@ import { and, eq, or } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, timeWindowPresets } from "@/db/schema";
-import { withTenantFilter } from "@/db/tenant-aware";
 import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import {
   getEffectiveStrictness,
@@ -44,7 +43,7 @@ export async function POST(request: NextRequest) {
     setTenantContext(tenantCtx);
 
     const body = await request.json().catch(() => ({}));
-    const { arrivalTime, simulationDate } = body;
+    const { arrivalTime } = body;
 
     // Get all pending orders with their time window presets
     const context = requireTenantContext();
@@ -82,10 +81,10 @@ export async function POST(request: NextRequest) {
       );
 
     // Analyze each order
-    const assignableOrders: any[] = [];
-    const unassignableOrders: any[] = [];
-    const softModeOrders: any[] = [];
-    const warnings: any[] = [];
+    const assignableOrders: Array<Record<string, unknown>> = [];
+    const unassignableOrders: Array<Record<string, unknown>> = [];
+    const softModeOrders: Array<Record<string, unknown>> = [];
+    const warnings: Array<Record<string, unknown>> = [];
 
     for (const order of ordersData) {
       const effectiveStrictness = getEffectiveStrictness(
@@ -216,9 +215,12 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to validate orders" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to validate orders",
+      },
       { status: 500 },
     );
   }
@@ -287,7 +289,7 @@ export async function GET(request: NextRequest) {
           eq(orders.companyId, context.companyId),
           eq(orders.active, true),
           eq(orders.status, "PENDING"),
-          eq(orders.timeWindowPresetId, null as any),
+          eq(orders.timeWindowPresetId, null as unknown as string),
         ),
       );
 
@@ -300,9 +302,14 @@ export async function GET(request: NextRequest) {
         noTimeWindowPreset: noPresetCount.length,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to get validation summary" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get validation summary",
+      },
       { status: 500 },
     );
   }

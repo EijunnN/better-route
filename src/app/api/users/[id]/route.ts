@@ -202,7 +202,7 @@ export async function PUT(
     }
 
     // Prepare update data
-    const updateData: Record<string, any> = {
+    const updateData: Partial<typeof users.$inferInsert> = {
       updatedAt: new Date(),
     };
 
@@ -289,11 +289,14 @@ export async function PUT(
     await logUpdate("user", id, { before: existingUser, after: updatedUser });
 
     return NextResponse.json(updatedUser);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating user:", error);
-    if (error.name === "ZodError") {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
+        {
+          error: "Invalid input",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }

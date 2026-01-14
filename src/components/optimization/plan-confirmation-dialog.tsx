@@ -8,7 +8,7 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -100,17 +100,7 @@ export function PlanConfirmationDialog({
   const [confirmationNote, setConfirmationNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Reset state when dialog opens
-  useEffect(() => {
-    if (open) {
-      setOverrideWarnings(false);
-      setConfirmationNote("");
-      setError(null);
-      validatePlan();
-    }
-  }, [open, jobId]);
-
-  const validatePlan = async () => {
+  const validatePlan = useCallback(async () => {
     setIsValidating(true);
     setError(null);
 
@@ -134,7 +124,17 @@ export function PlanConfirmationDialog({
     } finally {
       setIsValidating(false);
     }
-  };
+  }, [jobId]);
+
+  // Reset state when dialog opens
+  useEffect(() => {
+    if (open) {
+      setOverrideWarnings(false);
+      setConfirmationNote("");
+      setError(null);
+      validatePlan();
+    }
+  }, [open, validatePlan]);
 
   const handleConfirm = async () => {
     if (!validationResult?.canConfirm) return;

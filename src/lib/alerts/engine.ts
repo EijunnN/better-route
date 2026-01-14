@@ -5,18 +5,15 @@
  * based on various conditions in the system.
  */
 
-import { and, eq, gte, lt, or, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  alertRules,
   alerts,
   optimizationJobs,
   USER_ROLES,
   users,
   vehicles,
 } from "@/db/schema";
-import { getAuditLogContext, withTenantFilter } from "@/db/tenant-aware";
-import { requireTenantContext } from "@/lib/tenant";
 
 export interface AlertContext {
   companyId: string;

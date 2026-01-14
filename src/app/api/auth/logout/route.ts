@@ -6,7 +6,7 @@ import { clearAuthCookies } from "@/lib/auth";
  *
  * Logout the current user by clearing authentication cookies
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Clear authentication cookies
     await clearAuthCookies();

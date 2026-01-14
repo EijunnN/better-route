@@ -1,10 +1,10 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, type SQL } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { fleets, vehicleFleets, vehicles } from "@/db/schema";
 import { TenantAccessDeniedError, withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { VEHICLE_STATUS, vehicleQuerySchema } from "@/lib/validations/vehicle";
+import { vehicleQuerySchema } from "@/lib/validations/vehicle";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -79,7 +79,9 @@ export async function GET(
       });
     }
 
-    const conditions: any[] = [inArray(vehicles.id, vehicleIdsInFleet)];
+    const conditions: SQL<unknown>[] = [
+      inArray(vehicles.id, vehicleIdsInFleet),
+    ];
 
     if (query.status) {
       conditions.push(eq(vehicles.status, query.status));

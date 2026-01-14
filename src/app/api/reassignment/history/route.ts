@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
       companyId: tenantCtx.companyId,
       jobId: searchParams.get("jobId") || undefined,
       driverId: searchParams.get("driverId") || undefined,
-      limit: parseInt(searchParams.get("limit") || "50"),
-      offset: parseInt(searchParams.get("offset") || "0"),
+      limit: parseInt(searchParams.get("limit") || "50", 10),
+      offset: parseInt(searchParams.get("offset") || "0", 10),
     });
 
     if (!validationResult.success) {

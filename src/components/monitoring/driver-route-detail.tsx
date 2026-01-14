@@ -8,7 +8,6 @@ import {
   Edit3,
   Loader2,
   MapPin,
-  MoreVertical,
   Truck,
   User,
   XCircle,
@@ -203,7 +202,12 @@ export function DriverRouteDetail({
       trackingId: stop.trackingId,
       sequence: stop.sequence,
       address: stop.address,
-      status: stop.status as any,
+      status: stop.status as
+        | "PENDING"
+        | "IN_PROGRESS"
+        | "COMPLETED"
+        | "FAILED"
+        | "SKIPPED",
       estimatedArrival: stop.estimatedArrival,
       timeWindowStart: stop.timeWindowStart,
       timeWindowEnd: stop.timeWindowEnd,
@@ -356,9 +360,9 @@ export function DriverRouteDetail({
                   <div className="mt-4 pt-4 border-t space-y-2">
                     {route.assignmentQuality.errors.length > 0 && (
                       <div className="flex flex-wrap gap-2">
-                        {route.assignmentQuality.errors.map((error, index) => (
+                        {route.assignmentQuality.errors.map((error) => (
                           <Badge
-                            key={index}
+                            key={error}
                             variant="destructive"
                             className="text-xs"
                           >

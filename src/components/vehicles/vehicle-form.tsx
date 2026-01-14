@@ -251,7 +251,7 @@ export function VehicleForm({
               step="1"
               value={formData.maxOrders}
               onChange={(e) =>
-                updateField("maxOrders", parseInt(e.target.value) || 20)
+                updateField("maxOrders", parseInt(e.target.value, 10) || 20)
               }
               disabled={isSubmitting}
               className={
@@ -531,7 +531,7 @@ export function VehicleForm({
                       onChange={(e) =>
                         updateField(
                           "breakDuration",
-                          parseInt(e.target.value) || null,
+                          parseInt(e.target.value, 10) || null,
                         )
                       }
                       disabled={isSubmitting}

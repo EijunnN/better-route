@@ -10,7 +10,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CapacityConstraintsSummary } from "@/components/optimization/capacity-constraints-summary";
 import { DepotSelector } from "@/components/optimization/depot-selector";
 import { DriverSelector } from "@/components/optimization/driver-selector";
@@ -25,13 +25,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import type { DepotLocationInput } from "@/lib/validations/optimization-config";
 
@@ -101,15 +94,7 @@ export default function OptimizationPage() {
   );
   const [pendingOrdersLoading, setPendingOrdersLoading] = useState(true);
 
-  // Load presets and pending orders count when companyId is available
-  useEffect(() => {
-    if (companyId) {
-      loadPresets();
-      loadPendingOrdersCount();
-    }
-  }, [companyId]);
-
-  const loadPendingOrdersCount = async () => {
+  const loadPendingOrdersCount = useCallback(async () => {
     if (!companyId) return;
     setPendingOrdersLoading(true);
     try {
@@ -126,9 +111,9 @@ export default function OptimizationPage() {
     } finally {
       setPendingOrdersLoading(false);
     }
-  };
+  }, [companyId]);
 
-  const loadPresets = async () => {
+  const loadPresets = useCallback(async () => {
     if (!companyId) return;
     setIsLoadingPresets(true);
     setPresetError(null);
@@ -146,7 +131,15 @@ export default function OptimizationPage() {
     } finally {
       setIsLoadingPresets(false);
     }
-  };
+  }, [companyId]);
+
+  // Load presets and pending orders count when companyId is available
+  useEffect(() => {
+    if (companyId) {
+      loadPresets();
+      loadPendingOrdersCount();
+    }
+  }, [companyId, loadPendingOrdersCount, loadPresets]);
 
   const savePreset = async () => {
     if (!presetName.trim()) {
@@ -162,7 +155,7 @@ export default function OptimizationPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-company-id": companyId!,
+          "x-company-id": companyId ?? "",
         },
         body: JSON.stringify({
           name: presetName,
@@ -246,7 +239,7 @@ export default function OptimizationPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-company-id": companyId!,
+          "x-company-id": companyId ?? "",
         },
         body: JSON.stringify({
           name: configName,
@@ -310,6 +303,7 @@ export default function OptimizationPage() {
       {/* Step indicator */}
       <div className="flex items-center gap-4 mb-8">
         <button
+          type="button"
           onClick={() => setStep("resources")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
             step === "resources"
@@ -322,6 +316,7 @@ export default function OptimizationPage() {
         </button>
         <ArrowRight className="w-4 h-4 text-muted-foreground" />
         <button
+          type="button"
           onClick={() => canProceedToSettings && setStep("settings")}
           disabled={!canProceedToSettings}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
@@ -412,7 +407,7 @@ export default function OptimizationPage() {
             </CardHeader>
             <CardContent>
               <VehicleSelector
-                companyId={companyId!}
+                companyId={companyId ?? ""}
                 selectedIds={selectedVehicleIds}
                 onChange={setSelectedVehicleIds}
               />
@@ -430,7 +425,7 @@ export default function OptimizationPage() {
             </CardHeader>
             <CardContent>
               <DriverSelector
-                companyId={companyId!}
+                companyId={companyId ?? ""}
                 selectedIds={selectedDriverIds}
                 onChange={setSelectedDriverIds}
               />
@@ -627,7 +622,7 @@ export default function OptimizationPage() {
                 </div>
 
                 {/* Pending Orders Summary */}
-                <CapacityConstraintsSummary companyId={companyId!} />
+                <CapacityConstraintsSummary companyId={companyId ?? ""} />
               </div>
             </CardContent>
           </Card>

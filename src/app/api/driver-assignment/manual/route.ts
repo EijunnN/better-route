@@ -1,13 +1,7 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import {
-  optimizationJobs,
-  orders,
-  USER_ROLES,
-  users,
-  vehicles,
-} from "@/db/schema";
+import { optimizationJobs, USER_ROLES, users, vehicles } from "@/db/schema";
 import { logCreate } from "@/lib/audit";
 import {
   type AssignmentValidationResult,
@@ -149,7 +143,7 @@ export async function POST(request: NextRequest) {
 
     // Check if we should proceed despite warnings
     const hasBlockingErrors = validation.errors.length > 0;
-    const hasWarnings = validation.warnings.length > 0;
+    const _hasWarnings = validation.warnings.length > 0;
 
     if (hasBlockingErrors && !data.overrideWarnings) {
       return NextResponse.json(

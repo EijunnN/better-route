@@ -5,12 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { CreateUserInput } from "@/lib/validations/user";
-import {
-  DRIVER_STATUS_LABELS,
-  isExpired,
-  isExpiringSoon,
-  ROLE_LABELS,
-} from "@/lib/validations/user";
+import { isExpired, isExpiringSoon } from "@/lib/validations/user";
 
 interface UserFormProps {
   onSubmit: (data: CreateUserInput) => Promise<void>;

@@ -1,7 +1,7 @@
 "use client";
 
-import { List, Map } from "lucide-react";
-import { useEffect, useState } from "react";
+import { List, Map as MapIcon } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { OrderForm, type OrderFormData } from "@/components/orders/order-form";
 import { OrderMap } from "@/components/orders/order-map";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -64,11 +64,11 @@ export default function OrdersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filterStatus, searchQuery]);
 
   useEffect(() => {
     fetchOrders();
-  }, [filterStatus, searchQuery]);
+  }, [fetchOrders]);
 
   const handleCreate = async (data: OrderFormData) => {
     const response = await fetch("/api/orders", {
@@ -209,7 +209,7 @@ export default function OrdersPage() {
             onClick={() => setViewMode("map")}
             className="rounded-l-none"
           >
-            <Map className="h-4 w-4" />
+            <MapIcon className="h-4 w-4" />
           </Button>
         </div>
       </div>

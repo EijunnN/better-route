@@ -71,7 +71,7 @@ export function DriverStatusModal({
       setContext("");
       setForce(false);
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       const response = err as Response;
       const errorData = await response.json();
 

@@ -1,10 +1,5 @@
 import { z } from "zod";
-import {
-  DRIVER_STATUS,
-  OPTIMIZATION_OBJECTIVE,
-  TIME_WINDOW_STRICTNESS,
-  VEHICLE_STATUS,
-} from "@/db/schema";
+import { OPTIMIZATION_OBJECTIVE, TIME_WINDOW_STRICTNESS } from "@/db/schema";
 
 export const OPTIMIZATION_OBJECTIVE_VALUES = Object.values(
   OPTIMIZATION_OBJECTIVE,
@@ -20,7 +15,7 @@ const coordinateSchema = z
   .refine(
     (val) => {
       const num = parseFloat(val);
-      return !isNaN(num);
+      return !Number.isNaN(num);
     },
     { message: "Must be a valid number" },
   )
@@ -38,7 +33,7 @@ const longitudeSchema = z
   .refine(
     (val) => {
       const num = parseFloat(val);
-      return !isNaN(num);
+      return !Number.isNaN(num);
     },
     { message: "Must be a valid number" },
   )
@@ -67,7 +62,7 @@ const timeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
 });
 
 // JSON array of UUIDs validation
-const uuidArraySchema = z
+const _uuidArraySchema = z
   .string()
   .transform((val) => {
     try {

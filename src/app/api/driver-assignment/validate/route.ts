@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, USER_ROLES, userSkills, users, vehicles } from "@/db/schema";
+import { orders, USER_ROLES, users, vehicles } from "@/db/schema";
 import {
   type AssignmentValidationResult,
   validateDriverAssignment,

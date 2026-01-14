@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -12,7 +12,7 @@ interface MonitoringMapProps {
 }
 
 export function MonitoringMap({
-  jobId,
+  jobId: _jobId,
   selectedDriverId,
   onDriverSelect,
 }: MonitoringMapProps) {
@@ -21,73 +21,7 @@ export function MonitoringMap({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!mapContainer.current) return;
-
-    const initMap = async () => {
-      try {
-        const maplibregl = await import("maplibre-gl");
-
-        // Create map instance
-        if (!mapContainer.current) return;
-
-        map.current = new maplibregl.Map({
-          container: mapContainer.current,
-          style: {
-            version: 8,
-            sources: {
-              "osm-tiles": {
-                type: "raster",
-                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-                tileSize: 256,
-                attribution: "&copy; OpenStreetMap Contributors",
-              },
-            },
-            layers: [
-              {
-                id: "osm-tiles",
-                type: "raster",
-                source: "osm-tiles",
-                minzoom: 0,
-                maxzoom: 19,
-              },
-            ],
-          },
-          center: [-58.4, -34.6], // Default to Buenos Aires
-          zoom: 12,
-        });
-
-        map.current.on("load", () => {
-          setIsLoading(false);
-          loadMapData();
-        });
-
-        map.current.on("error", (e) => {
-          console.error("Map error:", e);
-          setError("Failed to load map");
-          setIsLoading(false);
-        });
-      } catch (err) {
-        console.error("Failed to initialize map:", err);
-        setError("Failed to initialize map");
-        setIsLoading(false);
-      }
-    };
-
-    initMap();
-
-    return () => {
-      map.current?.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (map.current && !isLoading) {
-      loadMapData();
-    }
-  }, [jobId, selectedDriverId]);
-
-  const loadMapData = async () => {
+  const loadMapData = useCallback(async () => {
     if (!map.current) return;
 
     try {
@@ -113,7 +47,7 @@ export function MonitoringMap({
 
       const existingLayers = map.current.getStyle()?.layers;
       if (existingLayers) {
-        existingLayers.forEach((layer: any) => {
+        existingLayers.forEach((layer: { id: string }) => {
           if (layer.id !== "osm-tiles" && map.current?.getLayer(layer.id)) {
             map.current?.removeLayer(layer.id);
           }
@@ -132,10 +66,10 @@ export function MonitoringMap({
 
       // Separate routes and stops
       const routes = geojson.data.features.filter(
-        (f: any) => f.properties.type === "route",
+        (f: GeoJSON.Feature) => f.properties?.type === "route",
       );
       const stops = geojson.data.features.filter(
-        (f: any) => f.properties.type === "stop",
+        (f: GeoJSON.Feature) => f.properties?.type === "stop",
       );
 
       // Add route lines
@@ -215,12 +149,13 @@ export function MonitoringMap({
       }
 
       // Fit map to show all features
-      const bounds = new (window as any).maplibregl.LngLatBounds();
-      geojson.data.features.forEach((feature: any) => {
+      const maplibreglModule = await import("maplibre-gl");
+      const bounds = new maplibreglModule.LngLatBounds();
+      geojson.data.features.forEach((feature: GeoJSON.Feature) => {
         if (feature.geometry.type === "Point") {
-          bounds.extend(feature.geometry.coordinates);
+          bounds.extend(feature.geometry.coordinates as [number, number]);
         } else if (feature.geometry.type === "LineString") {
-          feature.geometry.coordinates.forEach((coord: number[]) => {
+          (feature.geometry.coordinates as [number, number][]).forEach((coord) => {
             bounds.extend(coord);
           });
         }
@@ -240,8 +175,10 @@ export function MonitoringMap({
         });
 
         if (features && features.length > 0) {
-          const props = features[0].properties as any;
-          onDriverSelect?.(props.driverName);
+          const props = features[0].properties as {
+            driverName?: string;
+          } | null;
+          if (props?.driverName) onDriverSelect?.(props.driverName);
         }
       });
 
@@ -263,7 +200,73 @@ export function MonitoringMap({
       console.error("Failed to load map data:", err);
       setError("Failed to load monitoring data");
     }
-  };
+  }, [selectedDriverId, onDriverSelect]);
+
+  useEffect(() => {
+    if (!mapContainer.current) return;
+
+    const initMap = async () => {
+      try {
+        const maplibregl = await import("maplibre-gl");
+
+        // Create map instance
+        if (!mapContainer.current) return;
+
+        map.current = new maplibregl.Map({
+          container: mapContainer.current,
+          style: {
+            version: 8,
+            sources: {
+              "osm-tiles": {
+                type: "raster",
+                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                tileSize: 256,
+                attribution: "&copy; OpenStreetMap Contributors",
+              },
+            },
+            layers: [
+              {
+                id: "osm-tiles",
+                type: "raster",
+                source: "osm-tiles",
+                minzoom: 0,
+                maxzoom: 19,
+              },
+            ],
+          },
+          center: [-58.4, -34.6], // Default to Buenos Aires
+          zoom: 12,
+        });
+
+        map.current.on("load", () => {
+          setIsLoading(false);
+          loadMapData();
+        });
+
+        map.current.on("error", (e) => {
+          console.error("Map error:", e);
+          setError("Failed to load map");
+          setIsLoading(false);
+        });
+      } catch (err) {
+        console.error("Failed to initialize map:", err);
+        setError("Failed to initialize map");
+        setIsLoading(false);
+      }
+    };
+
+    initMap();
+
+    return () => {
+      map.current?.remove();
+    };
+  }, [loadMapData]);
+
+  useEffect(() => {
+    if (map.current && !isLoading) {
+      loadMapData();
+    }
+  }, [isLoading, loadMapData]);
 
   return (
     <Card className="h-full">

@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-api";
-import { authorize } from "@/lib/authorization";
 import { getUserSessions } from "@/lib/session";
 
 /**
@@ -25,7 +24,7 @@ export async function GET(request: NextRequest) {
       })),
       count: sessions.length,
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: "Failed to get sessions" },
       { status: 401 },

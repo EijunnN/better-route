@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       message: `Invalidated ${count} sessions`,
       count,
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: "Failed to invalidate all sessions" },
       { status: 401 },

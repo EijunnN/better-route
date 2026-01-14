@@ -193,7 +193,7 @@ export function batchCalculateDistances(
  * @param companyId - Company ID
  */
 export async function invalidateDistanceCache(
-  companyId: string,
+  _companyId: string,
 ): Promise<void> {
   // Use cache pattern to invalidate - the cache will be rebuilt on next access
   // For now we rely on TTL expiration, but this function can be extended

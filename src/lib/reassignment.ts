@@ -1,13 +1,11 @@
-import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   fleets,
-  optimizationJobs,
   orders,
   reassignmentsHistory,
   routeStops,
   USER_ROLES,
-  userAvailability,
   userSkills,
   users,
   vehicleSkills,
@@ -183,7 +181,7 @@ export async function getAvailableReplacementDrivers(
   companyId: string,
   absentDriverId: string,
   strategy: ReassignmentStrategy = "SAME_FLEET",
-  jobId?: string,
+  _jobId?: string,
   limit: number = 10,
 ): Promise<
   Array<{
@@ -211,11 +209,12 @@ export async function getAvailableReplacementDrivers(
   }
 
   const absentDriverFleetId = absentDriver.primaryFleetId;
-  const absentDriverFleetType = absentDriver.primaryFleet?.type;
+  const _absentDriverFleetType = absentDriver.primaryFleet?.type;
 
   // Build conditions based on strategy
   // For SAME_FLEET strategy, prioritize drivers from same fleet first
-  let sameFleetDrivers: Awaited<ReturnType<typeof db.query.users.findMany>> = [];
+  let sameFleetDrivers: Awaited<ReturnType<typeof db.query.users.findMany>> =
+    [];
 
   // Only search for same-fleet drivers if the absent driver has a primary fleet
   if (absentDriverFleetId) {
@@ -458,7 +457,9 @@ export async function calculateReassignmentImpact(
     replacementDriver.driverStatus === "COMPLETED";
 
   if (!isAvailableStatus) {
-    warnings.push(`Driver status is ${replacementDriver.driverStatus || "unknown"}`);
+    warnings.push(
+      `Driver status is ${replacementDriver.driverStatus || "unknown"}`,
+    );
   }
 
   // Collect all stops from affected routes

@@ -15,7 +15,6 @@ import {
   type AssignmentSuggestionsSchema,
   assignmentSuggestionsSchema,
 } from "@/lib/validations/driver-assignment";
-import { getDayOfWeek } from "@/lib/validations/driver-availability";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -100,14 +99,16 @@ export async function POST(request: NextRequest) {
           typeof order.requiredSkills === "string"
             ? JSON.parse(order.requiredSkills)
             : order.requiredSkills;
-        skills.forEach((skill: string) => requiredSkills.add(skill));
+        for (const skill of skills as string[]) {
+          requiredSkills.add(skill);
+        }
       }
     }
 
     // Get vehicle fleet IDs
     const vehicleFleetIds =
       vehicle.vehicleFleets?.map((vf) => vf.fleetId) || [];
-    const primaryVehicleFleetId = vehicleFleetIds[0] || null;
+    const _primaryVehicleFleetId = vehicleFleetIds[0] || null;
 
     // Get available drivers (users with CONDUCTOR role) from same fleet or secondary fleets
     const availableDrivers = await db.query.users.findMany({
@@ -320,7 +321,6 @@ function getStrategyWeights(strategy: string) {
       return { skills: 2, availability: 5, license: 3, fleet: 1 };
     case "FLEET_MATCH":
       return { skills: 2, availability: 2, license: 3, fleet: 5 };
-    case "BALANCED":
     default:
       return { skills: 1, availability: 1, license: 1, fleet: 1 };
   }

@@ -4,7 +4,6 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CheckCircle2,
-  Clock,
   Package,
   Route,
   TrendingUp,
@@ -23,15 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { db } from "@/db";
-import {
-  DRIVER_STATUS,
-  ORDER_STATUS,
-  orders,
-  USER_ROLES,
-  users,
-  VEHICLE_STATUS,
-  vehicles,
-} from "@/db/schema";
+import { orders, USER_ROLES, users, vehicles } from "@/db/schema";
 import { verifyToken } from "@/lib/auth";
 
 async function getCompanyId(): Promise<string | null> {
@@ -162,12 +153,13 @@ function RecentOrderItem({
 }
 
 interface DriverItemProps {
+  id: string;
   name: string;
   status: string;
   fleetName: string;
 }
 
-function ActiveDriverItem({ name, status, fleetName }: DriverItemProps) {
+function ActiveDriverItem({ id: _id, name, status, fleetName }: DriverItemProps) {
   const statusConfig: Record<string, { label: string; color: string }> = {
     AVAILABLE: { label: "Disponible", color: "bg-[hsl(var(--chart-2))]" },
     ASSIGNED: { label: "Asignado", color: "bg-[hsl(var(--chart-3))]" },
@@ -297,6 +289,7 @@ export default async function DashboardPage() {
     });
 
     activeDriversList = driversWithFleets.map((d) => ({
+      id: d.id,
       name: d.name,
       status: d.driverStatus || "AVAILABLE",
       fleetName: d.primaryFleet?.name || "Sin flota",
@@ -453,8 +446,8 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {activeDriversList.map((driver, index) => (
-                  <ActiveDriverItem key={index} {...driver} />
+                {activeDriversList.map((driver) => (
+                  <ActiveDriverItem key={driver.id} {...driver} />
                 ))}
               </div>
             )}

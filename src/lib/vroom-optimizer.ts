@@ -17,7 +17,6 @@ import {
   solveVRP,
   type VroomRequest,
   type VroomResponse,
-  type VroomRoute,
 } from "./vroom-client";
 
 // Our domain types
@@ -104,10 +103,13 @@ const skillMap = new Map<string, number>();
 let skillCounter = 1;
 
 function getSkillId(skillName: string): number {
-  if (!skillMap.has(skillName)) {
-    skillMap.set(skillName, skillCounter++);
+  const existingId = skillMap.get(skillName);
+  if (existingId !== undefined) {
+    return existingId;
   }
-  return skillMap.get(skillName)!;
+  const newId = skillCounter++;
+  skillMap.set(skillName, newId);
+  return newId;
 }
 
 /**

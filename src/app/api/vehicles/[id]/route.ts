@@ -1,8 +1,12 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { fleets, vehicleFleetHistory, vehicleFleets, vehicles } from "@/db/schema";
-import { withTenantFilter } from "@/db/tenant-aware";
+import {
+  fleets,
+  vehicleFleetHistory,
+  vehicleFleets,
+  vehicles,
+} from "@/db/schema";
 import { logDelete, logUpdate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
 import { updateVehicleSchema } from "@/lib/validations/vehicle";
@@ -114,9 +118,10 @@ export async function PATCH(
     let fleetIdsToUpdate: string[] | null = null;
     if (validatedData.fleetIds !== undefined) {
       try {
-        fleetIdsToUpdate = typeof validatedData.fleetIds === "string"
-          ? JSON.parse(validatedData.fleetIds)
-          : validatedData.fleetIds;
+        fleetIdsToUpdate =
+          typeof validatedData.fleetIds === "string"
+            ? JSON.parse(validatedData.fleetIds)
+            : validatedData.fleetIds;
 
         // Validate that all fleet IDs exist and belong to this company
         if (fleetIdsToUpdate && fleetIdsToUpdate.length > 0) {
@@ -132,7 +137,10 @@ export async function PATCH(
 
           if (validFleets.length !== fleetIdsToUpdate.length) {
             return NextResponse.json(
-              { error: "Una o más flotas no encontradas o no pertenecen a esta empresa" },
+              {
+                error:
+                  "Una o más flotas no encontradas o no pertenecen a esta empresa",
+              },
               { status: 400 },
             );
           }
@@ -145,20 +153,27 @@ export async function PATCH(
       }
     }
 
-    // Remove fleetIds from updateData as it's handled via junction table
-    const { fleetIds: _, ...restValidatedData } = validatedData;
-    const updateData: any = { ...restValidatedData };
-    if (validatedData.insuranceExpiry !== undefined) {
-      updateData.insuranceExpiry = validatedData.insuranceExpiry
-        ? new Date(validatedData.insuranceExpiry)
+    // Remove fleetIds and date fields from updateData as they need special handling
+    const {
+      fleetIds: _,
+      insuranceExpiry: insuranceExpiryStr,
+      inspectionExpiry: inspectionExpiryStr,
+      ...restValidatedData
+    } = validatedData;
+    const updateData: Partial<typeof vehicles.$inferInsert> = {
+      ...restValidatedData,
+      updatedAt: new Date(),
+    };
+    if (insuranceExpiryStr !== undefined) {
+      updateData.insuranceExpiry = insuranceExpiryStr
+        ? new Date(insuranceExpiryStr)
         : null;
     }
-    if (validatedData.inspectionExpiry !== undefined) {
-      updateData.inspectionExpiry = validatedData.inspectionExpiry
-        ? new Date(validatedData.inspectionExpiry)
+    if (inspectionExpiryStr !== undefined) {
+      updateData.inspectionExpiry = inspectionExpiryStr
+        ? new Date(inspectionExpiryStr)
         : null;
     }
-    updateData.updatedAt = new Date();
 
     const [updatedVehicle] = await db
       .update(vehicles)
@@ -181,8 +196,12 @@ export async function PATCH(
       const currentFleetIds = currentVehicleFleets.map((vf) => vf.fleetId);
 
       // Find fleets to add and remove
-      const fleetsToAdd = fleetIdsToUpdate.filter((fid) => !currentFleetIds.includes(fid));
-      const fleetsToRemove = currentFleetIds.filter((fid) => !fleetIdsToUpdate.includes(fid));
+      const fleetsToAdd = fleetIdsToUpdate.filter(
+        (fid) => !currentFleetIds.includes(fid),
+      );
+      const fleetsToRemove = currentFleetIds.filter(
+        (fid) => !fleetIdsToUpdate.includes(fid),
+      );
 
       // Remove old fleet associations
       if (fleetsToRemove.length > 0) {
@@ -244,7 +263,7 @@ export async function PATCH(
       .from(vehicleFleets)
       .where(eq(vehicleFleets.vehicleId, id));
 
-    const response: any = {
+    const response = {
       ...updatedVehicle,
       fleetIds: updatedVehicleFleets.map((vf) => vf.fleetId),
     };

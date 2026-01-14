@@ -87,7 +87,7 @@ export async function PUT(
     }
 
     // Prepare update values
-    const updateValues: any = {
+    const updateValues: Partial<typeof alertRules.$inferInsert> = {
       updatedAt: new Date(),
     };
 

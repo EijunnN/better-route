@@ -25,7 +25,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AssignmentHistory } from "./assignment-history";
 import {
   AssignmentMetricsCard,
   DriverAssignmentDisplay,
@@ -403,7 +402,7 @@ function UnassignedOrdersList({
 }
 
 // Map placeholder component
-function RouteMapPlaceholder() {
+function _RouteMapPlaceholder() {
   return (
     <div className="w-full h-full min-h-[400px] rounded-lg border-2 border-dashed flex items-center justify-center bg-muted/20">
       <div className="text-center">
@@ -442,7 +441,7 @@ export function OptimizationResults({
     driverName?: string;
   } | null>(null);
 
-  const selectedRoute = result.routes.find(
+  const _selectedRoute = result.routes.find(
     (r) => r.routeId === selectedRouteId,
   );
 

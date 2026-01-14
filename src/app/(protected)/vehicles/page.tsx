@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { VehicleForm } from "@/components/vehicles/vehicle-form";
 import { VehicleStatusModal } from "@/components/vehicles/vehicle-status-modal";
@@ -73,7 +73,7 @@ export default function VehiclesPage() {
     null,
   );
 
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     try {
       const response = await fetch("/api/vehicles", {
         headers: {
@@ -82,19 +82,21 @@ export default function VehiclesPage() {
       });
       const data = await response.json();
       // Map fleets array to fleetIds
-      const vehiclesData = (data.data || []).map((v: any) => ({
-        ...v,
-        fleetIds: v.fleets?.map((f: any) => f.id) || [],
-      }));
+      const vehiclesData = (data.data || []).map(
+        (v: Vehicle & { fleets?: Array<{ id: string; name: string }> }) => ({
+          ...v,
+          fleetIds: v.fleets?.map((f) => f.id) || [],
+        }),
+      );
       setVehicles(vehiclesData);
     } catch (error) {
       console.error("Error fetching vehicles:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchFleets = async () => {
+  const fetchFleets = useCallback(async () => {
     try {
       const response = await fetch("/api/fleets", {
         headers: {
@@ -106,9 +108,9 @@ export default function VehiclesPage() {
     } catch (error) {
       console.error("Error fetching fleets:", error);
     }
-  };
+  }, []);
 
-  const fetchDrivers = async () => {
+  const fetchDrivers = useCallback(async () => {
     try {
       const response = await fetch("/api/users?role=CONDUCTOR", {
         headers: {
@@ -117,18 +119,21 @@ export default function VehiclesPage() {
       });
       const data = await response.json();
       setDrivers(
-        (data.data || []).map((d: any) => ({ id: d.id, name: d.name })),
+        (data.data || []).map((d: { id: string; name: string }) => ({
+          id: d.id,
+          name: d.name,
+        })),
       );
     } catch (error) {
       console.error("Error fetching drivers:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchVehicles();
     fetchFleets();
     fetchDrivers();
-  }, []);
+  }, [fetchDrivers, fetchFleets, fetchVehicles]);
 
   const handleCreate = async (data: VehicleInput) => {
     const response = await fetch("/api/vehicles", {
@@ -388,12 +393,14 @@ export default function VehiclesPage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
                       <button
+                        type="button"
                         onClick={() => setEditingVehicle(vehicle)}
                         className="text-muted-foreground hover:text-foreground mr-3 transition-colors"
                       >
                         Editar
                       </button>
                       <button
+                        type="button"
                         onClick={() => setStatusModalVehicle(vehicle)}
                         className="text-muted-foreground hover:text-foreground mr-3 transition-colors"
                       >
@@ -401,6 +408,7 @@ export default function VehiclesPage() {
                       </button>
                       {vehicle.active && (
                         <button
+                          type="button"
                           onClick={() => handleDelete(vehicle.id)}
                           className="text-destructive hover:text-destructive/80 transition-colors"
                         >

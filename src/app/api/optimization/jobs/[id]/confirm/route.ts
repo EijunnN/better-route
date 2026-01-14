@@ -7,9 +7,9 @@ import { createAuditLog } from "@/lib/audit";
 import {
   calculateComparisonMetrics,
   calculatePlanMetrics,
-  getPlanMetrics,
   savePlanMetrics,
 } from "@/lib/plan-metrics";
+import type { OptimizationResult } from "@/lib/optimization-runner";
 import {
   canConfirmPlan,
   validatePlanForConfirmation,
@@ -115,10 +115,10 @@ export async function POST(
     }
 
     // Parse optimization result
-    let result;
+    let result: OptimizationResult | null = null;
     try {
-      result = job.result ? JSON.parse(job.result) : null;
-    } catch (error) {
+      result = job.result ? (JSON.parse(job.result) as OptimizationResult) : null;
+    } catch (_error) {
       return NextResponse.json(
         { error: "Failed to parse optimization result" },
         { status: 500 },
@@ -267,7 +267,7 @@ export async function POST(
  * Returns the confirmation status of a plan.
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {

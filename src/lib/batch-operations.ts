@@ -340,7 +340,7 @@ export async function batchInsertWithCopy(
     .join("\n");
 
   const csvHeader = columns.join(",");
-  const fullCsv = csvHeader + "\n" + csvData;
+  const _fullCsv = `${csvHeader}\n${csvData}`;
 
   try {
     // Use PostgreSQL's COPY FROM STDIN

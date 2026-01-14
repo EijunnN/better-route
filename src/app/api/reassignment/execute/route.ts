@@ -1,19 +1,9 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import {
-  optimizationJobs,
-  reassignmentsHistory,
-  routeStops,
-  USER_ROLES,
-  users,
-} from "@/db/schema";
+import { reassignmentsHistory, USER_ROLES, users } from "@/db/schema";
 import { createAuditLog } from "@/lib/audit";
-import {
-  calculateReassignmentImpact,
-  executeReassignment,
-  getAffectedRoutesForAbsentDriver,
-} from "@/lib/reassignment";
+import { executeReassignment } from "@/lib/reassignment";
 import { setTenantContext } from "@/lib/tenant";
 import {
   type ExecuteReassignmentSchema,

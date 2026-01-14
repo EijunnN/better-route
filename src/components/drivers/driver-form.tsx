@@ -84,22 +84,29 @@ export function DriverForm({
 
     try {
       await onSubmit(submitData);
-    } catch (error: any) {
-      if (error.details) {
+    } catch (error) {
+      const err = error as {
+        details?: Array<{ path: string[]; message: string }>;
+        error?: string;
+      };
+      if (err.details) {
         const fieldErrors: Record<string, string> = {};
-        error.details.forEach((err: any) => {
-          fieldErrors[err.path[0]] = err.message;
-        });
+        for (const detail of err.details) {
+          fieldErrors[detail.path[0]] = detail.message;
+        }
         setErrors(fieldErrors);
       } else {
-        setErrors({ form: error.error || "Error al guardar el conductor" });
+        setErrors({ form: err.error || "Error al guardar el conductor" });
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const updateField = (field: keyof DriverInput, value: any) => {
+  const updateField = (
+    field: keyof DriverInput,
+    value: DriverInput[keyof DriverInput],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {

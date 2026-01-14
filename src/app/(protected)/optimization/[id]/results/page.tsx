@@ -21,6 +21,74 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 
+interface OptimizationResult {
+  routes: Array<{
+    routeId: string;
+    vehicleId: string;
+    vehiclePlate: string;
+    driverId?: string;
+    driverName?: string;
+    stops: Array<{
+      orderId: string;
+      trackingId: string;
+      sequence: number;
+      address: string;
+      latitude: string;
+      longitude: string;
+      estimatedArrival?: string;
+      timeWindow?: {
+        start: string;
+        end: string;
+      };
+    }>;
+    totalDistance: number;
+    totalDuration: number;
+    totalWeight: number;
+    totalVolume: number;
+    utilizationPercentage: number;
+    timeWindowViolations: number;
+    geometry?: string;
+    assignmentQuality?: {
+      score: number;
+      warnings: string[];
+      errors: string[];
+    };
+  }>;
+  unassignedOrders: Array<{
+    orderId: string;
+    trackingId: string;
+    reason: string;
+  }>;
+  metrics: {
+    totalDistance: number;
+    totalDuration: number;
+    totalRoutes: number;
+    totalStops: number;
+    utilizationRate: number;
+    timeWindowComplianceRate: number;
+  };
+  assignmentMetrics?: {
+    totalAssignments: number;
+    assignmentsWithWarnings: number;
+    assignmentsWithErrors: number;
+    averageScore: number;
+    skillCoverage: number;
+    licenseCompliance: number;
+    fleetAlignment: number;
+    workloadBalance: number;
+  };
+  summary: {
+    optimizedAt: string;
+    objective: string;
+    processingTimeMs: number;
+  };
+  depot?: {
+    latitude: number;
+    longitude: number;
+  };
+  isPartial?: boolean;
+}
+
 function ResultsPageContent() {
   const router = useRouter();
   const params = useParams();
@@ -34,7 +102,7 @@ function ResultsPageContent() {
   const [jobData, setJobData] = useState<OptimizationJobData | null>(null);
   const [isStartingJob, setIsStartingJob] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<OptimizationResult | null>(null);
   const [viewMode, setViewMode] = useState<"existing" | "new">(() => {
     return existingJobId ? "existing" : "new";
   });
@@ -69,7 +137,7 @@ function ResultsPageContent() {
 
           // If job has results, load them
           if (job.result) {
-            setResult(job.result);
+            setResult(job.result as OptimizationResult);
           } else if (job.status === "COMPLETED" || job.status === "CANCELLED") {
             // Job is done but no results - treat as error
             setStartError("Job completed but no results available");
@@ -160,8 +228,8 @@ function ResultsPageContent() {
     startOptimization();
   }, [configId, viewMode, existingJobId, reoptimize, companyId]);
 
-  const handleJobComplete = (jobResult: any) => {
-    setResult(jobResult);
+  const handleJobComplete = (jobResult: unknown) => {
+    setResult(jobResult as OptimizationResult);
   };
 
   const handleJobError = (error: string) => {

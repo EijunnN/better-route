@@ -1,4 +1,4 @@
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, type SQL, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { alertRules } from "@/db/schema";
@@ -28,14 +28,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
     const enabled = searchParams.get("enabled");
-    const limit = parseInt(searchParams.get("limit") || "100");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limit = parseInt(searchParams.get("limit") || "100", 10);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     // Build conditions
-    const conditions: any[] = [];
+    const conditions: SQL<unknown>[] = [];
 
     if (type) {
-      conditions.push(eq(alertRules.type, type as any));
+      conditions.push(sql`${alertRules.type} = ${type}`);
     }
 
     if (enabled !== null) {

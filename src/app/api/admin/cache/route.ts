@@ -8,7 +8,7 @@
  * Implements Story 17.2 - Cache metrics monitoring
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import type { AuthenticatedRequest } from "@/lib/api-middleware";
 import { withAuthAndAudit } from "@/lib/api-middleware";
 import { Action, EntityType, isAdmin } from "@/lib/authorization";
@@ -22,7 +22,7 @@ import { getCacheStats, invalidateAllCache, warmupCache } from "@/lib/cache";
 export const GET = withAuthAndAudit(
   EntityType.CACHE,
   Action.READ,
-  async (request: AuthenticatedRequest) => {
+  async (_request: AuthenticatedRequest) => {
     const stats = await getCacheStats();
 
     return NextResponse.json({

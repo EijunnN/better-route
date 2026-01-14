@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logCreate, logDelete, logUpdate } from "@/lib/audit";
+import { logCreate } from "@/lib/audit";
 import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import { orderQuerySchema, orderSchema } from "@/lib/validations/order";
 
@@ -108,9 +108,12 @@ export async function GET(request: NextRequest) {
       data: enrichedData,
       meta: { total: totalResult.length },
     });
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch orders" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to fetch orders",
+      },
       { status: 400 },
     );
   }
@@ -190,15 +193,21 @@ export async function POST(request: NextRequest) {
     await logCreate("order", newRecord.id, newRecord);
 
     return NextResponse.json(newRecord, { status: 201 });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
+        {
+          error: "Validation failed",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to create order" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to create order",
+      },
       { status: 500 },
     );
   }

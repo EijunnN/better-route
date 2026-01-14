@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import type {
   TIME_WINDOW_STRICTNESS,
   TIME_WINDOW_TYPES,
-  TimeWindowPresetInput,
 } from "@/lib/validations/time-window-preset";
 
 export interface TimeWindowPresetFormData {
@@ -144,7 +143,7 @@ export function TimeWindowPresetForm({
   };
 
   const handleToleranceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleChange("toleranceMinutes", parseInt(e.target.value) || 0);
+    handleChange("toleranceMinutes", parseInt(e.target.value, 10) || 0);
   };
 
   return (

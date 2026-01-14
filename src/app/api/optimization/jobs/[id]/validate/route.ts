@@ -3,17 +3,14 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
 import { getTenantContext } from "@/db/tenant-aware";
+import type { OptimizationResult } from "@/lib/optimization-runner";
 import {
   getIssuesByCategory,
   getIssuesBySeverity,
   getValidationSummaryText,
-  type PlanValidationResult,
   validatePlanForConfirmation,
 } from "@/lib/plan-validation";
-import {
-  type PlanValidationRequestSchema,
-  planValidationRequestSchema,
-} from "@/lib/validations/plan-confirmation";
+import type { PlanValidationRequestSchema } from "@/lib/validations/plan-confirmation";
 
 /**
  * GET /api/optimization/jobs/[id]/validate
@@ -120,10 +117,10 @@ export async function GET(
     }
 
     // Parse optimization result
-    let result;
+    let result: OptimizationResult | null = null;
     try {
-      result = job.result ? JSON.parse(job.result) : null;
-    } catch (error) {
+      result = job.result ? (JSON.parse(job.result) as OptimizationResult) : null;
+    } catch (_error) {
       return NextResponse.json(
         { error: "Failed to parse optimization result" },
         { status: 500 },

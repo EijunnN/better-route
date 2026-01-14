@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
 import { requireTenantContext, setTenantContext } from "@/lib/tenant";
@@ -56,9 +55,12 @@ export async function GET(
     };
 
     return NextResponse.json(parsedTemplate);
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch template" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to fetch template",
+      },
       { status: 500 },
     );
   }
@@ -124,7 +126,8 @@ export async function PATCH(
     }
 
     // Build update object
-    const updateData: any = {};
+    const updateData: Partial<typeof csvColumnMappingTemplates.$inferInsert> =
+      {};
     if (validatedData.name !== undefined) updateData.name = validatedData.name;
     if (validatedData.description !== undefined)
       updateData.description = validatedData.description;
@@ -158,15 +161,21 @@ export async function PATCH(
     };
 
     return NextResponse.json(parsedTemplate);
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
+        {
+          error: "Validation failed",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update template" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to update template",
+      },
       { status: 500 },
     );
   }
@@ -218,9 +227,12 @@ export async function DELETE(
       .where(eq(csvColumnMappingTemplates.id, id));
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to delete template" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to delete template",
+      },
       { status: 500 },
     );
   }

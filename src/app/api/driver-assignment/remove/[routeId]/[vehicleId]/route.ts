@@ -4,10 +4,6 @@ import { db } from "@/db";
 import { optimizationJobs, vehicles } from "@/db/schema";
 import { logCreate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
-import {
-  type RemoveDriverAssignmentSchema,
-  removeDriverAssignmentSchema,
-} from "@/lib/validations/driver-assignment";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");

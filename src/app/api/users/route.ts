@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { fleets, users } from "@/db/schema";
+import { users } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { logCreate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
@@ -115,7 +115,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply tenant filtering - filter out any undefined values
-    const validConditions = conditions.filter((c): c is NonNullable<typeof c> => c !== undefined);
+    const validConditions = conditions.filter(
+      (c): c is NonNullable<typeof c> => c !== undefined,
+    );
     const whereClause = withTenantFilter(users, validConditions);
 
     const [data, totalResult] = await Promise.all([
@@ -314,11 +316,14 @@ export async function POST(request: NextRequest) {
     await logCreate("user", newUser.id, newUser);
 
     return NextResponse.json(newUser, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating user:", error);
-    if (error.name === "ZodError") {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
+        {
+          error: "Invalid input",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }

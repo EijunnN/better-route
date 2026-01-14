@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
 import { requireTenantContext, setTenantContext } from "@/lib/tenant";
@@ -46,9 +45,12 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json(parsedTemplates);
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch templates" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to fetch templates",
+      },
       { status: 500 },
     );
   }
@@ -110,15 +112,21 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(parsedTemplate, { status: 201 });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
+        {
+          error: "Validation failed",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to create template" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to create template",
+      },
       { status: 500 },
     );
   }

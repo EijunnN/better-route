@@ -13,7 +13,6 @@ import {
 } from "@/lib/batch-operations";
 import { mapCSVRow, suggestColumnMapping } from "@/lib/csv-column-mapping";
 import { requireTenantContext, setTenantContext } from "@/lib/tenant";
-import { csvImportWithMappingSchema } from "@/lib/validations/csv-column-mapping";
 import { orderSchema } from "@/lib/validations/order";
 
 // CSV import request schema (updated to support templates)
@@ -55,7 +54,7 @@ const csvRecordValidationResultSchema = z.object({
 });
 
 // CSV import result schema
-const csvImportResultSchema = z.object({
+const _csvImportResultSchema = z.object({
   success: z.boolean(),
   totalRows: z.number(),
   validRows: z.number(),
@@ -98,7 +97,7 @@ function createValidationError(
   message: string,
   severity: "critical" | "warning" | "info" = "critical",
   errorType: string = ERROR_TYPES.VALIDATION,
-  value?: any,
+  value?: unknown,
 ): CSVValidationError {
   return { row, field, message, severity, errorType, value };
 }
@@ -259,9 +258,9 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
 function mapCSVRowToOrder(
   row: CSVRow,
   customMapping?: Record<string, string>,
-): any {
+): Record<string, string> {
   const mapping = { ...DEFAULT_COLUMN_MAPPING, ...customMapping };
-  const result: any = {};
+  const result: Record<string, string> = {};
 
   for (const [csvKey, csvValue] of Object.entries(row)) {
     const normalizedKey = csvKey.toLowerCase().trim();
@@ -399,7 +398,7 @@ function validateOrderRow(
       const lat = parseFloat(orderData.latitude);
       const lng = parseFloat(orderData.longitude);
 
-      if (isNaN(lat) || lat < -90 || lat > 90) {
+      if (Number.isNaN(lat) || lat < -90 || lat > 90) {
         errors.push(
           createValidationError(
             rowIndex,
@@ -412,7 +411,7 @@ function validateOrderRow(
         );
       }
 
-      if (isNaN(lng) || lng < -180 || lng > 180) {
+      if (Number.isNaN(lng) || lng < -180 || lng > 180) {
         errors.push(
           createValidationError(
             rowIndex,
@@ -459,7 +458,7 @@ function validateOrderRow(
       // Validate numeric fields
       if (orderData.weightRequired) {
         const weight = parseFloat(orderData.weightRequired);
-        if (isNaN(weight) || weight <= 0) {
+        if (Number.isNaN(weight) || weight <= 0) {
           errors.push(
             createValidationError(
               rowIndex,
@@ -475,7 +474,7 @@ function validateOrderRow(
 
       if (orderData.volumeRequired) {
         const volume = parseFloat(orderData.volumeRequired);
-        if (isNaN(volume) || volume <= 0) {
+        if (Number.isNaN(volume) || volume <= 0) {
           errors.push(
             createValidationError(
               rowIndex,
@@ -526,7 +525,7 @@ function validateOrderRow(
  * Validate time window preset exists with enhanced error reporting
  */
 async function validateTimeWindowPresets(
-  orderDataList: any[],
+  orderDataList: Array<{ timeWindowPresetId?: string }>,
   companyId: string,
 ): Promise<CSVValidationError[]> {
   const errors: CSVValidationError[] = [];
@@ -758,7 +757,10 @@ export async function POST(request: NextRequest) {
 
     // Map valid rows to order data for further validation
     const orderDataList = validRecords.map((record) => {
-      const row = rows.find((_, i) => i + 2 === record.row)!;
+      const row = rows.find((_, i) => i + 2 === record.row);
+      if (!row) {
+        throw new Error(`Row not found for record at row ${record.row}`);
+      }
       return Object.keys(finalMapping).length > 0
         ? mapCSVRow(row, finalMapping)
         : mapCSVRowToOrder(row, validatedData.columnMapping);
@@ -924,15 +926,21 @@ export async function POST(request: NextRequest) {
       },
       { status: importErrors.length === 0 ? 201 : 207 },
     );
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
+        {
+          error: "Validation failed",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to import orders" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to import orders",
+      },
       { status: 500 },
     );
   }

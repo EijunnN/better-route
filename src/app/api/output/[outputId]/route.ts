@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { job, configuration } = jobResult[0];
+    const { configuration } = jobResult[0];
 
     // Fetch all route stops for this job with driver and vehicle information
     const stopsResult = await db
@@ -149,8 +149,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         });
       }
 
-      const route = driverRoutesMap.get(driver.id)!;
-      const metadata = stop.metadata as Record<string, any> | null;
+      const route = driverRoutesMap.get(driver.id);
+      if (!route) continue;
+      const metadata = stop.metadata as {
+        trackingId?: string;
+        customerName?: string;
+        customerPhone?: string;
+        customerNotes?: string;
+      } | null;
       const stopOutput: RouteStopOutput = {
         sequence: stop.sequence,
         orderId: stop.orderId,
@@ -368,7 +374,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
  * DELETE /api/output/[outputId]
  * Delete an output record (soft delete by marking as inactive)
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     // Extract tenant context from headers
     const tenantCtx = getTenantContext();
@@ -380,7 +386,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const { companyId } = tenantCtx;
-    const { outputId } = await params;
+    // Await params to satisfy the function signature
+    await params;
 
     // Set tenant context for database operations
     setTenantContext({ companyId, userId: "" });

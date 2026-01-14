@@ -5,7 +5,6 @@ import {
   convertOutputToCSV,
   generatePlanOutput,
 } from "@/lib/output-generator";
-import type { PlanOutput } from "@/lib/output-generator-types";
 import { getTenantContext, setTenantContext } from "@/lib/tenant";
 
 /**

@@ -272,7 +272,7 @@ export function suggestColumnMapping(
     if (suggestedMapping[header]) continue;
 
     // Check if there's a custom mapping for this header
-    if (customMapping && customMapping[header]) {
+    if (customMapping?.[header]) {
       suggestedMapping[header] = customMapping[header];
       confidence[header] = 1.0;
       autoMappedCount++;

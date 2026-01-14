@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
@@ -294,14 +294,17 @@ export async function PATCH(
       vehicleCount: relatedVehicles.length,
       userCount: relatedUsers.length,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating fleet:", error);
     if (error instanceof TenantAccessDeniedError) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
-    if (error.name === "ZodError") {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
+        {
+          error: "Invalid input",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }

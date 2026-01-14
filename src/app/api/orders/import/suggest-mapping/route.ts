@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
 import {
@@ -69,15 +68,23 @@ export async function POST(request: NextRequest) {
       ...suggestions,
       requiredFieldsValidation,
     });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
+        {
+          error: "Validation failed",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to generate suggestions" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to generate suggestions",
+      },
       { status: 500 },
     );
   }

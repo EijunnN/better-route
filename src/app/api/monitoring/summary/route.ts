@@ -3,7 +3,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   alerts,
-  optimizationConfigurations,
   optimizationJobs,
   routeStops,
   USER_ROLES,
@@ -115,7 +114,7 @@ export async function GET(request: NextRequest) {
     let totalStops = 0;
     let completedStops = 0;
     let delayedStops = 0;
-    let routesCount = 0;
+    let _routesCount = 0;
 
     if (dbStops.length > 0) {
       // Use actual stop data from database
@@ -139,9 +138,10 @@ export async function GET(request: NextRequest) {
       }).length;
     } else if (parsedResult?.routes) {
       // Fallback to parsed result if no stops in database yet
-      routesCount = parsedResult.routes.length;
+      _routesCount = parsedResult.routes.length;
       totalStops = parsedResult.routes.reduce(
-        (sum: number, route: any) => sum + (route.stops?.length || 0),
+        (sum: number, route: { stops?: unknown[] }) =>
+          sum + (route.stops?.length || 0),
         0,
       );
       // Mock data for when stops haven't been created yet

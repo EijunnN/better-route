@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FleetForm } from "@/components/fleets/fleet-form";
 import { Button } from "@/components/ui/button";
 import type { FleetInput } from "@/lib/validations/fleet";
@@ -43,7 +43,7 @@ export default function FleetsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
 
-  const fetchFleets = async () => {
+  const fetchFleets = useCallback(async () => {
     try {
       const response = await fetch("/api/fleets", {
         headers: {
@@ -57,9 +57,9 @@ export default function FleetsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchVehiclesAndUsers = async () => {
+  const fetchVehiclesAndUsers = useCallback(async () => {
     try {
       // Fetch vehicles with their fleet assignments
       const vehiclesRes = await fetch("/api/vehicles", {
@@ -70,7 +70,12 @@ export default function FleetsPage() {
 
       // Map to VehicleWithFleets format
       const vehiclesWithFleets: VehicleWithFleets[] = vehiclesList.map(
-        (v: any) => ({
+        (v: {
+          id: string;
+          name?: string;
+          plate?: string;
+          fleets?: Array<{ id: string; name: string }>;
+        }) => ({
           id: v.id,
           name: v.name || v.plate || "Sin nombre",
           plate: v.plate,
@@ -89,27 +94,34 @@ export default function FleetsPage() {
       // Map to UserWithFleets format (only users who can have fleet access)
       const usersWithFleets: UserWithFleets[] = usersList
         .filter(
-          (u: any) =>
+          (u: { role: string }) =>
             u.role === "AGENTE_SEGUIMIENTO" ||
             u.role === "PLANIFICADOR" ||
             u.role === "ADMIN",
         )
-        .map((u: any) => ({
-          id: u.id,
-          name: u.name,
-          role: u.role,
-          fleets: u.fleetPermissions || [],
-        }));
+        .map(
+          (u: {
+            id: string;
+            name: string;
+            role: string;
+            fleetPermissions?: Array<{ id: string; name: string }>;
+          }) => ({
+            id: u.id,
+            name: u.name,
+            role: u.role,
+            fleets: u.fleetPermissions || [],
+          }),
+        );
       setUsers(usersWithFleets);
     } catch (error) {
       console.error("Error fetching vehicles/users:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchFleets();
     fetchVehiclesAndUsers();
-  }, []);
+  }, [fetchFleets, fetchVehiclesAndUsers]);
 
   const handleCreate = async (data: FleetInput) => {
     const response = await fetch("/api/fleets", {
@@ -286,6 +298,7 @@ export default function FleetsPage() {
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
                       <button
+                        type="button"
                         onClick={() => setEditingFleet(fleet)}
                         className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
                       >
@@ -293,6 +306,7 @@ export default function FleetsPage() {
                       </button>
                       {fleet.active && (
                         <button
+                          type="button"
                           onClick={() => handleDelete(fleet.id)}
                           className="text-destructive hover:text-destructive/80 transition-colors"
                         >

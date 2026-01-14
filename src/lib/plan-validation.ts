@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { orders, USER_ROLES, users, vehicles } from "@/db/schema";
+import { USER_ROLES, users } from "@/db/schema";
 import type {
   OptimizationResult,
   OptimizationRoute,
@@ -213,10 +213,10 @@ export async function validatePlanForConfirmation(
   }
 
   // Check 5: Routes with time window violations
-  let routesWithViolations = 0;
+  let _routesWithViolations = 0;
   for (const route of routes) {
     if (route.timeWindowViolations && route.timeWindowViolations > 0) {
-      routesWithViolations++;
+      _routesWithViolations++;
       issues.push({
         severity: ValidationSeverity.WARNING,
         category: "time_window_violation",

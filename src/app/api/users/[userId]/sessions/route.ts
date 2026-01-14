@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       })),
       count: sessions.length,
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: "Failed to get user sessions" },
       { status: 401 },
@@ -76,7 +76,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       success: true,
       message: `All sessions invalidated for user ${userId}`,
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: "Failed to invalidate user sessions" },
       { status: 401 },

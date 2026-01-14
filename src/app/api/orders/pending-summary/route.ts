@@ -80,7 +80,9 @@ export async function GET(request: NextRequest) {
               ? JSON.parse(order.requiredSkills)
               : order.requiredSkills;
           if (Array.isArray(skills)) {
-            skills.forEach((skill) => skillCodes.add(skill));
+            for (const skill of skills) {
+              skillCodes.add(skill);
+            }
           }
         } catch {
           // Skip invalid JSON
@@ -89,7 +91,12 @@ export async function GET(request: NextRequest) {
     });
 
     // Fetch skill details for required skills
-    let requiredSkillDetails: any[] = [];
+    let requiredSkillDetails: Array<{
+      code: string;
+      name: string;
+      category: string | null;
+      description: string | null;
+    }> = [];
     if (skillCodes.size > 0) {
       requiredSkillDetails = await db
         .select({
@@ -121,9 +128,14 @@ export async function GET(request: NextRequest) {
         orders: pendingOrders.slice(0, 100), // Return first 100 orders for preview
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch pending orders summary" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch pending orders summary",
+      },
       { status: 500 },
     );
   }

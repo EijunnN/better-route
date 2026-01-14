@@ -1,4 +1,4 @@
-import { type TIME_WINDOW_STRICTNESS, TIME_WINDOW_TYPES } from "@/db/schema";
+import type { TIME_WINDOW_STRICTNESS } from "@/db/schema";
 import type { TimeWindowValidationResult } from "./validations/order";
 
 /**

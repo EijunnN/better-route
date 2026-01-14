@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, eq, type SQL, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { routeStops } from "@/db/schema";
@@ -122,11 +122,12 @@ export async function GET(request: NextRequest) {
     const routeId = searchParams.get("routeId");
     const userId = searchParams.get("userId") || searchParams.get("driverId");
     const status = searchParams.get("status");
-    const limit = parseInt(searchParams.get("limit") || "100");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limit = parseInt(searchParams.get("limit") || "100", 10);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     // Build conditions
-    const conditions: any[] = [withTenantFilter(routeStops)];
+    const tenantFilter = withTenantFilter(routeStops);
+    const conditions: SQL<unknown>[] = tenantFilter ? [tenantFilter] : [];
 
     if (jobId) {
       conditions.push(eq(routeStops.jobId, jobId));
@@ -138,7 +139,7 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(routeStops.userId, userId));
     }
     if (status) {
-      conditions.push(eq(routeStops.status, status as any));
+      conditions.push(sql`${routeStops.status} = ${status}`);
     }
 
     // Get stops

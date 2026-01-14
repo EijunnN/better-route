@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CompanyForm } from "@/components/companies/company-form";
 import { Button } from "@/components/ui/button";
 import type { CompanyInput } from "@/lib/validations/company";
@@ -27,7 +27,7 @@ export default function CompaniesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     try {
       const response = await fetch("/api/companies");
       const data = await response.json();
@@ -37,11 +37,11 @@ export default function CompaniesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCompanies();
-  }, []);
+  }, [fetchCompanies]);
 
   const handleCreate = async (data: CompanyInput) => {
     const response = await fetch("/api/companies", {
@@ -216,6 +216,7 @@ export default function CompaniesPage() {
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
                       <button
+                        type="button"
                         onClick={() => setEditingCompany(company)}
                         className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
                       >
@@ -223,6 +224,7 @@ export default function CompaniesPage() {
                       </button>
                       {company.active && (
                         <button
+                          type="button"
                           onClick={() => handleDelete(company.id)}
                           className="text-destructive hover:text-destructive/80 transition-colors"
                         >

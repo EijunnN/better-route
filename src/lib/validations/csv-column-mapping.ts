@@ -27,7 +27,7 @@ export const CSV_REQUIRED_FIELDS = [
 ] as const;
 
 // Column mapping entry schema
-const columnMappingEntrySchema = z.object({
+const _columnMappingEntrySchema = z.object({
   csvColumn: z.string().min(1, "CSV column name is required"),
   systemField: z.enum(CSV_SYSTEM_FIELDS, {
     message: `Must be one of: ${CSV_SYSTEM_FIELDS.join(", ")}`,

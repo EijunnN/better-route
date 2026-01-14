@@ -1,11 +1,10 @@
 "use client";
 
 import maplibregl, {
-  LngLatBoundsLike,
   type Map as MapLibreMap,
   type StyleSpecification,
 } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { ORDER_STATUS } from "@/lib/validations/order";
 
@@ -82,6 +81,206 @@ export function OrderMap({
   const markerPopup = useRef<maplibregl.Popup | null>(null);
   const isInitialized = useRef(false);
 
+  // Add order source and layers to map
+  const addOrderLayers = useCallback(
+    (mapInstance: MapLibreMap) => {
+      // Add GeoJSON source for orders
+      mapInstance.addSource("orders", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 50,
+      });
+
+      // Add cluster circles
+      mapInstance.addLayer({
+        id: "clusters",
+        type: "circle",
+        source: "orders",
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": [
+            "step",
+            ["get", "point_count"],
+            "#51bbd6",
+            100,
+            "#f1f075",
+            750,
+            "#f28cb1",
+          ],
+          "circle-radius": ["step", ["get", "point_count"], 20, 100, 30, 750, 40],
+        },
+      });
+
+      // Add cluster count labels
+      mapInstance.addLayer({
+        id: "cluster-count",
+        type: "symbol",
+        source: "orders",
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": "{point_count_abbreviated}",
+          "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+          "text-size": 12,
+        },
+        paint: {
+          "text-color": "#ffffff",
+        },
+      });
+
+      // Add unclustered point circles
+      mapInstance.addLayer({
+        id: "unclustered-point",
+        type: "circle",
+        source: "orders",
+        filter: ["!", ["has", "point_count"]],
+        paint: {
+          "circle-color": ["get", "color"],
+          "circle-radius": 8,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+        },
+      });
+
+      // Add click handler for clusters (zoom to expand)
+      mapInstance.on("click", "clusters", (e) => {
+        const features = mapInstance.queryRenderedFeatures(e.point, {
+          layers: ["clusters"],
+        });
+
+        if (features.length > 0) {
+          const cluster = features[0];
+          const coordinates = (cluster.geometry as unknown as { coordinates: [number, number] }).coordinates;
+          const zoom = mapInstance.getZoom();
+
+          mapInstance.easeTo({
+            center: coordinates,
+            zoom: zoom + 2,
+            duration: 500,
+          });
+        }
+      });
+
+      // Add cursor style for clusters
+      mapInstance.on("mouseenter", "clusters", () => {
+        mapInstance.getCanvas().style.cursor = "pointer";
+      });
+      mapInstance.on("mouseleave", "clusters", () => {
+        mapInstance.getCanvas().style.cursor = "";
+      });
+
+      // Add click handler for individual orders
+      mapInstance.on("click", "unclustered-point", (e) => {
+        const features = mapInstance.queryRenderedFeatures(e.point, {
+          layers: ["unclustered-point"],
+        });
+
+        if (features.length > 0 && e.lngLat) {
+          const feature = features[0];
+          const props = feature.properties as GeoJSONFeature["properties"];
+
+          // Create or update popup
+          if (markerPopup.current) {
+            markerPopup.current.remove();
+          }
+
+          markerPopup.current = new maplibregl.Popup({ offset: 15 })
+            .setLngLat(e.lngLat)
+            .setHTML(`
+              <div class="p-2">
+                <h3 class="font-bold text-sm">${props.trackingId}</h3>
+                <p class="text-xs text-gray-600 mt-1">${props.customerName || "No customer"}</p>
+                <p class="text-xs text-gray-500 mt-1">${props.address}</p>
+                <div class="mt-2">
+                  <span class="px-2 py-1 rounded-full text-xs font-medium"
+                    style="background-color: ${props.color}20; color: ${props.color}">
+                    ${props.status}
+                  </span>
+                </div>
+              </div>
+            `)
+            .addTo(mapInstance);
+
+          // Trigger callback if provided
+          if (onOrderClick) {
+            onOrderClick(props.id);
+          }
+        }
+      });
+
+      // Add cursor style for points
+      mapInstance.on("mouseenter", "unclustered-point", () => {
+        mapInstance.getCanvas().style.cursor = "pointer";
+      });
+      mapInstance.on("mouseleave", "unclustered-point", () => {
+        mapInstance.getCanvas().style.cursor = "";
+      });
+    },
+    [onOrderClick],
+  );
+
+  // Fetch orders and update map
+  const fetchOrders = useCallback(
+    async (mapInstance: MapLibreMap) => {
+      try {
+        const bounds = mapInstance.getBounds();
+        const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+        const zoom = Math.round(mapInstance.getZoom());
+
+        const params = new URLSearchParams();
+        params.append("bbox", bbox);
+        params.append("zoom", zoom.toString());
+        params.append("limit", "5000");
+
+        if (statusFilter !== "ALL") {
+          params.append("status", statusFilter);
+        }
+
+        if (searchQuery) {
+          params.append("search", searchQuery);
+        }
+
+        const response = await fetch(`/api/orders/geojson?${params}`, {
+          headers: { "x-company-id": companyId },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch orders");
+        }
+
+        const result: GeoJSONResponse = await response.json();
+        setOrderCount(result.metadata.total);
+
+        // Update map source
+        const source = mapInstance.getSource(
+          "orders",
+        ) as maplibregl.GeoJSONSource;
+        if (source) {
+          source.setData(result);
+        }
+
+        // Fit bounds if there are orders and it's the first load
+        if (result.features.length > 0 && !isInitialized.current) {
+          const bounds = result.features.reduce((bounds, feature) => {
+            const [lng, lat] = feature.geometry.coordinates;
+            return bounds.extend([lng, lat]);
+          }, new maplibregl.LngLatBounds());
+
+          mapInstance.fitBounds(bounds, {
+            padding: 50,
+            duration: 1000,
+          });
+
+          isInitialized.current = true;
+        }
+      } catch (error) {
+        console.error("Failed to fetch orders:", error);
+      }
+    },
+    [companyId, statusFilter, searchQuery],
+  );
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -138,211 +337,14 @@ export function OrderMap({
       console.error("Failed to initialize map:", error);
       setIsLoading(false);
     }
-  }, []);
-
-  // Add order source and layers to map
-  const addOrderLayers = (mapInstance: MapLibreMap) => {
-    // Add GeoJSON source for orders
-    mapInstance.addSource("orders", {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] },
-      cluster: true,
-      clusterMaxZoom: 14,
-      clusterRadius: 50,
-    });
-
-    // Add cluster circles
-    mapInstance.addLayer({
-      id: "clusters",
-      type: "circle",
-      source: "orders",
-      filter: ["has", "point_count"],
-      paint: {
-        "circle-color": [
-          "step",
-          ["get", "point_count"],
-          "#51bbd6",
-          100,
-          "#f1f075",
-          750,
-          "#f28cb1",
-        ],
-        "circle-radius": ["step", ["get", "point_count"], 20, 100, 30, 750, 40],
-      },
-    });
-
-    // Add cluster count labels
-    mapInstance.addLayer({
-      id: "cluster-count",
-      type: "symbol",
-      source: "orders",
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": "{point_count_abbreviated}",
-        "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-        "text-size": 12,
-      },
-      paint: {
-        "text-color": "#ffffff",
-      },
-    });
-
-    // Add unclustered point circles
-    mapInstance.addLayer({
-      id: "unclustered-point",
-      type: "circle",
-      source: "orders",
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-color": ["get", "color"],
-        "circle-radius": 8,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#ffffff",
-      },
-    });
-
-    // Add click handler for clusters (zoom to expand)
-    mapInstance.on("click", "clusters", (e) => {
-      const features = mapInstance.queryRenderedFeatures(e.point, {
-        layers: ["clusters"],
-      });
-
-      if (features.length > 0) {
-        const cluster = features[0];
-        const coordinates = (cluster.geometry as any).coordinates as [
-          number,
-          number,
-        ];
-        const zoom = mapInstance.getZoom();
-
-        mapInstance.easeTo({
-          center: coordinates,
-          zoom: zoom + 2,
-          duration: 500,
-        });
-      }
-    });
-
-    // Add cursor style for clusters
-    mapInstance.on("mouseenter", "clusters", () => {
-      mapInstance.getCanvas().style.cursor = "pointer";
-    });
-    mapInstance.on("mouseleave", "clusters", () => {
-      mapInstance.getCanvas().style.cursor = "";
-    });
-
-    // Add click handler for individual orders
-    mapInstance.on("click", "unclustered-point", (e) => {
-      const features = mapInstance.queryRenderedFeatures(e.point, {
-        layers: ["unclustered-point"],
-      });
-
-      if (features.length > 0 && e.lngLat) {
-        const feature = features[0];
-        const props = feature.properties as GeoJSONFeature["properties"];
-
-        // Create or update popup
-        if (markerPopup.current) {
-          markerPopup.current.remove();
-        }
-
-        markerPopup.current = new maplibregl.Popup({ offset: 15 })
-          .setLngLat(e.lngLat)
-          .setHTML(`
-            <div class="p-2">
-              <h3 class="font-bold text-sm">${props.trackingId}</h3>
-              <p class="text-xs text-gray-600 mt-1">${props.customerName || "No customer"}</p>
-              <p class="text-xs text-gray-500 mt-1">${props.address}</p>
-              <div class="mt-2">
-                <span class="px-2 py-1 rounded-full text-xs font-medium"
-                  style="background-color: ${props.color}20; color: ${props.color}">
-                  ${props.status}
-                </span>
-              </div>
-            </div>
-          `)
-          .addTo(mapInstance);
-
-        // Trigger callback if provided
-        if (onOrderClick) {
-          onOrderClick(props.id);
-        }
-      }
-    });
-
-    // Add cursor style for points
-    mapInstance.on("mouseenter", "unclustered-point", () => {
-      mapInstance.getCanvas().style.cursor = "pointer";
-    });
-    mapInstance.on("mouseleave", "unclustered-point", () => {
-      mapInstance.getCanvas().style.cursor = "";
-    });
-  };
-
-  // Fetch orders and update map
-  const fetchOrders = async (mapInstance: MapLibreMap) => {
-    try {
-      const bounds = mapInstance.getBounds();
-      const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-      const zoom = Math.round(mapInstance.getZoom());
-
-      const params = new URLSearchParams();
-      params.append("bbox", bbox);
-      params.append("zoom", zoom.toString());
-      params.append("limit", "5000");
-
-      if (statusFilter !== "ALL") {
-        params.append("status", statusFilter);
-      }
-
-      if (searchQuery) {
-        params.append("search", searchQuery);
-      }
-
-      const response = await fetch(`/api/orders/geojson?${params}`, {
-        headers: { "x-company-id": companyId },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch orders");
-      }
-
-      const result: GeoJSONResponse = await response.json();
-      setOrderCount(result.metadata.total);
-
-      // Update map source
-      const source = mapInstance.getSource(
-        "orders",
-      ) as maplibregl.GeoJSONSource;
-      if (source) {
-        source.setData(result);
-      }
-
-      // Fit bounds if there are orders and it's the first load
-      if (result.features.length > 0 && !isInitialized.current) {
-        const bounds = result.features.reduce((bounds, feature) => {
-          const [lng, lat] = feature.geometry.coordinates;
-          return bounds.extend([lng, lat]);
-        }, new maplibregl.LngLatBounds());
-
-        mapInstance.fitBounds(bounds, {
-          padding: 50,
-          duration: 1000,
-        });
-
-        isInitialized.current = true;
-      }
-    } catch (error) {
-      console.error("Failed to fetch orders:", error);
-    }
-  };
+  }, [addOrderLayers, fetchOrders]);
 
   // Fetch orders when filters change
   useEffect(() => {
     if (map.current) {
       fetchOrders(map.current);
     }
-  }, [statusFilter, searchQuery]);
+  }, [fetchOrders]);
 
   return (
     <div className={`relative ${className}`}>

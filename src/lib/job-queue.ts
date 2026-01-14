@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { type OPTIMIZATION_JOB_STATUS, optimizationJobs } from "@/db/schema";

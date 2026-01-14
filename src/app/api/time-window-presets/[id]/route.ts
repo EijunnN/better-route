@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { timeWindowPresets } from "@/db/schema";
-import { verifyTenantAccess, withTenantFilter } from "@/db/tenant-aware";
+import { withTenantFilter } from "@/db/tenant-aware";
 import { logDelete, logUpdate } from "@/lib/audit";
 import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import { updateTimeWindowPresetSchema } from "@/lib/validations/time-window-preset";
@@ -14,7 +14,7 @@ function extractTenantContext(request: NextRequest) {
   return { companyId, userId: userId || undefined };
 }
 
-async function getTimeWindowPreset(id: string, companyId: string) {
+async function getTimeWindowPreset(id: string, _companyId: string) {
   const whereClause = withTenantFilter(timeWindowPresets, [
     eq(timeWindowPresets.id, id),
   ]);
@@ -53,9 +53,14 @@ export async function GET(
     }
 
     return NextResponse.json(record);
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch time window preset" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch time window preset",
+      },
       { status: 500 },
     );
   }
@@ -128,15 +133,23 @@ export async function PATCH(
     });
 
     return NextResponse.json(updated);
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
+        {
+          error: "Validation failed",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update time window preset" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to update time window preset",
+      },
       { status: 500 },
     );
   }
@@ -176,9 +189,14 @@ export async function DELETE(
     await logDelete("time_window_preset", id, existing);
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to delete time window preset" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete time window preset",
+      },
       { status: 500 },
     );
   }

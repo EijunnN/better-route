@@ -2,7 +2,6 @@
 
 import { Fuel, Package, Search, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -52,7 +51,7 @@ export function VehicleSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [fleetFilter, setFleetFilter] = useState<string>("ALL");
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [statusFilter, _setStatusFilter] = useState<string>("ALL");
 
   // Fetch fleets
   useEffect(() => {
@@ -150,7 +149,7 @@ export function VehicleSelector({
   const allFilteredSelected =
     filteredVehicles.length > 0 &&
     filteredVehicles.every((v) => selectedIds.includes(v.id));
-  const someFilteredSelected =
+  const _someFilteredSelected =
     filteredVehicles.some((v) => selectedIds.includes(v.id)) &&
     !allFilteredSelected;
 

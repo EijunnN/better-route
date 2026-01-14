@@ -8,7 +8,6 @@ import {
   User,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
@@ -49,7 +48,7 @@ const STATUS_CONFIG = {
 };
 
 export function DriverListItem({
-  id,
+  id: _id,
   name,
   status,
   fleetName,
@@ -111,9 +110,9 @@ export function DriverListItem({
               {/* Alerts */}
               {alerts.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {alerts.map((alert, index) => (
+                  {alerts.map((alert) => (
                     <Badge
-                      key={index}
+                      key={alert}
                       variant="destructive"
                       className="text-xs"
                     >

@@ -1,9 +1,9 @@
-import { and, desc, eq, like } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logCreate, logDelete, logUpdate } from "@/lib/audit";
+import { logCreate } from "@/lib/audit";
 import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import {
   timeWindowPresetQuerySchema,
@@ -69,9 +69,14 @@ export async function GET(request: NextRequest) {
       data,
       meta: { total: totalResult.length },
     });
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch time window presets" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch time window presets",
+      },
       { status: 400 },
     );
   }
@@ -125,15 +130,23 @@ export async function POST(request: NextRequest) {
     await logCreate("time_window_preset", newRecord.id, newRecord);
 
     return NextResponse.json(newRecord, { status: 201 });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
+        {
+          error: "Validation failed",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to create time window preset" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to create time window preset",
+      },
       { status: 500 },
     );
   }

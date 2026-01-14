@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DriverForm } from "@/components/drivers/driver-form";
 import { DriverStatusModal } from "@/components/drivers/driver-status-modal";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,7 @@ export default function DriversPage() {
     null,
   );
 
-  const fetchDrivers = async () => {
+  const fetchDrivers = useCallback(async () => {
     try {
       const response = await fetch("/api/drivers", {
         headers: {
@@ -79,9 +79,9 @@ export default function DriversPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchFleets = async () => {
+  const fetchFleets = useCallback(async () => {
     try {
       const response = await fetch("/api/fleets", {
         headers: {
@@ -93,12 +93,12 @@ export default function DriversPage() {
     } catch (error) {
       console.error("Error fetching fleets:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDrivers();
     fetchFleets();
-  }, []);
+  }, [fetchDrivers, fetchFleets]);
 
   const handleCreate = async (data: DriverInput) => {
     const response = await fetch("/api/drivers", {
@@ -335,6 +335,7 @@ export default function DriversPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-4">
                         <button
+                          type="button"
                           onClick={() => setStatusModalDriver(driver)}
                           className={`inline-flex cursor-pointer rounded-full px-3 py-1 text-xs font-semibold transition-colors hover:opacity-80 ${
                             STATUS_COLOR_CLASSES[
@@ -348,6 +349,7 @@ export default function DriversPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
                         <button
+                          type="button"
                           onClick={() => setEditingDriver(driver)}
                           className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
                         >
@@ -355,6 +357,7 @@ export default function DriversPage() {
                         </button>
                         {driver.active && (
                           <button
+                            type="button"
                             onClick={() => handleDelete(driver.id)}
                             className="text-destructive hover:text-destructive/80 transition-colors"
                           >
@@ -377,7 +380,7 @@ export default function DriversPage() {
           onOpenChange={(open) => !open && setStatusModalDriver(null)}
           driverId={statusModalDriver.id}
           driverName={statusModalDriver.name}
-          currentStatus={statusModalDriver.status as any}
+          currentStatus={statusModalDriver.status as "AVAILABLE" | "ASSIGNED" | "IN_ROUTE" | "ON_PAUSE" | "COMPLETED" | "UNAVAILABLE" | "ABSENT"}
           onStatusChange={handleStatusChange}
         />
       )}

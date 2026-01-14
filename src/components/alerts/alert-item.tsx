@@ -40,7 +40,7 @@ export interface Alert {
   entityId: string;
   title: string;
   description?: string | null;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
   status: AlertStatus;
   createdAt: string;
   acknowledgedAt?: string | null;

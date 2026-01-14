@@ -80,22 +80,29 @@ export function CompanyForm({
 
     try {
       await onSubmit(formData);
-    } catch (error: any) {
-      if (error.details) {
+    } catch (error) {
+      const err = error as {
+        details?: Array<{ path: string[]; message: string }>;
+        error?: string;
+      };
+      if (err.details) {
         const fieldErrors: Record<string, string> = {};
-        error.details.forEach((err: any) => {
-          fieldErrors[err.path[0]] = err.message;
-        });
+        for (const detail of err.details) {
+          fieldErrors[detail.path[0]] = detail.message;
+        }
         setErrors(fieldErrors);
       } else {
-        setErrors({ form: error.error || "Error al guardar la empresa" });
+        setErrors({ form: err.error || "Error al guardar la empresa" });
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const updateField = (field: keyof CompanyInput, value: any) => {
+  const updateField = (
+    field: keyof CompanyInput,
+    value: CompanyInput[keyof CompanyInput],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {

@@ -25,6 +25,14 @@ function extractTenantContext(request: NextRequest) {
 }
 
 /**
+ * Reassignment data structure from parsed JSON
+ */
+interface ReassignmentData {
+  driverId: string;
+  stopIds: string[];
+}
+
+/**
  * Output file format for driver routes
  */
 interface DriverRouteOutput {
@@ -113,7 +121,7 @@ export async function GET(
 
     // Collect all unique driver IDs to generate routes for
     const driverIds = [
-      ...new Set(reassignmentsData.map((r: any) => r.driverId)),
+      ...new Set(reassignmentsData.map((r: ReassignmentData) => r.driverId)),
     ] as string[];
 
     // Generate route output for each replacement driver
@@ -133,8 +141,8 @@ export async function GET(
 
       // Get all stops for this driver that were part of the reassignment
       const reassignedStopIds = reassignmentsData
-        .filter((r: any) => r.driverId === driverId)
-        .flatMap((r: any) => r.stopIds);
+        .filter((r: ReassignmentData) => r.driverId === driverId)
+        .flatMap((r: ReassignmentData) => r.stopIds);
 
       const stops = await db.query.routeStops.findMany({
         where: and(
@@ -319,7 +327,7 @@ export async function POST(
 
     // Get unique driver IDs
     const driverIds = [
-      ...new Set(reassignmentsData.map((r: any) => r.driverId)),
+      ...new Set(reassignmentsData.map((r: ReassignmentData) => r.driverId)),
     ] as string[];
 
     // Get driver details for notifications

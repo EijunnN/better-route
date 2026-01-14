@@ -39,7 +39,11 @@ export async function GET(request: NextRequest) {
       safeOffset,
     );
 
-    const response: any = {
+    const response: {
+      metrics: typeof historical;
+      pagination: { limit: number; offset: number; count: number };
+      summary?: Awaited<ReturnType<typeof getMetricsSummaryStats>>;
+    } = {
       metrics: historical,
       pagination: {
         limit: safeLimit,

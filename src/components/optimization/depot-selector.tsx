@@ -1,7 +1,7 @@
 "use client";
 
 import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,20 @@ export function DepotSelector({
   const [manualAddress, setManualAddress] = useState(value.address || "");
   const [manualInputMode, setManualInputMode] = useState(false);
 
+  const updateDepotLocation = useCallback(
+    (lat: string, lng: string, address?: string) => {
+      onChange({
+        latitude: lat,
+        longitude: lng,
+        address: address || value.address,
+      });
+      setManualLat(lat);
+      setManualLng(lng);
+      if (address) setManualAddress(address);
+    },
+    [onChange, value.address],
+  );
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -91,7 +105,7 @@ export function DepotSelector({
       mapInstance.remove();
       map.current = null;
     };
-  }, []);
+  }, [updateDepotLocation]);
 
   // Update marker when value changes
   useEffect(() => {
@@ -100,7 +114,7 @@ export function DepotSelector({
     const lat = parseFloat(value.latitude);
     const lng = parseFloat(value.longitude);
 
-    if (isNaN(lat) || isNaN(lng)) return;
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return;
 
     // Remove existing marker
     if (marker.current) {
@@ -138,7 +152,7 @@ export function DepotSelector({
     if (map.current && mapReady && value.latitude && value.longitude) {
       const lat = parseFloat(value.latitude);
       const lng = parseFloat(value.longitude);
-      if (!isNaN(lat) && !isNaN(lng)) {
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
         map.current.flyTo({
           center: [lng, lat],
           zoom: 14,
@@ -146,24 +160,13 @@ export function DepotSelector({
         });
       }
     }
-  }, [mapReady]);
-
-  const updateDepotLocation = (lat: string, lng: string, address?: string) => {
-    onChange({
-      latitude: lat,
-      longitude: lng,
-      address: address || value.address,
-    });
-    setManualLat(lat);
-    setManualLng(lng);
-    if (address) setManualAddress(address);
-  };
+  }, [mapReady, value.latitude, value.longitude]);
 
   const handleManualSubmit = () => {
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
 
-    if (isNaN(lat) || isNaN(lng)) {
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
       alert("Please enter valid coordinates");
       return;
     }

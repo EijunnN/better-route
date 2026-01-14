@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       userAgent: session.userAgent,
       ipAddress: session.ipAddress,
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: "Failed to get session" },
       { status: 401 },
@@ -72,7 +72,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     await invalidateSession(sessionId);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: "Failed to invalidate session" },
       { status: 401 },

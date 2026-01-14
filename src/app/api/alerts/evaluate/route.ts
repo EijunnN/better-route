@@ -27,7 +27,9 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type"); // Specific evaluation type or 'all'
 
-    let result;
+    let result:
+      | { created: number; alerts: unknown[] }
+      | Awaited<ReturnType<typeof runAllAlertEvaluations>>;
 
     if (type === "driver-license") {
       const { evaluateDriverLicenseAlerts } = await import(

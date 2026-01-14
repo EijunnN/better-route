@@ -86,9 +86,11 @@ export async function GET(
     };
 
     return NextResponse.json(enrichedOrder);
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch order" },
+      {
+        error: error instanceof Error ? error.message : "Failed to fetch order",
+      },
       { status: 400 },
     );
   }
@@ -188,15 +190,21 @@ export async function PATCH(
     });
 
     return NextResponse.json(updatedRecord);
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
+        {
+          error: "Validation failed",
+          details: (error as { errors?: unknown }).errors,
+        },
         { status: 400 },
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update order" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to update order",
+      },
       { status: 500 },
     );
   }
@@ -245,9 +253,12 @@ export async function DELETE(
     await logDelete("order", id, existing[0]);
 
     return NextResponse.json(deletedRecord);
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Failed to delete order" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to delete order",
+      },
       { status: 500 },
     );
   }

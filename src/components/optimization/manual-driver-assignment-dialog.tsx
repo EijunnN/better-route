@@ -100,7 +100,7 @@ export function ManualDriverAssignmentDialog({
       loadDrivers();
       setSelectedDriverId(currentDriverId || null);
     }
-  }, [open, currentDriverId]);
+  }, [open, currentDriverId, loadDrivers]);
 
   // Validate selected driver
   useEffect(() => {
@@ -109,7 +109,7 @@ export function ManualDriverAssignmentDialog({
     } else {
       setValidation(null);
     }
-  }, [selectedDriverId, overrideWarnings, open]);
+  }, [selectedDriverId, open, validateDriver]);
 
   async function loadDrivers() {
     setLoading(true);
@@ -412,7 +412,7 @@ function DriverCard({ driver, selected, onClick }: DriverCardProps) {
     return "text-red-600";
   };
 
-  const getScoreBg = (score: number) => {
+  const _getScoreBg = (score: number) => {
     if (score >= 80) return "bg-green-50 border-green-200";
     if (score >= 60) return "bg-yellow-50 border-yellow-200";
     return "bg-red-50 border-red-200";

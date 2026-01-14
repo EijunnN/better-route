@@ -1,9 +1,9 @@
-import { and, desc, eq, ilike, like, or } from "drizzle-orm";
+import { desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicleSkills } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logCreate, logDelete, logUpdate } from "@/lib/audit";
+import { logCreate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
 import {
   vehicleSkillQuerySchema,
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       Object.fromEntries(searchParams),
     );
 
-    const conditions: any[] = [];
+    const conditions: SQL<unknown>[] = [];
 
     if (query.category) {
       conditions.push(eq(vehicleSkills.category, query.category));
@@ -50,13 +50,14 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(vehicleSkills.active, query.active));
     }
     if (query.search) {
-      conditions.push(
-        or(
-          ilike(vehicleSkills.name, `%${query.search}%`),
-          ilike(vehicleSkills.code, `%${query.search}%`),
-          ilike(vehicleSkills.description, `%${query.search}%`),
-        ),
+      const searchCondition = or(
+        ilike(vehicleSkills.name, `%${query.search}%`),
+        ilike(vehicleSkills.code, `%${query.search}%`),
+        ilike(vehicleSkills.description, `%${query.search}%`),
       );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
     }
 
     // Apply tenant filtering

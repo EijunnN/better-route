@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   orders,
@@ -7,7 +7,6 @@ import {
   userSecondaryFleets,
   userSkills,
   users,
-  vehicleSkills,
   vehicles,
 } from "@/db/schema";
 
@@ -436,7 +435,6 @@ function getStrategyWeights(strategy: AssignmentStrategy) {
       return { skills: 2, availability: 2, license: 3, fleet: 1, workload: 5 };
     case "FLEET_MATCH":
       return { skills: 2, availability: 2, license: 3, fleet: 5, workload: 1 };
-    case "BALANCED":
     default:
       return { skills: 1, availability: 1, license: 1, fleet: 1, workload: 1 };
   }

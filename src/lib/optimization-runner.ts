@@ -15,7 +15,6 @@ import {
   type DriverAssignmentResult,
   getAssignmentQualityMetrics,
 } from "./driver-assignment";
-import { type Coordinates, calculateRouteDistance } from "./geospatial";
 import {
   calculateInputHash,
   cancelJob,
@@ -26,7 +25,6 @@ import {
   isJobAborting,
   registerJob,
   setJobTimeout,
-  unregisterJob,
   updateJobProgress,
 } from "./job-queue";
 import {
@@ -410,7 +408,7 @@ export async function runOptimization(
       driverName: r.driverName!,
       score: {
         driverId: r.driverId!,
-        score: r.assignmentQuality!.score,
+        score: r.assignmentQuality?.score ?? 0,
         factors: {
           skillsMatch: 100, // Placeholder - not tracked per route
           availability: 100,
@@ -418,8 +416,8 @@ export async function runOptimization(
           fleetMatch: 100,
           workload: 100,
         },
-        warnings: r.assignmentQuality!.warnings,
-        errors: r.assignmentQuality!.errors,
+        warnings: r.assignmentQuality?.warnings ?? [],
+        errors: r.assignmentQuality?.errors ?? [],
       },
       isManualOverride: false,
     }));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { VehicleSkillForm } from "@/components/vehicle-skills/vehicle-skill-form";
 import type { VehicleSkillInput } from "@/lib/validations/vehicle-skill";
@@ -36,7 +36,7 @@ export default function VehicleSkillsPage() {
   const [filterActive, setFilterActive] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const fetchSkills = async () => {
+  const fetchSkills = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -56,11 +56,11 @@ export default function VehicleSkillsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filterCategory, filterActive, searchTerm]);
 
   useEffect(() => {
     fetchSkills();
-  }, [filterCategory, filterActive, searchTerm]);
+  }, [fetchSkills]);
 
   const handleCreate = async (data: VehicleSkillInput) => {
     const response = await fetch("/api/vehicle-skills", {
@@ -333,6 +333,7 @@ export default function VehicleSkillsPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-4">
                         <button
+                          type="button"
                           onClick={() => handleToggleActive(skill)}
                           className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                             skill.active
@@ -345,12 +346,14 @@ export default function VehicleSkillsPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
                         <button
+                          type="button"
                           onClick={() => setEditingSkill(skill)}
                           className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
                         >
                           Editar
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(skill.id)}
                           className="text-destructive hover:text-destructive/80 transition-colors"
                         >

@@ -8,7 +8,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -43,7 +43,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
   const { toast } = useToast();
 
   // Fetch alerts
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(
@@ -69,13 +69,13 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId, statusFilter, toast]);
 
   useEffect(() => {
     if (companyId) {
       fetchAlerts();
     }
-  }, [companyId, statusFilter]);
+  }, [companyId, fetchAlerts]);
 
   // Filter alerts
   useEffect(() => {
@@ -211,6 +211,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2"
               >
@@ -220,7 +221,9 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
           </div>
           <Select
             value={statusFilter}
-            onValueChange={(v: any) => setStatusFilter(v)}
+            onValueChange={(v: "ACTIVE" | "ACKNOWLEDGED" | "all") =>
+              setStatusFilter(v)
+            }
           >
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Status" />
@@ -237,7 +240,9 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
       {/* Tabs */}
       <Tabs
         value={activeTab}
-        onValueChange={(v: any) => setActiveTab(v)}
+        onValueChange={(v) =>
+          setActiveTab(v as "all" | "critical" | "warning" | "info")
+        }
         className="flex-1 flex flex-col"
       >
         <div className="px-4 pt-2">

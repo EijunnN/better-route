@@ -1,7 +1,7 @@
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, type SQL, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { alertRules, alerts } from "@/db/schema";
+import { alerts } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
 
@@ -30,29 +30,29 @@ export async function GET(request: NextRequest) {
     const severity = searchParams.get("severity"); // CRITICAL, WARNING, INFO
     const type = searchParams.get("type"); // Any alert type
     const entityType = searchParams.get("entityType"); // DRIVER, VEHICLE, ORDER, ROUTE, JOB
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     // Build conditions
-    const conditions: any[] = [];
+    const conditions: SQL<unknown>[] = [];
 
     if (status) {
-      conditions.push(eq(alerts.status, status as any));
+      conditions.push(sql`${alerts.status} = ${status}`);
     } else {
       // By default, show only non-dismissed alerts
       conditions.push(sql`${alerts.status} != 'DISMISSED'`);
     }
 
     if (severity) {
-      conditions.push(eq(alerts.severity, severity as any));
+      conditions.push(sql`${alerts.severity} = ${severity}`);
     }
 
     if (type) {
-      conditions.push(eq(alerts.type, type as any));
+      conditions.push(sql`${alerts.type} = ${type}`);
     }
 
     if (entityType) {
-      conditions.push(eq(alerts.entityType, entityType));
+      conditions.push(sql`${alerts.entityType} = ${entityType}`);
     }
 
     const whereClause =

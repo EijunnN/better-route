@@ -2,7 +2,6 @@
 
 import { AlertTriangle, Clock, Search, User } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -245,8 +244,7 @@ export function DriverSelector({
           {filteredDrivers.map((driver) => {
             const licenseStatus = getLicenseStatus(driver.licenseExpiry);
             const daysUntilExpiry = Math.ceil(
-              (new Date(driver.licenseExpiry).getTime() -
-                new Date().getTime()) /
+              (new Date(driver.licenseExpiry).getTime() - Date.now()) /
                 (1000 * 60 * 60 * 24),
             );
 

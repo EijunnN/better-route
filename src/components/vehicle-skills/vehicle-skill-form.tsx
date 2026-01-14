@@ -5,10 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { VehicleSkillInput } from "@/lib/validations/vehicle-skill";
-import {
-  VEHICLE_SKILL_CATEGORIES,
-  VEHICLE_SKILL_CATEGORY_LABELS,
-} from "@/lib/validations/vehicle-skill";
+import { VEHICLE_SKILL_CATEGORY_LABELS } from "@/lib/validations/vehicle-skill";
 
 interface VehicleSkillFormProps {
   onSubmit: (data: VehicleSkillInput) => Promise<void>;

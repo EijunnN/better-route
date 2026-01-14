@@ -11,7 +11,7 @@ import {
   vehicles,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logCreate, logDelete, logUpdate } from "@/lib/audit";
+import { logCreate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
 import {
   optimizationConfigQuerySchema,
@@ -160,8 +160,19 @@ export async function POST(request: NextRequest) {
     // Determine if this is a preset (DRAFT) or full configuration
     const isPreset = data.status === "DRAFT";
 
-    let vehiclesResult: any[] = [];
-    let driversResult: any[] = [];
+    let vehiclesResult: Array<{
+      id: string;
+      plate: string | null;
+      name: string;
+      status: string | null;
+    }> = [];
+    let driversResult: Array<{
+      id: string;
+      name: string;
+      status: string | null;
+      licenseExpiry: Date | null;
+      fleet: { id: string; name: string } | null;
+    }> = [];
 
     // Only validate vehicles and drivers if not a preset
     if (!isPreset && vehicleIds.length > 0) {
@@ -270,7 +281,7 @@ export async function POST(request: NextRequest) {
     if (data.depotLatitude && data.depotLongitude) {
       const lat = parseFloat(data.depotLatitude);
       const lng = parseFloat(data.depotLongitude);
-      if (isNaN(lat) || isNaN(lng)) {
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
         return NextResponse.json(
           { error: "Invalid depot coordinates" },
           { status: 400 },
@@ -279,7 +290,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create configuration
-    const insertData: any = {
+    const insertData: typeof optimizationConfigurations.$inferInsert = {
       companyId: tenantCtx.companyId,
       name: data.name,
       depotLatitude: data.depotLatitude || "0",

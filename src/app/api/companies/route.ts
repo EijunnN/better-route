@@ -2,11 +2,7 @@ import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
-import {
-  getAuditLogContext,
-  verifyTenantAccess,
-  withTenantFilter,
-} from "@/db/tenant-aware";
+import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/authorization";
 import {
   checkPermissionOrError,
@@ -14,7 +10,6 @@ import {
   setupAuthContext,
   unauthorizedResponse,
 } from "@/lib/route-helpers";
-import { setTenantContext } from "@/lib/tenant";
 import { companyQuerySchema, companySchema } from "@/lib/validations/company";
 
 export async function GET(request: NextRequest) {

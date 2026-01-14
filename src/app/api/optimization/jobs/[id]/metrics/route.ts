@@ -45,7 +45,11 @@ export async function GET(
       );
     }
 
-    const response: any = {
+    const response: {
+      metrics: typeof metrics;
+      historical?: Awaited<ReturnType<typeof getHistoricalMetrics>>;
+      summary?: Awaited<ReturnType<typeof getMetricsSummaryStats>>;
+    } = {
       metrics,
     };
 

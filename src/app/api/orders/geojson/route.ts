@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     // Search filter
     if (search) {
       conditions.push(
-        sql`(${orders.trackingId} ILIKE ${"%" + search + "%"} OR ${orders.customerName} ILIKE ${"%" + search + "%"} OR ${orders.address} ILIKE ${"%" + search + "%"})`,
+        sql`(${orders.trackingId} ILIKE ${`%${search}%`} OR ${orders.customerName} ILIKE ${`%${search}%`} OR ${orders.address} ILIKE ${`%${search}%`})`,
       );
     }
 
@@ -91,10 +91,10 @@ export async function GET(request: NextRequest) {
     if (bbox) {
       const [minLng, minLat, maxLng, maxLat] = bbox.split(",").map(Number);
       if (
-        !isNaN(minLng) &&
-        !isNaN(minLat) &&
-        !isNaN(maxLng) &&
-        !isNaN(maxLat) &&
+        !Number.isNaN(minLng) &&
+        !Number.isNaN(minLat) &&
+        !Number.isNaN(maxLng) &&
+        !Number.isNaN(maxLat) &&
         minLng >= -180 &&
         minLng <= 180 &&
         maxLng >= -180 &&
@@ -138,8 +138,8 @@ export async function GET(request: NextRequest) {
         const lat = parseFloat(order.latitude);
         const lng = parseFloat(order.longitude);
         return (
-          !isNaN(lat) &&
-          !isNaN(lng) &&
+          !Number.isNaN(lat) &&
+          !Number.isNaN(lng) &&
           lat >= -90 &&
           lat <= 90 &&
           lng >= -180 &&

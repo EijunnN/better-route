@@ -2,7 +2,6 @@
 
 import {
   AlertTriangle,
-  ArrowRight,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -10,7 +9,7 @@ import {
   Loader2,
   User,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,13 +59,7 @@ export function AssignmentHistory({
     byAction: Record<string, number>;
   } | null>(null);
 
-  useEffect(() => {
-    if (open) {
-      loadHistory();
-    }
-  }, [routeId, open]);
-
-  async function loadHistory() {
+  const loadHistory = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(
@@ -90,14 +83,20 @@ export function AssignmentHistory({
     } finally {
       setLoading(false);
     }
-  }
+  }, [routeId]);
 
-  const formatDate = (dateString: string) => {
+  useEffect(() => {
+    if (open) {
+      loadHistory();
+    }
+  }, [open, loadHistory]);
+
+  const _formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
   };
 
-  const getActionBadgeVariant = (action: string) => {
+  const _getActionBadgeVariant = (action: string) => {
     switch (action) {
       case "MANUAL_ASSIGNMENT":
         return "default";
@@ -241,7 +240,15 @@ function HistoryEntry({ entry, showConnector }: HistoryEntryProps) {
         </div>
         <div className="flex-1 min-w-0 pb-4">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant={getActionBadgeVariant(entry.action) as any}>
+            <Badge
+              variant={
+                getActionBadgeVariant(entry.action) as
+                  | "default"
+                  | "destructive"
+                  | "outline"
+                  | "secondary"
+              }
+            >
               {getActionLabel(entry.action)}
             </Badge>
             <span className="text-xs text-muted-foreground">

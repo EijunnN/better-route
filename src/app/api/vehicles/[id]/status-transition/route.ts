@@ -1,10 +1,9 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicleStatusHistory, vehicles } from "@/db/schema";
 import { logUpdate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
-import { VEHICLE_STATUS } from "@/lib/validations/vehicle";
 import {
   requiresActiveRouteCheck,
   STATUS_DISPLAY_NAMES,
@@ -105,7 +104,7 @@ export async function POST(
     }
 
     // Perform the status change
-    const [updatedVehicle] = await db
+    const [_updatedVehicle] = await db
       .update(vehicles)
       .set({
         status: newStatus,

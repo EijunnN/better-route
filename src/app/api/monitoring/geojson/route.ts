@@ -43,7 +43,20 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    let parsedResult;
+    let parsedResult: {
+      routes?: Array<{
+        routeId: string;
+        vehiclePlate: string;
+        driverName?: string;
+        stops?: Array<{
+          longitude: string;
+          latitude: string;
+          sequence: number;
+          trackingId: string;
+          address: string;
+        }>;
+      }>;
+    } | null = null;
     try {
       parsedResult = JSON.parse(confirmedJob.result);
     } catch {
@@ -77,60 +90,77 @@ export async function GET(request: NextRequest) {
     ];
 
     // Build GeoJSON features
-    const features: any[] = [];
+    const features: GeoJSON.Feature[] = [];
 
-    parsedResult.routes.forEach((route: any, routeIndex: number) => {
-      const color = colors[routeIndex % colors.length];
+    parsedResult.routes.forEach(
+      (
+        route: {
+          routeId: string;
+          vehiclePlate: string;
+          driverName?: string;
+          stops?: Array<{
+            longitude: string;
+            latitude: string;
+            sequence: number;
+            trackingId: string;
+            address: string;
+          }>;
+        },
+        routeIndex: number,
+      ) => {
+        const color = colors[routeIndex % colors.length];
 
-      // Add route line feature
-      if (route.stops && route.stops.length > 0) {
-        const coordinates = route.stops.map((stop: any) => [
-          parseFloat(stop.longitude),
-          parseFloat(stop.latitude),
-        ]);
+        // Add route line feature
+        if (route.stops && route.stops.length > 0) {
+          const stops = route.stops;
+          const coordinates = stops.map((stop) => [
+            parseFloat(stop.longitude),
+            parseFloat(stop.latitude),
+          ]);
 
-        features.push({
-          type: "Feature",
-          properties: {
-            type: "route",
-            routeId: route.routeId,
-            vehiclePlate: route.vehiclePlate,
-            driverName: route.driverName || "Unassigned",
-            color,
-            totalStops: route.stops.length,
-          },
-          geometry: {
-            type: "LineString",
-            coordinates,
-          },
-        });
-
-        // Add stop point features
-        route.stops.forEach((stop: any, stopIndex: number) => {
           features.push({
             type: "Feature",
             properties: {
-              type: "stop",
+              type: "route",
               routeId: route.routeId,
               vehiclePlate: route.vehiclePlate,
               driverName: route.driverName || "Unassigned",
               color,
-              sequence: stop.sequence,
-              trackingId: stop.trackingId,
-              address: stop.address,
-              status: getStopStatusForMap(stopIndex, route.stops.length),
+              totalStops: stops.length,
             },
             geometry: {
-              type: "Point",
-              coordinates: [
-                parseFloat(stop.longitude),
-                parseFloat(stop.latitude),
-              ],
+              type: "LineString",
+              coordinates,
             },
           });
-        });
-      }
-    });
+
+          // Add stop point features
+          stops.forEach((stop, stopIndex: number) => {
+            features.push({
+              type: "Feature",
+              properties: {
+                type: "stop",
+                routeId: route.routeId,
+                vehiclePlate: route.vehiclePlate,
+                driverName: route.driverName || "Unassigned",
+                color,
+                sequence: stop.sequence,
+                trackingId: stop.trackingId,
+                address: stop.address,
+                status: getStopStatusForMap(stopIndex, stops.length),
+              },
+              geometry: {
+                type: "Point",
+                coordinates: [
+                  parseFloat(stop.longitude),
+                  parseFloat(stop.latitude),
+                ],
+              },
+            });
+          });
+        }
+      },
+    );
 
     return NextResponse.json({
       data: {

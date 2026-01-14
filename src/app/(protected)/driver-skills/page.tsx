@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DriverSkillForm } from "@/components/driver-skills/driver-skill-form";
 import { Button } from "@/components/ui/button";
 import type { DriverSkillInput } from "@/lib/validations/driver-skill";
-import { isExpired, isExpiringSoon } from "@/lib/validations/driver-skill";
 
 interface DriverSkill {
   id: string;
@@ -58,7 +57,7 @@ const EXPIRY_STATUS_LABELS: Record<string, string> = {
   expired: "Vencida",
 };
 
-const getExpiryStatusColor = (status: string) => {
+const _getExpiryStatusColor = (status: string) => {
   switch (status) {
     case "expired":
       return "bg-destructive/10 text-destructive";
@@ -97,7 +96,7 @@ export default function DriverSkillsPage() {
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [filterExpiry, setFilterExpiry] = useState<string>("");
 
-  const fetchDriverSkills = async () => {
+  const fetchDriverSkills = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (filterDriver) params.append("driverId", filterDriver);
@@ -116,9 +115,9 @@ export default function DriverSkillsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filterDriver, filterStatus, filterExpiry]);
 
-  const fetchDrivers = async () => {
+  const fetchDrivers = useCallback(async () => {
     try {
       const response = await fetch("/api/drivers?active=true", {
         headers: {
@@ -130,9 +129,9 @@ export default function DriverSkillsPage() {
     } catch (error) {
       console.error("Error fetching drivers:", error);
     }
-  };
+  }, []);
 
-  const fetchSkills = async () => {
+  const fetchSkills = useCallback(async () => {
     try {
       const response = await fetch("/api/vehicle-skills?active=true", {
         headers: {
@@ -144,13 +143,13 @@ export default function DriverSkillsPage() {
     } catch (error) {
       console.error("Error fetching vehicle skills:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDriverSkills();
     fetchDrivers();
     fetchSkills();
-  }, [filterDriver, filterStatus, filterExpiry]);
+  }, [fetchDriverSkills, fetchDrivers, fetchSkills]);
 
   const handleCreate = async (data: DriverSkillInput) => {
     const response = await fetch("/api/driver-skills", {
@@ -240,7 +239,7 @@ export default function DriverSkillsPage() {
     return driverSkills.filter((ds) => ds.skill.category === filterCategory);
   }, [driverSkills, filterCategory]);
 
-  const getDriverName = (driverId: string) => {
+  const _getDriverName = (driverId: string) => {
     const driver = drivers.find((d) => d.id === driverId);
     return driver?.name || "Desconocido";
   };
@@ -317,10 +316,14 @@ export default function DriverSkillsPage() {
         <div className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
+              <label
+                htmlFor="filterDriver"
+                className="block text-sm font-medium text-foreground mb-1"
+              >
                 Conductor
               </label>
               <select
+                id="filterDriver"
                 value={filterDriver}
                 onChange={(e) => setFilterDriver(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -334,10 +337,14 @@ export default function DriverSkillsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
+              <label
+                htmlFor="filterCategory"
+                className="block text-sm font-medium text-foreground mb-1"
+              >
                 Categoría
               </label>
               <select
+                id="filterCategory"
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -353,10 +360,14 @@ export default function DriverSkillsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
+              <label
+                htmlFor="filterStatus"
+                className="block text-sm font-medium text-foreground mb-1"
+              >
                 Estado
               </label>
               <select
+                id="filterStatus"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -367,10 +378,14 @@ export default function DriverSkillsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
+              <label
+                htmlFor="filterExpiry"
+                className="block text-sm font-medium text-foreground mb-1"
+              >
                 Vencimiento
               </label>
               <select
+                id="filterExpiry"
                 value={filterExpiry}
                 onChange={(e) => setFilterExpiry(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -477,6 +492,7 @@ export default function DriverSkillsPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-4">
                         <button
+                          type="button"
                           onClick={() =>
                             handleToggleActive(
                               driverSkill.id,
@@ -494,6 +510,7 @@ export default function DriverSkillsPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
                         <button
+                          type="button"
                           onClick={() => setEditingDriverSkill(driverSkill)}
                           className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
                         >
@@ -501,6 +518,7 @@ export default function DriverSkillsPage() {
                         </button>
                         {driverSkill.active && (
                           <button
+                            type="button"
                             onClick={() => handleDelete(driverSkill.id)}
                             className="text-destructive hover:text-destructive/80 transition-colors"
                           >

@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Package, Users, Volume, Wrench } from "lucide-react";
+import { Loader2, Package, Volume, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {

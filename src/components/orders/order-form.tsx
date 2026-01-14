@@ -472,7 +472,7 @@ export function OrderForm({
                   onChange={(e) =>
                     handleChange(
                       "weightRequired",
-                      parseInt(e.target.value) || 0,
+                      parseInt(e.target.value, 10) || 0,
                     )
                   }
                 />
@@ -488,7 +488,7 @@ export function OrderForm({
                   onChange={(e) =>
                     handleChange(
                       "volumeRequired",
-                      parseInt(e.target.value) || 0,
+                      parseInt(e.target.value, 10) || 0,
                     )
                   }
                 />

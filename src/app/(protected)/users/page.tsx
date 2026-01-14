@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { UserForm } from "@/components/users/user-form";
 import type { CreateUserInput } from "@/lib/validations/user";
@@ -81,7 +81,7 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState("all");
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const url =
         activeTab === "all" ? "/api/users" : `/api/users?role=${activeTab}`;
@@ -97,9 +97,9 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeTab]);
 
-  const fetchFleets = async () => {
+  const fetchFleets = useCallback(async () => {
     try {
       const response = await fetch("/api/fleets", {
         headers: {
@@ -111,16 +111,16 @@ export default function UsersPage() {
     } catch (error) {
       console.error("Error fetching fleets:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchFleets();
-  }, []);
+  }, [fetchFleets]);
 
   useEffect(() => {
     setIsLoading(true);
     fetchUsers();
-  }, [activeTab]);
+  }, [fetchUsers]);
 
   const handleCreate = async (data: CreateUserInput) => {
     const response = await fetch("/api/users", {
@@ -147,7 +147,7 @@ export default function UsersPage() {
     // Remove password from update if empty
     const updateData = { ...data };
     if (!updateData.password) {
-      delete (updateData as any).password;
+      delete (updateData as Partial<CreateUserInput>).password;
     }
 
     const response = await fetch(`/api/users/${editingUser.id}`, {
@@ -187,7 +187,7 @@ export default function UsersPage() {
     await fetchUsers();
   };
 
-  const getFleetName = (fleetId: string | null | undefined) => {
+  const _getFleetName = (fleetId: string | null | undefined) => {
     if (!fleetId) return "-";
     const fleet = fleets.find((f) => f.id === fleetId);
     return fleet?.name || "Desconocida";
@@ -220,7 +220,7 @@ export default function UsersPage() {
                     name: editingUser.name,
                     email: editingUser.email,
                     username: editingUser.username,
-                    role: editingUser.role as any,
+                    role: editingUser.role as CreateUserInput["role"],
                     phone: editingUser.phone,
                     identification: editingUser.identification,
                     birthDate: editingUser.birthDate,
@@ -229,7 +229,8 @@ export default function UsersPage() {
                     licenseExpiry: editingUser.licenseExpiry,
                     licenseCategories: editingUser.licenseCategories,
                     certifications: editingUser.certifications,
-                    driverStatus: editingUser.driverStatus as any,
+                    driverStatus:
+                      editingUser.driverStatus as CreateUserInput["driverStatus"],
                     primaryFleetId: editingUser.primaryFleetId,
                     active: editingUser.active,
                   }
@@ -274,6 +275,7 @@ export default function UsersPage() {
       <div className="flex gap-2 border-b border-border pb-2">
         {ROLE_TABS.map((tab) => (
           <button
+            type="button"
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
@@ -420,6 +422,7 @@ export default function UsersPage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
                       <button
+                        type="button"
                         onClick={() => setEditingUser(user)}
                         className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
                       >
@@ -427,6 +430,7 @@ export default function UsersPage() {
                       </button>
                       {user.active && (
                         <button
+                          type="button"
                           onClick={() => handleDelete(user.id)}
                           className="text-destructive hover:text-destructive/80 transition-colors"
                         >

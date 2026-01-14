@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   TimeWindowPresetForm,
   type TimeWindowPresetFormData,
@@ -35,7 +35,7 @@ export default function TimeWindowPresetsPage() {
     null,
   );
 
-  const fetchPresets = async () => {
+  const fetchPresets = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/time-window-presets", {
@@ -48,11 +48,11 @@ export default function TimeWindowPresetsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchPresets();
-  }, []);
+  }, [fetchPresets]);
 
   const handleCreate = async (data: TimeWindowPresetFormData) => {
     const response = await fetch("/api/time-window-presets", {

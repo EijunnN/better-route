@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowRight,
   ArrowUpDown,
   CheckCircle2,
   Clock,
@@ -15,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -184,15 +183,9 @@ export default function OptimizationHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
-  const [showComparison, setShowComparison] = useState(false);
+  const [_showComparison, _setShowComparison] = useState(false);
 
-  useEffect(() => {
-    if (companyId) {
-      loadJobs();
-    }
-  }, [statusFilter, companyId]);
-
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
     setError(null);
@@ -246,7 +239,13 @@ export default function OptimizationHistoryPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId, statusFilter]);
+
+  useEffect(() => {
+    if (companyId) {
+      loadJobs();
+    }
+  }, [companyId, loadJobs]);
 
   // Show loading while auth is loading
   if (isAuthLoading || !companyId) {
@@ -317,6 +316,7 @@ export default function OptimizationHistoryPage() {
             "PENDING",
           ].map((status) => (
             <button
+              type="button"
               key={status}
               onClick={() => setStatusFilter(status)}
               className={`px-4 py-2 rounded-lg capitalize transition-colors ${

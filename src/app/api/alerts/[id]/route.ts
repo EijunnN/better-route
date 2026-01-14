@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { alertNotifications, alerts } from "@/db/schema";
-import { verifyTenantAccess, withTenantFilter } from "@/db/tenant-aware";
+import { alerts } from "@/db/schema";
+import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
 
 function extractTenantContext(request: NextRequest) {
@@ -93,7 +93,7 @@ export async function PATCH(
     }
 
     // Prepare update values
-    const updateValues: any = {
+    const updateValues: Partial<typeof alerts.$inferInsert> = {
       updatedAt: new Date(),
     };
 

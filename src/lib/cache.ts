@@ -246,7 +246,7 @@ function recordDelete(): void {
 /**
  * Record cache error
  */
-function recordError(): void {
+function _recordError(): void {
   metrics.errors++;
 }
 

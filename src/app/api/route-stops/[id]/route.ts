@@ -106,7 +106,7 @@ export async function PATCH(
       ] || [];
     if (
       status !== currentStop.status &&
-      !validTransitions.includes(status as any)
+      !(validTransitions as string[]).includes(status)
     ) {
       return NextResponse.json(
         {
@@ -119,7 +119,7 @@ export async function PATCH(
 
     // Calculate timestamps based on status
     const now = new Date();
-    const updateData: any = {
+    const updateData: Partial<typeof routeStops.$inferInsert> = {
       status,
       notes: notes || null,
       updatedAt: now,

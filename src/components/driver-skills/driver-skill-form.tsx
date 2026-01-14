@@ -56,16 +56,20 @@ export function DriverSkillForm({
 
     try {
       await onSubmit(formData);
-    } catch (error: any) {
-      if (error.details) {
+    } catch (error) {
+      const err = error as {
+        details?: Array<{ path: string[]; message: string }>;
+        error?: string;
+      };
+      if (err.details) {
         const fieldErrors: Record<string, string> = {};
-        error.details.forEach((err: any) => {
-          fieldErrors[err.path[0]] = err.message;
-        });
+        for (const detail of err.details) {
+          fieldErrors[detail.path[0]] = detail.message;
+        }
         setErrors(fieldErrors);
       } else {
         setErrors({
-          form: error.error || "Error al guardar la habilidad del conductor",
+          form: err.error || "Error al guardar la habilidad del conductor",
         });
       }
     } finally {
@@ -73,7 +77,10 @@ export function DriverSkillForm({
     }
   };
 
-  const updateField = (field: keyof DriverSkillInput, value: any) => {
+  const updateField = (
+    field: keyof DriverSkillInput,
+    value: DriverSkillInput[keyof DriverSkillInput],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
