@@ -119,13 +119,14 @@ export function UserForm({
       await onSubmit(submitData);
     } catch (error: unknown) {
       const err = error as {
-        details?: Array<{ path: string[]; message: string }>;
+        details?: Array<{ path?: string[]; field?: string; message: string }>;
         error?: string;
       };
-      if (err.details) {
+      if (err.details && Array.isArray(err.details)) {
         const fieldErrors: Record<string, string> = {};
         err.details.forEach((detail) => {
-          fieldErrors[detail.path[0]] = detail.message;
+          const fieldName = detail.path?.[0] || detail.field || "form";
+          fieldErrors[fieldName] = detail.message;
         });
         setErrors(fieldErrors);
       } else {

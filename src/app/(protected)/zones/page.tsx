@@ -1,10 +1,11 @@
 "use client";
 
-import { MapPin } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ZoneForm } from "@/components/zones/zone-form";
 import { ZoneMapEditor } from "@/components/zones/zone-map-editor";
+import { useAuth } from "@/hooks/use-auth";
 import { ZONE_TYPE_LABELS, type ZoneInput } from "@/lib/validations/zone";
 
 interface Zone {
@@ -22,33 +23,36 @@ interface Zone {
   activeDays?: string[] | null;
   active: boolean;
   vehicleCount: number;
+  vehicles?: Array<{ id: string; name: string; plate: string | null }>;
   createdAt: string;
   updatedAt: string;
 }
 
-interface VehicleWithZones {
+interface VehicleOption {
   id: string;
   name: string;
   plate: string | null;
-  zones: Array<{ id: string; name: string }>;
 }
 
 type ViewMode = "list" | "form" | "map";
 
 export default function ZonesPage() {
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [zones, setZones] = useState<Zone[]>([]);
-  const [vehicles, setVehicles] = useState<VehicleWithZones[]>([]);
+  const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
+  const [editingZoneVehicleIds, setEditingZoneVehicleIds] = useState<string[]>([]);
   const [pendingFormData, setPendingFormData] =
     useState<Partial<ZoneInput> | null>(null);
 
   const fetchZones = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/zones", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId,
         },
       });
       const data = await response.json();
@@ -58,47 +62,48 @@ export default function ZonesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   const fetchVehicles = useCallback(async () => {
+    if (!companyId) return;
     try {
-      const response = await fetch("/api/vehicles", {
-        headers: { "x-company-id": "demo-company-id" },
+      const response = await fetch("/api/vehicles?limit=100", {
+        headers: { "x-company-id": companyId },
       });
       const data = await response.json();
       const vehiclesList = data.data || [];
 
-      // Map to VehicleWithZones format
-      const vehiclesWithZones: VehicleWithZones[] = vehiclesList.map(
+      // Map to VehicleOption format
+      const vehicleOptions: VehicleOption[] = vehiclesList.map(
         (v: {
           id: string;
           name?: string;
           plate?: string | null;
-          zones?: Array<{ id: string; name: string }>;
         }) => ({
           id: v.id,
           name: v.name || v.plate || "Sin nombre",
           plate: v.plate ?? null,
-          zones: v.zones || [],
         }),
       );
-      setVehicles(vehiclesWithZones);
+      setVehicles(vehicleOptions);
     } catch (error) {
       console.error("Error fetching vehicles:", error);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
-    fetchZones();
-    fetchVehicles();
-  }, [fetchZones, fetchVehicles]);
+    if (companyId) {
+      fetchZones();
+      fetchVehicles();
+    }
+  }, [companyId, fetchZones, fetchVehicles]);
 
-  const handleCreate = async (data: ZoneInput) => {
+  const handleCreate = async (data: ZoneInput, vehicleIds: string[]) => {
     const response = await fetch("/api/zones", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -106,6 +111,23 @@ export default function ZonesPage() {
     if (!response.ok) {
       const error = await response.json();
       throw error;
+    }
+
+    const createdZone = await response.json();
+
+    // Assign vehicles to the new zone
+    if (vehicleIds.length > 0 && createdZone.id) {
+      await fetch(`/api/zones/${createdZone.id}/vehicles`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify({
+          vehicleIds,
+          assignedDays: data.activeDays || null, // Use same days as zone
+        }),
+      });
     }
 
     await fetchZones();
@@ -113,14 +135,14 @@ export default function ZonesPage() {
     setPendingFormData(null);
   };
 
-  const handleUpdate = async (data: ZoneInput) => {
+  const handleUpdate = async (data: ZoneInput, vehicleIds: string[]) => {
     if (!editingZone) return;
 
     const response = await fetch(`/api/zones/${editingZone.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -130,8 +152,22 @@ export default function ZonesPage() {
       throw error;
     }
 
+    // Update vehicle assignments
+    await fetch(`/api/zones/${editingZone.id}/vehicles`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": companyId ?? "",
+      },
+      body: JSON.stringify({
+        vehicleIds,
+        assignedDays: data.activeDays || null, // Use same days as zone
+      }),
+    });
+
     await fetchZones();
     setEditingZone(null);
+    setEditingZoneVehicleIds([]);
     setViewMode("list");
     setPendingFormData(null);
   };
@@ -142,7 +178,7 @@ export default function ZonesPage() {
     const response = await fetch(`/api/zones/${id}`, {
       method: "DELETE",
       headers: {
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
     });
 
@@ -173,11 +209,12 @@ export default function ZonesPage() {
 
   const handleStartNew = () => {
     setEditingZone(null);
+    setEditingZoneVehicleIds([]);
     setPendingFormData(null);
     setViewMode("form");
   };
 
-  const handleEdit = (zone: Zone) => {
+  const handleEdit = async (zone: Zone) => {
     setEditingZone(zone);
     setPendingFormData({
       name: zone.name,
@@ -189,8 +226,34 @@ export default function ZonesPage() {
       activeDays: zone.activeDays as ZoneInput["activeDays"],
       active: zone.active,
     });
+
+    // Load vehicle assignments for this zone
+    try {
+      const response = await fetch(`/api/zones/${zone.id}/vehicles`, {
+        headers: { "x-company-id": companyId ?? "" },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const vehicleIds = (data.vehicles || []).map((v: { id: string }) => v.id);
+        setEditingZoneVehicleIds(vehicleIds);
+      } else {
+        setEditingZoneVehicleIds([]);
+      }
+    } catch {
+      setEditingZoneVehicleIds([]);
+    }
+
     setViewMode("form");
   };
+
+  // Auth loading state
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // Map Editor View
   if (viewMode === "map") {
@@ -266,6 +329,7 @@ export default function ZonesPage() {
               onSubmit={editingZone ? handleUpdate : handleCreate}
               initialData={initialData}
               vehicles={vehicles}
+              initialVehicleIds={editingZoneVehicleIds}
               submitLabel={editingZone ? "Actualizar" : "Crear"}
               onGeometryEdit={handleOpenMapEditor}
             />
@@ -276,6 +340,7 @@ export default function ZonesPage() {
                 onClick={() => {
                   setViewMode("list");
                   setEditingZone(null);
+                  setEditingZoneVehicleIds([]);
                   setPendingFormData(null);
                 }}
               >

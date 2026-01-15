@@ -58,13 +58,14 @@ export function UserSkillForm({
       await onSubmit(formData);
     } catch (error: unknown) {
       const err = error as {
-        details?: Array<{ path: string[]; message: string }>;
+        details?: Array<{ path?: string[]; field?: string; message: string }>;
         error?: string;
       };
-      if (err.details) {
+      if (err.details && Array.isArray(err.details)) {
         const fieldErrors: Record<string, string> = {};
         err.details.forEach((e) => {
-          fieldErrors[e.path[0]] = e.message;
+          const fieldName = e.path?.[0] || e.field || "form";
+          fieldErrors[fieldName] = e.message;
         });
         setErrors(fieldErrors);
       } else {

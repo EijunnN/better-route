@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  BarChart3,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -29,6 +30,7 @@ import {
   AssignmentMetricsCard,
   DriverAssignmentDisplay,
 } from "./driver-assignment-quality";
+import { KpiCard, KpiGrid } from "./kpi-card";
 import { ManualDriverAssignmentDialog } from "./manual-driver-assignment-dialog";
 import { PlanConfirmationDialog } from "./plan-confirmation-dialog";
 import { RouteMap } from "./route-map";
@@ -87,6 +89,7 @@ interface OptimizationResultsProps {
       totalStops: number;
       utilizationRate: number;
       timeWindowComplianceRate: number;
+      balanceScore?: number; // 0-100, distribution balance
     };
     assignmentMetrics?: {
       totalAssignments: number;
@@ -463,84 +466,96 @@ export function OptimizationResults({
 
   return (
     <div className="space-y-6">
-      {/* Summary Metrics */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Optimization Summary</CardTitle>
-          <CardDescription>
-            Objective: {result.summary.objective} • Processed in{" "}
-            {(result.summary.processingTimeMs / 1000).toFixed(2)}s
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <MetricCard
-              icon={Truck}
-              label="Routes"
-              value={result.metrics.totalRoutes}
-            />
-            <MetricCard
-              icon={Package}
-              label="Total Stops"
-              value={result.metrics.totalStops}
-            />
-            <MetricCard
-              icon={Ruler}
-              label="Total Distance"
-              value={(result.metrics.totalDistance / 1000).toFixed(1)}
-              unit="km"
-            />
-            <MetricCard
-              icon={Clock}
-              label="Total Duration"
-              value={Math.floor(result.metrics.totalDuration / 3600)}
-              unit="h"
-            />
-            <MetricCard
-              icon={TrendingUp}
-              label="Utilization Rate"
-              value={result.metrics.utilizationRate}
-              unit="%"
-              color={
-                result.metrics.utilizationRate >= 80
-                  ? "success"
-                  : result.metrics.utilizationRate >= 50
-                    ? "warning"
-                    : "default"
-              }
-            />
-            <MetricCard
-              icon={CheckCircle2}
-              label="Time Window Compliance"
-              value={result.metrics.timeWindowComplianceRate}
-              unit="%"
-              color={
-                result.metrics.timeWindowComplianceRate >= 95
-                  ? "success"
-                  : result.metrics.timeWindowComplianceRate >= 80
-                    ? "warning"
-                    : "danger"
-              }
-            />
+      {/* Summary KPI Cards */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Resumen de Optimizaci&oacute;n</h2>
+            <p className="text-sm text-muted-foreground">
+              Objetivo: {result.summary.objective} &bull; Procesado en{" "}
+              {(result.summary.processingTimeMs / 1000).toFixed(2)}s
+            </p>
           </div>
+        </div>
 
-          {result.unassignedOrders.length > 0 && (
-            <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-              <div className="flex items-center gap-2 text-orange-800">
-                <AlertTriangle className="h-4 w-4" />
-                <span className="font-medium text-sm">
-                  {result.unassignedOrders.length} order
-                  {result.unassignedOrders.length > 1 ? "s" : ""} could not be
-                  assigned
-                </span>
-              </div>
-              <p className="text-xs text-orange-700 mt-1">
-                Check the Unassigned Orders tab for details and reasons.
-              </p>
+        <KpiGrid columns={4}>
+          <KpiCard
+            title="Rutas"
+            value={result.metrics.totalRoutes}
+            subtitle={`${result.metrics.totalStops} paradas totales`}
+            icon={Truck}
+            status="neutral"
+          />
+          <KpiCard
+            title="Distancia Total"
+            value={`${(result.metrics.totalDistance / 1000).toFixed(1)} km`}
+            subtitle={`${Math.floor(result.metrics.totalDuration / 3600)}h ${Math.floor((result.metrics.totalDuration % 3600) / 60)}m duraci\u00f3n`}
+            icon={Ruler}
+            status="neutral"
+          />
+          <KpiCard
+            title="Utilizaci\u00f3n"
+            value={`${result.metrics.utilizationRate}%`}
+            subtitle="Capacidad de veh\u00edculos"
+            icon={TrendingUp}
+            status={
+              result.metrics.utilizationRate >= 80
+                ? "success"
+                : result.metrics.utilizationRate >= 50
+                  ? "warning"
+                  : "error"
+            }
+          />
+          <KpiCard
+            title="Cumplimiento"
+            value={`${result.metrics.timeWindowComplianceRate}%`}
+            subtitle="Ventanas de tiempo"
+            icon={CheckCircle2}
+            status={
+              result.metrics.timeWindowComplianceRate >= 95
+                ? "success"
+                : result.metrics.timeWindowComplianceRate >= 80
+                  ? "warning"
+                  : "error"
+            }
+          />
+        </KpiGrid>
+
+        {/* Balance Score if available */}
+        {result.metrics.balanceScore !== undefined && (
+          <KpiGrid columns={4}>
+            <KpiCard
+              title="Balance de Rutas"
+              value={`${result.metrics.balanceScore}%`}
+              subtitle="Distribuci\u00f3n equitativa de paradas"
+              icon={BarChart3}
+              status={
+                result.metrics.balanceScore >= 80
+                  ? "success"
+                  : result.metrics.balanceScore >= 60
+                    ? "warning"
+                    : "error"
+              }
+            />
+          </KpiGrid>
+        )}
+
+        {result.unassignedOrders.length > 0 && (
+          <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg dark:bg-orange-950 dark:border-orange-800">
+            <div className="flex items-center gap-2 text-orange-800 dark:text-orange-300">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="font-medium text-sm">
+                {result.unassignedOrders.length} pedido
+                {result.unassignedOrders.length > 1 ? "s" : ""} no pudo ser
+                asignado
+              </span>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">
+              Revise la pesta&ntilde;a de Pedidos No Asignados para m&aacute;s detalles.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Assignment Quality Metrics */}
       {result.assignmentMetrics && (

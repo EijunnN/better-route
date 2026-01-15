@@ -85,23 +85,45 @@ export function VehicleForm({
     setErrors({});
     setIsSubmitting(true);
 
+    // Helper to convert empty strings to null
+    const emptyToNull = <T,>(val: T): T | null =>
+      val === "" ? null : val;
+
     const submitData: VehicleInput = {
       ...formData,
       fleetIds: selectedFleetIds,
       plate: formData.useNameAsPlate ? formData.name : formData.plate,
+      // Clean up optional fields - convert empty strings to null
+      originAddress: emptyToNull(formData.originAddress),
+      originLatitude: emptyToNull(formData.originLatitude),
+      originLongitude: emptyToNull(formData.originLongitude),
+      workdayStart: emptyToNull(formData.workdayStart),
+      workdayEnd: emptyToNull(formData.workdayEnd),
+      breakTimeStart: emptyToNull(formData.breakTimeStart),
+      breakTimeEnd: emptyToNull(formData.breakTimeEnd),
+      brand: emptyToNull(formData.brand),
+      model: emptyToNull(formData.model),
+      insuranceExpiry: emptyToNull(formData.insuranceExpiry),
+      inspectionExpiry: emptyToNull(formData.inspectionExpiry),
+      // Enum fields - ensure null instead of empty string
+      loadType: emptyToNull(formData.loadType) as VehicleInput["loadType"],
+      type: emptyToNull(formData.type) as VehicleInput["type"],
+      licenseRequired: emptyToNull(formData.licenseRequired) as VehicleInput["licenseRequired"],
+      assignedDriverId: emptyToNull(formData.assignedDriverId),
     };
 
     try {
       await onSubmit(submitData);
     } catch (error: unknown) {
       const err = error as {
-        details?: Array<{ path: string[]; message: string }>;
+        details?: Array<{ path?: string[]; field?: string; message: string }>;
         error?: string;
       };
-      if (err.details) {
+      if (err.details && Array.isArray(err.details)) {
         const fieldErrors: Record<string, string> = {};
         err.details.forEach((detail) => {
-          fieldErrors[detail.path[0]] = detail.message;
+          const fieldName = detail.path?.[0] || detail.field || "form";
+          fieldErrors[fieldName] = detail.message;
         });
         setErrors(fieldErrors);
       } else {

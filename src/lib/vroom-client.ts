@@ -247,8 +247,8 @@ export function createVroomJob(
  */
 export function createVroomVehicle(
   id: number,
-  startLongitude: number,
-  startLatitude: number,
+  startLongitude: number | undefined,
+  startLatitude: number | undefined,
   options?: {
     description?: string;
     endLongitude?: number;
@@ -259,30 +259,42 @@ export function createVroomVehicle(
     timeWindowEnd?: string;
     maxTasks?: number;
     speedFactor?: number;
+    maxTravelTime?: number; // Maximum travel time in seconds
+    openStart?: boolean; // Don't set start location
+    openEnd?: boolean; // Don't set end location
   },
 ): VroomVehicle {
   const vehicle: VroomVehicle = {
     id,
-    start: [startLongitude, startLatitude],
     profile: "car",
   };
 
+  // Set start location unless openStart is true
+  if (!options?.openStart && startLongitude !== undefined && startLatitude !== undefined) {
+    vehicle.start = [startLongitude, startLatitude];
+  }
+
   if (options?.description) vehicle.description = options.description;
 
-  if (
-    options?.endLongitude !== undefined &&
-    options?.endLatitude !== undefined
-  ) {
-    vehicle.end = [options.endLongitude, options.endLatitude];
-  } else {
-    // Return to depot by default
-    vehicle.end = [startLongitude, startLatitude];
+  // Set end location based on options
+  if (!options?.openEnd) {
+    if (
+      options?.endLongitude !== undefined &&
+      options?.endLatitude !== undefined
+    ) {
+      vehicle.end = [options.endLongitude, options.endLatitude];
+    } else if (startLongitude !== undefined && startLatitude !== undefined && !options?.openStart) {
+      // Return to start by default (if start is set)
+      vehicle.end = [startLongitude, startLatitude];
+    }
   }
+  // If openEnd is true, don't set end location at all
 
   if (options?.capacity) vehicle.capacity = options.capacity;
   if (options?.skills) vehicle.skills = options.skills;
   if (options?.maxTasks) vehicle.max_tasks = options.maxTasks;
   if (options?.speedFactor) vehicle.speed_factor = options.speedFactor;
+  if (options?.maxTravelTime) vehicle.max_travel_time = options.maxTravelTime;
 
   if (options?.timeWindowStart && options?.timeWindowEnd) {
     vehicle.time_window = [

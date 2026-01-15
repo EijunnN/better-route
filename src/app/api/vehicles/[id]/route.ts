@@ -272,8 +272,17 @@ export async function PATCH(
   } catch (error) {
     console.error("Error updating vehicle:", error);
     if (error instanceof Error && error.name === "ZodError") {
+      const zodError = error as unknown as {
+        issues: Array<{ path: (string | number)[]; message: string }>;
+      };
       return NextResponse.json(
-        { error: "Invalid input", details: error },
+        {
+          error: "Validation failed",
+          details: zodError.issues?.map((issue) => ({
+            field: issue.path.join("."),
+            message: issue.message,
+          })),
+        },
         { status: 400 },
       );
     }

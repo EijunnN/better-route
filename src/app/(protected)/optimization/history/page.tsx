@@ -68,6 +68,7 @@ interface OptimizationResult {
     totalStops: number;
     utilizationRate: number;
     timeWindowComplianceRate: number;
+    balanceScore?: number;
   };
   summary: {
     optimizedAt: string;

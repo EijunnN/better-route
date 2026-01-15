@@ -1,9 +1,27 @@
 "use client";
 
-import { List, Map as MapIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  Map as MapIcon,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { OrderForm, type OrderFormData } from "@/components/orders/order-form";
 import { OrderMap } from "@/components/orders/order-map";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import type {
   ORDER_STATUS,
@@ -11,6 +29,7 @@ import type {
 } from "@/lib/validations/order";
 
 const DEMO_COMPANY_ID = "demo-company-id";
+const PAGE_SIZE = 20;
 
 interface Order {
   id: string;
@@ -46,6 +65,11 @@ export default function OrdersPage() {
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
 
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
@@ -53,22 +77,30 @@ export default function OrdersPage() {
       const params = new URLSearchParams();
       if (filterStatus) params.append("status", filterStatus);
       if (searchQuery) params.append("search", searchQuery);
+      params.append("limit", String(PAGE_SIZE));
+      params.append("offset", String((currentPage - 1) * PAGE_SIZE));
 
       const response = await fetch(`/api/orders?${params}`, {
         headers: { "x-company-id": DEMO_COMPANY_ID },
       });
       const result = await response.json();
       setOrders(result.data || []);
+      setTotalOrders(result.meta?.total || result.data?.length || 0);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [filterStatus, searchQuery]);
+  }, [filterStatus, searchQuery, currentPage]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchQuery]);
 
   const handleCreate = async (data: OrderFormData) => {
     const response = await fetch("/api/orders", {
@@ -117,7 +149,7 @@ export default function OrdersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this order?")) return;
+    if (!confirm("¿Estás seguro de que deseas eliminar este pedido?")) return;
 
     const response = await fetch(`/api/orders/${id}`, {
       method: "DELETE",
@@ -131,6 +163,32 @@ export default function OrdersPage() {
     }
 
     await fetchOrders();
+  };
+
+  const handleDeleteAll = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch("/api/orders/batch/delete?hard=true", {
+        method: "DELETE",
+        headers: { "x-company-id": DEMO_COMPANY_ID },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        alert(result.error || "Error al eliminar pedidos");
+        return;
+      }
+
+      alert(`${result.deleted} pedidos eliminados`);
+      setCurrentPage(1);
+      await fetchOrders();
+    } catch (error) {
+      console.error("Failed to delete all orders:", error);
+      alert("Error al eliminar pedidos");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleCloseForm = () => {
@@ -157,17 +215,52 @@ export default function OrdersPage() {
   };
 
   const filteredOrders = orders.filter((order) => order.active);
+  const totalPages = Math.ceil(totalOrders / PAGE_SIZE);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Orders</h1>
+          <h1 className="text-3xl font-bold">Pedidos</h1>
           <p className="text-muted-foreground mt-1">
-            Manage delivery orders with time window constraints
+            Gestiona los pedidos de entrega con restricciones de ventana de
+            tiempo
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>Create Order</Button>
+        <div className="flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={totalOrders === 0}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Eliminar todos
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-destructive" />
+                  ¿Eliminar todos los pedidos?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción eliminará permanentemente{" "}
+                  <strong>{totalOrders} pedidos</strong>. Esta acción no se
+                  puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteAll}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Eliminando..." : "Sí, eliminar todos"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button onClick={() => setShowForm(true)}>Crear Pedido</Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -175,7 +268,7 @@ export default function OrdersPage() {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search by tracking ID or customer name..."
+            placeholder="Buscar por tracking ID o nombre de cliente..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-3 py-2 border rounded-md bg-background"
@@ -186,13 +279,13 @@ export default function OrdersPage() {
           onChange={(e) => setFilterStatus(e.target.value)}
           className="px-3 py-2 border rounded-md bg-background"
         >
-          <option value="">All Statuses</option>
-          <option value="PENDING">Pending</option>
-          <option value="ASSIGNED">Assigned</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="COMPLETED">Completed</option>
-          <option value="FAILED">Failed</option>
-          <option value="CANCELLED">Cancelled</option>
+          <option value="">Todos los estados</option>
+          <option value="PENDING">Pendiente</option>
+          <option value="ASSIGNED">Asignado</option>
+          <option value="IN_PROGRESS">En Progreso</option>
+          <option value="COMPLETED">Completado</option>
+          <option value="FAILED">Fallido</option>
+          <option value="CANCELLED">Cancelado</option>
         </select>
         <div className="flex border rounded-md">
           <Button
@@ -214,13 +307,25 @@ export default function OrdersPage() {
         </div>
       </div>
 
+      {/* Stats bar */}
+      <div className="flex items-center justify-between text-sm text-muted-foreground border-b pb-3">
+        <span>
+          Mostrando {filteredOrders.length} de {totalOrders} pedidos
+        </span>
+        {totalPages > 1 && (
+          <span>
+            Página {currentPage} de {totalPages}
+          </span>
+        )}
+      </div>
+
       {isLoading ? (
-        <div className="text-center py-12">Loading...</div>
+        <div className="text-center py-12">Cargando...</div>
       ) : filteredOrders.length === 0 ? (
         <div className="text-center py-12 border rounded-lg bg-muted/30">
-          <p className="text-muted-foreground">No orders found.</p>
+          <p className="text-muted-foreground">No se encontraron pedidos.</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Create your first order to get started.
+            Crea tu primer pedido para comenzar.
           </p>
         </div>
       ) : viewMode === "map" ? (
@@ -240,18 +345,20 @@ export default function OrdersPage() {
             <thead className="bg-muted">
               <tr>
                 <th className="text-left p-4 font-medium">Tracking ID</th>
-                <th className="text-left p-4 font-medium">Customer</th>
-                <th className="text-left p-4 font-medium">Address</th>
-                <th className="text-left p-4 font-medium">Time Window</th>
+                <th className="text-left p-4 font-medium">Cliente</th>
+                <th className="text-left p-4 font-medium">Dirección</th>
+                <th className="text-left p-4 font-medium">Ventana Tiempo</th>
                 <th className="text-left p-4 font-medium">Strictness</th>
-                <th className="text-left p-4 font-medium">Status</th>
-                <th className="text-right p-4 font-medium">Actions</th>
+                <th className="text-left p-4 font-medium">Estado</th>
+                <th className="text-right p-4 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filteredOrders.map((order) => (
-                <tr key={order.id} className="border-t">
-                  <td className="p-4 font-medium">{order.trackingId}</td>
+                <tr key={order.id} className="border-t hover:bg-muted/30">
+                  <td className="p-4 font-medium font-mono text-sm">
+                    {order.trackingId}
+                  </td>
                   <td className="p-4">
                     <div>
                       <div className="font-medium">
@@ -264,7 +371,9 @@ export default function OrdersPage() {
                       )}
                     </div>
                   </td>
-                  <td className="p-4 max-w-xs truncate">{order.address}</td>
+                  <td className="p-4 max-w-xs truncate text-sm">
+                    {order.address}
+                  </td>
                   <td className="p-4">
                     {order.presetName ? (
                       <div>
@@ -276,13 +385,15 @@ export default function OrdersPage() {
                         )}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground">No preset</span>
+                      <span className="text-muted-foreground text-sm">
+                        Sin preset
+                      </span>
                     )}
                   </td>
                   <td className="p-4">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${getStrictnessColor(
-                        order.effectiveStrictness,
+                        order.effectiveStrictness
                       )}`}
                     >
                       {order.effectiveStrictness}
@@ -291,7 +402,7 @@ export default function OrdersPage() {
                   <td className="p-4">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                        order.status,
+                        order.status
                       )}`}
                     >
                       {order.status}
@@ -303,14 +414,15 @@ export default function OrdersPage() {
                       size="sm"
                       onClick={() => handleEdit(order)}
                     >
-                      Edit
+                      Editar
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDelete(order.id)}
+                      className="text-destructive hover:text-destructive"
                     >
-                      Delete
+                      Eliminar
                     </Button>
                   </td>
                 </tr>
@@ -320,11 +432,63 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Anterior
+          </Button>
+
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  className="w-10"
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
+      )}
+
       {showForm && (
         <OrderForm
           onSubmit={editingOrder ? handleUpdate : handleCreate}
           initialData={editingOrder || undefined}
-          submitLabel={editingOrder ? "Update Order" : "Create Order"}
+          submitLabel={editingOrder ? "Actualizar Pedido" : "Crear Pedido"}
           onCancel={handleCloseForm}
         />
       )}

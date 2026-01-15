@@ -1434,6 +1434,11 @@ export const optimizationPresets = pgTable("optimization_presets", {
   maxDistanceKm: integer("max_distance_km").default(200),
   vehicleRechargeTime: integer("vehicle_recharge_time").default(0), // minutes
   trafficFactor: integer("traffic_factor").default(50), // 0-100 scale
+  // Route end configuration: DRIVER_ORIGIN | SPECIFIC_DEPOT | OPEN_END
+  routeEndMode: varchar("route_end_mode", { length: 50 }).notNull().default("DRIVER_ORIGIN"),
+  endDepotLatitude: varchar("end_depot_latitude", { length: 50 }),
+  endDepotLongitude: varchar("end_depot_longitude", { length: 50 }),
+  endDepotAddress: varchar("end_depot_address", { length: 500 }),
   // Is this the default preset?
   isDefault: boolean("is_default").notNull().default(false),
   active: boolean("active").notNull().default(true),

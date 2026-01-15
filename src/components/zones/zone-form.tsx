@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Search, Truck } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,22 +14,22 @@ import {
   type ZoneInput,
 } from "@/lib/validations/zone";
 
-interface VehicleWithZones {
+interface VehicleOption {
   id: string;
   name: string;
   plate: string | null;
-  zones: Array<{ id: string; name: string }>;
 }
 
 interface ZoneFormProps {
-  onSubmit: (data: ZoneInput) => Promise<void>;
+  onSubmit: (data: ZoneInput, vehicleIds: string[]) => Promise<void>;
   initialData?: Partial<ZoneInput> & {
     parsedGeometry?: {
       type: "Polygon";
       coordinates: number[][][];
     } | null;
   };
-  vehicles: VehicleWithZones[];
+  vehicles: VehicleOption[];
+  initialVehicleIds?: string[];
   submitLabel?: string;
   onGeometryEdit?: () => void; // Callback to open map editor
 }
@@ -36,7 +37,8 @@ interface ZoneFormProps {
 export function ZoneForm({
   onSubmit,
   initialData,
-  vehicles: _vehicles,
+  vehicles,
+  initialVehicleIds = [],
   submitLabel = "Guardar",
   onGeometryEdit,
 }: ZoneFormProps) {
@@ -57,6 +59,8 @@ export function ZoneForm({
   const [selectedDays, setSelectedDays] = useState<string[]>(
     initialData?.activeDays ?? [],
   );
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(initialVehicleIds);
+  const [vehicleSearch, setVehicleSearch] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,16 +76,17 @@ export function ZoneForm({
     };
 
     try {
-      await onSubmit(submitData);
+      await onSubmit(submitData, selectedVehicleIds);
     } catch (error: unknown) {
       const err = error as {
-        details?: Array<{ path: string[]; message: string }>;
+        details?: Array<{ path?: string[]; field?: string; message: string }>;
         error?: string;
       };
-      if (err.details) {
+      if (err.details && Array.isArray(err.details)) {
         const fieldErrors: Record<string, string> = {};
         err.details.forEach((e) => {
-          fieldErrors[e.path[0]] = e.message;
+          const fieldName = e.path?.[0] || e.field || "form";
+          fieldErrors[fieldName] = e.message;
         });
         setErrors(fieldErrors);
       } else {
@@ -91,6 +96,24 @@ export function ZoneForm({
       setIsSubmitting(false);
     }
   };
+
+  // Vehicle selection helpers
+  const toggleVehicle = (vehicleId: string) => {
+    setSelectedVehicleIds((prev) =>
+      prev.includes(vehicleId)
+        ? prev.filter((id) => id !== vehicleId)
+        : [...prev, vehicleId]
+    );
+  };
+
+  const filteredVehicles = vehicles.filter((v) => {
+    if (!vehicleSearch) return true;
+    const search = vehicleSearch.toLowerCase();
+    return (
+      v.name.toLowerCase().includes(search) ||
+      (v.plate?.toLowerCase().includes(search) ?? false)
+    );
+  });
 
   const updateField = (
     field: keyof ZoneInput,
@@ -365,6 +388,108 @@ export function ZoneForm({
               {DAY_OF_WEEK_LABELS[day]}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Vehicle Assignment */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b pb-2">
+          <h3 className="text-lg font-medium">Vehículos Asignados</h3>
+          <span className="text-sm text-muted-foreground">
+            {selectedVehicleIds.length} seleccionados
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Selecciona los vehículos que pueden entregar en esta zona. Solo estos vehículos
+          recibirán pedidos de esta zona durante la optimización.
+        </p>
+
+        {/* Search vehicles */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar vehículo..."
+            value={vehicleSearch}
+            onChange={(e) => setVehicleSearch(e.target.value)}
+            disabled={isSubmitting}
+            className="pl-9"
+          />
+        </div>
+
+        {/* Quick actions */}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setSelectedVehicleIds(vehicles.map((v) => v.id))}
+            disabled={isSubmitting}
+          >
+            Todos
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setSelectedVehicleIds([])}
+            disabled={isSubmitting}
+          >
+            Ninguno
+          </Button>
+        </div>
+
+        {/* Vehicle list */}
+        <div className="max-h-[250px] overflow-y-auto border rounded-lg">
+          {vehicles.length === 0 ? (
+            <div className="p-6 text-center text-muted-foreground">
+              <Truck className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No hay vehículos disponibles</p>
+            </div>
+          ) : filteredVehicles.length === 0 ? (
+            <div className="p-4 text-center text-muted-foreground text-sm">
+              No se encontraron vehículos
+            </div>
+          ) : (
+            <div className="divide-y">
+              {filteredVehicles.map((vehicle) => {
+                const isSelected = selectedVehicleIds.includes(vehicle.id);
+                return (
+                  <button
+                    key={vehicle.id}
+                    type="button"
+                    onClick={() => toggleVehicle(vehicle.id)}
+                    disabled={isSubmitting}
+                    className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${
+                      isSelected
+                        ? "bg-primary/10"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                        isSelected
+                          ? "bg-primary border-primary"
+                          : "border-input"
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <Truck className="w-4 h-4 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">
+                        {vehicle.plate || vehicle.name}
+                      </p>
+                      {vehicle.plate && vehicle.name !== vehicle.plate && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {vehicle.name}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

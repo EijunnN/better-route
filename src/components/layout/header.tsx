@@ -1,7 +1,6 @@
 "use client";
 
-import { Bell, Moon, Search, Sun, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Bell, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,31 +22,6 @@ interface HeaderProps {
 }
 
 export function Header({ title, user }: HeaderProps) {
-  const [isDark, setIsDark] = useState(false);
-
-  // Cargar tema guardado al montar el componente
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    const shouldBeDark = savedTheme === "dark" || (!savedTheme && prefersDark);
-
-    setIsDark(shouldBeDark);
-    if (shouldBeDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
-    localStorage.setItem("theme", newIsDark ? "dark" : "light");
-    document.documentElement.classList.toggle("dark");
-  };
-
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-background px-6">
       {/* Left side - Title & Search */}
@@ -63,11 +37,6 @@ export function Header({ title, user }: HeaderProps) {
 
       {/* Right side - Actions */}
       <div className="flex items-center gap-2">
-        {/* Theme toggle */}
-        <Button variant="ghost" size="icon" onClick={toggleTheme}>
-          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </Button>
-
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

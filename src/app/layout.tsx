@@ -17,6 +17,20 @@ export const metadata: Metadata = {
   description: "Aplicación de planeamiento estratégico",
 };
 
+// Script que se ejecuta antes del renderizado para evitar flash de tema incorrecto
+const themeScript = `
+  (function() {
+    try {
+      var savedTheme = localStorage.getItem('theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+      if (shouldBeDark) {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {}
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,6 +38,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

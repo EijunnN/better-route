@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     // Use query API to include fleet associations
     const data = await db.query.vehicles.findMany({
       where: whereClause,
-      orderBy: (vehicles, { desc }) => [desc(vehicles.createdAt)],
+      orderBy: (vehicles, { asc }) => [asc(vehicles.name)],
       limit: query.limit,
       offset: query.offset,
       with: {
@@ -228,8 +228,17 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error creating vehicle:", error);
     if (error instanceof Error && error.name === "ZodError") {
+      const zodError = error as unknown as {
+        issues: Array<{ path: (string | number)[]; message: string }>;
+      };
       return NextResponse.json(
-        { error: "Invalid input", details: error },
+        {
+          error: "Validation failed",
+          details: zodError.issues?.map((issue) => ({
+            field: issue.path.join("."),
+            message: issue.message,
+          })),
+        },
         { status: 400 },
       );
     }

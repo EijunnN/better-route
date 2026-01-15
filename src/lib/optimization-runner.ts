@@ -3,10 +3,13 @@ import { db } from "@/db";
 import {
   optimizationConfigurations,
   optimizationJobs,
+  optimizationPresets,
   orders,
   USER_ROLES,
   users,
   vehicles,
+  zones,
+  zoneVehicles,
 } from "@/db/schema";
 import {
   assignDriversToRoutes,
@@ -34,6 +37,13 @@ import {
   type OptimizationConfig as VroomOptConfig,
   optimizeRoutes as vroomOptimizeRoutes,
 } from "./vroom-optimizer";
+import {
+  createZoneBatches,
+  getDayOfWeek,
+  type DayOfWeek,
+  type VehicleZoneAssignment,
+  type ZoneData,
+} from "./zone-utils";
 
 // Optimization result types
 export interface OptimizationStop {
@@ -56,6 +66,11 @@ export interface OptimizationRoute {
   vehiclePlate: string;
   driverId?: string;
   driverName?: string;
+  driverOrigin?: {
+    latitude: string;
+    longitude: string;
+    address?: string;
+  };
   stops: OptimizationStop[];
   totalDistance: number;
   totalDuration: number;
@@ -203,7 +218,7 @@ export async function runOptimization(
 
   checkAbort();
 
-  // Fetch selected vehicles
+  // Fetch selected vehicles with zone assignments
   const selectedVehicles = await db.query.vehicles.findMany({
     where: and(
       eq(vehicles.companyId, input.companyId),
@@ -219,6 +234,53 @@ export async function runOptimization(
     },
   });
 
+  // Fetch zone assignments for selected vehicles
+  const vehicleZoneAssignments = await db
+    .select()
+    .from(zoneVehicles)
+    .where(
+      and(
+        eq(zoneVehicles.companyId, input.companyId),
+        inArray(
+          zoneVehicles.vehicleId,
+          selectedVehicles.map((v) => v.id),
+        ),
+        eq(zoneVehicles.active, true),
+      ),
+    );
+
+  // Group zone assignments by vehicle
+  const zoneAssignmentsByVehicle = new Map<string, VehicleZoneAssignment[]>();
+  for (const assignment of vehicleZoneAssignments) {
+    const existing = zoneAssignmentsByVehicle.get(assignment.vehicleId) || [];
+    existing.push({
+      zoneId: assignment.zoneId,
+      vehicleId: assignment.vehicleId,
+      assignedDays: assignment.assignedDays,
+      active: assignment.active,
+    });
+    zoneAssignmentsByVehicle.set(assignment.vehicleId, existing);
+  }
+
+  checkAbort();
+
+  // Fetch active zones for this company
+  const activeZones = await db
+    .select()
+    .from(zones)
+    .where(and(eq(zones.companyId, input.companyId), eq(zones.active, true)));
+
+  // Convert to ZoneData format
+  const zonesData: ZoneData[] = activeZones.map((z) => ({
+    id: z.id,
+    name: z.name,
+    geometry: z.geometry,
+    activeDays: z.activeDays,
+    active: z.active,
+    type: z.type || undefined,
+    color: z.color || undefined,
+  }));
+
   checkAbort();
 
   // Fetch selected drivers (users with role CONDUCTOR)
@@ -233,40 +295,41 @@ export async function runOptimization(
 
   checkAbort();
 
-  // === VROOM Optimization ===
+  // === VROOM Optimization with Zone Support ===
   // Uses VROOM for VRP solving when available, falls back to nearest-neighbor
   await updateJobProgress(jobId || input.configurationId, 10);
   checkAbort();
 
-  // Prepare orders for VROOM
-  const ordersForVroom: OrderForOptimization[] = pendingOrders.map((order) => ({
+  // Determine day of week for zone filtering
+  // Use current date - zones are filtered by day of week
+  const optimizationDate = new Date();
+  const dayOfWeek: DayOfWeek = getDayOfWeek(optimizationDate);
+
+  // Prepare orders with location info
+  const ordersWithLocation = pendingOrders.map((order) => ({
     id: order.id,
     trackingId: order.trackingId,
     address: order.address,
-    latitude: parseFloat(order.latitude),
-    longitude: parseFloat(order.longitude),
+    latitude: order.latitude,
+    longitude: order.longitude,
     weightRequired: order.weightRequired || 0,
     volumeRequired: order.volumeRequired || 0,
-    timeWindowStart: order.promisedDate
-      ? new Date(order.promisedDate).toTimeString().slice(0, 5)
-      : undefined,
-    timeWindowEnd: order.promisedDate
-      ? new Date(new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000)
-          .toTimeString()
-          .slice(0, 5)
-      : undefined,
+    promisedDate: order.promisedDate,
     serviceTime: 300, // 5 minutes default
   }));
 
-  // Prepare vehicles for VROOM
-  const vehiclesForVroom: VehicleForOptimization[] = selectedVehicles.map(
-    (vehicle) => ({
-      id: vehicle.id,
-      plate: vehicle.plate || vehicle.name || vehicle.id,
-      maxWeight: vehicle.weightCapacity || 10000,
-      maxVolume: vehicle.volumeCapacity || 100,
-    }),
-  );
+  // Prepare vehicles with zone assignments
+  const vehiclesWithZones = selectedVehicles.map((vehicle) => ({
+    id: vehicle.id,
+    plate: vehicle.plate || vehicle.name || vehicle.id,
+    name: vehicle.name,
+    weightCapacity: vehicle.weightCapacity,
+    volumeCapacity: vehicle.volumeCapacity,
+    maxOrders: vehicle.maxOrders || 30,
+    originLatitude: vehicle.originLatitude,
+    originLongitude: vehicle.originLongitude,
+    zoneAssignments: zoneAssignmentsByVehicle.get(vehicle.id) || [],
+  }));
 
   // Depot config
   const depotConfig: DepotConfig = {
@@ -276,88 +339,303 @@ export async function runOptimization(
     timeWindowEnd: "22:00",
   };
 
-  // Optimization config
+  // Load optimization preset (default for company)
+  const preset = await db.query.optimizationPresets.findFirst({
+    where: and(
+      eq(optimizationPresets.companyId, input.companyId),
+      eq(optimizationPresets.isDefault, true),
+      eq(optimizationPresets.active, true),
+    ),
+  });
+
+  // Optimization config with preset values
   const vroomConfig: VroomOptConfig = {
     depot: depotConfig,
     objective:
       (config?.objective as "DISTANCE" | "TIME" | "BALANCED") || "BALANCED",
+    // Apply preset settings if available
+    balanceVisits: preset?.balanceVisits ?? false,
+    maxDistanceKm: preset?.maxDistanceKm ?? undefined,
+    maxTravelTimeMinutes: preset?.vehicleRechargeTime ?? undefined, // vehicleRechargeTime acts as max travel time
+    trafficFactor: preset?.trafficFactor ?? undefined,
+    // Route end configuration
+    routeEndMode: (preset?.routeEndMode as "DRIVER_ORIGIN" | "SPECIFIC_DEPOT" | "OPEN_END") ?? "DRIVER_ORIGIN",
+    endDepot: preset?.endDepotLatitude && preset?.endDepotLongitude
+      ? {
+          latitude: parseFloat(preset.endDepotLatitude),
+          longitude: parseFloat(preset.endDepotLongitude),
+          address: preset.endDepotAddress ?? undefined,
+        }
+      : undefined,
+    // Additional optimization options
+    openStart: preset?.openStart ?? false,
+    minimizeVehicles: preset?.minimizeVehicles ?? false,
+    flexibleTimeWindows: preset?.flexibleTimeWindows ?? false,
   };
 
-  await updateJobProgress(jobId || input.configurationId, 30);
+  await updateJobProgress(jobId || input.configurationId, 20);
   checkAbort();
 
-  // Run VROOM optimization
-  const vroomResult = await vroomOptimizeRoutes(
-    ordersForVroom,
-    vehiclesForVroom,
-    vroomConfig,
-  );
-
-  await updateJobProgress(jobId || input.configurationId, 70);
-  checkAbort();
-
-  // Convert VROOM result to our format
+  // Create zone batches if zones are configured
+  const hasZones = zonesData.length > 0;
   const routes: OptimizationRoute[] = [];
   const unassignedOrders: Array<{
     orderId: string;
     trackingId: string;
     reason: string;
-  }> = vroomResult.unassigned;
+  }> = [];
 
+  if (hasZones) {
+    // Zone-aware optimization: run optimization per zone batch
+    const zoneBatches = createZoneBatches(
+      ordersWithLocation,
+      vehiclesWithZones,
+      zonesData,
+      dayOfWeek,
+    );
+
+    console.log(
+      `Zone batches created: ${zoneBatches.length} batches for ${ordersWithLocation.length} orders`,
+    );
+
+    const progressPerBatch =
+      zoneBatches.length > 0 ? 50 / zoneBatches.length : 50;
+    let currentProgress = 20;
+
+    for (const batch of zoneBatches) {
+      checkAbort();
+
+      console.log(
+        `Processing zone batch: ${batch.zoneName} (${batch.orders.length} orders, ${batch.vehicles.length} vehicles)`,
+      );
+
+      if (batch.vehicles.length === 0) {
+        // No vehicles available for this zone - mark all orders as unassigned
+        for (const order of batch.orders) {
+          unassignedOrders.push({
+            orderId: order.id,
+            trackingId: order.trackingId,
+            reason: `No hay vehículos disponibles para la zona ${batch.zoneName} el día ${dayOfWeek}`,
+          });
+        }
+        continue;
+      }
+
+      // Convert batch orders to VROOM format
+      const batchOrdersForVroom: OrderForOptimization[] = batch.orders.map(
+        (order) => ({
+          id: order.id,
+          trackingId: order.trackingId,
+          address: order.address,
+          latitude: parseFloat(String(order.latitude)),
+          longitude: parseFloat(String(order.longitude)),
+          weightRequired: order.weightRequired,
+          volumeRequired: order.volumeRequired,
+          timeWindowStart: order.promisedDate
+            ? new Date(order.promisedDate).toTimeString().slice(0, 5)
+            : undefined,
+          timeWindowEnd: order.promisedDate
+            ? new Date(
+                new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000,
+              )
+                .toTimeString()
+                .slice(0, 5)
+            : undefined,
+          serviceTime: order.serviceTime,
+          zoneId: batch.zoneId === "unzoned" ? undefined : batch.zoneId,
+        }),
+      );
+
+      // Convert batch vehicles to VROOM format
+      const batchVehiclesForVroom: VehicleForOptimization[] =
+        batch.vehicles.map((vehicle) => ({
+          id: vehicle.id,
+          plate: vehicle.plate,
+          maxWeight: vehicle.weightCapacity || 10000,
+          maxVolume: vehicle.volumeCapacity || 100,
+          maxOrders: vehicle.maxOrders || 30,
+          originLatitude: vehicle.originLatitude
+            ? parseFloat(vehicle.originLatitude)
+            : undefined,
+          originLongitude: vehicle.originLongitude
+            ? parseFloat(vehicle.originLongitude)
+            : undefined,
+        }));
+
+      // Run VROOM optimization for this batch
+      const batchResult = await vroomOptimizeRoutes(
+        batchOrdersForVroom,
+        batchVehiclesForVroom,
+        vroomConfig,
+      );
+
+      // Add batch unassigned orders
+      for (const unassigned of batchResult.unassigned) {
+        unassignedOrders.push({
+          ...unassigned,
+          reason: `${unassigned.reason} (Zona: ${batch.zoneName})`,
+        });
+      }
+
+      // Convert batch routes to our format
+      for (const vroomRoute of batchResult.routes) {
+        const vehicle = selectedVehicles.find(
+          (v) => v.id === vroomRoute.vehicleId,
+        );
+        if (!vehicle) continue;
+
+        const routeStops: OptimizationStop[] = vroomRoute.stops.map((stop) => ({
+          orderId: stop.orderId,
+          trackingId: stop.trackingId,
+          sequence: stop.sequence,
+          address: stop.address,
+          latitude: String(stop.latitude),
+          longitude: String(stop.longitude),
+          estimatedArrival: stop.arrivalTime
+            ? new Date(stop.arrivalTime * 1000).toISOString()
+            : undefined,
+        }));
+
+        const newRoute: OptimizationRoute = {
+          routeId: `route-${vehicle.id}-${batch.zoneId}-${Date.now()}`,
+          vehicleId: vehicle.id,
+          vehiclePlate: vehicle.plate || vehicle.name || vehicle.id,
+          stops: routeStops,
+          totalDistance: vroomRoute.totalDistance,
+          totalDuration: vroomRoute.totalDuration,
+          totalWeight: vroomRoute.totalWeight,
+          totalVolume: vroomRoute.totalVolume,
+          utilizationPercentage: Math.round(
+            Math.max(
+              (vroomRoute.totalWeight / (vehicle.weightCapacity || 1)) * 100,
+              (vroomRoute.totalVolume / (vehicle.volumeCapacity || 1)) * 100,
+            ) || 0,
+          ),
+          timeWindowViolations: 0,
+          geometry: vroomRoute.geometry,
+        };
+
+        routes.push(newRoute);
+        partialRoutes = [...routes];
+      }
+
+      currentProgress += progressPerBatch;
+      await updateJobProgress(jobId || input.configurationId, currentProgress);
+    }
+  } else {
+    // No zones configured - run single optimization for all orders
+    const ordersForVroom: OrderForOptimization[] = ordersWithLocation.map(
+      (order) => ({
+        id: order.id,
+        trackingId: order.trackingId,
+        address: order.address,
+        latitude: parseFloat(String(order.latitude)),
+        longitude: parseFloat(String(order.longitude)),
+        weightRequired: order.weightRequired,
+        volumeRequired: order.volumeRequired,
+        timeWindowStart: order.promisedDate
+          ? new Date(order.promisedDate).toTimeString().slice(0, 5)
+          : undefined,
+        timeWindowEnd: order.promisedDate
+          ? new Date(
+              new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000,
+            )
+              .toTimeString()
+              .slice(0, 5)
+          : undefined,
+        serviceTime: order.serviceTime,
+      }),
+    );
+
+    const vehiclesForVroom: VehicleForOptimization[] = vehiclesWithZones.map(
+      (vehicle) => ({
+        id: vehicle.id,
+        plate: vehicle.plate,
+        maxWeight: vehicle.weightCapacity || 10000,
+        maxVolume: vehicle.volumeCapacity || 100,
+        maxOrders: vehicle.maxOrders || 30,
+        originLatitude: vehicle.originLatitude
+          ? parseFloat(vehicle.originLatitude)
+          : undefined,
+        originLongitude: vehicle.originLongitude
+          ? parseFloat(vehicle.originLongitude)
+          : undefined,
+      }),
+    );
+
+    await updateJobProgress(jobId || input.configurationId, 30);
+    checkAbort();
+
+    const vroomResult = await vroomOptimizeRoutes(
+      ordersForVroom,
+      vehiclesForVroom,
+      vroomConfig,
+    );
+
+    // Add unassigned orders
+    unassignedOrders.push(...vroomResult.unassigned);
+
+    // Convert routes
+    for (const vroomRoute of vroomResult.routes) {
+      const vehicle = selectedVehicles.find(
+        (v) => v.id === vroomRoute.vehicleId,
+      );
+      if (!vehicle) continue;
+
+      const routeStops: OptimizationStop[] = vroomRoute.stops.map((stop) => ({
+        orderId: stop.orderId,
+        trackingId: stop.trackingId,
+        sequence: stop.sequence,
+        address: stop.address,
+        latitude: String(stop.latitude),
+        longitude: String(stop.longitude),
+        estimatedArrival: stop.arrivalTime
+          ? new Date(stop.arrivalTime * 1000).toISOString()
+          : undefined,
+      }));
+
+      const newRoute: OptimizationRoute = {
+        routeId: `route-${vehicle.id}-${Date.now()}`,
+        vehicleId: vehicle.id,
+        vehiclePlate: vehicle.plate || vehicle.name || vehicle.id,
+        stops: routeStops,
+        totalDistance: vroomRoute.totalDistance,
+        totalDuration: vroomRoute.totalDuration,
+        totalWeight: vroomRoute.totalWeight,
+        totalVolume: vroomRoute.totalVolume,
+        utilizationPercentage: Math.round(
+          Math.max(
+            (vroomRoute.totalWeight / (vehicle.weightCapacity || 1)) * 100,
+            (vroomRoute.totalVolume / (vehicle.volumeCapacity || 1)) * 100,
+          ) || 0,
+        ),
+        timeWindowViolations: 0,
+        geometry: vroomRoute.geometry,
+      };
+
+      routes.push(newRoute);
+      partialRoutes = [...routes];
+    }
+  }
+
+  await updateJobProgress(jobId || input.configurationId, 70);
+  checkAbort();
+
+  // Build driver assignment requests from routes
   const routeAssignments: DriverAssignmentRequest[] = [];
   const assignedDrivers = new Map<string, string>();
 
-  for (const vroomRoute of vroomResult.routes) {
-    checkAbort();
-
-    const vehicle = selectedVehicles.find((v) => v.id === vroomRoute.vehicleId);
-    if (!vehicle) continue;
-
-    const routeStops: OptimizationStop[] = vroomRoute.stops.map((stop) => ({
-      orderId: stop.orderId,
-      trackingId: stop.trackingId,
-      sequence: stop.sequence,
-      address: stop.address,
-      latitude: String(stop.latitude),
-      longitude: String(stop.longitude),
-      estimatedArrival: stop.arrivalTime
-        ? new Date(stop.arrivalTime * 1000).toISOString()
-        : undefined,
-    }));
-
-    // Store route for driver assignment
+  for (const route of routes) {
     routeAssignments.push({
       companyId: input.companyId,
-      vehicleId: vehicle.id,
-      routeStops: routeStops.map((s) => ({
+      vehicleId: route.vehicleId,
+      routeStops: route.stops.map((s) => ({
         orderId: s.orderId,
         promisedDate: undefined,
       })),
       candidateDriverIds: selectedDrivers.map((d) => d.id),
       assignedDrivers,
     });
-
-    const newRoute: OptimizationRoute = {
-      routeId: `route-${vehicle.id}-${Date.now()}`,
-      vehicleId: vehicle.id,
-      vehiclePlate: vehicle.plate || vehicle.name || vehicle.id,
-      stops: routeStops,
-      totalDistance: vroomRoute.totalDistance,
-      totalDuration: vroomRoute.totalDuration,
-      totalWeight: vroomRoute.totalWeight,
-      totalVolume: vroomRoute.totalVolume,
-      utilizationPercentage: Math.round(
-        Math.max(
-          (vroomRoute.totalWeight / (vehicle.weightCapacity || 1)) * 100,
-          (vroomRoute.totalVolume / (vehicle.volumeCapacity || 1)) * 100,
-        ) || 0,
-      ),
-      timeWindowViolations: 0,
-      geometry: vroomRoute.geometry, // Encoded polyline from OSRM
-    };
-
-    routes.push(newRoute);
-    partialRoutes = [...routes];
   }
 
   // Perform intelligent driver assignment
@@ -368,7 +646,7 @@ export async function runOptimization(
     strategy,
   });
 
-  // Update routes with assigned drivers
+  // Update routes with assigned drivers and vehicle origin
   for (const route of routes) {
     const assignment = driverAssignments.get(route.vehicleId);
     if (assignment) {
@@ -378,6 +656,16 @@ export async function runOptimization(
         score: assignment.score.score,
         warnings: assignment.score.warnings,
         errors: assignment.score.errors,
+      };
+    }
+
+    // Get vehicle origin from vehiclesWithZones
+    const vehicle = vehiclesWithZones.find((v) => v.id === route.vehicleId);
+    if (vehicle?.originLatitude && vehicle?.originLongitude) {
+      route.driverOrigin = {
+        latitude: vehicle.originLatitude,
+        longitude: vehicle.originLongitude,
+        address: undefined, // Vehicles don't have origin address
       };
     }
   }

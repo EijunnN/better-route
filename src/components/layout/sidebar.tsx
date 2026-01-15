@@ -10,14 +10,17 @@ import {
   LogOut,
   Map as MapIcon,
   MapPin,
+  Moon,
   Package,
   Route,
+  Settings2,
+  Sun,
   Truck,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +34,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: BarChart3 },
   { title: "Pedidos", href: "/orders", icon: Package },
-  { title: "Optimización", href: "/optimization", icon: Route },
+  { title: "Planificación", href: "/planificacion", icon: Route },
   { title: "Monitoreo", href: "/monitoring", icon: MapIcon },
   { title: "Usuarios", href: "/users", icon: Users },
   { title: "Vehículos", href: "/vehicles", icon: Truck },
@@ -41,6 +44,7 @@ const navItems: NavItem[] = [
 ];
 
 const configItems: NavItem[] = [
+  { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2 },
   { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock },
   { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award },
   { title: "Habilidades Usuarios", href: "/user-skills", icon: Award },
@@ -49,6 +53,30 @@ const configItems: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  // Load saved theme on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
+    const shouldBeDark = savedTheme === "dark" || (!savedTheme && prefersDark);
+
+    setIsDark(shouldBeDark);
+    if (shouldBeDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    localStorage.setItem("theme", newIsDark ? "dark" : "light");
+    document.documentElement.classList.toggle("dark");
+  };
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
@@ -149,7 +177,23 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-sidebar-border p-2">
+      <div className="border-t border-sidebar-border p-2 space-y-1">
+        <Button
+          variant="ghost"
+          className={cn(
+            "w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            collapsed && "justify-center px-2",
+          )}
+          onClick={toggleTheme}
+          title={collapsed ? (isDark ? "Modo claro" : "Modo oscuro") : undefined}
+        >
+          {isDark ? (
+            <Sun className="h-5 w-5 shrink-0" />
+          ) : (
+            <Moon className="h-5 w-5 shrink-0" />
+          )}
+          {!collapsed && <span>{isDark ? "Modo Claro" : "Modo Oscuro"}</span>}
+        </Button>
         <Button
           variant="ghost"
           className={cn(

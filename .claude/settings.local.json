@@ -38,7 +38,10 @@
       "Bash(bunx biome check:*)",
       "Bash(bun lint:*)",
       "Bash(bunx biome format:*)",
-      "Bash(timeout 10 bun dev:*)"
+      "Bash(timeout 10 bun dev:*)",
+      "Bash(npx biome check:*)",
+      "Bash(bun drizzle-kit:*)",
+      "Bash(bun tsc:*)"
     ]
   }
 }

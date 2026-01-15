@@ -195,14 +195,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newRecord, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
+      // Zod errors are in 'issues' property, not 'errors'
+      const zodError = error as unknown as { issues: Array<{ path: (string | number)[]; message: string }> };
       return NextResponse.json(
         {
           error: "Validation failed",
-          details: (error as { errors?: unknown }).errors,
+          details: zodError.issues?.map((issue) => ({
+            field: issue.path.join("."),
+            message: issue.message,
+          })),
         },
         { status: 400 },
       );
     }
+    console.error("Order creation error:", error);
     return NextResponse.json(
       {
         error:

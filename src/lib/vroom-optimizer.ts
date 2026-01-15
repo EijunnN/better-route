@@ -18,6 +18,13 @@ import {
   type VroomRequest,
   type VroomResponse,
 } from "./vroom-client";
+import {
+  calculateBalancedMaxOrders,
+  getBalanceScore,
+  redistributeOrders,
+  type BalanceableRoute,
+  type BalanceableStop,
+} from "./balance-utils";
 
 // Our domain types
 export interface OrderForOptimization {
@@ -33,6 +40,7 @@ export interface OrderForOptimization {
   skillsRequired?: string[];
   priority?: number;
   serviceTime?: number; // seconds
+  zoneId?: string; // Zone this order belongs to (for zone-aware optimization)
 }
 
 export interface VehicleForOptimization {
@@ -40,6 +48,9 @@ export interface VehicleForOptimization {
   plate: string;
   maxWeight: number;
   maxVolume: number;
+  maxOrders?: number; // Maximum number of orders per vehicle
+  originLatitude?: number; // Vehicle's starting location
+  originLongitude?: number;
   skills?: string[];
   speedFactor?: number;
 }
@@ -56,6 +67,22 @@ export interface OptimizationConfig {
   objective: "DISTANCE" | "TIME" | "BALANCED";
   maxRoutes?: number;
   balanceFactor?: number;
+  // New options for balancing and limits
+  balanceVisits?: boolean; // Enable post-optimization balancing
+  maxDistanceKm?: number; // Maximum distance per route (km)
+  maxTravelTimeMinutes?: number; // Maximum travel time per route (minutes)
+  trafficFactor?: number; // Traffic factor 0-100 (affects speed)
+  // Route end configuration
+  routeEndMode?: "DRIVER_ORIGIN" | "SPECIFIC_DEPOT" | "OPEN_END";
+  endDepot?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  };
+  // Additional preset options
+  openStart?: boolean; // Vehicles can start from anywhere (no fixed start)
+  minimizeVehicles?: boolean; // Use minimum number of vehicles
+  flexibleTimeWindows?: boolean; // Add tolerance to time windows
 }
 
 export interface OptimizedStop {
@@ -94,6 +121,7 @@ export interface OptimizationOutput {
     totalRoutes: number;
     totalStops: number;
     computingTimeMs: number;
+    balanceScore?: number; // 0-100, higher is better distribution
   };
   usedVroom: boolean;
 }
@@ -153,6 +181,22 @@ async function optimizeWithVroom(
   const orderIdToIndex = new Map<number, string>();
   const vehicleIdToIndex = new Map<number, string>();
 
+  // Calculate balanced maxOrders if balancing is enabled (pre-balancing)
+  const balancedMaxOrders = config.balanceVisits
+    ? calculateBalancedMaxOrders(orders.length, vehicles.length, 50)
+    : undefined;
+
+  // Helper function to adjust time windows for flexibility
+  const adjustTimeWindow = (time: string | undefined, adjustMinutes: number): string | undefined => {
+    if (!time) return undefined;
+    const date = new Date(`1970-01-01T${time}`);
+    date.setMinutes(date.getMinutes() + adjustMinutes);
+    return date.toTimeString().slice(0, 5);
+  };
+
+  // Time window tolerance in minutes when flexibleTimeWindows is enabled
+  const timeWindowTolerance = config.flexibleTimeWindows ? 30 : 0;
+
   // Create VROOM jobs from orders
   const jobs = orders.map((order, index) => {
     const jobId = index + 1;
@@ -160,6 +204,14 @@ async function optimizeWithVroom(
 
     // Map skills to numbers
     const skills = order.skillsRequired?.map((s) => getSkillId(s));
+
+    // Apply time window tolerance if flexible time windows is enabled
+    const adjustedTimeWindowStart = config.flexibleTimeWindows
+      ? adjustTimeWindow(order.timeWindowStart, -timeWindowTolerance)
+      : order.timeWindowStart;
+    const adjustedTimeWindowEnd = config.flexibleTimeWindows
+      ? adjustTimeWindow(order.timeWindowEnd, timeWindowTolerance)
+      : order.timeWindowEnd;
 
     return createVroomJob(jobId, order.longitude, order.latitude, {
       description: order.trackingId,
@@ -170,23 +222,75 @@ async function optimizeWithVroom(
       ],
       skills,
       priority: order.priority,
-      timeWindowStart: order.timeWindowStart,
-      timeWindowEnd: order.timeWindowEnd,
+      timeWindowStart: adjustedTimeWindowStart,
+      timeWindowEnd: adjustedTimeWindowEnd,
     });
   });
 
+  // Calculate speed factor from traffic factor (0-100 -> 0.5-1.5)
+  const speedFactor = config.trafficFactor !== undefined
+    ? 1.5 - (config.trafficFactor / 100) // 0 traffic = 1.5x speed, 100 traffic = 0.5x speed
+    : undefined;
+
+  // Calculate max travel time in seconds
+  const maxTravelTime = config.maxTravelTimeMinutes
+    ? config.maxTravelTimeMinutes * 60
+    : undefined;
+
+  // Calculate minimum vehicles needed if minimizeVehicles is enabled
+  // Estimate: assume average 15 stops per vehicle
+  const avgStopsPerVehicle = 15;
+  const minVehiclesNeeded = config.minimizeVehicles
+    ? Math.max(1, Math.ceil(orders.length / avgStopsPerVehicle))
+    : vehicles.length;
+
+  // Limit vehicles if minimizing
+  const vehiclesToUse = config.minimizeVehicles
+    ? vehicles.slice(0, Math.min(minVehiclesNeeded, vehicles.length))
+    : vehicles;
+
   // Create VROOM vehicles
-  const vroomVehicles = vehicles.map((vehicle, index) => {
+  const vroomVehicles = vehiclesToUse.map((vehicle, index) => {
     const vehicleId = index + 1;
     vehicleIdToIndex.set(vehicleId, vehicle.id);
 
     // Map skills to numbers
     const skills = vehicle.skills?.map((s) => getSkillId(s));
 
+    // Use vehicle's individual origin if available, otherwise use depot
+    const startLongitude = vehicle.originLongitude ?? config.depot.longitude;
+    const startLatitude = vehicle.originLatitude ?? config.depot.latitude;
+
+    // Use balanced maxOrders if balancing is enabled, otherwise use vehicle's limit
+    const effectiveMaxOrders = balancedMaxOrders || vehicle.maxOrders || 50;
+
+    // Apply vehicle's speed factor or global traffic-based factor
+    const effectiveSpeedFactor = vehicle.speedFactor ?? speedFactor;
+
+    // Determine end location based on routeEndMode
+    let endLongitude: number | undefined;
+    let endLatitude: number | undefined;
+    let openEnd = false;
+
+    const routeEndMode = config.routeEndMode || "DRIVER_ORIGIN";
+
+    if (routeEndMode === "DRIVER_ORIGIN") {
+      // Return to vehicle's start location
+      endLongitude = startLongitude;
+      endLatitude = startLatitude;
+    } else if (routeEndMode === "SPECIFIC_DEPOT") {
+      // Return to specific depot
+      endLongitude = config.endDepot?.longitude ?? config.depot.longitude;
+      endLatitude = config.endDepot?.latitude ?? config.depot.latitude;
+    } else if (routeEndMode === "OPEN_END") {
+      // Route ends at last stop
+      openEnd = true;
+    }
+
     return createVroomVehicle(
       vehicleId,
-      config.depot.longitude,
-      config.depot.latitude,
+      config.openStart ? undefined : startLongitude,
+      config.openStart ? undefined : startLatitude,
       {
         description: vehicle.plate,
         capacity: [
@@ -196,7 +300,13 @@ async function optimizeWithVroom(
         skills,
         timeWindowStart: config.depot.timeWindowStart,
         timeWindowEnd: config.depot.timeWindowEnd,
-        speedFactor: vehicle.speedFactor,
+        speedFactor: effectiveSpeedFactor,
+        maxTasks: effectiveMaxOrders,
+        maxTravelTime, // Maximum travel time per route
+        endLongitude,
+        endLatitude,
+        openStart: config.openStart,
+        openEnd,
       },
     );
   });
@@ -214,7 +324,7 @@ async function optimizeWithVroom(
   const response = await solveVRP(request);
 
   // Convert response to our format
-  return convertVroomResponse(
+  const result = convertVroomResponse(
     response,
     orders,
     vehicles,
@@ -222,6 +332,89 @@ async function optimizeWithVroom(
     vehicleIdToIndex,
     startTime,
   );
+
+  // Apply post-optimization balancing if enabled and initial score is low
+  if (config.balanceVisits && result.routes.length > 1) {
+    const initialScore = result.metrics.balanceScore || 0;
+
+    // Only rebalance if there's room for improvement (score < 80)
+    if (initialScore < 80) {
+      const balanceableRoutes: BalanceableRoute[] = result.routes.map((r) => ({
+        vehicleId: r.vehicleId,
+        vehiclePlate: r.vehiclePlate,
+        stops: r.stops.map((s) => {
+          const order = orders.find((o) => o.id === s.orderId);
+          return {
+            orderId: s.orderId,
+            trackingId: s.trackingId,
+            address: s.address,
+            latitude: s.latitude,
+            longitude: s.longitude,
+            weight: order?.weightRequired || 0,
+            volume: order?.volumeRequired || 0,
+            sequence: s.sequence,
+          };
+        }),
+        totalWeight: r.totalWeight,
+        totalVolume: r.totalVolume,
+        maxWeight: vehicles.find((v) => v.id === r.vehicleId)?.maxWeight || 10000,
+        maxVolume: vehicles.find((v) => v.id === r.vehicleId)?.maxVolume || 100,
+        maxOrders: vehicles.find((v) => v.id === r.vehicleId)?.maxOrders || 50,
+      }));
+
+      const balanceResult = redistributeOrders(balanceableRoutes, {
+        enabled: true,
+        maxDeviation: 20,
+        preserveSequence: false,
+      });
+
+      // Only apply if improvement is significant
+      if (balanceResult.newScore > initialScore + 5) {
+        console.log(
+          `Balance improved from ${initialScore} to ${balanceResult.newScore} (moved ${balanceResult.movedOrders} orders)`
+        );
+
+        // Update routes with balanced results
+        for (const balancedRoute of balanceResult.routes) {
+          const originalRoute = result.routes.find(
+            (r) => r.vehicleId === balancedRoute.vehicleId
+          );
+          if (originalRoute) {
+            originalRoute.stops = balancedRoute.stops.map((s) => ({
+              orderId: s.orderId,
+              trackingId: s.trackingId,
+              address: s.address,
+              latitude: s.latitude,
+              longitude: s.longitude,
+              sequence: s.sequence,
+            }));
+            originalRoute.totalWeight = balancedRoute.totalWeight;
+            originalRoute.totalVolume = balancedRoute.totalVolume;
+          }
+        }
+
+        // Update balance score
+        result.metrics.balanceScore = balanceResult.newScore;
+      }
+    }
+  }
+
+  // Validate max distance if configured
+  if (config.maxDistanceKm) {
+    const maxDistanceMeters = config.maxDistanceKm * 1000;
+
+    for (const route of result.routes) {
+      if (route.totalDistance > maxDistanceMeters) {
+        console.warn(
+          `Route ${route.vehiclePlate} exceeds max distance: ${(route.totalDistance / 1000).toFixed(1)}km > ${config.maxDistanceKm}km`
+        );
+        // Note: We could move excess orders to unassigned here, but for now just warn
+        // Full implementation would require re-routing which is complex
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -304,6 +497,29 @@ function convertVroomResponse(
 
   const summary = response.summary;
 
+  // Calculate balance score
+  const balanceableRoutes: BalanceableRoute[] = routes.map((r) => ({
+    vehicleId: r.vehicleId,
+    vehiclePlate: r.vehiclePlate,
+    stops: r.stops.map((s) => ({
+      orderId: s.orderId,
+      trackingId: s.trackingId,
+      address: s.address,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      weight: orderMap.get(s.orderId)?.weightRequired || 0,
+      volume: orderMap.get(s.orderId)?.volumeRequired || 0,
+      sequence: s.sequence,
+    })),
+    totalWeight: r.totalWeight,
+    totalVolume: r.totalVolume,
+    maxWeight: vehicleMap.get(r.vehicleId)?.maxWeight || 10000,
+    maxVolume: vehicleMap.get(r.vehicleId)?.maxVolume || 100,
+    maxOrders: vehicleMap.get(r.vehicleId)?.maxOrders || 50,
+  }));
+
+  const balanceScore = getBalanceScore(balanceableRoutes);
+
   return {
     routes,
     unassigned,
@@ -317,6 +533,7 @@ function convertVroomResponse(
       totalRoutes: routes.length,
       totalStops: routes.reduce((sum, r) => sum + r.stops.length, 0),
       computingTimeMs: Date.now() - startTime,
+      balanceScore,
     },
     usedVroom: true,
   };
@@ -344,47 +561,42 @@ function optimizeWithNearestNeighbor(
     reason: string;
   }> = [];
 
-  // Sort vehicles by capacity (largest first)
+  // Distribute orders more evenly - sort by maxOrders (smallest first) to fill smaller vehicles
   const sortedVehicles = [...vehicles].sort(
-    (a, b) => b.maxWeight + b.maxVolume - (a.maxWeight + a.maxVolume),
+    (a, b) => (a.maxOrders || 50) - (b.maxOrders || 50),
   );
 
   for (const vehicle of sortedVehicles) {
     const stops: OptimizedStop[] = [];
     let currentWeight = 0;
     let currentVolume = 0;
-    let currentLocation = depot;
+    const maxTasks = vehicle.maxOrders || 50;
+
+    // Use vehicle's origin if available, otherwise depot
+    let currentLocation: Coordinates = {
+      latitude: vehicle.originLatitude ?? depot.latitude,
+      longitude: vehicle.originLongitude ?? depot.longitude,
+    };
     let sequence = 1;
 
-    // Filter available orders
-    const availableOrders = orders.filter((o) => {
-      if (assigned.has(o.id)) return false;
-
-      // Check capacity
-      if (currentWeight + o.weightRequired > vehicle.maxWeight) return false;
-      if (currentVolume + o.volumeRequired > vehicle.maxVolume) return false;
-
-      // Check skills
-      if (o.skillsRequired && o.skillsRequired.length > 0) {
-        const vehicleSkills = new Set(vehicle.skills || []);
-        if (!o.skillsRequired.every((s) => vehicleSkills.has(s))) return false;
-      }
-
-      return true;
-    });
-
-    // Nearest neighbor
-    while (availableOrders.length > 0) {
+    // Nearest neighbor - respect maxOrders limit
+    while (stops.length < maxTasks) {
       // Find nearest unassigned order
-      let nearestIndex = -1;
       let nearestDistance = Number.POSITIVE_INFINITY;
+      let nearestOrder: OrderForOptimization | null = null;
 
-      for (let i = 0; i < availableOrders.length; i++) {
-        const order = availableOrders[i];
+      for (const order of orders) {
+        if (assigned.has(order.id)) continue;
 
         // Check capacity
         if (currentWeight + order.weightRequired > vehicle.maxWeight) continue;
         if (currentVolume + order.volumeRequired > vehicle.maxVolume) continue;
+
+        // Check skills
+        if (order.skillsRequired && order.skillsRequired.length > 0) {
+          const vehicleSkills = new Set(vehicle.skills || []);
+          if (!order.skillsRequired.every((s) => vehicleSkills.has(s))) continue;
+        }
 
         const orderCoords: Coordinates = {
           latitude: order.latitude,
@@ -395,38 +607,40 @@ function optimizeWithNearestNeighbor(
 
         if (distance < nearestDistance) {
           nearestDistance = distance;
-          nearestIndex = i;
+          nearestOrder = order;
         }
       }
 
-      if (nearestIndex === -1) break;
+      if (!nearestOrder) break;
 
-      const order = availableOrders[nearestIndex];
-      availableOrders.splice(nearestIndex, 1);
-      assigned.add(order.id);
+      assigned.add(nearestOrder.id);
 
       stops.push({
-        orderId: order.id,
-        trackingId: order.trackingId,
-        address: order.address,
-        latitude: order.latitude,
-        longitude: order.longitude,
+        orderId: nearestOrder.id,
+        trackingId: nearestOrder.trackingId,
+        address: nearestOrder.address,
+        latitude: nearestOrder.latitude,
+        longitude: nearestOrder.longitude,
         sequence: sequence++,
-        serviceTime: order.serviceTime || 300,
+        serviceTime: nearestOrder.serviceTime || 300,
       });
 
-      currentWeight += order.weightRequired;
-      currentVolume += order.volumeRequired;
+      currentWeight += nearestOrder.weightRequired;
+      currentVolume += nearestOrder.volumeRequired;
       currentLocation = {
-        latitude: order.latitude,
-        longitude: order.longitude,
+        latitude: nearestOrder.latitude,
+        longitude: nearestOrder.longitude,
       };
     }
 
     if (stops.length > 0) {
-      // Calculate route distance
+      // Calculate route distance - start from vehicle origin, end at depot
+      const vehicleStart: Coordinates = {
+        latitude: vehicle.originLatitude ?? depot.latitude,
+        longitude: vehicle.originLongitude ?? depot.longitude,
+      };
       const routeCoords = [
-        depot,
+        vehicleStart,
         ...stops.map((s) => ({ latitude: s.latitude, longitude: s.longitude })),
         depot,
       ];
@@ -455,6 +669,32 @@ function optimizeWithNearestNeighbor(
     }
   }
 
+  // Calculate balance score for nearest-neighbor result
+  const balanceableRoutes: BalanceableRoute[] = routes.map((r) => ({
+    vehicleId: r.vehicleId,
+    vehiclePlate: r.vehiclePlate,
+    stops: r.stops.map((s) => {
+      const order = orders.find((o) => o.id === s.orderId);
+      return {
+        orderId: s.orderId,
+        trackingId: s.trackingId,
+        address: s.address,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        weight: order?.weightRequired || 0,
+        volume: order?.volumeRequired || 0,
+        sequence: s.sequence,
+      };
+    }),
+    totalWeight: r.totalWeight,
+    totalVolume: r.totalVolume,
+    maxWeight: vehicles.find((v) => v.id === r.vehicleId)?.maxWeight || 10000,
+    maxVolume: vehicles.find((v) => v.id === r.vehicleId)?.maxVolume || 100,
+    maxOrders: vehicles.find((v) => v.id === r.vehicleId)?.maxOrders || 50,
+  }));
+
+  const balanceScore = getBalanceScore(balanceableRoutes);
+
   return {
     routes,
     unassigned,
@@ -464,6 +704,7 @@ function optimizeWithNearestNeighbor(
       totalRoutes: routes.length,
       totalStops: routes.reduce((sum, r) => sum + r.stops.length, 0),
       computingTimeMs: Date.now() - startTime,
+      balanceScore,
     },
     usedVroom: false,
   };

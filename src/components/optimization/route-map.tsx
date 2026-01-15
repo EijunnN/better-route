@@ -18,11 +18,17 @@ interface Route {
   routeId: string;
   vehicleId: string;
   vehiclePlate: string;
+  driverId?: string;
   driverName?: string;
+  driverOrigin?: {
+    latitude: string;
+    longitude: string;
+    address?: string;
+  };
   stops: RouteStop[];
   totalDistance: number;
   totalDuration: number;
-  geometry?: string; // Encoded polyline from VROOM/OSRM
+  geometry?: string;
 }
 
 interface RouteMapProps {
@@ -32,13 +38,14 @@ interface RouteMapProps {
     longitude: number;
   };
   selectedRouteId?: string | null;
-  onRouteSelect?: (routeId: string) => void;
+  onRouteSelect?: (routeId: string | null) => void;
+  variant?: "card" | "fullscreen";
+  showLegend?: boolean;
+  showDepot?: boolean;
 }
 
 /**
  * Decode Google Polyline Algorithm Format
- * OSRM uses precision 5 (like Google Maps), VROOM passes it through
- * @see https://developers.google.com/maps/documentation/utilities/polylinealgorithm
  */
 function decodePolyline(
   encoded: string,
@@ -76,38 +83,90 @@ function decodePolyline(
     const deltaLng = result & 1 ? ~(result >> 1) : result >> 1;
     lng += deltaLng;
 
-    // [longitude, latitude] format for GeoJSON
     coordinates.push([lng / factor, lat / factor]);
   }
 
   return coordinates;
 }
 
-// Color palette for routes
+// Vibrant color palette optimized for dark backgrounds
 const ROUTE_COLORS = [
-  "#ef4444", // red
-  "#3b82f6", // blue
-  "#22c55e", // green
-  "#f59e0b", // amber
-  "#8b5cf6", // violet
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#f97316", // orange
-  "#14b8a6", // teal
-  "#6366f1", // indigo
+  "#FF6B6B", // coral red
+  "#4ECDC4", // teal
+  "#45B7D1", // sky blue
+  "#96CEB4", // sage green
+  "#FFEAA7", // soft yellow
+  "#DDA0DD", // plum
+  "#98D8C8", // mint
+  "#F7DC6F", // gold
+  "#BB8FCE", // lavender
+  "#85C1E9", // light blue
 ];
+
+const UNSELECTED_COLOR = "#4a5568"; // Gray for unselected routes
 
 export function RouteMap({
   routes,
   depot,
   selectedRouteId,
   onRouteSelect,
+  variant = "card",
+  showLegend = true,
+  showDepot = false,
 }: RouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Update route visibility when selection changes
+  useEffect(() => {
+    if (!map.current) return;
+
+    routes.forEach((route, routeIndex) => {
+      const layerId = `route-line-${route.routeId}`;
+      const color = ROUTE_COLORS[routeIndex % ROUTE_COLORS.length];
+
+      if (map.current?.getLayer(layerId)) {
+        const isSelected = route.routeId === selectedRouteId;
+        const hasSelection = selectedRouteId !== null;
+
+        // Update line color and opacity based on selection
+        map.current.setPaintProperty(
+          layerId,
+          "line-color",
+          hasSelection && !isSelected ? UNSELECTED_COLOR : color,
+        );
+        map.current.setPaintProperty(
+          layerId,
+          "line-opacity",
+          hasSelection && !isSelected ? 0.3 : 1,
+        );
+        map.current.setPaintProperty(
+          layerId,
+          "line-width",
+          isSelected ? 5 : hasSelection ? 2 : 3,
+        );
+      }
+    });
+
+    // Update marker visibility
+    markersRef.current.forEach((marker) => {
+      const el = marker.getElement();
+      const routeId = el.getAttribute("data-route-id");
+      const hasSelection = selectedRouteId !== null;
+      const isSelected = routeId === selectedRouteId;
+
+      if (hasSelection && !isSelected) {
+        el.style.opacity = "0.3";
+        el.style.filter = "grayscale(100%)";
+      } else {
+        el.style.opacity = "1";
+        el.style.filter = "none";
+      }
+    });
+  }, [selectedRouteId, routes]);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -119,7 +178,7 @@ export function RouteMap({
         if (!mapContainer.current) return;
 
         // Calculate center from all stops or depot
-        let centerLat = -12.0464; // Lima default
+        let centerLat = -12.0464;
         let centerLng = -77.0428;
 
         if (depot) {
@@ -137,54 +196,62 @@ export function RouteMap({
           centerLng = avgLng;
         }
 
+        // Dark map style using CartoDB Dark Matter
         map.current = new maplibregl.Map({
           container: mapContainer.current,
           style: {
             version: 8,
             sources: {
-              "osm-tiles": {
+              "carto-dark": {
                 type: "raster",
-                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                tiles: [
+                  "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+                  "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+                  "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+                ],
                 tileSize: 256,
-                attribution: "&copy; OpenStreetMap Contributors",
+                attribution:
+                  '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
               },
             },
             layers: [
               {
-                id: "osm-tiles",
+                id: "carto-dark-layer",
                 type: "raster",
-                source: "osm-tiles",
+                source: "carto-dark",
                 minzoom: 0,
-                maxzoom: 19,
+                maxzoom: 20,
               },
             ],
+            glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
           },
           center: [centerLng, centerLat],
           zoom: 12,
         });
 
+        // Custom navigation control styling
         map.current.addControl(new maplibregl.NavigationControl(), "top-right");
 
         map.current.on("load", () => {
           if (!map.current) return;
 
-          // Add depot marker
-          if (depot) {
+          // Add depot marker only if showDepot is true
+          if (showDepot && depot) {
             const depotEl = document.createElement("div");
             depotEl.className = "depot-marker";
             depotEl.innerHTML = `
               <div style="
-                width: 32px;
-                height: 32px;
-                background: #1f2937;
-                border: 3px solid white;
+                width: 36px;
+                height: 36px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border: 3px solid rgba(255,255,255,0.9);
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
               ">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                   <polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
@@ -194,38 +261,86 @@ export function RouteMap({
             new maplibregl.Marker({ element: depotEl })
               .setLngLat([depot.longitude, depot.latitude])
               .setPopup(
-                new maplibregl.Popup().setHTML(
-                  "<strong>Depot</strong><br/>Punto de inicio/fin",
-                ),
+                new maplibregl.Popup({ className: "dark-popup" }).setHTML(`
+                  <div style="background: #1a1a2e; color: #eee; padding: 8px 12px; border-radius: 8px;">
+                    <strong style="color: #fff;">Depot</strong><br/>
+                    <span style="color: #aaa; font-size: 12px;">Punto de inicio/fin</span>
+                  </div>
+                `),
               )
               .addTo(map.current);
           }
+
+          // Add driver origin markers
+          routes.forEach((route, routeIndex) => {
+            if (!map.current || !route.driverOrigin) return;
+
+            const color = ROUTE_COLORS[routeIndex % ROUTE_COLORS.length];
+            const driverOriginEl = document.createElement("div");
+            driverOriginEl.setAttribute("data-route-id", route.routeId);
+            driverOriginEl.innerHTML = `
+              <div style="
+                width: 32px;
+                height: 32px;
+                background: ${color};
+                border: 3px solid rgba(255,255,255,0.9);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                cursor: pointer;
+                transition: all 0.2s ease;
+              ">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M20 21a8 8 0 1 0-16 0"/>
+                </svg>
+              </div>
+            `;
+
+            driverOriginEl.addEventListener("click", (e) => {
+              e.stopPropagation();
+              onRouteSelect?.(
+                selectedRouteId === route.routeId ? null : route.routeId,
+              );
+            });
+
+            const popup = new maplibregl.Popup({
+              offset: 25,
+              className: "dark-popup",
+            }).setHTML(`
+              <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 160px;">
+                <strong style="color: #fff; font-size: 14px;">Inicio: ${route.driverName || "Conductor"}</strong><br/>
+                <span style="color: ${color}; font-weight: 600;">${route.vehiclePlate}</span>
+                ${route.driverOrigin.address ? `<hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/><span style="color: #888; font-size: 11px;">${route.driverOrigin.address}</span>` : ""}
+              </div>
+            `);
+
+            const marker = new maplibregl.Marker({ element: driverOriginEl })
+              .setLngLat([
+                parseFloat(route.driverOrigin.longitude),
+                parseFloat(route.driverOrigin.latitude),
+              ])
+              .setPopup(popup)
+              .addTo(map.current);
+
+            markersRef.current.push(marker);
+          });
 
           // Add routes
           routes.forEach((route, routeIndex) => {
             if (!map.current) return;
             const color = ROUTE_COLORS[routeIndex % ROUTE_COLORS.length];
-            const isSelected = route.routeId === selectedRouteId;
 
-            // Use decoded polyline from VROOM/OSRM if available, otherwise fallback to straight lines
             let coordinates: [number, number][] = [];
 
             if (route.geometry) {
-              // Decode the polyline from OSRM (real road geometry)
               coordinates = decodePolyline(route.geometry);
-              console.log(
-                `[RouteMap] Route ${route.routeId} using OSRM geometry with ${coordinates.length} points`,
-              );
             } else {
-              // Fallback: straight lines between stops
-              console.log(
-                `[RouteMap] Route ${route.routeId} using straight lines (no geometry)`,
-              );
-
               if (depot) {
                 coordinates.push([depot.longitude, depot.latitude]);
               }
-
               route.stops
                 .sort((a, b) => a.sequence - b.sequence)
                 .forEach((stop) => {
@@ -234,18 +349,15 @@ export function RouteMap({
                     parseFloat(stop.latitude),
                   ]);
                 });
-
               if (depot) {
                 coordinates.push([depot.longitude, depot.latitude]);
               }
             }
 
-            // Add route line
             if (coordinates.length >= 2) {
               const sourceId = `route-${route.routeId}`;
               const layerId = `route-line-${route.routeId}`;
 
-              // Check if source already exists (prevent duplicates)
               if (map.current.getSource(sourceId)) {
                 return;
               }
@@ -272,14 +384,15 @@ export function RouteMap({
                 },
                 paint: {
                   "line-color": color,
-                  "line-width": isSelected ? 5 : 3,
-                  "line-opacity": isSelected ? 1 : 0.7,
+                  "line-width": 3,
+                  "line-opacity": 1,
                 },
               });
 
-              // Click handler for route
               map.current.on("click", layerId, () => {
-                onRouteSelect?.(route.routeId);
+                onRouteSelect?.(
+                  selectedRouteId === route.routeId ? null : route.routeId,
+                );
               });
 
               map.current.on("mouseenter", layerId, () => {
@@ -292,39 +405,68 @@ export function RouteMap({
               });
             }
 
-            // Add stop markers
+            // Add stop markers - Modern elegant pin style
             route.stops.forEach((stop) => {
               const markerEl = document.createElement("div");
+              markerEl.setAttribute("data-route-id", route.routeId);
               markerEl.innerHTML = `
-                <div style="
-                  width: 24px;
-                  height: 24px;
-                  background: ${color};
-                  border: 2px solid white;
-                  border-radius: 50%;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  font-size: 11px;
-                  font-weight: bold;
-                  color: white;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                <div class="pin-marker" style="
+                  position: relative;
                   cursor: pointer;
-                ">${stop.sequence}</div>
+                  transition: transform 0.15s ease;
+                ">
+                  <svg width="32" height="40" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 0C7.163 0 0 7.163 0 16c0 12 16 24 16 24s16-12 16-24C32 7.163 24.837 0 16 0z" fill="${color}"/>
+                    <path d="M16 1C7.716 1 1 7.716 1 16c0 5.5 4 11 8 15.5 2.5 2.8 5.5 5.5 7 6.8 1.5-1.3 4.5-4 7-6.8 4-4.5 8-10 8-15.5 0-8.284-6.716-15-15-15z" fill="rgba(255,255,255,0.15)"/>
+                    <circle cx="16" cy="14" r="10" fill="rgba(0,0,0,0.2)"/>
+                  </svg>
+                  <span style="
+                    position: absolute;
+                    top: 6px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: white;
+                    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+                  ">${stop.sequence}</span>
+                </div>
               `;
 
-              const popup = new maplibregl.Popup({ offset: 25 }).setHTML(`
-                <div style="min-width: 150px;">
-                  <strong>${stop.trackingId}</strong><br/>
-                  <span style="color: ${color}; font-weight: 500;">${route.vehiclePlate}</span>
-                  ${route.driverName ? `<br/><small>${route.driverName}</small>` : ""}
-                  <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;"/>
-                  <small style="color: #666;">${stop.address}</small>
+              markerEl.addEventListener("mouseenter", () => {
+                const pin = markerEl.querySelector('.pin-marker') as HTMLElement;
+                if (pin) pin.style.transform = "scale(1.15) translateY(-3px)";
+              });
+              markerEl.addEventListener("mouseleave", () => {
+                const pin = markerEl.querySelector('.pin-marker') as HTMLElement;
+                if (pin) pin.style.transform = "scale(1) translateY(0)";
+              });
+
+              markerEl.addEventListener("click", (e) => {
+                e.stopPropagation();
+                onRouteSelect?.(
+                  selectedRouteId === route.routeId ? null : route.routeId,
+                );
+              });
+
+              const popup = new maplibregl.Popup({
+                offset: 30,
+                className: "dark-popup",
+              }).setHTML(`
+                <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 200px;">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                    <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Parada ${stop.sequence}</span>
+                    <strong style="color: #fff;">${stop.trackingId}</strong>
+                  </div>
+                  <span style="color: ${color}; font-weight: 600;">${route.vehiclePlate}</span>
+                  ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${route.driverName}</span>` : ""}
+                  <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
+                  <span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block;">${stop.address}</span>
                 </div>
               `);
 
               if (map.current) {
-                const marker = new maplibregl.Marker({ element: markerEl })
+                const marker = new maplibregl.Marker({ element: markerEl, anchor: "bottom" })
                   .setLngLat([
                     parseFloat(stop.longitude),
                     parseFloat(stop.latitude),
@@ -341,11 +483,18 @@ export function RouteMap({
           if (routes.length > 0) {
             const allCoords: [number, number][] = [];
 
-            if (depot) {
+            if (showDepot && depot) {
               allCoords.push([depot.longitude, depot.latitude]);
             }
 
             routes.forEach((route) => {
+              if (route.driverOrigin) {
+                allCoords.push([
+                  parseFloat(route.driverOrigin.longitude),
+                  parseFloat(route.driverOrigin.latitude),
+                ]);
+              }
+
               route.stops.forEach((stop) => {
                 allCoords.push([
                   parseFloat(stop.longitude),
@@ -360,11 +509,16 @@ export function RouteMap({
                 new maplibregl.LngLatBounds(allCoords[0], allCoords[0]),
               );
 
-              map.current.fitBounds(bounds, { padding: 50 });
+              map.current.fitBounds(bounds, { padding: 60 });
             }
           }
 
           setIsLoading(false);
+        });
+
+        // Click on map to deselect
+        map.current.on("click", () => {
+          onRouteSelect?.(null);
         });
 
         map.current.on("error", (e) => {
@@ -389,13 +543,20 @@ export function RouteMap({
       map.current?.remove();
       map.current = null;
     };
-  }, [routes, depot, selectedRouteId, onRouteSelect]);
+  }, [routes, depot, showDepot]);
 
   if (error) {
+    if (variant === "fullscreen") {
+      return (
+        <div className="flex items-center justify-center h-full bg-[#1a1a2e] text-gray-400">
+          <p>{error}</p>
+        </div>
+      );
+    }
     return (
-      <Card>
+      <Card className="bg-[#1a1a2e] border-gray-700">
         <CardContent className="py-12">
-          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <div className="flex flex-col items-center gap-2 text-gray-400">
             <p>{error}</p>
           </div>
         </CardContent>
@@ -403,13 +564,37 @@ export function RouteMap({
     );
   }
 
+  // Fullscreen variant
+  if (variant === "fullscreen") {
+    return (
+      <div className="relative h-full w-full bg-[#1a1a2e]">
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a2e]/80 z-10">
+            <Loader2 className="h-8 w-8 animate-spin text-[#4ECDC4]" />
+          </div>
+        )}
+        <div ref={mapContainer} className="h-full w-full" />
+
+        {/* Selection hint */}
+        {selectedRouteId && (
+          <div className="absolute top-4 left-4 bg-[#1a1a2e]/90 backdrop-blur px-3 py-2 rounded-lg border border-gray-700">
+            <p className="text-xs text-gray-400">
+              Clic en el mapa para ver todas las rutas
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Card variant
   return (
-    <Card>
+    <Card className="bg-[#1a1a2e] border-gray-700">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="text-lg flex items-center gap-2 text-gray-100">
           Mapa de Rutas
           {routes.length > 0 && (
-            <span className="text-sm font-normal text-muted-foreground">
+            <span className="text-sm font-normal text-gray-400">
               ({routes.length} rutas,{" "}
               {routes.reduce((sum, r) => sum + r.stops.length, 0)} paradas)
             </span>
@@ -419,26 +604,36 @@ export function RouteMap({
       <CardContent className="p-0">
         <div className="relative h-[400px] w-full rounded-b-lg overflow-hidden">
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a2e]/80 z-10">
+              <Loader2 className="h-8 w-8 animate-spin text-[#4ECDC4]" />
             </div>
           )}
           <div ref={mapContainer} className="h-full w-full" />
         </div>
 
         {/* Legend */}
-        {routes.length > 0 && (
-          <div className="p-3 border-t flex flex-wrap gap-3">
+        {showLegend && routes.length > 0 && (
+          <div className="p-3 border-t border-gray-700 flex flex-wrap gap-2 bg-[#1a1a2e]">
             {routes.map((route, i) => (
               <button
                 type="button"
                 key={route.routeId}
-                onClick={() => onRouteSelect?.(route.routeId)}
-                className={`flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors ${
+                onClick={() =>
+                  onRouteSelect?.(
+                    selectedRouteId === route.routeId ? null : route.routeId,
+                  )
+                }
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all ${
                   selectedRouteId === route.routeId
-                    ? "bg-muted font-medium"
-                    : "hover:bg-muted/50"
+                    ? "bg-gray-700 ring-2 ring-offset-1 ring-offset-[#1a1a2e]"
+                    : selectedRouteId
+                      ? "opacity-40 hover:opacity-70"
+                      : "hover:bg-gray-800"
                 }`}
+                style={{
+                  borderColor: ROUTE_COLORS[i % ROUTE_COLORS.length],
+                  "--tw-ring-color": ROUTE_COLORS[i % ROUTE_COLORS.length],
+                } as React.CSSProperties}
               >
                 <div
                   className="w-3 h-3 rounded-full"
@@ -446,10 +641,8 @@ export function RouteMap({
                     backgroundColor: ROUTE_COLORS[i % ROUTE_COLORS.length],
                   }}
                 />
-                <span>{route.vehiclePlate}</span>
-                <span className="text-muted-foreground">
-                  ({route.stops.length})
-                </span>
+                <span className="text-gray-200">{route.vehiclePlate}</span>
+                <span className="text-gray-500">({route.stops.length})</span>
               </button>
             ))}
           </div>

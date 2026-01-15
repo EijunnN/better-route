@@ -122,6 +122,10 @@ export async function GET(request: NextRequest) {
       heated: vehicle.heated,
       lifting: vehicle.lifting,
       licenseRequired: vehicle.licenseRequired,
+      // Origin location for map display
+      originLatitude: vehicle.originLatitude,
+      originLongitude: vehicle.originLongitude,
+      originAddress: vehicle.originAddress,
       fleetIds: vehicle.vehicleFleets?.map((vf) => vf.fleetId) || [],
       fleets:
         vehicle.vehicleFleets?.map((vf) => ({
