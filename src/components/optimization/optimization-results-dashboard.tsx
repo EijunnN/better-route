@@ -8,6 +8,8 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Eye,
+  EyeOff,
   History,
   MapPin,
   Package,
@@ -19,7 +21,8 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,6 +73,19 @@ interface RouteData {
     warnings: string[];
     errors: string[];
   };
+}
+
+interface Zone {
+  id: string;
+  name: string;
+  geometry: {
+    type: string;
+    coordinates: number[][][];
+  };
+  color: string | null;
+  active: boolean;
+  vehicleCount: number;
+  vehicles: Array<{ id: string; plate: string | null }>;
 }
 
 interface OptimizationResultsDashboardProps {
@@ -385,10 +401,54 @@ export function OptimizationResultsDashboard({
   onConfirm,
   onBack,
 }: OptimizationResultsDashboardProps) {
+  const { companyId } = useAuth();
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [expandedRouteId, setExpandedRouteId] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [unassignedExpanded, setUnassignedExpanded] = useState(false);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [showZones, setShowZones] = useState(true);
+
+  // Load active zones
+  const loadZones = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const response = await fetch("/api/zones?active=true&limit=100", {
+        headers: { "x-company-id": companyId },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Map API response to Zone interface (use parsedGeometry as geometry)
+        const mappedZones: Zone[] = (data.data || [])
+          .filter((z: { parsedGeometry: unknown }) => z.parsedGeometry)
+          .map((z: {
+            id: string;
+            name: string;
+            parsedGeometry: { type: string; coordinates: number[][][] };
+            color: string | null;
+            active: boolean;
+            vehicleCount: number;
+            vehicles: Array<{ id: string; plate: string | null }>;
+          }) => ({
+            id: z.id,
+            name: z.name,
+            geometry: z.parsedGeometry,
+            color: z.color,
+            active: z.active,
+            vehicleCount: z.vehicleCount,
+            vehicles: z.vehicles || [],
+          }));
+        setZones(mappedZones);
+      }
+    } catch (err) {
+      console.error("Failed to fetch zones:", err);
+    }
+  }, [companyId]);
+
+  // Load zones on mount
+  useEffect(() => {
+    loadZones();
+  }, [loadZones]);
 
   return (
     <div className="flex flex-col h-full">
@@ -567,10 +627,29 @@ export function OptimizationResultsDashboard({
             depot={result.depot}
             unassignedOrders={result.unassignedOrders}
             vehiclesWithoutRoutes={result.vehiclesWithoutRoutes}
+            zones={showZones ? zones : []}
             selectedRouteId={selectedRouteId}
             onRouteSelect={(routeId) => setSelectedRouteId(routeId)}
             variant="fullscreen"
           />
+
+          {/* Zone Toggle Button */}
+          {zones.length > 0 && (
+            <div className="absolute top-4 right-4 z-10">
+              <button
+                type="button"
+                onClick={() => setShowZones(!showZones)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-all ${
+                  showZones
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background/95 backdrop-blur text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {showZones ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                Zonas ({zones.length})
+              </button>
+            </div>
+          )}
 
           {/* Optimization Summary Overlay */}
           <div className="absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-72">

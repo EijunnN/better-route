@@ -47,6 +47,19 @@ interface VehicleWithoutRoute {
   originLongitude?: string;
 }
 
+interface Zone {
+  id: string;
+  name: string;
+  geometry: {
+    type: string;
+    coordinates: number[][][];
+  };
+  color: string | null;
+  active: boolean;
+  vehicleCount: number;
+  vehicles: Array<{ id: string; plate: string | null }>;
+}
+
 interface RouteMapProps {
   routes: Route[];
   depot?: {
@@ -55,6 +68,7 @@ interface RouteMapProps {
   };
   unassignedOrders?: UnassignedOrder[];
   vehiclesWithoutRoutes?: VehicleWithoutRoute[];
+  zones?: Zone[];
   selectedRouteId?: string | null;
   onRouteSelect?: (routeId: string | null) => void;
   variant?: "card" | "fullscreen";
@@ -129,6 +143,7 @@ export function RouteMap({
   depot,
   unassignedOrders = [],
   vehiclesWithoutRoutes = [],
+  zones = [],
   selectedRouteId,
   onRouteSelect,
   variant = "card",
@@ -320,13 +335,6 @@ export function RouteMap({
               </div>
             `;
 
-            driverOriginEl.addEventListener("click", (e) => {
-              e.stopPropagation();
-              onRouteSelect?.(
-                selectedRouteId === route.routeId ? null : route.routeId,
-              );
-            });
-
             const popup = new maplibregl.Popup({
               offset: 25,
               className: "dark-popup",
@@ -345,6 +353,15 @@ export function RouteMap({
               ])
               .setPopup(popup)
               .addTo(map.current);
+
+            // Add click handler after marker is created so we can toggle popup
+            driverOriginEl.addEventListener("click", (e) => {
+              e.stopPropagation();
+              marker.togglePopup();
+              onRouteSelect?.(
+                selectedRouteId === route.routeId ? null : route.routeId,
+              );
+            });
 
             markersRef.current.push(marker);
           });
@@ -463,13 +480,6 @@ export function RouteMap({
                 if (pin) pin.style.transform = "scale(1) translateY(0)";
               });
 
-              markerEl.addEventListener("click", (e) => {
-                e.stopPropagation();
-                onRouteSelect?.(
-                  selectedRouteId === route.routeId ? null : route.routeId,
-                );
-              });
-
               const popup = new maplibregl.Popup({
                 offset: 30,
                 className: "dark-popup",
@@ -494,6 +504,15 @@ export function RouteMap({
                   ])
                   .setPopup(popup)
                   .addTo(map.current);
+
+                // Add click handler after marker is created so we can toggle popup
+                markerEl.addEventListener("click", (e) => {
+                  e.stopPropagation();
+                  marker.togglePopup();
+                  onRouteSelect?.(
+                    selectedRouteId === route.routeId ? null : route.routeId,
+                  );
+                });
 
                 markersRef.current.push(marker);
               }
@@ -732,6 +751,111 @@ export function RouteMap({
       map.current = null;
     };
   }, [routes, depot, showDepot, unassignedOrders, vehiclesWithoutRoutes]);
+
+  // Render zones as polygon layers
+  useEffect(() => {
+    if (!map.current || isLoading) return;
+
+    // Remove existing zone layers and sources
+    const style = map.current.getStyle();
+    if (style?.layers) {
+      style.layers.forEach((layer) => {
+        if (layer.id.startsWith('zone-')) {
+          if (map.current?.getLayer(layer.id)) {
+            map.current.removeLayer(layer.id);
+          }
+        }
+      });
+    }
+    if (style?.sources) {
+      Object.keys(style.sources).forEach((sourceId) => {
+        if (sourceId.startsWith('zone-source-')) {
+          if (map.current?.getSource(sourceId)) {
+            map.current.removeSource(sourceId);
+          }
+        }
+      });
+    }
+
+    // Add zone layers
+    zones.forEach((zone, index) => {
+      if (!zone.geometry || !map.current) return;
+
+      const sourceId = `zone-source-${index}`;
+      const fillLayerId = `zone-fill-${index}`;
+      const outlineLayerId = `zone-outline-${index}`;
+      const color = zone.color || '#3B82F6';
+
+      // Add source
+      map.current.addSource(sourceId, {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {
+            name: zone.name,
+            vehicleCount: zone.vehicleCount,
+            vehicles: zone.vehicles.map(v => v.plate || 'Sin placa').join(', '),
+          },
+          geometry: zone.geometry as GeoJSON.Geometry,
+        },
+      });
+
+      // Add fill layer (semi-transparent)
+      map.current.addLayer({
+        id: fillLayerId,
+        type: 'fill',
+        source: sourceId,
+        paint: {
+          'fill-color': color,
+          'fill-opacity': 0.15,
+        },
+      });
+
+      // Add outline layer
+      map.current.addLayer({
+        id: outlineLayerId,
+        type: 'line',
+        source: sourceId,
+        paint: {
+          'line-color': color,
+          'line-width': 2,
+          'line-opacity': 0.8,
+        },
+      });
+
+      // Add click handler for zone popup (dynamically import maplibregl for popup)
+      map.current.on('click', fillLayerId, async (e) => {
+        if (!map.current || !e.features?.[0]) return;
+
+        const maplibreglModule = await import("maplibre-gl");
+        const props = e.features[0].properties;
+        const coordinates = e.lngLat;
+
+        new maplibreglModule.Popup({ closeButton: true, offset: 10, className: "dark-popup" })
+          .setLngLat(coordinates)
+          .setHTML(`
+            <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 160px;">
+              <strong style="color: ${color}; font-size: 14px;">${props?.name || zone.name}</strong><br/>
+              <span style="color: #aaa; font-size: 12px;">${zone.vehicleCount} vehículo${zone.vehicleCount !== 1 ? 's' : ''} asignado${zone.vehicleCount !== 1 ? 's' : ''}</span>
+              ${zone.vehicles.length > 0 ? `
+                <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
+                <span style="color: #888; font-size: 11px;">${zone.vehicles.map(v => v.plate || 'Sin placa').join(', ')}</span>
+              ` : ''}
+            </div>
+          `)
+          .addTo(map.current);
+      });
+
+      // Change cursor on hover
+      map.current.on('mouseenter', fillLayerId, () => {
+        if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+      });
+      map.current.on('mouseleave', fillLayerId, () => {
+        if (map.current) map.current.getCanvas().style.cursor = '';
+      });
+    });
+
+  }, [zones, isLoading]);
 
   if (error) {
     if (variant === "fullscreen") {
