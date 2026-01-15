@@ -663,9 +663,10 @@ export async function runOptimization(
           if (grouped && grouped.orderIds.length > 1) {
             if (groupSameLocation) {
               // Keep as single stop with grouped order info
+              const orderCount = grouped.orderIds.length;
               routeStops.push({
                 orderId: grouped.orderIds[0], // Use first order as representative
-                trackingId: grouped.trackingIds.join(", "), // Show all tracking IDs
+                trackingId: grouped.trackingIds[0], // Use first tracking ID
                 sequence: sequenceCounter++,
                 address: stop.address,
                 latitude: String(stop.latitude),
@@ -847,7 +848,7 @@ export async function runOptimization(
             // Keep as single stop with grouped order info
             routeStops.push({
               orderId: grouped.orderIds[0], // Use first order as representative
-              trackingId: grouped.trackingIds.join(", "), // Show all tracking IDs
+              trackingId: grouped.trackingIds[0], // Use first tracking ID
               sequence: sequenceCounter++,
               address: stop.address,
               latitude: String(stop.latitude),

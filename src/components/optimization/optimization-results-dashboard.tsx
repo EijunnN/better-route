@@ -60,6 +60,9 @@ interface RouteData {
       start: string;
       end: string;
     };
+    // For grouped stops (multiple orders at same location)
+    groupedOrderIds?: string[];
+    groupedTrackingIds?: string[];
   }>;
   totalDistance: number;
   totalDuration: number;
@@ -310,24 +313,51 @@ function CompactRouteCard({
           {/* Compact Stops List */}
           <div className="border rounded max-h-32 overflow-y-auto">
             <div className="divide-y divide-border/50">
-              {route.stops.map((stop) => (
-                <div
-                  key={stop.orderId}
-                  className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent/50 text-xs"
-                >
-                  <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">
-                    R{routeNumber}-{stop.sequence}
-                  </span>
-                  <span className="font-medium shrink-0">{stop.trackingId}</span>
-                  <span className="text-muted-foreground mx-1">•</span>
-                  <span className="text-muted-foreground truncate flex-1">{stop.address}</span>
-                  {stop.timeWindow && (
-                    <span className="text-muted-foreground text-[10px] shrink-0">
-                      {new Date(stop.timeWindow.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {route.stops.map((stop) => {
+                const isGrouped = stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1;
+
+                if (isGrouped) {
+                  // Render each grouped order as a sub-item
+                  return stop.groupedTrackingIds!.map((trackingId, subIndex) => (
+                    <div
+                      key={`${stop.orderId}-${subIndex}`}
+                      className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent/50 text-xs"
+                    >
+                      <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">
+                        R{routeNumber}-{stop.sequence}.{subIndex + 1}
+                      </span>
+                      <span className="font-medium shrink-0">{trackingId}</span>
+                      <span className="text-muted-foreground mx-1">•</span>
+                      <span className="text-muted-foreground truncate flex-1">{stop.address}</span>
+                      {stop.timeWindow && subIndex === 0 && (
+                        <span className="text-muted-foreground text-[10px] shrink-0">
+                          {new Date(stop.timeWindow.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      )}
+                    </div>
+                  ));
+                }
+
+                // Single order stop
+                return (
+                  <div
+                    key={stop.orderId}
+                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent/50 text-xs"
+                  >
+                    <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">
+                      R{routeNumber}-{stop.sequence}
                     </span>
-                  )}
-                </div>
-              ))}
+                    <span className="font-medium shrink-0">{stop.trackingId}</span>
+                    <span className="text-muted-foreground mx-1">•</span>
+                    <span className="text-muted-foreground truncate flex-1">{stop.address}</span>
+                    {stop.timeWindow && (
+                      <span className="text-muted-foreground text-[10px] shrink-0">
+                        {new Date(stop.timeWindow.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -12,6 +12,9 @@ interface RouteStop {
   address: string;
   latitude: string;
   longitude: string;
+  // For grouped stops (multiple orders at same location)
+  groupedOrderIds?: string[];
+  groupedTrackingIds?: string[];
 }
 
 interface Route {
@@ -447,6 +450,21 @@ export function RouteMap({
             route.stops.forEach((stop) => {
               const markerEl = document.createElement("div");
               markerEl.setAttribute("data-route-id", route.routeId);
+              const hasMultipleOrders = stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1;
+              const orderBadge = hasMultipleOrders
+                ? `<span style="
+                    position: absolute;
+                    top: -4px;
+                    right: -4px;
+                    background: #fff;
+                    color: ${color};
+                    font-size: 9px;
+                    font-weight: 700;
+                    padding: 2px 5px;
+                    border-radius: 10px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                  ">${stop.groupedTrackingIds!.length}</span>`
+                : "";
               markerEl.innerHTML = `
                 <div class="pin-marker" style="
                   position: relative;
@@ -468,6 +486,7 @@ export function RouteMap({
                     color: white;
                     text-shadow: 0 1px 2px rgba(0,0,0,0.3);
                   ">${stop.sequence}</span>
+                  ${orderBadge}
                 </div>
               `;
 
@@ -480,21 +499,48 @@ export function RouteMap({
                 if (pin) pin.style.transform = "scale(1) translateY(0)";
               });
 
+              // Generate popup content based on whether stop has grouped orders
+              const isGrouped = stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1;
+              const orderCount = isGrouped ? stop.groupedTrackingIds!.length : 1;
+
+              const popupContent = isGrouped
+                ? `
+                  <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 220px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                      <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Parada ${stop.sequence}</span>
+                      <span style="color: #888; font-size: 11px;">${orderCount} pedidos</span>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                      ${stop.groupedTrackingIds!.map((tid, idx) => `
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+                          <span style="background: ${color}33; color: ${color}; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">R${routeIndex + 1}-${stop.sequence}.${idx + 1}</span>
+                          <span style="color: #fff; font-size: 12px;">${tid}</span>
+                        </div>
+                      `).join("")}
+                    </div>
+                    <span style="color: ${color}; font-weight: 600;">${route.vehiclePlate}</span>
+                    ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${route.driverName}</span>` : ""}
+                    <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
+                    <span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block;">${stop.address}</span>
+                  </div>
+                `
+                : `
+                  <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 200px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                      <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Parada ${stop.sequence}</span>
+                      <strong style="color: #fff;">${stop.trackingId}</strong>
+                    </div>
+                    <span style="color: ${color}; font-weight: 600;">${route.vehiclePlate}</span>
+                    ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${route.driverName}</span>` : ""}
+                    <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
+                    <span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block;">${stop.address}</span>
+                  </div>
+                `;
+
               const popup = new maplibregl.Popup({
                 offset: 30,
                 className: "dark-popup",
-              }).setHTML(`
-                <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 200px;">
-                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                    <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Parada ${stop.sequence}</span>
-                    <strong style="color: #fff;">${stop.trackingId}</strong>
-                  </div>
-                  <span style="color: ${color}; font-weight: 600;">${route.vehiclePlate}</span>
-                  ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${route.driverName}</span>` : ""}
-                  <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
-                  <span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block;">${stop.address}</span>
-                </div>
-              `);
+              }).setHTML(popupContent);
 
               if (map.current) {
                 const marker = new maplibregl.Marker({ element: markerEl, anchor: "bottom" })
