@@ -403,6 +403,7 @@ function UsersPageContent() {
             initialRoleIds={editingUserRoleIds}
             submitLabel={editingUser ? "Actualizar" : "Crear"}
             isEditing={!!editingUser}
+            companyId={effectiveCompanyId ?? undefined}
           />
           <div className="mt-4">
             <Button
