@@ -45,8 +45,13 @@ export async function GET(request: NextRequest) {
       conditions.push(lte(companies.createdAt, new Date(query.endDate)));
     }
 
-    // Apply tenant filtering - users can only see their own company
-    const whereClause = withTenantFilter(companies, conditions);
+    // ADMIN_SISTEMA can see all companies, others can only see their own
+    const isSystemAdmin = authResult.user.role === "ADMIN_SISTEMA";
+    const whereClause = isSystemAdmin
+      ? conditions.length > 0
+        ? and(...conditions)
+        : undefined
+      : withTenantFilter(companies, conditions);
 
     const [data, totalResult] = await Promise.all([
       db
