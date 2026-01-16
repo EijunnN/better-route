@@ -1,8 +1,19 @@
 "use client";
 
+import { Building2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserForm } from "@/components/users/user-form";
 import { useAuth } from "@/hooks/use-auth";
 import type { CreateUserInput } from "@/lib/validations/user";
@@ -426,48 +437,47 @@ function UsersPageContent() {
       </div>
 
       {/* Company selector for system admins */}
-      {isSystemAdmin && companies.length > 0 && (
-        <div className="flex items-center gap-4 rounded-lg border border-border bg-card p-4">
-          <label htmlFor="company-select" className="text-sm font-medium text-foreground">
-            Empresa:
-          </label>
-          <select
-            id="company-select"
-            value={selectedCompanyId || authCompanyId || ""}
-            onChange={(e) => setSelectedCompanyId(e.target.value || null)}
-            className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.commercialName} ({company.legalName})
-              </option>
-            ))}
-          </select>
-          {selectedCompanyId && selectedCompanyId !== authCompanyId && (
-            <span className="text-xs text-muted-foreground">
-              Viendo usuarios de otra empresa
-            </span>
-          )}
-        </div>
+      {isSystemAdmin && companies.length > 1 && (
+        <Card>
+          <CardContent className="flex items-center gap-4 py-3">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Building2 className="h-4 w-4" />
+              <span className="text-sm font-medium">Empresa:</span>
+            </div>
+            <Select
+              value={selectedCompanyId || authCompanyId || ""}
+              onValueChange={(value) => setSelectedCompanyId(value || null)}
+            >
+              <SelectTrigger className="w-[300px]">
+                <SelectValue placeholder="Seleccionar empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.commercialName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedCompanyId && selectedCompanyId !== authCompanyId && (
+              <Badge variant="secondary" className="text-xs">
+                Viendo otra empresa
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Role Tabs */}
-      <div className="flex gap-2 border-b border-border pb-2">
-        {ROLE_TABS.map((tab) => (
-          <button
-            type="button"
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-              activeTab === tab.key
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-6">
+          {ROLE_TABS.map((tab) => (
+            <TabsTrigger key={tab.key} value={tab.key}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {isLoading ? (
         <div className="flex justify-center py-12">

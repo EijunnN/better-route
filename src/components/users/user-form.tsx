@@ -1,25 +1,61 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { ChevronDown, Shield, ShieldCheck } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import type { CreateUserInput } from "@/lib/validations/user";
 import { isExpired, isExpiringSoon } from "@/lib/validations/user";
 
+interface RolePermission {
+  id: string;
+  entity: string;
+  action: string;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+}
+
+interface GroupedPermissions {
+  [category: string]: RolePermission[];
+}
+
+interface CustomRole {
+  id: string;
+  name: string;
+  description?: string | null;
+  code?: string | null;
+  isSystem: boolean;
+  permissionsCount?: number;
+}
+
 interface UserFormProps {
-  onSubmit: (data: CreateUserInput) => Promise<void>;
+  onSubmit: (data: CreateUserInput, selectedRoleIds: string[]) => Promise<void>;
   initialData?: Partial<CreateUserInput>;
   fleets: Array<{ id: string; name: string }>;
+  roles?: CustomRole[];
+  initialRoleIds?: string[];
   submitLabel?: string;
   isEditing?: boolean;
 }
 
 const USER_ROLES = [
-  { value: "ADMIN", label: "Administrador" },
-  { value: "CONDUCTOR", label: "Conductor" },
-  { value: "AGENTE_SEGUIMIENTO", label: "Agente de Seguimiento" },
+  { value: "ADMIN_SISTEMA", label: "Administrador del Sistema" },
+  { value: "ADMIN_FLOTA", label: "Administrador de Flota" },
   { value: "PLANIFICADOR", label: "Planificador" },
+  { value: "MONITOR", label: "Monitor" },
+  { value: "CONDUCTOR", label: "Conductor" },
 ];
 
 const DRIVER_STATUS = [
@@ -50,6 +86,8 @@ export function UserForm({
   onSubmit,
   initialData,
   fleets,
+  roles = [],
+  initialRoleIds = [],
   submitLabel = "Guardar",
   isEditing = false,
 }: UserFormProps) {
@@ -84,6 +122,41 @@ export function UserForm({
       .map((c) => c.trim())
       .filter(Boolean) || [],
   );
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(initialRoleIds);
+  const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
+  const [rolePermissions, setRolePermissions] = useState<Record<string, GroupedPermissions>>({});
+  const [loadingPermissions, setLoadingPermissions] = useState<string | null>(null);
+
+  // Fetch permissions for a role when expanded
+  const fetchRolePermissions = useCallback(async (roleId: string) => {
+    if (rolePermissions[roleId]) return; // Already fetched
+
+    setLoadingPermissions(roleId);
+    try {
+      const response = await fetch(`/api/roles/${roleId}/permissions`);
+      if (response.ok) {
+        const data = await response.json();
+        setRolePermissions(prev => ({
+          ...prev,
+          [roleId]: data.permissions || {}
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching role permissions:", error);
+    } finally {
+      setLoadingPermissions(null);
+    }
+  }, [rolePermissions]);
+
+  // Handle role expansion
+  const handleExpandRole = useCallback((roleId: string) => {
+    if (expandedRoleId === roleId) {
+      setExpandedRoleId(null);
+    } else {
+      setExpandedRoleId(roleId);
+      fetchRolePermissions(roleId);
+    }
+  }, [expandedRoleId, fetchRolePermissions]);
 
   // Check if current role is CONDUCTOR
   const isConductor = formData.role === "CONDUCTOR";
@@ -101,22 +174,35 @@ export function UserForm({
     setErrors({});
     setIsSubmitting(true);
 
+    // Helper to convert empty strings to null
+    const emptyToNull = (value: string | null | undefined): string | null => {
+      if (value === undefined || value === null || value.trim() === "") {
+        return null;
+      }
+      return value;
+    };
+
     // Prepare submit data
     const submitData: CreateUserInput = {
       ...formData,
+      // Convert empty strings to null for optional fields
+      phone: emptyToNull(formData.phone),
+      photo: emptyToNull(formData.photo),
+      birthDate: emptyToNull(formData.birthDate),
+      certifications: emptyToNull(formData.certifications),
       licenseCategories: isConductor
-        ? selectedLicenseCategories.join(", ")
+        ? (selectedLicenseCategories.length > 0 ? selectedLicenseCategories.join(", ") : null)
         : null,
       // Clear driver fields if not a conductor
-      identification: isConductor ? formData.identification : null,
-      licenseNumber: isConductor ? formData.licenseNumber : null,
-      licenseExpiry: isConductor ? formData.licenseExpiry : null,
+      identification: isConductor ? emptyToNull(formData.identification) : null,
+      licenseNumber: isConductor ? emptyToNull(formData.licenseNumber) : null,
+      licenseExpiry: isConductor ? emptyToNull(formData.licenseExpiry) : null,
       driverStatus: isConductor ? formData.driverStatus : null,
-      primaryFleetId: isConductor ? formData.primaryFleetId : null,
+      primaryFleetId: isConductor ? emptyToNull(formData.primaryFleetId) : null,
     };
 
     try {
-      await onSubmit(submitData);
+      await onSubmit(submitData, selectedRoleIds);
     } catch (error: unknown) {
       const err = error as {
         details?: Array<{ path?: string[]; field?: string; message: string }>;
@@ -157,6 +243,16 @@ export function UserForm({
         return prev.filter((c) => c !== category);
       } else {
         return [...prev, category];
+      }
+    });
+  };
+
+  const toggleRole = (roleId: string) => {
+    setSelectedRoleIds((prev) => {
+      if (prev.includes(roleId)) {
+        return prev.filter((id) => id !== roleId);
+      } else {
+        return [...prev, roleId];
       }
     });
   };
@@ -239,20 +335,23 @@ export function UserForm({
 
           {/* Role */}
           <div className="space-y-2">
-            <Label htmlFor="role">Rol *</Label>
-            <select
-              id="role"
+            <Label htmlFor="role">Rol Base *</Label>
+            <Select
               value={formData.role}
-              onChange={(e) => updateField("role", e.target.value)}
+              onValueChange={(value) => updateField("role", value)}
               disabled={isSubmitting}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
             >
-              {USER_ROLES.map((role) => (
-                <option key={role.value} value={role.value}>
-                  {role.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar rol" />
+              </SelectTrigger>
+              <SelectContent>
+                {USER_ROLES.map((role) => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {errors.role && (
               <p className="text-sm text-destructive">{errors.role}</p>
             )}
@@ -304,6 +403,150 @@ export function UserForm({
         </div>
       </div>
 
+      {/* Custom Roles Assignment */}
+      {roles.length > 0 && (
+        <Card className="border-t-0 rounded-t-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Roles y Permisos
+            </CardTitle>
+            <CardDescription>
+              Active los roles que desea asignar al usuario. Expanda cada rol para ver sus permisos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {roles.map((role) => {
+              const isSelected = selectedRoleIds.includes(role.id);
+              const isExpanded = expandedRoleId === role.id;
+              const permissions = rolePermissions[role.id];
+              const isLoading = loadingPermissions === role.id;
+              const totalPermissions = permissions
+                ? Object.values(permissions).flat().filter(p => p.enabled).length
+                : role.permissionsCount || 0;
+
+              return (
+                <div
+                  key={role.id}
+                  className={`rounded-lg border transition-all ${
+                    isSelected
+                      ? "border-primary bg-primary/5"
+                      : "border-border"
+                  }`}
+                >
+                  {/* Role Header */}
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Switch
+                        checked={isSelected}
+                        onCheckedChange={() => toggleRole(role.id)}
+                        disabled={isSubmitting}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{role.name}</span>
+                          {role.isSystem && (
+                            <Badge variant="secondary" className="text-xs">
+                              Sistema
+                            </Badge>
+                          )}
+                          {isSelected && (
+                            <Badge variant="default" className="text-xs">
+                              <ShieldCheck className="h-3 w-3 mr-1" />
+                              Activo
+                            </Badge>
+                          )}
+                        </div>
+                        {role.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {role.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleExpandRole(role.id)}
+                      className="ml-2"
+                    >
+                      <span className="text-xs text-muted-foreground mr-1">
+                        {totalPermissions} permisos
+                      </span>
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      />
+                    </Button>
+                  </div>
+
+                  {/* Permissions Panel (Collapsible) */}
+                  {isExpanded && (
+                    <div className="border-t px-4 py-3 bg-muted/30">
+                      {isLoading ? (
+                        <div className="flex items-center justify-center py-4">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted border-t-primary" />
+                          <span className="ml-2 text-sm text-muted-foreground">Cargando permisos...</span>
+                        </div>
+                      ) : permissions && Object.keys(permissions).length > 0 ? (
+                        <div className="space-y-4">
+                          {Object.entries(permissions).map(([category, perms]) => {
+                            const enabledCount = perms.filter(p => p.enabled).length;
+                            return (
+                              <div key={category}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                    {category}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {enabledCount}/{perms.length}
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {perms.map((perm) => (
+                                    <div
+                                      key={perm.id}
+                                      className={`flex items-center gap-2 text-sm p-2 rounded ${
+                                        perm.enabled
+                                          ? "bg-green-50 dark:bg-green-900/20"
+                                          : "bg-muted/50"
+                                      }`}
+                                    >
+                                      <div className={`h-2 w-2 rounded-full ${
+                                        perm.enabled
+                                          ? "bg-green-500"
+                                          : "bg-muted-foreground/30"
+                                      }`} />
+                                      <span className={perm.enabled ? "" : "text-muted-foreground"}>
+                                        {perm.name}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          Este rol no tiene permisos configurados.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {selectedRoleIds.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-2">
+                No hay roles adicionales asignados. El usuario tendrá los permisos del rol base.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Driver-specific fields - Only show if role is CONDUCTOR */}
       {isConductor && (
         <div className="space-y-4 border-t pt-6">
@@ -312,22 +555,25 @@ export function UserForm({
             {/* Primary Fleet Selection */}
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="primaryFleetId">Flota Principal</Label>
-              <select
-                id="primaryFleetId"
-                value={formData.primaryFleetId ?? ""}
-                onChange={(e) =>
-                  updateField("primaryFleetId", e.target.value || null)
+              <Select
+                value={formData.primaryFleetId ?? "none"}
+                onValueChange={(value) =>
+                  updateField("primaryFleetId", value === "none" ? null : value)
                 }
                 disabled={isSubmitting}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
               >
-                <option value="">Sin flota asignada</option>
-                {fleets.map((fleet) => (
-                  <option key={fleet.id} value={fleet.id}>
-                    {fleet.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin flota asignada" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin flota asignada</SelectItem>
+                  {fleets.map((fleet) => (
+                    <SelectItem key={fleet.id} value={fleet.id}>
+                      {fleet.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {errors.primaryFleetId && (
                 <p className="text-sm text-destructive">
                   {errors.primaryFleetId}
@@ -472,19 +718,22 @@ export function UserForm({
             {/* Driver Status */}
             <div className="space-y-2">
               <Label htmlFor="driverStatus">Estado de Conductor</Label>
-              <select
-                id="driverStatus"
+              <Select
                 value={formData.driverStatus ?? "AVAILABLE"}
-                onChange={(e) => updateField("driverStatus", e.target.value)}
+                onValueChange={(value) => updateField("driverStatus", value)}
                 disabled={isSubmitting}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
               >
-                {DRIVER_STATUS.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DRIVER_STATUS.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {errors.driverStatus && (
                 <p className="text-sm text-destructive">
                   {errors.driverStatus}
@@ -551,17 +800,19 @@ export function UserForm({
       {/* Active status */}
       <div className="space-y-2 border-t pt-6">
         <Label htmlFor="active">Estado del Registro</Label>
-        <div className="flex items-center gap-2">
-          <input
+        <div className="flex items-center gap-3">
+          <Switch
             id="active"
-            type="checkbox"
             checked={formData.active}
-            onChange={(e) => updateField("active", e.target.checked)}
+            onCheckedChange={(checked) => updateField("active", checked)}
             disabled={isSubmitting}
-            className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
           />
-          <span className="text-sm text-muted-foreground">
-            {formData.active ? "Activo" : "Inactivo"}
+          <span className="text-sm">
+            {formData.active ? (
+              <Badge variant="default">Activo</Badge>
+            ) : (
+              <Badge variant="secondary">Inactivo</Badge>
+            )}
           </span>
         </div>
       </div>
