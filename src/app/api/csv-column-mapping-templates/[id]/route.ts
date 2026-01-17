@@ -5,7 +5,7 @@ import { csvColumnMappingTemplates } from "@/db/schema";
 import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import { updateCsvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
 
-function extractTenantContext(request: NextRequest) {
+function extractTenantContext(request: NextRequest): { companyId: string; userId: string | undefined } | null {
   const companyId = request.headers.get("x-company-id");
   const userId = request.headers.get("x-user-id");
   if (!companyId) return null;
@@ -28,7 +28,6 @@ export async function GET(
     }
 
     setTenantContext(tenantCtx);
-    const context = requireTenantContext();
 
     const template = await db
       .select()
@@ -36,7 +35,7 @@ export async function GET(
       .where(
         and(
           eq(csvColumnMappingTemplates.id, id),
-          eq(csvColumnMappingTemplates.companyId, context.companyId),
+          eq(csvColumnMappingTemplates.companyId, tenantCtx.companyId),
         ),
       );
 
@@ -91,7 +90,7 @@ export async function PATCH(
       .where(
         and(
           eq(csvColumnMappingTemplates.id, id),
-          eq(csvColumnMappingTemplates.companyId, context.companyId),
+          eq(csvColumnMappingTemplates.companyId, tenantCtx.companyId),
         ),
       );
 
@@ -112,7 +111,7 @@ export async function PATCH(
         .from(csvColumnMappingTemplates)
         .where(
           and(
-            eq(csvColumnMappingTemplates.companyId, context.companyId),
+            eq(csvColumnMappingTemplates.companyId, tenantCtx.companyId),
             eq(csvColumnMappingTemplates.name, validatedData.name),
           ),
         );
@@ -148,7 +147,7 @@ export async function PATCH(
       .where(
         and(
           eq(csvColumnMappingTemplates.id, id),
-          eq(csvColumnMappingTemplates.companyId, context.companyId),
+          eq(csvColumnMappingTemplates.companyId, tenantCtx.companyId),
         ),
       )
       .returning();
@@ -206,7 +205,7 @@ export async function DELETE(
       .where(
         and(
           eq(csvColumnMappingTemplates.id, id),
-          eq(csvColumnMappingTemplates.companyId, context.companyId),
+          eq(csvColumnMappingTemplates.companyId, tenantCtx.companyId),
         ),
       );
 

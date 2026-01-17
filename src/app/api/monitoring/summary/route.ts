@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     // Get the most recent confirmed optimization job for this company
     const confirmedJob = await db.query.optimizationJobs.findFirst({
       where: and(
-        withTenantFilter(optimizationJobs),
+        withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
         eq(optimizationJobs.status, "COMPLETED"),
       ),
       with: {
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     // Get all driver (users with CONDUCTOR role) statuses from the company (regardless of active plan)
     const allDrivers = await db.query.users.findMany({
-      where: and(withTenantFilter(users), eq(users.role, USER_ROLES.CONDUCTOR)),
+      where: and(withTenantFilter(users, [], tenantCtx.companyId), eq(users.role, USER_ROLES.CONDUCTOR)),
       columns: {
         id: true,
         name: true,
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     const activeAlertsResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(alerts)
-      .where(and(withTenantFilter(alerts), eq(alerts.status, "ACTIVE")));
+      .where(and(withTenantFilter(alerts, [], tenantCtx.companyId), eq(alerts.status, "ACTIVE")));
     const activeAlerts = activeAlertsResult[0]?.count || 0;
 
     if (!confirmedJob) {

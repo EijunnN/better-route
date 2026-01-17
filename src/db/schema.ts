@@ -47,8 +47,8 @@ export const USER_ROLES = {
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
+  // companyId is nullable for ADMIN_SISTEMA who can manage all companies
   companyId: uuid("company_id")
-    .notNull()
     .references(() => companies.id, { onDelete: "restrict" }),
   // Basic user fields
   name: varchar("name", { length: 255 }).notNull(),

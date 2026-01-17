@@ -284,6 +284,7 @@ import {
   rolePermissions,
   permissions as permissionsTable,
   roles,
+  users,
 } from "@/db/schema";
 
 /**
@@ -404,9 +405,24 @@ export async function hasPermissionFromDB(
  */
 export async function getUserPermissionsFromDB(
   userId: string,
-  companyId: string,
+  companyId: string | null,
 ): Promise<string[]> {
   try {
+    // For users without a companyId (ADMIN_SISTEMA), grant all permissions
+    if (!companyId) {
+      // Check if this user has ADMIN_SISTEMA role in the users table
+      const [user] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (user?.role === "ADMIN_SISTEMA") {
+        return ["*"]; // Grant all permissions to system admin
+      }
+      return []; // No permissions for users without company and not admin
+    }
+
     // Get user's active roles
     const userRolesData = await db
       .select({ roleId: userRoles.roleId })

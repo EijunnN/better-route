@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
 export interface TenantContext {
-  companyId: string;
+  companyId: string; // Required - ADMIN_SISTEMA must select a company via header to operate
   userId?: string;
 }
 

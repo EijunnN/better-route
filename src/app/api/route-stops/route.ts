@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     // Build conditions
-    const tenantFilter = withTenantFilter(routeStops);
+    const tenantFilter = withTenantFilter(routeStops, [], tenantCtx.companyId);
     const conditions: SQL<unknown>[] = tenantFilter ? [tenantFilter] : [];
 
     if (jobId) {

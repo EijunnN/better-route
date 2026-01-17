@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     // Get the most recent confirmed optimization job
     const confirmedJob = await db.query.optimizationJobs.findFirst({
       where: and(
-        withTenantFilter(optimizationJobs),
+        withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
         eq(optimizationJobs.status, "COMPLETED"),
       ),
       orderBy: [desc(optimizationJobs.createdAt)],

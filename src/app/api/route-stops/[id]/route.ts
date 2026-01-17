@@ -34,7 +34,7 @@ export async function GET(
 
   try {
     const stop = await db.query.routeStops.findFirst({
-      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops)),
+      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops, [], tenantCtx.companyId)),
       with: {
         user: true,
         vehicle: true,
@@ -92,7 +92,7 @@ export async function PATCH(
 
     // Get current stop
     const currentStop = await db.query.routeStops.findFirst({
-      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops)),
+      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops, [], tenantCtx.companyId)),
     });
 
     if (!currentStop) {
@@ -212,7 +212,7 @@ export async function DELETE(
   try {
     // Check if stop exists and belongs to tenant
     const stop = await db.query.routeStops.findFirst({
-      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops)),
+      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops, [], tenantCtx.companyId)),
     });
 
     if (!stop) {

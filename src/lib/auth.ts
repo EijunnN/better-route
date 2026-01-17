@@ -28,7 +28,7 @@ const getSecretKey = () => {
 // Token payload interface
 export interface TokenPayload {
   userId: string;
-  companyId: string;
+  companyId: string | null; // null for ADMIN_SISTEMA who can manage all companies
   email: string;
   role: string;
   type: "access" | "refresh";
@@ -147,7 +147,7 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
  */
 export async function generateTokenPair(user: {
   id: string;
-  companyId: string;
+  companyId: string | null; // null for ADMIN_SISTEMA
   email: string;
   role: string;
 }): Promise<{ accessToken: string; refreshToken: string }> {
@@ -188,7 +188,7 @@ export function extractTokenFromAuthHeader(
 export async function createAuthSession(
   user: {
     id: string;
-    companyId: string;
+    companyId: string | null; // null for ADMIN_SISTEMA
     email: string;
     role: string;
   },

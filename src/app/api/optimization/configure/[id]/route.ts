@@ -37,7 +37,7 @@ export async function GET(
       .where(
         and(
           eq(optimizationConfigurations.id, id),
-          withTenantFilter(optimizationConfigurations),
+          withTenantFilter(optimizationConfigurations, [], tenantCtx.companyId),
         ),
       )
       .limit(1);
@@ -86,7 +86,7 @@ export async function PATCH(
       .where(
         and(
           eq(optimizationConfigurations.id, id),
-          withTenantFilter(optimizationConfigurations),
+          withTenantFilter(optimizationConfigurations, [], tenantCtx.companyId),
         ),
       )
       .limit(1);
@@ -164,7 +164,7 @@ export async function DELETE(
       .where(
         and(
           eq(optimizationConfigurations.id, id),
-          withTenantFilter(optimizationConfigurations),
+          withTenantFilter(optimizationConfigurations, [], tenantCtx.companyId),
         ),
       )
       .limit(1);

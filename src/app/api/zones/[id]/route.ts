@@ -39,7 +39,7 @@ export async function GET(
     const { id } = await params;
 
     // Apply tenant filtering
-    const whereClause = withTenantFilter(zones, [eq(zones.id, id)]);
+    const whereClause = withTenantFilter(zones, [eq(zones.id, id)], tenantCtx.companyId);
 
     const [zone] = await db.select().from(zones).where(whereClause).limit(1);
 
@@ -107,7 +107,7 @@ export async function PATCH(
     const validatedData = updateZoneSchema.parse({ ...body, id });
 
     // Apply tenant filtering when fetching existing zone
-    const existingWhereClause = withTenantFilter(zones, [eq(zones.id, id)]);
+    const existingWhereClause = withTenantFilter(zones, [eq(zones.id, id)], tenantCtx.companyId);
 
     const [existingZone] = await db
       .select()
@@ -247,7 +247,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Apply tenant filtering when fetching existing zone
-    const whereClause = withTenantFilter(zones, [eq(zones.id, id)]);
+    const whereClause = withTenantFilter(zones, [eq(zones.id, id)], tenantCtx.companyId);
 
     const [existingZone] = await db
       .select()

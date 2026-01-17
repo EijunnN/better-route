@@ -75,31 +75,53 @@ export async function proxy(request: NextRequest) {
       );
     }
 
-    let companyId = request.headers.get("x-company-id");
+    const headerCompanyId = request.headers.get("x-company-id");
     let userId = request.headers.get("x-user-id");
+    let effectiveCompanyId: string | null = headerCompanyId;
 
     if (payload && payload.type === "access") {
-      companyId = payload.companyId;
       userId = payload.userId;
+
+      // Determine effective companyId:
+      // - ADMIN_SISTEMA (companyId=null in JWT) can use header to switch companies
+      // - Other roles must use their JWT companyId for security
+      if (payload.role === "ADMIN_SISTEMA") {
+        // ADMIN_SISTEMA uses header companyId if provided, otherwise null
+        effectiveCompanyId = headerCompanyId || null;
+      } else {
+        // Non-admin users always use their JWT companyId
+        effectiveCompanyId = payload.companyId;
+      }
     }
 
-    if (companyId) {
+    if (effectiveCompanyId) {
       setTenantContext({
-        companyId,
+        companyId: effectiveCompanyId,
         userId: userId || undefined,
       });
     }
 
-    const response = NextResponse.next();
+    // Create new request headers with the auth context
+    const requestHeaders = new Headers(request.headers);
 
     if (payload && payload.type === "access") {
-      response.headers.set("x-user-id", payload.userId);
-      response.headers.set("x-user-email", payload.email);
-      response.headers.set("x-user-role", payload.role);
-      response.headers.set("x-company-id", payload.companyId);
+      requestHeaders.set("x-user-id", payload.userId);
+      requestHeaders.set("x-user-email", payload.email);
+      requestHeaders.set("x-user-role", payload.role);
+      // Set the effective companyId (or remove if null)
+      if (effectiveCompanyId) {
+        requestHeaders.set("x-company-id", effectiveCompanyId);
+      } else {
+        requestHeaders.delete("x-company-id");
+      }
     }
 
-    return response;
+    // Pass modified headers to the route handler
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   }
 
   // Handle protected page routes - check access_token cookie

@@ -41,7 +41,8 @@
       "Bash(timeout 10 bun dev:*)",
       "Bash(npx biome check:*)",
       "Bash(bun drizzle-kit:*)",
-      "Bash(bun tsc:*)"
+      "Bash(bun tsc:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }

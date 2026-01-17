@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       Object.fromEntries(searchParams),
     );
 
-    const conditions = [withTenantFilter(optimizationConfigurations)];
+    const conditions = [withTenantFilter(optimizationConfigurations, [], tenantCtx.companyId)];
 
     if (query.status) {
       conditions.push(eq(optimizationConfigurations.status, query.status));
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
         .where(
           and(
             inArray(vehicles.id, vehicleIds),
-            withTenantFilter(vehicles),
+            withTenantFilter(vehicles, [], tenantCtx.companyId),
             eq(vehicles.active, true),
           ),
         );
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
         .where(
           and(
             inArray(users.id, driverIds),
-            withTenantFilter(users),
+            withTenantFilter(users, [], tenantCtx.companyId),
             eq(users.active, true),
             eq(users.role, USER_ROLES.CONDUCTOR),
           ),

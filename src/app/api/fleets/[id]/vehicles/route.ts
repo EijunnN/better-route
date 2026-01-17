@@ -38,7 +38,7 @@ export async function GET(
     const { id } = await params;
 
     // Verify the fleet exists and belongs to the tenant's company
-    const fleetWhereClause = withTenantFilter(fleets, [eq(fleets.id, id)]);
+    const fleetWhereClause = withTenantFilter(fleets, [eq(fleets.id, id)], tenantCtx.companyId);
     const [fleet] = await db
       .select()
       .from(fleets)
@@ -94,7 +94,7 @@ export async function GET(
     }
 
     // Apply tenant filtering
-    const whereClause = withTenantFilter(vehicles, conditions);
+    const whereClause = withTenantFilter(vehicles, conditions, tenantCtx.companyId);
 
     const [data, totalResult] = await Promise.all([
       db

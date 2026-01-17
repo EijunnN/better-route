@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
 
     const whereClause =
       conditions.length > 0
-        ? and(withTenantFilter(alerts), ...conditions)
-        : withTenantFilter(alerts);
+        ? and(withTenantFilter(alerts, [], tenantCtx.companyId), ...conditions)
+        : withTenantFilter(alerts, [], tenantCtx.companyId);
 
     // Get alerts with filters
     const alertsData = await db.query.alerts.findMany({

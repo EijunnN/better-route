@@ -76,11 +76,14 @@ export async function setupAuthContext(request: NextRequest): Promise<{
   try {
     const user = await getAuthenticatedUser(request);
 
-    // Set tenant context from JWT
-    setTenantContext({
-      companyId: user.companyId,
-      userId: user.userId,
-    });
+    // Set tenant context from JWT (only if companyId exists)
+    // ADMIN_SISTEMA may have null companyId and must select a company via header
+    if (user.companyId) {
+      setTenantContext({
+        companyId: user.companyId,
+        userId: user.userId,
+      });
+    }
 
     return { authenticated: true, user };
   } catch {

@@ -33,7 +33,7 @@ export async function GET(
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
         eq(optimizationJobs.id, id),
-        withTenantFilter(optimizationJobs),
+        withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
       ),
     });
 
@@ -98,7 +98,7 @@ export async function DELETE(
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
         eq(optimizationJobs.id, id),
-        withTenantFilter(optimizationJobs),
+        withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
       ),
     });
 

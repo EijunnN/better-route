@@ -125,7 +125,7 @@ async function seed() {
       );
     }
 
-    // Create admin user
+    // Create admin user (ADMIN_SISTEMA without companyId - can manage all companies)
     const existingAdmin = await db
       .select()
       .from(users)
@@ -136,7 +136,8 @@ async function seed() {
       const hashedPassword = await bcrypt.hash("admin123", 10);
 
       await db.insert(users).values({
-        companyId,
+        // No companyId for ADMIN_SISTEMA - they can switch between all companies
+        companyId: null,
         email: "admin@planeamiento.com",
         username: "admin",
         password: hashedPassword,
@@ -145,7 +146,7 @@ async function seed() {
         active: true,
       });
 
-      console.log(`✅ Created admin user: admin@planeamiento.com / admin123`);
+      console.log(`✅ Created admin user: admin@planeamiento.com / admin123 (no company - system admin)`);
     } else {
       console.log(`ℹ️  Admin user already exists`);
     }

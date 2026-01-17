@@ -22,12 +22,12 @@ type DrizzleTable = Record<string, any>;
  *
  * @param table - The Drizzle table to filter
  * @param conditions - Additional SQL conditions
- * @param companyId - The company ID to filter by (recommended to pass explicitly)
+ * @param companyId - The company ID to filter by (recommended to pass explicitly). Can be null for ADMIN_SISTEMA.
  */
 export function withTenantFilter(
   table: DrizzleTable,
   conditions: SQL[] = [],
-  companyId?: string
+  companyId?: string | null
 ) {
   // Use explicitly passed companyId, or fall back to context (which may fail)
   const effectiveCompanyId = companyId ?? requireTenantContext().companyId;

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       Object.fromEntries(searchParams),
     );
 
-    const conditions = [withTenantFilter(optimizationJobs)];
+    const conditions = [withTenantFilter(optimizationJobs, [], tenantCtx.companyId)];
 
     if (query.status) {
       conditions.push(eq(optimizationJobs.status, query.status));
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     const config = await db.query.optimizationConfigurations.findFirst({
       where: and(
         eq(optimizationConfigurations.id, data.configurationId),
-        withTenantFilter(optimizationConfigurations),
+        withTenantFilter(optimizationConfigurations, [], tenantCtx.companyId),
       ),
     });
 

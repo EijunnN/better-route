@@ -43,7 +43,7 @@ export async function GET(
     const { id } = await params;
 
     // Apply tenant filtering
-    const whereClause = withTenantFilter(userSkills, [eq(userSkills.id, id)]);
+    const whereClause = withTenantFilter(userSkills, [eq(userSkills.id, id)], tenantCtx.companyId);
 
     const [userSkill] = await db
       .select({
@@ -132,7 +132,7 @@ export async function PATCH(
     // Apply tenant filtering when fetching existing user skill
     const existingWhereClause = withTenantFilter(userSkills, [
       eq(userSkills.id, id),
-    ]);
+    ], tenantCtx.companyId);
 
     const [existingUserSkill] = await db
       .select()
@@ -262,7 +262,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Apply tenant filtering when fetching existing user skill
-    const whereClause = withTenantFilter(userSkills, [eq(userSkills.id, id)]);
+    const whereClause = withTenantFilter(userSkills, [eq(userSkills.id, id)], tenantCtx.companyId);
 
     const [existingUserSkill] = await db
       .select()

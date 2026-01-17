@@ -124,7 +124,7 @@ export async function POST(
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
         eq(optimizationJobs.id, jobId),
-        withTenantFilter(optimizationJobs),
+        withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
       ),
     });
 
@@ -153,7 +153,7 @@ export async function POST(
     const targetVehicle = await db.query.vehicles.findFirst({
       where: and(
         eq(vehicles.id, targetVehicleId),
-        withTenantFilter(vehicles),
+        withTenantFilter(vehicles, [], tenantCtx.companyId),
       ),
     });
 
@@ -290,7 +290,7 @@ export async function POST(
       const orderData = await db.query.orders.findMany({
         where: and(
           inArray(orders.id, allOrderIds),
-          withTenantFilter(orders),
+          withTenantFilter(orders, [], tenantCtx.companyId),
         ),
       });
 
@@ -303,7 +303,7 @@ export async function POST(
       const vehicleData = await db.query.vehicles.findMany({
         where: and(
           inArray(vehicles.id, vehicleIds),
-          withTenantFilter(vehicles),
+          withTenantFilter(vehicles, [], tenantCtx.companyId),
         ),
       });
 

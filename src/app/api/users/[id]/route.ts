@@ -39,7 +39,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const whereClause = withTenantFilter(users, [eq(users.id, id)]);
+    const whereClause = withTenantFilter(users, [eq(users.id, id)], tenantCtx.companyId);
 
     const [user] = await db
       .select({
@@ -113,7 +113,7 @@ export async function PUT(
     const validatedData = updateUserSchema.parse({ ...body, id });
 
     // Check if user exists
-    const whereClause = withTenantFilter(users, [eq(users.id, id)]);
+    const whereClause = withTenantFilter(users, [eq(users.id, id)], tenantCtx.companyId);
     const [existingUser] = await db
       .select()
       .from(users)
@@ -321,7 +321,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const whereClause = withTenantFilter(users, [eq(users.id, id)]);
+    const whereClause = withTenantFilter(users, [eq(users.id, id)], tenantCtx.companyId);
 
     const [existingUser] = await db
       .select()

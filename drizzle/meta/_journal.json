@@ -15,6 +15,13 @@
       "when": 1768451680797,
       "tag": "0001_stormy_ironclad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768606948629,
+      "tag": "0002_white_rumiko_fujikawa",
+      "breakpoints": true
     }
   ]
 }

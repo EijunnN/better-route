@@ -34,7 +34,7 @@ export async function GET(
     const { id } = await params;
 
     // Apply tenant filtering
-    const whereClause = withTenantFilter(companies, [eq(companies.id, id)]);
+    const whereClause = withTenantFilter(companies, [eq(companies.id, id)], authResult.user.companyId);
 
     const [company] = await db
       .select()
@@ -77,7 +77,7 @@ export async function PATCH(
     // Apply tenant filtering when fetching existing company
     const existingWhereClause = withTenantFilter(companies, [
       eq(companies.id, id),
-    ]);
+    ], authResult.user.companyId);
 
     const existingCompany = await db
       .select()
@@ -179,7 +179,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Apply tenant filtering when fetching existing company
-    const whereClause = withTenantFilter(companies, [eq(companies.id, id)]);
+    const whereClause = withTenantFilter(companies, [eq(companies.id, id)], authResult.user.companyId);
 
     const existingCompany = await db
       .select()

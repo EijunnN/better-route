@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       .from(optimizationConfigurations)
       .where(
         and(
-          withTenantFilter(optimizationConfigurations),
+          withTenantFilter(optimizationConfigurations, [], tenantCtx.companyId),
           eq(optimizationConfigurations.status, "DRAFT"),
         ),
       )

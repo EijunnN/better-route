@@ -11,7 +11,7 @@ import { AUTH_ERRORS } from "@/lib/validations/auth";
  */
 export interface AuthenticatedUser {
   userId: string;
-  companyId: string;
+  companyId: string | null; // null for ADMIN_SISTEMA who can manage all companies
   email: string;
   role: string;
 }
