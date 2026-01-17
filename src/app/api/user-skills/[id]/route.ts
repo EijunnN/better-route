@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { userSkills, users, vehicleSkills } from "@/db/schema";
@@ -99,7 +100,7 @@ export async function GET(
       expiryStatus,
     });
   } catch (error) {
-    console.error("Error fetching user skill:", error);
+    after(() => console.error("Error fetching user skill:", error));
     if (error instanceof TenantAccessDeniedError) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
@@ -185,10 +186,12 @@ export async function PATCH(
       .where(eq(vehicleSkills.id, updatedUserSkill.skillId))
       .limit(1);
 
-    // Log update
-    await logUpdate("user_skill", id, {
-      before: existingUserSkill,
-      after: updatedUserSkill,
+    // Log update (non-blocking)
+    after(async () => {
+      await logUpdate("user_skill", id, {
+        before: existingUserSkill,
+        after: updatedUserSkill,
+      });
     });
 
     const expiresAtStr = updatedUserSkill.expiresAt?.toISOString() || null;
@@ -224,7 +227,7 @@ export async function PATCH(
         : null,
     });
   } catch (error: unknown) {
-    console.error("Error updating user skill:", error);
+    after(() => console.error("Error updating user skill:", error));
     if (error instanceof TenantAccessDeniedError) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
@@ -286,15 +289,17 @@ export async function DELETE(
       })
       .where(whereClause);
 
-    // Log deletion
-    await logDelete("user_skill", id, existingUserSkill);
+    // Log deletion (non-blocking)
+    after(async () => {
+      await logDelete("user_skill", id, existingUserSkill);
+    });
 
     return NextResponse.json({
       success: true,
       message: "Habilidad de usuario desactivada exitosamente",
     });
   } catch (error) {
-    console.error("Error deleting user skill:", error);
+    after(() => console.error("Error deleting user skill:", error));
     if (error instanceof TenantAccessDeniedError) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }

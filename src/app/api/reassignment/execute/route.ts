@@ -221,24 +221,26 @@ export async function GET(request: NextRequest) {
 
     setTenantContext(tenantCtx);
 
-    // Get count of drivers currently absent
-    const absentDrivers = await db.query.users.findMany({
-      where: and(
-        eq(users.companyId, tenantCtx.companyId),
-        eq(users.role, USER_ROLES.CONDUCTOR),
-        eq(users.driverStatus, "ABSENT"),
-      ),
-    });
-
-    // Get count of active reassignments in last 24 hours
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const recentReassignments = await db.query.reassignmentsHistory.findMany({
-      where: and(
-        eq(reassignmentsHistory.companyId, tenantCtx.companyId),
-        sql`${reassignmentsHistory.executedAt} >= ${yesterday}`,
-      ),
-    });
+    // Execute independent queries in parallel
+    const [absentDrivers, recentReassignments] = await Promise.all([
+      // Get count of drivers currently absent
+      db.query.users.findMany({
+        where: and(
+          eq(users.companyId, tenantCtx.companyId),
+          eq(users.role, USER_ROLES.CONDUCTOR),
+          eq(users.driverStatus, "ABSENT"),
+        ),
+      }),
+      // Get count of active reassignments in last 24 hours
+      db.query.reassignmentsHistory.findMany({
+        where: and(
+          eq(reassignmentsHistory.companyId, tenantCtx.companyId),
+          sql`${reassignmentsHistory.executedAt} >= ${yesterday}`,
+        ),
+      }),
+    ]);
 
     return NextResponse.json({
       data: {

@@ -1,6 +1,17 @@
 import { z } from "zod";
 import { DRIVER_STATUS, DRIVER_STATUS_TRANSITIONS } from "@/db/schema";
 
+// Precomputed Set versions for O(1) lookups
+const DRIVER_STATUS_TRANSITIONS_SETS: Record<
+  keyof typeof DRIVER_STATUS,
+  Set<keyof typeof DRIVER_STATUS>
+> = Object.fromEntries(
+  Object.entries(DRIVER_STATUS_TRANSITIONS).map(([status, transitions]) => [
+    status,
+    new Set(transitions as (keyof typeof DRIVER_STATUS)[]),
+  ])
+) as Record<keyof typeof DRIVER_STATUS, Set<keyof typeof DRIVER_STATUS>>;
+
 /**
  * Driver Status Transition Validation Module
  * Implements Story 4.3: Gestión del Estado Operativo de Conductores
@@ -62,13 +73,13 @@ export function validateStatusTransition(
     return { valid: false, reason: "El estado es el mismo que el actual" };
   }
 
-  const allowedTransitions = DRIVER_STATUS_TRANSITIONS[fromStatus];
+  const allowedTransitionsSet = DRIVER_STATUS_TRANSITIONS_SETS[fromStatus];
 
-  if (!allowedTransitions) {
+  if (!allowedTransitionsSet) {
     return { valid: false, reason: `Estado origen no válido: ${fromStatus}` };
   }
 
-  if (!allowedTransitions.includes(toStatus)) {
+  if (!allowedTransitionsSet.has(toStatus)) {
     return {
       valid: false,
       reason: `Transición no permitida de ${STATUS_DISPLAY_NAMES[fromStatus]} a ${STATUS_DISPLAY_NAMES[toStatus]}`,

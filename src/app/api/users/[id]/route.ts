@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
+import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { fleets, users } from "@/db/schema";
@@ -87,7 +88,7 @@ export async function GET(
 
     return NextResponse.json({ ...user, primaryFleet });
   } catch (error) {
-    console.error("Error fetching user:", error);
+    after(() => console.error("Error fetching user:", error));
     return NextResponse.json({ error: "Error fetching user" }, { status: 500 });
   }
 }
@@ -285,12 +286,14 @@ export async function PUT(
         updatedAt: users.updatedAt,
       });
 
-    // Log update
-    await logUpdate("user", id, { before: existingUser, after: updatedUser });
+    // Log update (non-blocking)
+    after(async () => {
+      await logUpdate("user", id, { before: existingUser, after: updatedUser });
+    });
 
     return NextResponse.json(updatedUser);
   } catch (error) {
-    console.error("Error updating user:", error);
+    after(() => console.error("Error updating user:", error));
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         {
@@ -345,15 +348,17 @@ export async function DELETE(
         active: users.active,
       });
 
-    // Log deletion
-    await logDelete("user", id, existingUser);
+    // Log deletion (non-blocking)
+    after(async () => {
+      await logDelete("user", id, existingUser);
+    });
 
     return NextResponse.json({
       message: "User deactivated successfully",
       user: deletedUser,
     });
   } catch (error) {
-    console.error("Error deleting user:", error);
+    after(() => console.error("Error deleting user:", error));
     return NextResponse.json({ error: "Error deleting user" }, { status: 500 });
   }
 }

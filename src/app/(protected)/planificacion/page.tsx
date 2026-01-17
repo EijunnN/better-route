@@ -271,43 +271,61 @@ function PlanificacionPageContent() {
     if (!companyId) return;
     setOrdersLoading(true);
     try {
-      // Fetch orders in batches of 100 (API max limit)
-      const allOrders: Order[] = [];
-      let offset = 0;
       const limit = 100;
-      let hasMore = true;
+      const maxOrders = 5000;
+      const maxBatches = Math.ceil(maxOrders / limit);
 
-      while (hasMore) {
-        const response = await fetch(
-          `/api/orders?status=PENDING&active=true&limit=${limit}&offset=${offset}`,
-          {
-            headers: { "x-company-id": companyId },
-          },
+      // Fetch first batch to check total
+      const firstResponse = await fetch(
+        `/api/orders?status=PENDING&active=true&limit=${limit}&offset=0`,
+        { headers: { "x-company-id": companyId } },
+      );
+
+      if (!firstResponse.ok) {
+        const errorData = await firstResponse.json();
+        console.error("Failed to fetch orders:", errorData);
+        return;
+      }
+
+      const firstData = await firstResponse.json();
+      const firstBatch = firstData.data || [];
+
+      // If first batch is not full, we have all orders
+      if (firstBatch.length < limit) {
+        setOrders(firstBatch);
+        setSelectedOrderIds(firstBatch.map((o: Order) => o.id));
+        return;
+      }
+
+      // Need more batches - fetch remaining in parallel
+      const batchPromises: Promise<Order[]>[] = [];
+      for (let batch = 1; batch < maxBatches; batch++) {
+        const offset = batch * limit;
+        batchPromises.push(
+          fetch(
+            `/api/orders?status=PENDING&active=true&limit=${limit}&offset=${offset}`,
+            { headers: { "x-company-id": companyId } },
+          ).then(async (res) => {
+            if (!res.ok) return [];
+            const data = await res.json();
+            return data.data || [];
+          }),
         );
+      }
 
-        if (response.ok) {
-          const data = await response.json();
-          const orders = data.data || [];
-          allOrders.push(...orders);
+      // Execute all remaining batches in parallel
+      const batchResults = await Promise.all(batchPromises);
 
-          // Check if there are more orders to fetch
-          hasMore = orders.length === limit;
-          offset += limit;
-
-          // Safety limit to prevent infinite loops (max 5000 orders)
-          if (offset >= 5000) hasMore = false;
-        } else {
-          const errorData = await response.json();
-          console.error("Failed to fetch orders:", errorData);
-          hasMore = false;
-        }
+      // Combine results, stop at first incomplete batch
+      const allOrders: Order[] = [...firstBatch];
+      for (const batch of batchResults) {
+        allOrders.push(...batch);
+        if (batch.length < limit) break; // No more data
       }
 
       console.log(`Orders loaded: ${allOrders.length}`);
       setOrders(allOrders);
-      // Auto-select all orders by default
-      const allIds = allOrders.map((o: Order) => o.id);
-      setSelectedOrderIds(allIds);
+      setSelectedOrderIds(allOrders.map((o: Order) => o.id));
     } catch (err) {
       console.error("Failed to fetch orders:", err);
     } finally {
@@ -595,22 +613,13 @@ function PlanificacionPageContent() {
     }
   }, [companyId, csvPreview, loadOrders]);
 
-  // Initial data load
+  // Initial data load - fetch all in parallel for better performance
   useEffect(() => {
     if (companyId) {
-      loadFleets();
-      loadVehicles();
-      loadOrders();
-      loadZones();
+      // Use Promise.all to fetch all data in parallel (async-parallel rule)
+      Promise.all([loadFleets(), loadVehicles(), loadOrders(), loadZones()]);
     }
   }, [companyId, loadFleets, loadVehicles, loadOrders, loadZones]);
-
-  // Reload vehicles when fleet filter changes (loadVehicles includes fleetFilter as dependency)
-  useEffect(() => {
-    if (companyId) {
-      loadVehicles();
-    }
-  }, [companyId, loadVehicles]);
 
   // Filtered vehicles
   const filteredVehicles = useMemo(() => {
@@ -715,17 +724,15 @@ function PlanificacionPageContent() {
     }
   }, [editingOrder, companyId, editOrderData]);
 
-  // Selected vehicles data for map
-  const selectedVehicles = useMemo(
-    () => vehicles.filter((v) => selectedVehicleIds.includes(v.id)),
-    [vehicles, selectedVehicleIds],
-  );
+  // Create Sets for O(1) lookups - React Compiler handles memoization automatically
+  const selectedVehicleIdsSet = new Set(selectedVehicleIds);
+  const selectedOrderIdsSet = new Set(selectedOrderIds);
 
-  // Selected orders data for map
-  const selectedOrders = useMemo(
-    () => orders.filter((o) => selectedOrderIds.includes(o.id)),
-    [orders, selectedOrderIds],
-  );
+  // Selected vehicles data for map - React Compiler handles memoization
+  const selectedVehicles = vehicles.filter((v) => selectedVehicleIdsSet.has(v.id));
+
+  // Selected orders data for map - React Compiler handles memoization
+  const selectedOrders = orders.filter((o) => selectedOrderIdsSet.has(o.id));
 
   // Step navigation
   const goToStep = (step: StepId) => {
@@ -756,11 +763,12 @@ function PlanificacionPageContent() {
 
   const selectAllVehicles = () => {
     const allSelected = filteredVehicles.every((v) =>
-      selectedVehicleIds.includes(v.id),
+      selectedVehicleIdsSet.has(v.id),
     );
     if (allSelected) {
+      const filteredSet = new Set(filteredVehicles.map((v) => v.id));
       setSelectedVehicleIds((prev) =>
-        prev.filter((id) => !filteredVehicles.some((v) => v.id === id)),
+        prev.filter((id) => !filteredSet.has(id)),
       );
     } else {
       const newIds = filteredVehicles.map((v) => v.id);
@@ -777,11 +785,12 @@ function PlanificacionPageContent() {
 
   const selectAllOrders = () => {
     const allSelected = filteredOrders.every((o) =>
-      selectedOrderIds.includes(o.id),
+      selectedOrderIdsSet.has(o.id),
     );
     if (allSelected) {
+      const filteredSet = new Set(filteredOrders.map((o) => o.id));
       setSelectedOrderIds((prev) =>
-        prev.filter((id) => !filteredOrders.some((o) => o.id === id)),
+        prev.filter((id) => !filteredSet.has(id)),
       );
     } else {
       const newIds = filteredOrders.map((o) => o.id);
@@ -1006,7 +1015,7 @@ function PlanificacionPageContent() {
                     <Checkbox
                       id="select-all-vehicles"
                       checked={filteredVehicles.every((v) =>
-                        selectedVehicleIds.includes(v.id),
+                        selectedVehicleIdsSet.has(v.id),
                       )}
                       onCheckedChange={selectAllVehicles}
                     />
@@ -1040,7 +1049,7 @@ function PlanificacionPageContent() {
                       key={vehicle.id}
                       htmlFor={`vehicle-${vehicle.id}`}
                       className={`block p-3 rounded-lg border cursor-pointer transition-all ${
-                        selectedVehicleIds.includes(vehicle.id)
+                        selectedVehicleIdsSet.has(vehicle.id)
                           ? "border-primary bg-primary/5 shadow-sm"
                           : "border-border hover:border-primary/50 hover:bg-muted/50"
                       }`}
@@ -1048,7 +1057,7 @@ function PlanificacionPageContent() {
                       <div className="flex items-start gap-3">
                         <Checkbox
                           id={`vehicle-${vehicle.id}`}
-                          checked={selectedVehicleIds.includes(vehicle.id)}
+                          checked={selectedVehicleIdsSet.has(vehicle.id)}
                           onCheckedChange={() => toggleVehicle(vehicle.id)}
                         />
                         <div className="flex-1 min-w-0">
@@ -1165,7 +1174,7 @@ function PlanificacionPageContent() {
                     <Checkbox
                       id="select-all-orders"
                       checked={filteredOrders.every((o) =>
-                        selectedOrderIds.includes(o.id),
+                        selectedOrderIdsSet.has(o.id),
                       )}
                       onCheckedChange={selectAllOrders}
                     />
@@ -1200,7 +1209,7 @@ function PlanificacionPageContent() {
                       <div
                         key={order.id}
                         className={`p-3 rounded-lg border transition-all ${
-                          selectedOrderIds.includes(order.id)
+                          selectedOrderIdsSet.has(order.id)
                             ? "border-primary bg-primary/5 shadow-sm"
                             : "border-border hover:border-primary/50 hover:bg-muted/50"
                         } ${hasIssue ? "border-orange-300 bg-orange-50/50" : ""}`}
@@ -1208,7 +1217,7 @@ function PlanificacionPageContent() {
                         <div className="flex items-start gap-3">
                           <Checkbox
                             id={`order-${order.id}`}
-                            checked={selectedOrderIds.includes(order.id)}
+                            checked={selectedOrderIdsSet.has(order.id)}
                             onCheckedChange={() => toggleOrder(order.id)}
                             className="mt-1"
                           />

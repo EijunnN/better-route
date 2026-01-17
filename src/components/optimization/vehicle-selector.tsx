@@ -103,8 +103,11 @@ export function VehicleSelector({
     fetchVehicles();
   }, [companyId, fleetFilter]);
 
-  // Get unique vehicle types
-  const vehicleTypes = Array.from(new Set(vehicles.map((v) => v.type))).sort();
+  // Get unique vehicle types - use toSorted for immutability
+  const vehicleTypes = Array.from(new Set(vehicles.map((v) => v.type))).toSorted();
+
+  // Create Set for O(1) lookups - React Compiler handles memoization
+  const selectedIdsSet = new Set(selectedIds);
 
   // Filter vehicles
   const filteredVehicles = vehicles.filter((vehicle) => {
@@ -123,23 +126,24 @@ export function VehicleSelector({
 
   // Handle select all
   const handleSelectAll = () => {
-    const allIds = filteredVehicles.map((v) => v.id);
+    const allIdsSet = new Set(filteredVehicles.map((v) => v.id));
     const allSelected = filteredVehicles.every((v) =>
-      selectedIds.includes(v.id),
+      selectedIdsSet.has(v.id),
     );
 
     if (allSelected) {
       // Deselect all filtered vehicles
-      onChange(selectedIds.filter((id) => !allIds.includes(id)));
+      onChange(selectedIds.filter((id) => !allIdsSet.has(id)));
     } else {
       // Select all filtered vehicles
+      const allIds = filteredVehicles.map((v) => v.id);
       onChange([...new Set([...selectedIds, ...allIds])]);
     }
   };
 
   // Handle individual selection
   const handleToggle = (id: string) => {
-    if (selectedIds.includes(id)) {
+    if (selectedIdsSet.has(id)) {
       onChange(selectedIds.filter((selectedId) => selectedId !== id));
     } else {
       onChange([...selectedIds, id]);
@@ -148,9 +152,9 @@ export function VehicleSelector({
 
   const allFilteredSelected =
     filteredVehicles.length > 0 &&
-    filteredVehicles.every((v) => selectedIds.includes(v.id));
+    filteredVehicles.every((v) => selectedIdsSet.has(v.id));
   const _someFilteredSelected =
-    filteredVehicles.some((v) => selectedIds.includes(v.id)) &&
+    filteredVehicles.some((v) => selectedIdsSet.has(v.id)) &&
     !allFilteredSelected;
 
   return (
@@ -239,7 +243,7 @@ export function VehicleSelector({
             <Card
               key={vehicle.id}
               className={`p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
-                selectedIds.includes(vehicle.id)
+                selectedIdsSet.has(vehicle.id)
                   ? "border-primary bg-primary/5"
                   : ""
               }`}
@@ -247,7 +251,7 @@ export function VehicleSelector({
             >
               <div className="flex items-start gap-3">
                 <Checkbox
-                  checked={selectedIds.includes(vehicle.id)}
+                  checked={selectedIdsSet.has(vehicle.id)}
                   onCheckedChange={() => handleToggle(vehicle.id)}
                   onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 />

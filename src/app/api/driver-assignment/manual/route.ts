@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs, USER_ROLES, users, vehicles } from "@/db/schema";
@@ -202,19 +203,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create audit log entry
-    await logCreate("DRIVER_ASSIGNMENT", data.routeId, {
-      action: "MANUAL_ASSIGNMENT",
-      driverId: data.driverId,
-      driverName: driver.name,
-      vehicleId: data.vehicleId,
-      reason: data.reason,
-      overrideWarnings: data.overrideWarnings,
-      validation: {
-        isValid: validation.isValid,
-        errors: validation.errors,
-        warnings: validation.warnings,
-      },
+    // Create audit log entry (non-blocking)
+    after(async () => {
+      await logCreate("DRIVER_ASSIGNMENT", data.routeId, {
+        action: "MANUAL_ASSIGNMENT",
+        driverId: data.driverId,
+        driverName: driver.name,
+        vehicleId: data.vehicleId,
+        reason: data.reason,
+        overrideWarnings: data.overrideWarnings,
+        validation: {
+          isValid: validation.isValid,
+          errors: validation.errors,
+          warnings: validation.warnings,
+        },
+      });
     });
 
     return NextResponse.json({
@@ -236,7 +239,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error creating manual driver assignment:", error);
+    after(() => console.error("Error creating manual driver assignment:", error));
     return NextResponse.json(
       { error: "Error creating manual driver assignment" },
       { status: 500 },

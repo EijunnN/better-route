@@ -177,6 +177,11 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
 };
 
+// Precomputed Set versions of role permissions for O(1) lookups
+const ROLE_PERMISSIONS_SETS: Record<string, Set<Permission>> = Object.fromEntries(
+  Object.entries(ROLE_PERMISSIONS).map(([role, perms]) => [role, new Set(perms)])
+);
+
 /**
  * Check if a user has a specific permission
  */
@@ -185,16 +190,16 @@ export function hasPermission(
   entity: EntityType,
   action: Action,
 ): boolean {
-  const permissions = ROLE_PERMISSIONS[user.role] || [];
+  const permissionsSet = ROLE_PERMISSIONS_SETS[user.role] || new Set();
 
   // Check for wildcard permission (admin has full access)
-  if (permissions.includes("*")) {
+  if (permissionsSet.has("*")) {
     return true;
   }
 
   // Check for exact permission match
   const permission = `${entity}:${action}` as Permission;
-  return permissions.includes(permission);
+  return permissionsSet.has(permission);
 }
 
 /**
@@ -356,8 +361,8 @@ export async function hasPermissionFromDB(
         ),
       );
 
-    const adminRoleIds = systemAdminRoles.map((r) => r.id);
-    const isAdmin = roleIds.some((id) => adminRoleIds.includes(id));
+    const adminRoleIdsSet = new Set(systemAdminRoles.map((r) => r.id));
+    const isAdmin = roleIds.some((id) => adminRoleIdsSet.has(id));
 
     if (isAdmin) {
       permissionCache.set(cacheKey, { allowed: true, expiresAt: Date.now() + CACHE_TTL_MS });
@@ -449,16 +454,16 @@ export async function getUserPermissionsFromDB(
       .from(roles)
       .where(eq(roles.code, "ADMIN_SISTEMA"));
 
-    const adminRoleIds = systemAdminRoles.map((r) => r.id);
-    const isAdmin = roleIds.some((id) => adminRoleIds.includes(id));
+    const adminRoleIdsSet = new Set(systemAdminRoles.map((r) => r.id));
+    const isAdmin = roleIds.some((id) => adminRoleIdsSet.has(id));
 
     if (isAdmin) {
       // Return wildcard for admin
       return ["*"];
     }
 
-    // Get all enabled permissions for user's roles
-    const enabledPermissions: string[] = [];
+    // Get all enabled permissions for user's roles using Set for O(1) deduplication
+    const enabledPermissionsSet = new Set<string>();
 
     for (const roleId of roleIds) {
       const perms = await db
@@ -480,14 +485,11 @@ export async function getUserPermissionsFromDB(
         );
 
       for (const perm of perms) {
-        const permString = `${perm.entity}:${perm.action}`;
-        if (!enabledPermissions.includes(permString)) {
-          enabledPermissions.push(permString);
-        }
+        enabledPermissionsSet.add(`${perm.entity}:${perm.action}`);
       }
     }
 
-    return enabledPermissions;
+    return Array.from(enabledPermissionsSet);
   } catch (error) {
     console.error("Error getting user permissions from DB:", error);
     return [];

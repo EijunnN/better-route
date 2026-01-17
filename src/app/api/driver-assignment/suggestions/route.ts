@@ -288,9 +288,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Sort by score (descending) and limit
+    // Sort by score (descending) and limit - use toSorted for immutability
     const suggestions = scoredDrivers
-      .sort((a, b) => b.score - a.score)
+      .toSorted((a, b) => b.score - a.score)
       .slice(0, data.limit);
 
     return NextResponse.json({

@@ -1,4 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
+import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
@@ -42,31 +43,32 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(optimizationJobs.status, query.status));
     }
 
-    const jobs = await db
-      .select({
-        id: optimizationJobs.id,
-        configurationId: optimizationJobs.configurationId,
-        status: optimizationJobs.status,
-        progress: optimizationJobs.progress,
-        error: optimizationJobs.error,
-        startedAt: optimizationJobs.startedAt,
-        completedAt: optimizationJobs.completedAt,
-        cancelledAt: optimizationJobs.cancelledAt,
-        timeoutMs: optimizationJobs.timeoutMs,
-        createdAt: optimizationJobs.createdAt,
-        updatedAt: optimizationJobs.updatedAt,
-      })
-      .from(optimizationJobs)
-      .where(and(...conditions))
-      .orderBy(desc(optimizationJobs.createdAt))
-      .limit(query.limit)
-      .offset(query.offset);
-
-    // Get total count
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(optimizationJobs)
-      .where(and(...conditions));
+    // Execute paginated query and count in parallel
+    const [jobs, [{ count }]] = await Promise.all([
+      db
+        .select({
+          id: optimizationJobs.id,
+          configurationId: optimizationJobs.configurationId,
+          status: optimizationJobs.status,
+          progress: optimizationJobs.progress,
+          error: optimizationJobs.error,
+          startedAt: optimizationJobs.startedAt,
+          completedAt: optimizationJobs.completedAt,
+          cancelledAt: optimizationJobs.cancelledAt,
+          timeoutMs: optimizationJobs.timeoutMs,
+          createdAt: optimizationJobs.createdAt,
+          updatedAt: optimizationJobs.updatedAt,
+        })
+        .from(optimizationJobs)
+        .where(and(...conditions))
+        .orderBy(desc(optimizationJobs.createdAt))
+        .limit(query.limit)
+        .offset(query.offset),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(optimizationJobs)
+        .where(and(...conditions)),
+    ]);
 
     return NextResponse.json({
       data: jobs,
@@ -77,7 +79,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching optimization jobs:", error);
+    after(() => console.error("Error fetching optimization jobs:", error));
     return NextResponse.json(
       { error: "Failed to fetch jobs" },
       { status: 500 },
@@ -127,12 +129,14 @@ export async function POST(request: NextRequest) {
       data.timeoutMs,
     );
 
-    // Log job creation
-    await logCreate("optimization_job", jobId, {
-      configurationId: data.configurationId,
-      vehicleCount: data.vehicleIds.length,
-      driverCount: data.driverIds.length,
-      cached,
+    // Log job creation (non-blocking)
+    after(async () => {
+      await logCreate("optimization_job", jobId, {
+        configurationId: data.configurationId,
+        vehicleCount: data.vehicleIds.length,
+        driverCount: data.driverIds.length,
+        cached,
+      });
     });
 
     return NextResponse.json(
@@ -157,7 +161,7 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    console.error("Error creating optimization job:", error);
+    after(() => console.error("Error creating optimization job:", error));
     return NextResponse.json(
       { error: "Failed to create optimization job" },
       { status: 500 },

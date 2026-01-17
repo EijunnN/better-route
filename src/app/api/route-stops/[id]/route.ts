@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
@@ -55,7 +56,7 @@ export async function GET(
 
     return NextResponse.json({ data: stop });
   } catch (error) {
-    console.error("Error fetching route stop:", error);
+    after(() => console.error("Error fetching route stop:", error));
     return NextResponse.json(
       { error: "Failed to fetch route stop" },
       { status: 500 },
@@ -185,7 +186,7 @@ export async function PATCH(
 
     return NextResponse.json({ data: updatedStop[0] });
   } catch (error) {
-    console.error("Error updating route stop:", error);
+    after(() => console.error("Error updating route stop:", error));
     return NextResponse.json(
       { error: "Failed to update route stop" },
       { status: 500 },
@@ -232,7 +233,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting route stop:", error);
+    after(() => console.error("Error deleting route stop:", error));
     return NextResponse.json(
       { error: "Failed to delete route stop" },
       { status: 500 },

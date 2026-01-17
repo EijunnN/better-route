@@ -42,7 +42,8 @@
       "Bash(npx biome check:*)",
       "Bash(bun drizzle-kit:*)",
       "Bash(bun tsc:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Skill(react-best-practices)"
     ]
   }
 }

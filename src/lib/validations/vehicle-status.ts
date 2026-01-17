@@ -15,6 +15,14 @@ export const STATUS_TRANSITION_RULES: Record<string, string[]> = {
   INACTIVE: ["AVAILABLE"],
 };
 
+// Precomputed Set versions for O(1) lookups
+const STATUS_TRANSITION_SETS: Record<string, Set<string>> = Object.fromEntries(
+  Object.entries(STATUS_TRANSITION_RULES).map(([status, transitions]) => [
+    status,
+    new Set(transitions),
+  ])
+);
+
 // Status transitions that require checking for active routes/assignments
 export const REQUIRES_ACTIVE_ROUTE_CHECK: Set<string> = new Set([
   "ASSIGNED_TO_AVAILABLE",
@@ -44,13 +52,13 @@ export function validateStatusTransition(
     return { valid: false, reason: "El estado es el mismo que el actual" };
   }
 
-  const allowedTransitions = STATUS_TRANSITION_RULES[fromStatus];
+  const allowedTransitionsSet = STATUS_TRANSITION_SETS[fromStatus];
 
-  if (!allowedTransitions) {
+  if (!allowedTransitionsSet) {
     return { valid: false, reason: `Estado origen no válido: ${fromStatus}` };
   }
 
-  if (!allowedTransitions.includes(toStatus)) {
+  if (!allowedTransitionsSet.has(toStatus)) {
     return {
       valid: false,
       reason: `Transición no permitida de ${STATUS_DISPLAY_NAMES[fromStatus] || fromStatus} a ${STATUS_DISPLAY_NAMES[toStatus] || toStatus}`,

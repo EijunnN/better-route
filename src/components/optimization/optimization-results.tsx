@@ -309,6 +309,7 @@ function RouteCard({
                 <div
                   key={stop.orderId}
                   className="flex items-start gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors"
+                  style={{ contentVisibility: "auto", containIntrinsicSize: "0 60px" }}
                 >
                   <div className="flex flex-col items-center">
                     <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
@@ -389,6 +390,7 @@ function UnassignedOrdersList({
           <div
             key={order.orderId}
             className="flex items-center gap-3 p-3 rounded-lg border border-orange-200 bg-orange-50/50"
+            style={{ contentVisibility: "auto", containIntrinsicSize: "0 50px" }}
           >
             <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">
@@ -592,8 +594,11 @@ export function OptimizationResults({
           ) : (
             <div className="space-y-3">
               {result.routes.map((route) => (
-                <RouteCard
+                <div
                   key={route.routeId}
+                  style={{ contentVisibility: "auto", containIntrinsicSize: "0 80px" }}
+                >
+                <RouteCard
                   route={route}
                   isSelected={selectedRouteId === route.routeId}
                   onToggle={() =>
@@ -605,6 +610,7 @@ export function OptimizationResults({
                     onReassignDriver ? handleReassignDriver : undefined
                   }
                 />
+                </div>
               ))}
             </div>
           )}

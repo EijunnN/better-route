@@ -103,6 +103,9 @@ export function DriverSelector({
     fetchDrivers();
   }, [companyId, fleetFilter]);
 
+  // Create Set for O(1) lookups - React Compiler handles memoization
+  const selectedIdsSet = new Set(selectedIds);
+
   // Check license expiry
   const getLicenseStatus = (
     expiryDate: string,
@@ -138,21 +141,22 @@ export function DriverSelector({
 
   // Handle select all
   const handleSelectAll = () => {
-    const allIds = filteredDrivers.map((d) => d.id);
+    const allIdsSet = new Set(filteredDrivers.map((d) => d.id));
     const allSelected = filteredDrivers.every((d) =>
-      selectedIds.includes(d.id),
+      selectedIdsSet.has(d.id),
     );
 
     if (allSelected) {
-      onChange(selectedIds.filter((id) => !allIds.includes(id)));
+      onChange(selectedIds.filter((id) => !allIdsSet.has(id)));
     } else {
+      const allIds = filteredDrivers.map((d) => d.id);
       onChange([...new Set([...selectedIds, ...allIds])]);
     }
   };
 
   // Handle individual selection
   const handleToggle = (id: string) => {
-    if (selectedIds.includes(id)) {
+    if (selectedIdsSet.has(id)) {
       onChange(selectedIds.filter((selectedId) => selectedId !== id));
     } else {
       onChange([...selectedIds, id]);
@@ -161,7 +165,7 @@ export function DriverSelector({
 
   const allFilteredSelected =
     filteredDrivers.length > 0 &&
-    filteredDrivers.every((d) => selectedIds.includes(d.id));
+    filteredDrivers.every((d) => selectedIdsSet.has(d.id));
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -252,7 +256,7 @@ export function DriverSelector({
               <Card
                 key={driver.id}
                 className={`p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
-                  selectedIds.includes(driver.id)
+                  selectedIdsSet.has(driver.id)
                     ? "border-primary bg-primary/5"
                     : ""
                 } ${licenseStatus === "expired" ? "opacity-50" : ""}`}
@@ -262,7 +266,7 @@ export function DriverSelector({
               >
                 <div className="flex items-start gap-3">
                   <Checkbox
-                    checked={selectedIds.includes(driver.id)}
+                    checked={selectedIdsSet.has(driver.id)}
                     disabled={licenseStatus === "expired"}
                     onCheckedChange={() => handleToggle(driver.id)}
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}

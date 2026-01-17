@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
@@ -92,7 +93,7 @@ export async function GET(
       userCount: relatedUsers.length,
     });
   } catch (error) {
-    console.error("Error fetching fleet:", error);
+    after(() => console.error("Error fetching fleet:", error));
     if (error instanceof TenantAccessDeniedError) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
@@ -277,14 +278,16 @@ export async function PATCH(
         ),
       );
 
-    // Log update
-    await logUpdate("fleet", id, {
-      before: existingFleet,
-      after: {
-        ...updatedFleet,
-        vehicleIds: relatedVehicles.map((v) => v.id),
-        userIds: relatedUsers.map((u) => u.id),
-      },
+    // Log update (non-blocking)
+    after(async () => {
+      await logUpdate("fleet", id, {
+        before: existingFleet,
+        after: {
+          ...updatedFleet,
+          vehicleIds: relatedVehicles.map((v) => v.id),
+          userIds: relatedUsers.map((u) => u.id),
+        },
+      });
     });
 
     return NextResponse.json({
@@ -295,7 +298,7 @@ export async function PATCH(
       userCount: relatedUsers.length,
     });
   } catch (error) {
-    console.error("Error updating fleet:", error);
+    after(() => console.error("Error updating fleet:", error));
     if (error instanceof TenantAccessDeniedError) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
@@ -388,8 +391,10 @@ export async function DELETE(
       })
       .where(whereClause);
 
-    // Log deletion
-    await logDelete("fleet", id, existingFleet);
+    // Log deletion (non-blocking)
+    after(async () => {
+      await logDelete("fleet", id, existingFleet);
+    });
 
     return NextResponse.json({
       success: true,
@@ -398,7 +403,7 @@ export async function DELETE(
       deactivatedPermissions: Number(activeUserCount.count),
     });
   } catch (error) {
-    console.error("Error deleting fleet:", error);
+    after(() => console.error("Error deleting fleet:", error));
     if (error instanceof TenantAccessDeniedError) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }

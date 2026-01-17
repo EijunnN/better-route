@@ -1,12 +1,13 @@
 "use client";
 
 import { AlertCircle, Bell, Loader2, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useState } from "react";
+import useSWR from "swr";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import { AlertPanel } from "@/components/alerts/alert-panel";
 import { DriverListItem } from "@/components/monitoring/driver-list-item";
 import { DriverRouteDetail } from "@/components/monitoring/driver-route-detail";
-import { MonitoringMap } from "@/components/monitoring/monitoring-map";
 import { MonitoringMetrics } from "@/components/monitoring/monitoring-metrics";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,30 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { CompanySelector } from "@/components/company-selector";
 
+// Dynamic import for heavy map component (bundle-dynamic-imports rule)
+const MonitoringMap = dynamic(
+  () => import("@/components/monitoring/monitoring-map").then((mod) => mod.MonitoringMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full bg-muted animate-pulse rounded-lg flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  },
+);
+
 const POLLING_INTERVAL = 10000; // 10 seconds
+
+// SWR fetcher with company header
+const fetcher = async (url: string, companyId: string) => {
+  const response = await fetch(url, {
+    headers: { "x-company-id": companyId },
+  });
+  if (!response.ok) throw new Error("Failed to fetch");
+  const result = await response.json();
+  return result.data;
+};
 
 interface MonitoringData {
   hasActivePlan: boolean;
@@ -119,125 +143,76 @@ function MonitoringPageContent() {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const [monitoringData, setMonitoringData] = useState<MonitoringData | null>(
-    null,
-  );
-  const [driversData, setDriversData] = useState<DriverMonitoringData[]>([]);
+
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
-  const [driverDetail, setDriverDetail] = useState<DriverDetailData | null>(
-    null,
-  );
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingDrivers, setIsLoadingDrivers] = useState(true);
-  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"overview" | "detail">("overview");
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [showAlerts, setShowAlerts] = useState(false);
-  const [alertsCount, setAlertsCount] = useState(0);
 
-  const fetchMonitoringData = useCallback(async () => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/monitoring/summary", {
-        headers: { "x-company-id": companyId },
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch monitoring data");
-
-      const result = await response.json();
-      setMonitoringData(result.data);
-      setAlertsCount(result.data.metrics.activeAlerts);
-      setLastUpdate(new Date());
-    } catch (err) {
-      console.error("Error fetching monitoring data:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch monitoring data",
-      );
+  // SWR for monitoring summary with automatic polling
+  const {
+    data: monitoringData,
+    error: monitoringError,
+    isLoading: isLoadingMonitoring,
+    mutate: mutateMonitoring,
+  } = useSWR<MonitoringData>(
+    companyId ? ["/api/monitoring/summary", companyId] : null,
+    ([url, cId]: [string, string]) => fetcher(url, cId),
+    {
+      refreshInterval: POLLING_INTERVAL,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
     }
-  }, [companyId]);
-
-  const fetchDriversData = useCallback(async () => {
-    if (!companyId) return;
-    setIsLoadingDrivers(true);
-    try {
-      const response = await fetch("/api/monitoring/drivers", {
-        headers: { "x-company-id": companyId },
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch drivers data");
-
-      const result = await response.json();
-      setDriversData(result.data);
-    } catch (err) {
-      console.error("Error fetching drivers data:", err);
-    } finally {
-      setIsLoadingDrivers(false);
-    }
-  }, [companyId]);
-
-  const fetchDriverDetail = useCallback(
-    async (driverId: string) => {
-      if (!companyId) return;
-      setIsLoadingDetail(true);
-      try {
-        const response = await fetch(`/api/monitoring/drivers/${driverId}`, {
-          headers: { "x-company-id": companyId },
-        });
-
-        if (!response.ok) throw new Error("Failed to fetch driver detail");
-
-        const result = await response.json();
-        setDriverDetail(result.data);
-        setView("detail");
-      } catch (err) {
-        console.error("Error fetching driver detail:", err);
-      } finally {
-        setIsLoadingDetail(false);
-      }
-    },
-    [companyId],
   );
 
-  // Initial load
-  useEffect(() => {
-    const loadInitialData = async () => {
-      setIsLoading(true);
-      setError(null);
-      await Promise.all([fetchMonitoringData(), fetchDriversData()]);
-      setIsLoading(false);
-    };
-
-    loadInitialData();
-  }, [fetchMonitoringData, fetchDriversData]);
-
-  // Set up polling for real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchMonitoringData();
-      fetchDriversData();
-    }, POLLING_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, [fetchMonitoringData, fetchDriversData]);
-
-  // Refresh detail if in detail view
-  useEffect(() => {
-    if (view === "detail" && selectedDriverId) {
-      fetchDriverDetail(selectedDriverId);
+  // SWR for drivers list with automatic polling
+  const {
+    data: driversData = [],
+    isLoading: isLoadingDrivers,
+    mutate: mutateDrivers,
+  } = useSWR<DriverMonitoringData[]>(
+    companyId ? ["/api/monitoring/drivers", companyId] : null,
+    ([url, cId]: [string, string]) => fetcher(url, cId),
+    {
+      refreshInterval: POLLING_INTERVAL,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
     }
-  }, [view, selectedDriverId, fetchDriverDetail]);
+  );
 
-  const handleDriverClick = (driverId: string) => {
+  // SWR for driver detail (only fetched when selected)
+  const {
+    data: driverDetail,
+    isLoading: isLoadingDetail,
+  } = useSWR<DriverDetailData>(
+    companyId && selectedDriverId && view === "detail"
+      ? [`/api/monitoring/drivers/${selectedDriverId}`, companyId]
+      : null,
+    ([url, cId]: [string, string]) => fetcher(url, cId),
+    {
+      revalidateOnFocus: false,
+    }
+  );
+
+  const alertsCount = monitoringData?.metrics?.activeAlerts ?? 0;
+  const lastUpdate = new Date();
+  const isLoading = isLoadingMonitoring && !monitoringData;
+  const error = monitoringError?.message ?? null;
+
+  // Memoized handler to prevent DriverListItem re-renders
+  const handleDriverClick = useCallback((driverId: string) => {
     setSelectedDriverId(driverId);
-    fetchDriverDetail(driverId);
-  };
+    setView("detail");
+  }, []);
 
-  const handleBackToOverview = () => {
+  const handleBackToOverview = useCallback(() => {
     setView("overview");
     setSelectedDriverId(null);
-    setDriverDetail(null);
-  };
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    mutateMonitoring();
+    mutateDrivers();
+  }, [mutateMonitoring, mutateDrivers]);
 
   const formatLastUpdate = (date: Date) => {
     return date.toLocaleTimeString();
@@ -295,10 +270,7 @@ function MonitoringPageContent() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              fetchMonitoringData();
-              fetchDriversData();
-            }}
+            onClick={handleRefresh}
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh

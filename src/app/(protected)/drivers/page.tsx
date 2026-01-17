@@ -194,9 +194,11 @@ function DriversPageContent() {
     setStatusModalDriver(null);
   };
 
+  // Create Map for O(1) lookups - React Compiler handles memoization
+  const fleetMap = new Map(fleets.map((f) => [f.id, f.name]));
+
   const getFleetName = (fleetId: string) => {
-    const fleet = fleets.find((f) => f.id === fleetId);
-    return fleet?.name || "Desconocida";
+    return fleetMap.get(fleetId) || "Desconocida";
   };
 
   if (!isReady) {

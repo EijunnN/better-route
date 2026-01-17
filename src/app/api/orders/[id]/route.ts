@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, timeWindowPresets } from "@/db/schema";
@@ -184,9 +185,12 @@ export async function PATCH(
       .where(eq(orders.id, id))
       .returning();
 
-    await logUpdate("order", id, {
-      previous: existing[0],
-      new: updatedRecord,
+    // Log update (non-blocking)
+    after(async () => {
+      await logUpdate("order", id, {
+        previous: existing[0],
+        new: updatedRecord,
+      });
     });
 
     return NextResponse.json(updatedRecord);
@@ -250,7 +254,10 @@ export async function DELETE(
       .where(eq(orders.id, id))
       .returning();
 
-    await logDelete("order", id, existing[0]);
+    // Log deletion (non-blocking)
+    after(async () => {
+      await logDelete("order", id, existing[0]);
+    });
 
     return NextResponse.json(deletedRecord);
   } catch (error) {

@@ -10,7 +10,6 @@ import {
   Truck,
   Users,
 } from "lucide-react";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,18 +22,7 @@ import {
 } from "@/components/ui/card";
 import { db } from "@/db";
 import { orders, USER_ROLES, users, vehicles } from "@/db/schema";
-import { verifyToken } from "@/lib/auth";
-
-async function getCompanyId(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("access_token")?.value;
-  if (!token) return null;
-
-  const payload = await verifyToken(token);
-  if (!payload || payload.type !== "access") return null;
-
-  return payload.companyId;
-}
+import { getCompanyId } from "@/lib/server-cache";
 
 interface MetricCardProps {
   title: string;
@@ -214,44 +202,76 @@ export default async function DashboardPage() {
   let activeDriversList: DriverItemProps[] = [];
 
   if (companyId) {
-    // Obtener métricas de pedidos
-    const [orderStats] = await db
-      .select({
-        total: count(),
-        pending: sql<number>`count(*) filter (where ${orders.status} = 'PENDING')`,
-        completed: sql<number>`count(*) filter (where ${orders.status} = 'COMPLETED')`,
-        inProgress: sql<number>`count(*) filter (where ${orders.status} = 'IN_PROGRESS')`,
-      })
-      .from(orders)
-      .where(and(eq(orders.companyId, companyId), eq(orders.active, true)));
-
-    // Obtener métricas de conductores (usuarios con rol CONDUCTOR)
-    const [driverStats] = await db
-      .select({
-        total: count(),
-        available: sql<number>`count(*) filter (where ${users.driverStatus} = 'AVAILABLE')`,
-        inRoute: sql<number>`count(*) filter (where ${users.driverStatus} = 'IN_ROUTE')`,
-        assigned: sql<number>`count(*) filter (where ${users.driverStatus} = 'ASSIGNED')`,
-      })
-      .from(users)
-      .where(
-        and(
+    // Execute all queries in parallel for better performance
+    const [
+      [orderStats],
+      [driverStats],
+      [vehicleStats],
+      recentOrdersData,
+      driversWithFleets,
+    ] = await Promise.all([
+      // Obtener métricas de pedidos
+      db
+        .select({
+          total: count(),
+          pending: sql<number>`count(*) filter (where ${orders.status} = 'PENDING')`,
+          completed: sql<number>`count(*) filter (where ${orders.status} = 'COMPLETED')`,
+          inProgress: sql<number>`count(*) filter (where ${orders.status} = 'IN_PROGRESS')`,
+        })
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.active, true))),
+      // Obtener métricas de conductores (usuarios con rol CONDUCTOR)
+      db
+        .select({
+          total: count(),
+          available: sql<number>`count(*) filter (where ${users.driverStatus} = 'AVAILABLE')`,
+          inRoute: sql<number>`count(*) filter (where ${users.driverStatus} = 'IN_ROUTE')`,
+          assigned: sql<number>`count(*) filter (where ${users.driverStatus} = 'ASSIGNED')`,
+        })
+        .from(users)
+        .where(
+          and(
+            eq(users.companyId, companyId),
+            eq(users.active, true),
+            eq(users.role, USER_ROLES.CONDUCTOR),
+          ),
+        ),
+      // Obtener métricas de vehículos
+      db
+        .select({
+          total: count(),
+          available: sql<number>`count(*) filter (where ${vehicles.status} = 'AVAILABLE')`,
+          assigned: sql<number>`count(*) filter (where ${vehicles.status} = 'ASSIGNED')`,
+          maintenance: sql<number>`count(*) filter (where ${vehicles.status} = 'IN_MAINTENANCE')`,
+        })
+        .from(vehicles)
+        .where(and(eq(vehicles.companyId, companyId), eq(vehicles.active, true))),
+      // Obtener pedidos recientes
+      db
+        .select({
+          trackingId: orders.trackingId,
+          customerName: orders.customerName,
+          address: orders.address,
+          status: orders.status,
+        })
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.active, true)))
+        .orderBy(sql`${orders.createdAt} desc`)
+        .limit(5),
+      // Obtener conductores activos con sus flotas (usuarios con rol CONDUCTOR)
+      db.query.users.findMany({
+        where: and(
           eq(users.companyId, companyId),
           eq(users.active, true),
           eq(users.role, USER_ROLES.CONDUCTOR),
         ),
-      );
-
-    // Obtener métricas de vehículos
-    const [vehicleStats] = await db
-      .select({
-        total: count(),
-        available: sql<number>`count(*) filter (where ${vehicles.status} = 'AVAILABLE')`,
-        assigned: sql<number>`count(*) filter (where ${vehicles.status} = 'ASSIGNED')`,
-        maintenance: sql<number>`count(*) filter (where ${vehicles.status} = 'IN_MAINTENANCE')`,
-      })
-      .from(vehicles)
-      .where(and(eq(vehicles.companyId, companyId), eq(vehicles.active, true)));
+        with: {
+          primaryFleet: true,
+        },
+        limit: 5,
+        orderBy: sql`${users.updatedAt} desc`,
+      }),
+    ]);
 
     metrics = {
       totalOrders: orderStats?.total || 0,
@@ -264,34 +284,7 @@ export default async function DashboardPage() {
       completedOrders: Number(orderStats?.completed) || 0,
     };
 
-    // Obtener pedidos recientes
-    const recentOrdersData = await db
-      .select({
-        trackingId: orders.trackingId,
-        customerName: orders.customerName,
-        address: orders.address,
-        status: orders.status,
-      })
-      .from(orders)
-      .where(and(eq(orders.companyId, companyId), eq(orders.active, true)))
-      .orderBy(sql`${orders.createdAt} desc`)
-      .limit(5);
-
     recentOrders = recentOrdersData;
-
-    // Obtener conductores activos con sus flotas (usuarios con rol CONDUCTOR)
-    const driversWithFleets = await db.query.users.findMany({
-      where: and(
-        eq(users.companyId, companyId),
-        eq(users.active, true),
-        eq(users.role, USER_ROLES.CONDUCTOR),
-      ),
-      with: {
-        primaryFleet: true,
-      },
-      limit: 5,
-      orderBy: sql`${users.updatedAt} desc`,
-    });
 
     activeDriversList = driversWithFleets.map((d) => ({
       id: d.id,

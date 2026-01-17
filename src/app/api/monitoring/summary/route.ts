@@ -31,28 +31,37 @@ export async function GET(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
-    // Get the most recent confirmed optimization job for this company
-    const confirmedJob = await db.query.optimizationJobs.findFirst({
-      where: and(
-        withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
-        eq(optimizationJobs.status, "COMPLETED"),
-      ),
-      with: {
-        configuration: true,
-      },
-      orderBy: [desc(optimizationJobs.createdAt)],
-    });
+    // Execute independent queries in parallel
+    const [confirmedJob, allDrivers, activeAlertsResult] = await Promise.all([
+      // Get the most recent confirmed optimization job for this company
+      db.query.optimizationJobs.findFirst({
+        where: and(
+          withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+          eq(optimizationJobs.status, "COMPLETED"),
+        ),
+        with: {
+          configuration: true,
+        },
+        orderBy: [desc(optimizationJobs.createdAt)],
+      }),
+      // Get all driver (users with CONDUCTOR role) statuses from the company
+      db.query.users.findMany({
+        where: and(withTenantFilter(users, [], tenantCtx.companyId), eq(users.role, USER_ROLES.CONDUCTOR)),
+        columns: {
+          id: true,
+          name: true,
+          driverStatus: true,
+          primaryFleetId: true,
+        },
+      }),
+      // Get active alerts count
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(alerts)
+        .where(and(withTenantFilter(alerts, [], tenantCtx.companyId), eq(alerts.status, "ACTIVE"))),
+    ]);
 
-    // Get all driver (users with CONDUCTOR role) statuses from the company (regardless of active plan)
-    const allDrivers = await db.query.users.findMany({
-      where: and(withTenantFilter(users, [], tenantCtx.companyId), eq(users.role, USER_ROLES.CONDUCTOR)),
-      columns: {
-        id: true,
-        name: true,
-        driverStatus: true,
-        primaryFleetId: true,
-      },
-    });
+    const activeAlerts = activeAlertsResult[0]?.count || 0;
 
     // Count driver statuses
     const driversInRoute = allDrivers.filter(
@@ -64,13 +73,6 @@ export async function GET(request: NextRequest) {
     const driversOnPause = allDrivers.filter(
       (d) => d.driverStatus === "ON_PAUSE",
     ).length;
-
-    // Get active alerts count
-    const activeAlertsResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(alerts)
-      .where(and(withTenantFilter(alerts, [], tenantCtx.companyId), eq(alerts.status, "ACTIVE")));
-    const activeAlerts = activeAlertsResult[0]?.count || 0;
 
     if (!confirmedJob) {
       return NextResponse.json({

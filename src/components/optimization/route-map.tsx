@@ -383,7 +383,7 @@ export function RouteMap({
                 coordinates.push([depot.longitude, depot.latitude]);
               }
               route.stops
-                .sort((a, b) => a.sequence - b.sequence)
+                .toSorted((a, b) => a.sequence - b.sequence)
                 .forEach((stop) => {
                   coordinates.push([
                     parseFloat(stop.longitude),

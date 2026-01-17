@@ -187,7 +187,7 @@ export async function GET(
             vehicleId: vehicleId,
             vehiclePlate: vehicle?.plate || "Unknown",
             stops: allDriverStops
-              .sort((a, b) => a.sequence - b.sequence)
+              .toSorted((a, b) => a.sequence - b.sequence)
               .map((stop) => ({
                 sequence: stop.sequence,
                 orderId: stop.orderId,
@@ -220,7 +220,7 @@ export async function GET(
           vehicleId: vehicleId,
           vehiclePlate: vehicle?.plate || "Unknown",
           stops: relevantStops
-            .sort((a, b) => a.sequence - b.sequence)
+            .toSorted((a, b) => a.sequence - b.sequence)
             .map((stop) => ({
               sequence: stop.sequence,
               orderId: stop.orderId,

@@ -109,15 +109,14 @@ export async function GET(
         ),
       );
 
-    // Calculate utilization metrics
-    const assignedCount =
-      statusCounts.find((c) => c.status === "ASSIGNED")?.count || 0;
-    const availableCount =
-      statusCounts.find((c) => c.status === "AVAILABLE")?.count || 0;
-    const inMaintenanceCount =
-      statusCounts.find((c) => c.status === "IN_MAINTENANCE")?.count || 0;
-    const inactiveCount =
-      statusCounts.find((c) => c.status === "INACTIVE")?.count || 0;
+    // Calculate utilization metrics using Map for O(1) lookups
+    const statusCountMap = new Map(
+      statusCounts.map((c) => [c.status, c.count])
+    );
+    const assignedCount = statusCountMap.get("ASSIGNED") || 0;
+    const availableCount = statusCountMap.get("AVAILABLE") || 0;
+    const inMaintenanceCount = statusCountMap.get("IN_MAINTENANCE") || 0;
+    const inactiveCount = statusCountMap.get("INACTIVE") || 0;
 
     const totalVehicles = totalResult.count;
     const utilizationRate =

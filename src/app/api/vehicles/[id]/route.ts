@@ -1,4 +1,5 @@
 import { and, eq, inArray, or } from "drizzle-orm";
+import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
@@ -59,7 +60,7 @@ export async function GET(
 
     return NextResponse.json(vehicle);
   } catch (error) {
-    console.error("Error fetching vehicle:", error);
+    after(() => console.error("Error fetching vehicle:", error));
     return NextResponse.json(
       { error: "Error fetching vehicle" },
       { status: 500 },
@@ -251,10 +252,12 @@ export async function PATCH(
       }
     }
 
-    // Log update
-    await logUpdate("vehicle", id, {
-      before: existingVehicle,
-      after: updatedVehicle,
+    // Log update (non-blocking)
+    after(async () => {
+      await logUpdate("vehicle", id, {
+        before: existingVehicle,
+        after: updatedVehicle,
+      });
     });
 
     // Get updated fleet associations
@@ -270,7 +273,7 @@ export async function PATCH(
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Error updating vehicle:", error);
+    after(() => console.error("Error updating vehicle:", error));
     if (error instanceof Error && error.name === "ZodError") {
       const zodError = error as unknown as {
         issues: Array<{ path: (string | number)[]; message: string }>;
@@ -325,12 +328,14 @@ export async function DELETE(
       .where(eq(vehicles.id, id))
       .returning();
 
-    // Log deletion
-    await logDelete("vehicle", id, existingVehicle);
+    // Log deletion (non-blocking)
+    after(async () => {
+      await logDelete("vehicle", id, existingVehicle);
+    });
 
     return NextResponse.json(deletedVehicle);
   } catch (error) {
-    console.error("Error deleting vehicle:", error);
+    after(() => console.error("Error deleting vehicle:", error));
     return NextResponse.json(
       { error: "Error deleting vehicle" },
       { status: 500 },

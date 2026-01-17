@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -47,7 +48,8 @@ const STATUS_CONFIG = {
   ABSENT: { label: "Absent", color: "bg-red-500", icon: AlertTriangle },
 };
 
-export function DriverListItem({
+// Memoized to prevent re-renders when parent state changes (rerender-memo rule)
+export const DriverListItem = memo(function DriverListItem({
   id: _id,
   name,
   status,
@@ -131,4 +133,4 @@ export function DriverListItem({
       </div>
     </Card>
   );
-}
+});

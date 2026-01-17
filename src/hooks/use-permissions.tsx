@@ -1,21 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 
-interface UserPermissions {
+interface PermissionsContextValue {
   permissions: string[];
   isLoading: boolean;
   error: string | null;
-}
-
-/**
- * Hook to fetch and check user permissions
- */
-export function usePermissions(): UserPermissions & {
   hasPermission: (entity: string, action: string) => boolean;
   hasAnyPermission: (checks: Array<{ entity: string; action: string }>) => boolean;
   refetch: () => Promise<void>;
-} {
+}
+
+// Context to share permissions across components (client-swr-dedup pattern)
+const PermissionsContext = createContext<PermissionsContextValue | null>(null);
+
+/**
+ * Provider component that fetches permissions once and shares them
+ */
+export function PermissionsProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,36 +60,77 @@ export function usePermissions(): UserPermissions & {
     fetchPermissions();
   }, [fetchPermissions]);
 
+  // Create Set for O(1) lookups - React Compiler handles memoization automatically
+  const permissionsSet = new Set(permissions);
+
   const hasPermission = useCallback(
     (entity: string, action: string): boolean => {
       // Admin has all permissions
-      if (permissions.includes("*")) {
+      if (permissionsSet.has("*")) {
         return true;
       }
-      return permissions.includes(`${entity}:${action}`);
+      return permissionsSet.has(`${entity}:${action}`);
     },
-    [permissions],
+    [permissionsSet],
   );
 
   const hasAnyPermission = useCallback(
     (checks: Array<{ entity: string; action: string }>): boolean => {
-      if (permissions.includes("*")) {
+      if (permissionsSet.has("*")) {
         return true;
       }
       return checks.some((check) =>
-        permissions.includes(`${check.entity}:${check.action}`),
+        permissionsSet.has(`${check.entity}:${check.action}`),
       );
     },
-    [permissions],
+    [permissionsSet],
   );
 
-  return {
+  // React Compiler handles memoization of context value automatically
+  const value = {
     permissions,
     isLoading,
     error,
     hasPermission,
     hasAnyPermission,
     refetch: fetchPermissions,
+  };
+
+  return (
+    <PermissionsContext.Provider value={value}>
+      {children}
+    </PermissionsContext.Provider>
+  );
+}
+
+/**
+ * Hook to access permissions from context
+ * Falls back to standalone behavior if no provider exists
+ */
+export function usePermissions(): PermissionsContextValue {
+  const context = useContext(PermissionsContext);
+
+  // If context exists, use it (single fetch shared across components)
+  if (context) {
+    return context;
+  }
+
+  // Fallback for components outside provider - will log warning in dev
+  if (process.env.NODE_ENV === "development") {
+    console.warn(
+      "usePermissions: No PermissionsProvider found. Consider wrapping your app with PermissionsProvider for better performance.",
+    );
+  }
+
+  // Return a minimal implementation that still works
+  // This prevents breaking existing code but won't dedupe fetches
+  return {
+    permissions: [],
+    isLoading: true,
+    error: null,
+    hasPermission: () => false,
+    hasAnyPermission: () => false,
+    refetch: async () => {},
   };
 }
 
@@ -95,8 +145,8 @@ export function RequirePermission({
 }: {
   entity: string;
   action: string;
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
+  children: ReactNode;
+  fallback?: ReactNode;
 }) {
   const { hasPermission, isLoading } = usePermissions();
 

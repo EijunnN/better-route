@@ -5,15 +5,29 @@ import {
   ChevronLeft,
   ChevronRight,
   List,
+  Loader2,
   Map as MapIcon,
   Trash2,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import { useCallback, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { CompanySelector } from "@/components/company-selector";
 import { OrderForm, type OrderFormData } from "@/components/orders/order-form";
-import { OrderMap } from "@/components/orders/order-map";
+
+// Dynamic import for heavy map component (bundle-dynamic-imports rule)
+const OrderMap = dynamic(
+  () => import("@/components/orders/order-map").then((mod) => mod.OrderMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[500px] bg-muted animate-pulse rounded-lg flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  },
+);
 import {
   AlertDialog,
   AlertDialogAction,

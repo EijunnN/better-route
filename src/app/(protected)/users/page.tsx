@@ -339,10 +339,12 @@ function UsersPageContent() {
     await fetchUsers();
   };
 
+  // Create Map for O(1) lookups - React Compiler handles memoization
+  const fleetMap = new Map(fleets.map((f) => [f.id, f.name]));
+
   const _getFleetName = (fleetId: string | null | undefined) => {
     if (!fleetId) return "-";
-    const fleet = fleets.find((f) => f.id === fleetId);
-    return fleet?.name || "Desconocida";
+    return fleetMap.get(fleetId) || "Desconocida";
   };
 
   const handleEditUser = async (user: User) => {

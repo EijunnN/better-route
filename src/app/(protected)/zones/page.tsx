@@ -30,12 +30,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ZoneForm } from "@/components/zones/zone-form";
-import { ZoneMapEditor } from "@/components/zones/zone-map-editor";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { CompanySelector } from "@/components/company-selector";
 import { ZONE_TYPE_LABELS, type ZoneInput } from "@/lib/validations/zone";
 
-// Dynamic map components
+// Dynamic map components (bundle-dynamic-imports rule)
+const ZoneMapEditor = dynamic(
+  () => import("@/components/zones/zone-map-editor").then((mod) => mod.ZoneMapEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full bg-muted animate-pulse rounded-lg flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  },
+);
+
 const ZonePreviewMap = dynamic(
   () => import("@/components/zones/zone-preview-map").then((mod) => mod.ZonePreviewMap),
   {

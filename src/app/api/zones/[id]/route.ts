@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicles, zones, zoneVehicles } from "@/db/schema";
@@ -79,7 +80,7 @@ export async function GET(
       vehicleCount: relatedVehicles.length,
     });
   } catch (error) {
-    console.error("Error fetching zone:", error);
+    after(() => console.error("Error fetching zone:", error));
     if (error instanceof TenantAccessDeniedError) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
@@ -193,10 +194,12 @@ export async function PATCH(
       // Keep as null if parsing fails
     }
 
-    // Log update
-    await logUpdate("zone", id, {
-      before: existingZone,
-      after: updatedZone,
+    // Log update (non-blocking)
+    after(async () => {
+      await logUpdate("zone", id, {
+        before: existingZone,
+        after: updatedZone,
+      });
     });
 
     return NextResponse.json({
@@ -212,7 +215,7 @@ export async function PATCH(
       vehicleCount: relatedVehicles.length,
     });
   } catch (error: unknown) {
-    console.error("Error updating zone:", error);
+    after(() => console.error("Error updating zone:", error));
     if (error instanceof TenantAccessDeniedError) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
@@ -283,8 +286,10 @@ export async function DELETE(
       })
       .where(whereClause);
 
-    // Log deletion
-    await logDelete("zone", id, existingZone);
+    // Log deletion (non-blocking)
+    after(async () => {
+      await logDelete("zone", id, existingZone);
+    });
 
     return NextResponse.json({
       success: true,
@@ -292,7 +297,7 @@ export async function DELETE(
       deactivatedVehicles: Number(activeVehicleCount.count),
     });
   } catch (error) {
-    console.error("Error deleting zone:", error);
+    after(() => console.error("Error deleting zone:", error));
     if (error instanceof TenantAccessDeniedError) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
