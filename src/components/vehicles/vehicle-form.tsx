@@ -3,8 +3,18 @@
 import { Info } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/time-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 
 interface VehicleFormProps {
@@ -13,6 +23,7 @@ interface VehicleFormProps {
   fleets: Array<{ id: string; name: string }>;
   drivers: Array<{ id: string; name: string }>;
   submitLabel?: string;
+  onCancel?: () => void;
 }
 
 const LOAD_TYPES = [
@@ -36,6 +47,7 @@ export function VehicleForm({
   fleets,
   drivers,
   submitLabel = "Guardar",
+  onCancel,
 }: VehicleFormProps) {
   const defaultData: VehicleInput = {
     // New fields
@@ -193,15 +205,13 @@ export function VehicleForm({
           {/* Use Name As Plate Checkbox */}
           <div className="space-y-2 flex items-end">
             <div className="flex items-center gap-2 pb-2">
-              <input
+              <Checkbox
                 id="useNameAsPlate"
-                type="checkbox"
                 checked={formData.useNameAsPlate}
-                onChange={(e) =>
-                  updateField("useNameAsPlate", e.target.checked)
+                onCheckedChange={(checked) =>
+                  updateField("useNameAsPlate", checked === true)
                 }
                 disabled={isSubmitting}
-                className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
               />
               <Label
                 htmlFor="useNameAsPlate"
@@ -243,20 +253,22 @@ export function VehicleForm({
           {/* Load Type */}
           <div className="space-y-2">
             <Label htmlFor="loadType">Tipo de Carga</Label>
-            <select
-              id="loadType"
+            <Select
               value={formData.loadType ?? ""}
-              onChange={(e) => updateField("loadType", e.target.value || null)}
+              onValueChange={(value) => updateField("loadType", value || null)}
               disabled={isSubmitting}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
             >
-              <option value="">Seleccionar tipo</option>
-              {LOAD_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="loadType">
+                <SelectValue placeholder="Seleccionar tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {LOAD_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {errors.loadType && (
               <p className="text-sm text-destructive">{errors.loadType}</p>
             )}
@@ -371,13 +383,11 @@ export function VehicleForm({
           {/* Show Map Toggle */}
           <div className="space-y-2 sm:col-span-2">
             <div className="flex items-center gap-2">
-              <input
+              <Checkbox
                 id="showMap"
-                type="checkbox"
                 checked={showMap}
-                onChange={(e) => setShowMap(e.target.checked)}
+                onCheckedChange={(checked) => setShowMap(checked === true)}
                 disabled={isSubmitting}
-                className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
               />
               <Label htmlFor="showMap" className="text-sm cursor-pointer">
                 Mostrar mapa para seleccionar ubicación
@@ -413,13 +423,11 @@ export function VehicleForm({
                   key={fleet.id}
                   className="flex items-center gap-2 p-2 rounded-md border hover:bg-muted/50 transition-colors"
                 >
-                  <input
+                  <Checkbox
                     id={`fleet-${fleet.id}`}
-                    type="checkbox"
                     checked={selectedFleetIds.includes(fleet.id)}
-                    onChange={() => toggleFleetSelection(fleet.id)}
+                    onCheckedChange={() => toggleFleetSelection(fleet.id)}
                     disabled={isSubmitting}
-                    className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
                   />
                   <Label
                     htmlFor={`fleet-${fleet.id}`}
@@ -446,22 +454,25 @@ export function VehicleForm({
           {/* Assigned Driver */}
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="assignedDriverId">Conductor Asignado</Label>
-            <select
-              id="assignedDriverId"
-              value={formData.assignedDriverId ?? ""}
-              onChange={(e) =>
-                updateField("assignedDriverId", e.target.value || null)
+            <Select
+              value={formData.assignedDriverId ?? "__none__"}
+              onValueChange={(value) =>
+                updateField("assignedDriverId", value === "__none__" ? null : value)
               }
               disabled={isSubmitting}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
             >
-              <option value="">Sin conductor asignado</option>
-              {drivers.map((driver) => (
-                <option key={driver.id} value={driver.id}>
-                  {driver.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="assignedDriverId">
+                <SelectValue placeholder="Sin conductor asignado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Sin conductor asignado</SelectItem>
+                {drivers.map((driver) => (
+                  <SelectItem key={driver.id} value={driver.id}>
+                    {driver.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
               Selecciona un conductor que usará este vehículo
             </p>
@@ -479,19 +490,12 @@ export function VehicleForm({
               {/* Workday Start */}
               <div className="space-y-2">
                 <Label htmlFor="workdayStart">Horario de Inicio</Label>
-                <Input
+                <TimePicker
                   id="workdayStart"
-                  type="time"
-                  value={formData.workdayStart ?? ""}
-                  onChange={(e) =>
-                    updateField("workdayStart", e.target.value || null)
-                  }
+                  value={formData.workdayStart}
+                  onChange={(time) => updateField("workdayStart", time)}
+                  placeholder="Seleccionar hora"
                   disabled={isSubmitting}
-                  className={
-                    errors.workdayStart
-                      ? "border-destructive focus-visible:ring-destructive"
-                      : ""
-                  }
                 />
                 {errors.workdayStart && (
                   <p className="text-sm text-destructive">
@@ -503,19 +507,12 @@ export function VehicleForm({
               {/* Workday End */}
               <div className="space-y-2">
                 <Label htmlFor="workdayEnd">Horario de Fin</Label>
-                <Input
+                <TimePicker
                   id="workdayEnd"
-                  type="time"
-                  value={formData.workdayEnd ?? ""}
-                  onChange={(e) =>
-                    updateField("workdayEnd", e.target.value || null)
-                  }
+                  value={formData.workdayEnd}
+                  onChange={(time) => updateField("workdayEnd", time)}
+                  placeholder="Seleccionar hora"
                   disabled={isSubmitting}
-                  className={
-                    errors.workdayEnd
-                      ? "border-destructive focus-visible:ring-destructive"
-                      : ""
-                  }
                 />
                 {errors.workdayEnd && (
                   <p className="text-sm text-destructive">
@@ -528,15 +525,13 @@ export function VehicleForm({
             {/* Break Time Toggle */}
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center gap-2">
-                <input
+                <Checkbox
                   id="hasBreakTime"
-                  type="checkbox"
                   checked={formData.hasBreakTime}
-                  onChange={(e) =>
-                    updateField("hasBreakTime", e.target.checked)
+                  onCheckedChange={(checked) =>
+                    updateField("hasBreakTime", checked === true)
                   }
                   disabled={isSubmitting}
-                  className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
                 />
                 <Label
                   htmlFor="hasBreakTime"
@@ -581,19 +576,12 @@ export function VehicleForm({
                   {/* Break Time Start */}
                   <div className="space-y-2">
                     <Label htmlFor="breakTimeStart">Inicio Descanso</Label>
-                    <Input
+                    <TimePicker
                       id="breakTimeStart"
-                      type="time"
-                      value={formData.breakTimeStart ?? ""}
-                      onChange={(e) =>
-                        updateField("breakTimeStart", e.target.value || null)
-                      }
+                      value={formData.breakTimeStart}
+                      onChange={(time) => updateField("breakTimeStart", time)}
+                      placeholder="Seleccionar hora"
                       disabled={isSubmitting}
-                      className={
-                        errors.breakTimeStart
-                          ? "border-destructive focus-visible:ring-destructive"
-                          : ""
-                      }
                     />
                     {errors.breakTimeStart && (
                       <p className="text-sm text-destructive">
@@ -605,19 +593,12 @@ export function VehicleForm({
                   {/* Break Time End */}
                   <div className="space-y-2">
                     <Label htmlFor="breakTimeEnd">Fin Descanso</Label>
-                    <Input
+                    <TimePicker
                       id="breakTimeEnd"
-                      type="time"
-                      value={formData.breakTimeEnd ?? ""}
-                      onChange={(e) =>
-                        updateField("breakTimeEnd", e.target.value || null)
-                      }
+                      value={formData.breakTimeEnd}
+                      onChange={(time) => updateField("breakTimeEnd", time)}
+                      placeholder="Seleccionar hora"
                       disabled={isSubmitting}
-                      className={
-                        errors.breakTimeEnd
-                          ? "border-destructive focus-visible:ring-destructive"
-                          : ""
-                      }
                     />
                     {errors.breakTimeEnd && (
                       <p className="text-sm text-destructive">
@@ -627,6 +608,50 @@ export function VehicleForm({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Documentation Expiry Section */}
+          <div className="space-y-4 sm:col-span-2 border rounded-md p-4">
+            <h4 className="font-medium">Vencimientos de Documentación</h4>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* Insurance Expiry */}
+              <div className="space-y-2">
+                <Label htmlFor="insuranceExpiry">Vencimiento del Seguro</Label>
+                <DatePicker
+                  id="insuranceExpiry"
+                  value={formData.insuranceExpiry ? new Date(formData.insuranceExpiry) : null}
+                  onChange={(date) =>
+                    updateField("insuranceExpiry", date ? date.toISOString().split("T")[0] : null)
+                  }
+                  placeholder="Seleccionar fecha"
+                  disabled={isSubmitting}
+                />
+                {errors.insuranceExpiry && (
+                  <p className="text-sm text-destructive">
+                    {errors.insuranceExpiry}
+                  </p>
+                )}
+              </div>
+
+              {/* Inspection Expiry */}
+              <div className="space-y-2">
+                <Label htmlFor="inspectionExpiry">Vencimiento de Inspección</Label>
+                <DatePicker
+                  id="inspectionExpiry"
+                  value={formData.inspectionExpiry ? new Date(formData.inspectionExpiry) : null}
+                  onChange={(date) =>
+                    updateField("inspectionExpiry", date ? date.toISOString().split("T")[0] : null)
+                  }
+                  placeholder="Seleccionar fecha"
+                  disabled={isSubmitting}
+                />
+                {errors.inspectionExpiry && (
+                  <p className="text-sm text-destructive">
+                    {errors.inspectionExpiry}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -639,19 +664,22 @@ export function VehicleForm({
           {/* Status */}
           <div className="space-y-2">
             <Label htmlFor="status">Estado del Vehículo</Label>
-            <select
-              id="status"
+            <Select
               value={formData.status}
-              onChange={(e) => updateField("status", e.target.value)}
+              onValueChange={(value) => updateField("status", value)}
               disabled={isSubmitting}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
             >
-              {VEHICLE_STATUS.map((status) => (
-                <option key={status.value} value={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="status">
+                <SelectValue placeholder="Seleccionar estado" />
+              </SelectTrigger>
+              <SelectContent>
+                {VEHICLE_STATUS.map((status) => (
+                  <SelectItem key={status.value} value={status.value}>
+                    {status.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {errors.status && (
               <p className="text-sm text-destructive">{errors.status}</p>
             )}
@@ -660,13 +688,13 @@ export function VehicleForm({
           {/* Active status */}
           <div className="space-y-2 flex items-end">
             <div className="flex items-center gap-2 pb-2">
-              <input
+              <Checkbox
                 id="active"
-                type="checkbox"
                 checked={formData.active}
-                onChange={(e) => updateField("active", e.target.checked)}
+                onCheckedChange={(checked) =>
+                  updateField("active", checked === true)
+                }
                 disabled={isSubmitting}
-                className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
               />
               <Label htmlFor="active" className="text-sm cursor-pointer">
                 Registro Activo
@@ -676,7 +704,12 @@ export function VehicleForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-4 pt-4">
+      <div className="flex justify-end gap-4 pt-4 border-t mt-6">
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+        )}
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Guardando..." : submitLabel}
         </Button>
