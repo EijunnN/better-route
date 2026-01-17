@@ -12,7 +12,7 @@ import { OptimizationResultsDashboard } from "@/components/optimization/optimiza
 import { useFullScreenLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
 
 interface OptimizationResult {
   routes: Array<{
@@ -100,7 +100,7 @@ function ResultsPageContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
-  const { companyId, isLoading: isAuthLoading } = useAuth();
+  const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
   const configId = params.id as string;
   const existingJobId = searchParams.get("jobId");
   const reoptimize = searchParams.get("reoptimize") === "true";
@@ -264,7 +264,7 @@ function ResultsPageContent() {
     alert("Plan confirmation will be implemented in Story 9.3");
   };
 
-  if (isAuthLoading || !companyId || isStartingJob) {
+  if (!isReady || isStartingJob) {
     return (
       <div className="flex items-center justify-center h-full">
         <Card className="w-full max-w-md">
@@ -272,7 +272,7 @@ function ResultsPageContent() {
             <div className="flex flex-col items-center gap-4">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
               <p className="text-lg font-medium">
-                {isAuthLoading ? "Cargando..." : "Iniciando optimización..."}
+                {!isReady ? "Cargando..." : "Iniciando optimización..."}
               </p>
               <p className="text-sm text-muted-foreground">
                 Preparando el trabajo de optimización de rutas

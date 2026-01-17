@@ -5,7 +5,8 @@ import { ProtectedPage } from "@/components/auth/protected-page";
 import { DriverSkillForm } from "@/components/driver-skills/driver-skill-form";
 import { Button } from "@/components/ui/button";
 import type { DriverSkillInput } from "@/lib/validations/driver-skill";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { CompanySelector } from "@/components/company-selector";
 
 interface DriverSkill {
   id: string;
@@ -86,7 +87,15 @@ const getCategoryColor = (category: string) => {
 };
 
 function DriverSkillsPageContent() {
-  const { companyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
   const [driverSkills, setDriverSkills] = useState<DriverSkill[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [skills, setSkills] = useState<VehicleSkill[]>([]);
@@ -250,7 +259,7 @@ function DriverSkillsPageContent() {
     return driver?.name || "Desconocido";
   };
 
-  if (isAuthLoading || !companyId) {
+  if (!isReady) {
     return (
       <div className="flex justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />

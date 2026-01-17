@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { CompanySelector } from "@/components/company-selector";
 
 const POLLING_INTERVAL = 10000; // 10 seconds
 
@@ -109,7 +110,15 @@ interface DriverDetailData {
 }
 
 function MonitoringPageContent() {
-  const { companyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
   const [monitoringData, setMonitoringData] = useState<MonitoringData | null>(
     null,
   );
@@ -234,7 +243,7 @@ function MonitoringPageContent() {
     return date.toLocaleTimeString();
   };
 
-  if (isAuthLoading || !companyId || isLoading) {
+  if (!isReady || isLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -272,6 +281,13 @@ function MonitoringPageContent() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <CompanySelector
+            companies={companies}
+            selectedCompanyId={selectedCompanyId}
+            authCompanyId={authCompanyId}
+            onCompanyChange={setSelectedCompanyId}
+            isSystemAdmin={isSystemAdmin}
+          />
           <Badge variant="outline" className="text-sm">
             <RefreshCw className="w-3 h-3 mr-1" />
             Updated: {formatLastUpdate(lastUpdate)}

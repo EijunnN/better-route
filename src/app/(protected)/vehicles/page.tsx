@@ -5,7 +5,8 @@ import { ProtectedPage } from "@/components/auth/protected-page";
 import { Button } from "@/components/ui/button";
 import { VehicleForm } from "@/components/vehicles/vehicle-form";
 import { VehicleStatusModal } from "@/components/vehicles/vehicle-status-modal";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { CompanySelector } from "@/components/company-selector";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 import type { VehicleStatusTransitionInput } from "@/lib/validations/vehicle-status";
 
@@ -65,7 +66,15 @@ const VEHICLE_STATUS_LABELS: Record<string, string> = {
 };
 
 function VehiclesPageContent() {
-  const { companyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -230,7 +239,7 @@ function VehiclesPageContent() {
     return "-";
   };
 
-  if (isAuthLoading || !companyId) {
+  if (!isReady) {
     return (
       <div className="flex justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
@@ -328,6 +337,14 @@ function VehiclesPageContent() {
         </div>
         <Button onClick={() => setShowForm(true)}>Nuevo Vehículo</Button>
       </div>
+
+      <CompanySelector
+        companies={companies}
+        selectedCompanyId={selectedCompanyId}
+        authCompanyId={authCompanyId}
+        onCompanyChange={setSelectedCompanyId}
+        isSystemAdmin={isSystemAdmin}
+      />
 
       {isLoading ? (
         <div className="flex justify-center py-12">

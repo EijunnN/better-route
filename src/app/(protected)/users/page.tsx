@@ -172,19 +172,17 @@ function UsersPageContent() {
 
   // Fetch companies (only for system admins)
   const fetchCompanies = useCallback(async () => {
-    if (!authCompanyId) return;
+    if (!isSystemAdmin) return; // Only fetch for system admins
     try {
       const response = await fetch("/api/companies?active=true", {
-        headers: {
-          "x-company-id": authCompanyId,
-        },
+        credentials: "include", // Use cookie auth instead of company header
       });
       const data = await response.json();
       setCompanies(data.data || []);
     } catch (error) {
       console.error("Error fetching companies:", error);
     }
-  }, [authCompanyId]);
+  }, [isSystemAdmin]);
 
   const fetchUserRoles = useCallback(async (userId: string) => {
     if (!effectiveCompanyId) return [];
@@ -204,10 +202,17 @@ function UsersPageContent() {
 
   // Fetch companies for system admins
   useEffect(() => {
-    if (isSystemAdmin && authCompanyId) {
+    if (isSystemAdmin) {
       fetchCompanies();
     }
-  }, [isSystemAdmin, authCompanyId, fetchCompanies]);
+  }, [isSystemAdmin, fetchCompanies]);
+
+  // Auto-select first company for system admins when companies load
+  useEffect(() => {
+    if (isSystemAdmin && !authCompanyId && !selectedCompanyId && companies.length > 0) {
+      setSelectedCompanyId(companies[0].id);
+    }
+  }, [isSystemAdmin, authCompanyId, selectedCompanyId, companies]);
 
   // Fetch fleets and roles when company changes
   useEffect(() => {
@@ -352,7 +357,8 @@ function UsersPageContent() {
   });
 
   // Show loading state while auth is loading
-  if (isAuthLoading || !authCompanyId) {
+  // Allow ADMIN_SISTEMA to proceed without authCompanyId (they can select a company)
+  if (isAuthLoading || (!authCompanyId && !isSystemAdmin)) {
     return (
       <div className="flex justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
@@ -430,7 +436,7 @@ function UsersPageContent() {
       </div>
 
       {/* Company selector for system admins */}
-      {isSystemAdmin && companies.length > 1 && (
+      {isSystemAdmin && companies.length > 0 && (
         <Card>
           <CardContent className="flex items-center gap-4 py-3">
             <div className="flex items-center gap-2 text-muted-foreground">

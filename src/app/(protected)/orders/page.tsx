@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { CompanySelector } from "@/components/company-selector";
 import { OrderForm, type OrderFormData } from "@/components/orders/order-form";
 import { OrderMap } from "@/components/orders/order-map";
 import {
@@ -59,7 +60,15 @@ interface Order {
 }
 
 function OrdersPageContent() {
-  const { companyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -223,7 +232,7 @@ function OrdersPageContent() {
   const filteredOrders = orders.filter((order) => order.active);
   const totalPages = Math.ceil(totalOrders / PAGE_SIZE);
 
-  if (isAuthLoading || !companyId) {
+  if (!isReady) {
     return (
       <div className="flex justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
@@ -241,7 +250,14 @@ function OrdersPageContent() {
             tiempo
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
+          <CompanySelector
+            companies={companies}
+            selectedCompanyId={selectedCompanyId}
+            authCompanyId={authCompanyId}
+            onCompanyChange={setSelectedCompanyId}
+            isSystemAdmin={isSystemAdmin}
+          />
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" disabled={totalOrders === 0}>

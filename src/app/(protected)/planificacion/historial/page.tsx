@@ -26,7 +26,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { CompanySelector } from "@/components/company-selector";
 
 interface OptimizationJob {
   id: string;
@@ -189,7 +190,15 @@ function CompareValue({
 
 function PlanificacionHistorialPageContent() {
   const router = useRouter();
-  const { companyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
   const [jobs, setJobs] = useState<OptimizationJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -259,7 +268,7 @@ function PlanificacionHistorialPageContent() {
   }, [companyId, loadJobs]);
 
   // Show loading while auth is loading
-  if (isAuthLoading || !companyId) {
+  if (!isReady) {
     return (
       <div className="container mx-auto py-8 px-4 max-w-6xl">
         <div className="flex justify-center py-12">
@@ -321,6 +330,14 @@ function PlanificacionHistorialPageContent() {
             </Button>
           </Link>
         </div>
+
+        <CompanySelector
+          companies={companies}
+          selectedCompanyId={selectedCompanyId}
+          authCompanyId={authCompanyId}
+          onCompanyChange={setSelectedCompanyId}
+          isSystemAdmin={isSystemAdmin}
+        />
 
         {/* Status Filter */}
         <div className="flex gap-2 flex-wrap">

@@ -52,7 +52,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { CompanySelector } from "@/components/company-selector";
 
 // Dynamically import map component to avoid SSR issues
 const PlanningMap = dynamic(
@@ -150,7 +151,15 @@ const OBJECTIVES = [
 
 function PlanificacionPageContent() {
   const router = useRouter();
-  const { companyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
 
   // Step management
   const [currentStep, setCurrentStep] = useState<StepId>("vehiculos");
@@ -847,7 +856,7 @@ function PlanificacionPageContent() {
   const canProceedFromVehiculos = selectedVehicleIds.length > 0;
   const canProceedFromVisitas = selectedOrderIds.length > 0;
 
-  if (isAuthLoading || !companyId) {
+  if (!isReady) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -866,6 +875,13 @@ function PlanificacionPageContent() {
               Optimiza las rutas de entrega para tu flota
             </p>
           </div>
+          <CompanySelector
+            companies={companies}
+            selectedCompanyId={selectedCompanyId}
+            authCompanyId={authCompanyId}
+            onCompanyChange={setSelectedCompanyId}
+            isSystemAdmin={isSystemAdmin}
+          />
 
           {/* Step indicator */}
           <div className="flex items-center gap-2">

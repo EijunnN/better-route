@@ -5,7 +5,8 @@ import { ProtectedPage } from "@/components/auth/protected-page";
 import { DriverForm } from "@/components/drivers/driver-form";
 import { DriverStatusModal } from "@/components/drivers/driver-status-modal";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { CompanySelector } from "@/components/company-selector";
 import type { DriverInput } from "@/lib/validations/driver";
 import { isExpired, isExpiringSoon } from "@/lib/validations/driver";
 import type { DriverStatusTransitionInput } from "@/lib/validations/driver-status";
@@ -58,7 +59,15 @@ const getLicenseStatusLabel = (expiryDate: string) => {
 };
 
 function DriversPageContent() {
-  const { companyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -190,7 +199,7 @@ function DriversPageContent() {
     return fleet?.name || "Desconocida";
   };
 
-  if (isAuthLoading || !companyId) {
+  if (!isReady) {
     return (
       <div className="flex justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
@@ -267,6 +276,14 @@ function DriversPageContent() {
           </div>
           <Button onClick={() => setShowForm(true)}>Nuevo Conductor</Button>
         </div>
+
+        <CompanySelector
+          companies={companies}
+          selectedCompanyId={selectedCompanyId}
+          authCompanyId={authCompanyId}
+          onCompanyChange={setSelectedCompanyId}
+          isSystemAdmin={isSystemAdmin}
+        />
 
         {isLoading ? (
           <div className="flex justify-center py-12">

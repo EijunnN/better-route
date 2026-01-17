@@ -31,7 +31,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ZoneForm } from "@/components/zones/zone-form";
 import { ZoneMapEditor } from "@/components/zones/zone-map-editor";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { CompanySelector } from "@/components/company-selector";
 import { ZONE_TYPE_LABELS, type ZoneInput } from "@/lib/validations/zone";
 
 // Dynamic map components
@@ -90,7 +91,15 @@ const DAY_LABELS: Record<string, string> = {
 };
 
 function ZonesPageContent() {
-  const { companyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
   const [zones, setZones] = useState<Zone[]>([]);
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -256,7 +265,7 @@ function ZonesPageContent() {
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const activeZones = zones.filter((z) => z.active).length;
 
-  if (isAuthLoading || !companyId) {
+  if (!isReady) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -436,6 +445,13 @@ function ZonesPageContent() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <CompanySelector
+              companies={companies}
+              selectedCompanyId={selectedCompanyId}
+              authCompanyId={authCompanyId}
+              onCompanyChange={setSelectedCompanyId}
+              isSystemAdmin={isSystemAdmin}
+            />
             <div className="flex items-center gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />

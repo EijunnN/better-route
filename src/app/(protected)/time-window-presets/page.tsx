@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { CompanySelector } from "@/components/company-selector";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import {
   TimeWindowPresetForm,
@@ -28,7 +29,15 @@ interface TimeWindowPreset {
 }
 
 function TimeWindowPresetsPageContent() {
-  const { companyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
   const [presets, setPresets] = useState<TimeWindowPreset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -137,7 +146,7 @@ function TimeWindowPresetsPageContent() {
     return `${preset.startTime} - ${preset.endTime}`;
   };
 
-  if (isAuthLoading || !companyId) {
+  if (!isReady) {
     return (
       <div className="flex justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
