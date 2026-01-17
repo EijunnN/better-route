@@ -1,9 +1,22 @@
 "use client";
 
+import { Loader2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { FleetForm } from "@/components/fleets/fleet-form";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import type { FleetInput } from "@/lib/validations/fleet";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { CompanySelector } from "@/components/company-selector";
@@ -48,12 +61,14 @@ function FleetsPageContent() {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
+  const { toast } = useToast();
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [vehicles, setVehicles] = useState<VehicleWithFleets[]>([]);
   const [users, setUsers] = useState<UserWithFleets[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchFleets = useCallback(async () => {
     if (!companyId) return;
@@ -138,62 +153,104 @@ function FleetsPageContent() {
   }, [fetchFleets, fetchVehiclesAndUsers, companyId]);
 
   const handleCreate = async (data: FleetInput) => {
-    const response = await fetch("/api/fleets", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId ?? "",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch("/api/fleets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear flota");
+      }
+
+      await fetchFleets();
+      setShowForm(false);
+      toast({
+        title: "Flota creada",
+        description: `La flota "${data.name}" ha sido creada exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al crear flota",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    await fetchFleets();
-    setShowForm(false);
   };
 
   const handleUpdate = async (data: FleetInput) => {
     if (!editingFleet) return;
 
-    const response = await fetch(`/api/fleets/${editingFleet.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId ?? "",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch(`/api/fleets/${editingFleet.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al actualizar flota");
+      }
+
+      await fetchFleets();
+      setEditingFleet(null);
+      toast({
+        title: "Flota actualizada",
+        description: `La flota "${data.name}" ha sido actualizada exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar flota",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    await fetchFleets();
-    setEditingFleet(null);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Está seguro de desactivar esta flota?")) return;
+    setDeletingId(id);
+    const fleet = fleets.find((f) => f.id === id);
 
-    const response = await fetch(`/api/fleets/${id}`, {
-      method: "DELETE",
-      headers: {
-        "x-company-id": companyId ?? "",
-      },
-    });
+    try {
+      const response = await fetch(`/api/fleets/${id}`, {
+        method: "DELETE",
+        headers: {
+          "x-company-id": companyId ?? "",
+        },
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      alert(error.error || error.details || "Error al desactivar la flota");
-      return;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.details || "Error al desactivar la flota");
+      }
+
+      await fetchFleets();
+      toast({
+        title: "Flota desactivada",
+        description: fleet
+          ? `La flota "${fleet.name}" ha sido desactivada.`
+          : "La flota ha sido desactivada.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al desactivar flota",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
-
-    await fetchFleets();
   };
 
   if (!isReady) {
@@ -327,21 +384,52 @@ function FleetsPageContent() {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setEditingFleet(fleet)}
-                        className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
+                        disabled={deletingId === fleet.id}
                       >
                         Editar
-                      </button>
+                      </Button>
                       {fleet.active && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(fleet.id)}
-                          className="text-destructive hover:text-destructive/80 transition-colors"
-                        >
-                          Desactivar
-                        </button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              disabled={deletingId === fleet.id}
+                            >
+                              {deletingId === fleet.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                ¿Desactivar flota?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción desactivará la flota{" "}
+                                <strong>{fleet.name}</strong>. Los vehículos y
+                                conductores asignados no se verán afectados.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(fleet.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Desactivar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </td>
                   </tr>

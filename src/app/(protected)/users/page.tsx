@@ -1,8 +1,19 @@
 "use client";
 
-import { Building2 } from "lucide-react";
+import { Building2, Loader2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +27,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserForm } from "@/components/users/user-form";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import type { CreateUserInput } from "@/lib/validations/user";
 import {
   DRIVER_STATUS_LABELS,
@@ -104,6 +116,7 @@ const getLicenseStatusLabel = (expiryDate: string | null | undefined) => {
 
 function UsersPageContent() {
   const { user: authUser, companyId: authCompanyId, isLoading: isAuthLoading } = useAuth();
+  const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [roles, setRoles] = useState<CustomRole[]>([]);
@@ -114,6 +127,7 @@ function UsersPageContent() {
   const [editingUserRoleIds, setEditingUserRoleIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Check if user is system admin (can manage users across companies)
   const isSystemAdmin = authUser?.role === "ADMIN_SISTEMA";
@@ -262,81 +276,123 @@ function UsersPageContent() {
 
   const handleCreate = async (data: CreateUserInput, selectedRoleIds: string[]) => {
     if (!effectiveCompanyId) return;
-    const response = await fetch("/api/users", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": effectiveCompanyId,
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": effectiveCompanyId,
+        },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear usuario");
+      }
+
+      const result = await response.json();
+      const userId = result.data?.id;
+
+      // Assign roles if any selected
+      if (userId && selectedRoleIds.length > 0) {
+        await assignRolesToUser(userId, selectedRoleIds);
+      }
+
+      await fetchUsers();
+      setShowForm(false);
+      toast({
+        title: "Usuario creado",
+        description: `El usuario "${data.name}" ha sido creado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al crear usuario",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    const result = await response.json();
-    const userId = result.data?.id;
-
-    // Assign roles if any selected
-    if (userId && selectedRoleIds.length > 0) {
-      await assignRolesToUser(userId, selectedRoleIds);
-    }
-
-    await fetchUsers();
-    setShowForm(false);
   };
 
   const handleUpdate = async (data: CreateUserInput, selectedRoleIds: string[]) => {
     if (!editingUser || !effectiveCompanyId) return;
 
-    // Remove password from update if empty
-    const updateData = { ...data };
-    if (!updateData.password) {
-      delete (updateData as Partial<CreateUserInput>).password;
+    try {
+      // Remove password from update if empty
+      const updateData = { ...data };
+      if (!updateData.password) {
+        delete (updateData as Partial<CreateUserInput>).password;
+      }
+
+      const response = await fetch(`/api/users/${editingUser.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": effectiveCompanyId,
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al actualizar usuario");
+      }
+
+      // Update roles
+      await assignRolesToUser(editingUser.id, selectedRoleIds, editingUserRoleIds);
+
+      await fetchUsers();
+      setEditingUser(null);
+      setEditingUserRoleIds([]);
+      toast({
+        title: "Usuario actualizado",
+        description: `El usuario "${data.name}" ha sido actualizado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar usuario",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    const response = await fetch(`/api/users/${editingUser.id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": effectiveCompanyId,
-      },
-      body: JSON.stringify(updateData),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
-    }
-
-    // Update roles
-    await assignRolesToUser(editingUser.id, selectedRoleIds, editingUserRoleIds);
-
-    await fetchUsers();
-    setEditingUser(null);
-    setEditingUserRoleIds([]);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Está seguro de desactivar este usuario?")) return;
     if (!effectiveCompanyId) return;
+    setDeletingId(id);
+    const user = users.find((u) => u.id === id);
 
-    const response = await fetch(`/api/users/${id}`, {
-      method: "DELETE",
-      headers: {
-        "x-company-id": effectiveCompanyId,
-      },
-    });
+    try {
+      const response = await fetch(`/api/users/${id}`, {
+        method: "DELETE",
+        headers: {
+          "x-company-id": effectiveCompanyId,
+        },
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      alert(error.error || error.details || "Error al desactivar el usuario");
-      return;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.details || "Error al desactivar el usuario");
+      }
+
+      await fetchUsers();
+      toast({
+        title: "Usuario desactivado",
+        description: user
+          ? `El usuario "${user.name}" ha sido desactivado.`
+          : "El usuario ha sido desactivado.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al desactivar usuario",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
-
-    await fetchUsers();
   };
 
   // Create Map for O(1) lookups - React Compiler handles memoization
@@ -612,21 +668,52 @@ function UsersPageContent() {
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleEditUser(user)}
-                        className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
+                        disabled={deletingId === user.id}
                       >
                         Editar
-                      </button>
+                      </Button>
                       {user.active && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(user.id)}
-                          className="text-destructive hover:text-destructive/80 transition-colors"
-                        >
-                          Desactivar
-                        </button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              disabled={deletingId === user.id}
+                            >
+                              {deletingId === user.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                ¿Desactivar usuario?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción desactivará al usuario{" "}
+                                <strong>{user.name}</strong>. No podrá acceder al
+                                sistema.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(user.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Desactivar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </td>
                   </tr>

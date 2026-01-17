@@ -31,7 +31,8 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { CompanySelector } from "@/components/company-selector";
 
 interface OptimizationPreset {
   id: string;
@@ -95,7 +96,15 @@ const defaultPreset: Partial<OptimizationPreset> = {
 };
 
 function OptimizationPresetsPageContent() {
-  const { companyId } = useAuth();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
   const [presets, setPresets] = useState<OptimizationPreset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -103,8 +112,9 @@ function OptimizationPresetsPageContent() {
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchPresets = async () => {
-    if (!companyId) return;
+    if (!companyId || !isReady) return;
 
+    setIsLoading(true);
     try {
       const response = await fetch("/api/optimization-presets", {
         headers: { "x-company-id": companyId },
@@ -120,7 +130,7 @@ function OptimizationPresetsPageContent() {
 
   useEffect(() => {
     fetchPresets();
-  }, [companyId]);
+  }, [companyId, isReady]);
 
   const handleCreate = () => {
     setEditingPreset({ ...defaultPreset });
@@ -195,6 +205,23 @@ function OptimizationPresetsPageContent() {
     }
   };
 
+  if (!isReady) {
+    return (
+      <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-5 bg-muted rounded w-1/2" />
+                <div className="h-4 bg-muted rounded w-3/4 mt-2" />
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -207,10 +234,19 @@ function OptimizationPresetsPageContent() {
             Configura los parámetros predeterminados para la optimización de rutas
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Preset
-        </Button>
+        <div className="flex items-center gap-3">
+          <CompanySelector
+            companies={companies}
+            selectedCompanyId={selectedCompanyId}
+            authCompanyId={authCompanyId}
+            onCompanyChange={setSelectedCompanyId}
+            isSystemAdmin={isSystemAdmin}
+          />
+          <Button onClick={handleCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Preset
+          </Button>
+        </div>
       </div>
 
       {/* Info Banner */}

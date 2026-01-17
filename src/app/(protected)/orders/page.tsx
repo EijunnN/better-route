@@ -14,6 +14,7 @@ import { ProtectedPage } from "@/components/auth/protected-page";
 import { useCallback, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { CompanySelector } from "@/components/company-selector";
+import { useToast } from "@/hooks/use-toast";
 import { OrderForm, type OrderFormData } from "@/components/orders/order-form";
 
 // Dynamic import for heavy map component (bundle-dynamic-imports rule)
@@ -83,6 +84,7 @@ function OrdersPageContent() {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
+  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -91,6 +93,7 @@ function OrdersPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -130,44 +133,70 @@ function OrdersPageContent() {
 
   const handleCreate = async (data: OrderFormData) => {
     if (!companyId) return;
-    const response = await fetch("/api/orders", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId ?? "",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to create order");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear pedido");
+      }
+
+      await fetchOrders();
+      setShowForm(false);
+      toast({
+        title: "Pedido creado",
+        description: `El pedido "${data.trackingId}" ha sido creado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al crear pedido",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    await fetchOrders();
-    setShowForm(false);
   };
 
   const handleUpdate = async (data: OrderFormData) => {
     if (!editingOrder || !companyId) return;
 
-    const response = await fetch(`/api/orders/${editingOrder.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId ?? "",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch(`/api/orders/${editingOrder.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to update order");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al actualizar pedido");
+      }
+
+      await fetchOrders();
+      setEditingOrder(null);
+      setShowForm(false);
+      toast({
+        title: "Pedido actualizado",
+        description: `El pedido "${data.trackingId}" ha sido actualizado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar pedido",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    await fetchOrders();
-    setEditingOrder(null);
-    setShowForm(false);
   };
 
   const handleEdit = (order: Order) => {
@@ -177,20 +206,36 @@ function OrdersPageContent() {
 
   const handleDelete = async (id: string) => {
     if (!companyId) return;
-    if (!confirm("¿Estás seguro de que deseas eliminar este pedido?")) return;
+    setDeletingId(id);
+    const order = orders.find((o) => o.id === id);
 
-    const response = await fetch(`/api/orders/${id}`, {
-      method: "DELETE",
-      headers: { "x-company-id": companyId ?? "" },
-    });
+    try {
+      const response = await fetch(`/api/orders/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": companyId ?? "" },
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      alert(error.error || "Failed to delete order");
-      return;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al eliminar pedido");
+      }
+
+      await fetchOrders();
+      toast({
+        title: "Pedido eliminado",
+        description: order
+          ? `El pedido "${order.trackingId}" ha sido eliminado.`
+          : "El pedido ha sido eliminado.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al eliminar pedido",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
-
-    await fetchOrders();
   };
 
   const handleDeleteAll = async () => {
@@ -205,16 +250,21 @@ function OrdersPageContent() {
       const result = await response.json();
 
       if (!response.ok) {
-        alert(result.error || "Error al eliminar pedidos");
-        return;
+        throw new Error(result.error || "Error al eliminar pedidos");
       }
 
-      alert(`${result.deleted} pedidos eliminados`);
       setCurrentPage(1);
       await fetchOrders();
-    } catch (error) {
-      console.error("Failed to delete all orders:", error);
-      alert("Error al eliminar pedidos");
+      toast({
+        title: "Pedidos eliminados",
+        description: `${result.deleted} pedidos han sido eliminados.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al eliminar pedidos",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -457,17 +507,47 @@ function OrdersPageContent() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEdit(order)}
+                      disabled={deletingId === order.id}
                     >
                       Editar
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(order.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      Eliminar
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          disabled={deletingId === order.id}
+                        >
+                          {deletingId === order.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            ¿Eliminar pedido?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta acción eliminará el pedido{" "}
+                            <strong>{order.trackingId}</strong>. Esta acción no
+                            se puede deshacer.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(order.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Eliminar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </td>
                 </tr>
               ))}

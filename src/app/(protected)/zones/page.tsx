@@ -17,6 +17,17 @@ import {
 import { ProtectedPage } from "@/components/auth/protected-page";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +43,7 @@ import { Label } from "@/components/ui/label";
 import { ZoneForm } from "@/components/zones/zone-form";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { CompanySelector } from "@/components/company-selector";
+import { useToast } from "@/hooks/use-toast";
 import { ZONE_TYPE_LABELS, type ZoneInput } from "@/lib/validations/zone";
 
 // Dynamic map components (bundle-dynamic-imports rule)
@@ -111,6 +123,7 @@ function ZonesPageContent() {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
+  const { toast } = useToast();
   const [zones, setZones] = useState<Zone[]>([]);
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -120,6 +133,7 @@ function ZonesPageContent() {
   const [pendingFormData, setPendingFormData] = useState<Partial<ZoneInput> | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchZones = useCallback(async () => {
     if (!companyId) return;
@@ -163,68 +177,116 @@ function ZonesPageContent() {
   }, [companyId, fetchZones, fetchVehicles]);
 
   const handleCreate = async (data: ZoneInput, vehicleIds: string[]) => {
-    const response = await fetch("/api/zones", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) throw await response.json();
-
-    const createdZone = await response.json();
-    if (vehicleIds.length > 0 && createdZone.id) {
-      await fetch(`/api/zones/${createdZone.id}/vehicles`, {
+    try {
+      const response = await fetch("/api/zones", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
-        body: JSON.stringify({ vehicleIds, assignedDays: data.activeDays || null }),
+        body: JSON.stringify(data),
       });
-    }
 
-    await fetchZones();
-    setViewMode("list");
-    setPendingFormData(null);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear zona");
+      }
+
+      const createdZone = await response.json();
+      if (vehicleIds.length > 0 && createdZone.id) {
+        await fetch(`/api/zones/${createdZone.id}/vehicles`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+          body: JSON.stringify({ vehicleIds, assignedDays: data.activeDays || null }),
+        });
+      }
+
+      await fetchZones();
+      setViewMode("list");
+      setPendingFormData(null);
+      toast({
+        title: "Zona creada",
+        description: `La zona "${data.name}" ha sido creada exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al crear zona",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
   };
 
   const handleUpdate = async (data: ZoneInput, vehicleIds: string[]) => {
     if (!editingZone) return;
 
-    const response = await fetch(`/api/zones/${editingZone.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch(`/api/zones/${editingZone.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) throw await response.json();
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al actualizar zona");
+      }
 
-    await fetch(`/api/zones/${editingZone.id}/vehicles`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
-      body: JSON.stringify({ vehicleIds, assignedDays: data.activeDays || null }),
-    });
+      await fetch(`/api/zones/${editingZone.id}/vehicles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+        body: JSON.stringify({ vehicleIds, assignedDays: data.activeDays || null }),
+      });
 
-    await fetchZones();
-    setEditingZone(null);
-    setEditingZoneVehicleIds([]);
-    setViewMode("list");
-    setPendingFormData(null);
+      await fetchZones();
+      setEditingZone(null);
+      setEditingZoneVehicleIds([]);
+      setViewMode("list");
+      setPendingFormData(null);
+      toast({
+        title: "Zona actualizada",
+        description: `La zona "${data.name}" ha sido actualizada exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar zona",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Desactivar esta zona?")) return;
+    setDeletingId(id);
+    const zone = zones.find((z) => z.id === id);
 
-    const response = await fetch(`/api/zones/${id}`, {
-      method: "DELETE",
-      headers: { "x-company-id": companyId ?? "" },
-    });
+    try {
+      const response = await fetch(`/api/zones/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": companyId ?? "" },
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      alert(error.error || "Error al desactivar la zona");
-      return;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al desactivar la zona");
+      }
+
+      if (selectedZoneId === id) setSelectedZoneId(null);
+      await fetchZones();
+      toast({
+        title: "Zona desactivada",
+        description: zone
+          ? `La zona "${zone.name}" ha sido desactivada.`
+          : "La zona ha sido desactivada.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al desactivar zona",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
-
-    if (selectedZoneId === id) setSelectedZoneId(null);
-    await fetchZones();
   };
 
   const handleStartNew = () => {
@@ -606,19 +668,53 @@ function ZonesPageContent() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(selectedZone)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(selectedZone)}
+                    disabled={deletingId === selectedZone.id}
+                  >
                     <Edit3 className="w-4 h-4 mr-1" />
                     Editar
                   </Button>
                   {selectedZone.active && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(selectedZone.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          disabled={deletingId === selectedZone.id}
+                        >
+                          {deletingId === selectedZone.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            ¿Desactivar zona?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta acción desactivará la zona{" "}
+                            <strong>{selectedZone.name}</strong>. Los vehículos
+                            asignados serán desvinculados.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(selectedZone.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Desactivar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
                 </div>
               </div>

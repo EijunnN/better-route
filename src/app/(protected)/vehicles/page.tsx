@@ -1,12 +1,25 @@
 "use client";
 
+import { Loader2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { VehicleForm } from "@/components/vehicles/vehicle-form";
 import { VehicleStatusModal } from "@/components/vehicles/vehicle-status-modal";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { CompanySelector } from "@/components/company-selector";
+import { useToast } from "@/hooks/use-toast";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 import type { VehicleStatusTransitionInput } from "@/lib/validations/vehicle-status";
 
@@ -75,6 +88,7 @@ function VehiclesPageContent() {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
+  const { toast } = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -84,6 +98,7 @@ function VehiclesPageContent() {
   const [statusModalVehicle, setStatusModalVehicle] = useState<Vehicle | null>(
     null,
   );
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchVehicles = useCallback(async () => {
     if (!companyId) return;
@@ -151,62 +166,104 @@ function VehiclesPageContent() {
   }, [companyId, fetchDrivers, fetchFleets, fetchVehicles]);
 
   const handleCreate = async (data: VehicleInput) => {
-    const response = await fetch("/api/vehicles", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId ?? "",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch("/api/vehicles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear vehículo");
+      }
+
+      await fetchVehicles();
+      setShowForm(false);
+      toast({
+        title: "Vehículo creado",
+        description: `El vehículo "${data.name}" ha sido creado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al crear vehículo",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    await fetchVehicles();
-    setShowForm(false);
   };
 
   const handleUpdate = async (data: VehicleInput) => {
     if (!editingVehicle) return;
 
-    const response = await fetch(`/api/vehicles/${editingVehicle.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId ?? "",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch(`/api/vehicles/${editingVehicle.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al actualizar vehículo");
+      }
+
+      await fetchVehicles();
+      setEditingVehicle(null);
+      toast({
+        title: "Vehículo actualizado",
+        description: `El vehículo "${data.name}" ha sido actualizado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar vehículo",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    await fetchVehicles();
-    setEditingVehicle(null);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Está seguro de desactivar este vehículo?")) return;
+    setDeletingId(id);
+    const vehicle = vehicles.find((v) => v.id === id);
 
-    const response = await fetch(`/api/vehicles/${id}`, {
-      method: "DELETE",
-      headers: {
-        "x-company-id": companyId ?? "",
-      },
-    });
+    try {
+      const response = await fetch(`/api/vehicles/${id}`, {
+        method: "DELETE",
+        headers: {
+          "x-company-id": companyId ?? "",
+        },
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      alert(error.error || error.details || "Error al desactivar el vehículo");
-      return;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.details || "Error al desactivar el vehículo");
+      }
+
+      await fetchVehicles();
+      toast({
+        title: "Vehículo desactivado",
+        description: vehicle
+          ? `El vehículo "${vehicle.name}" ha sido desactivado.`
+          : "El vehículo ha sido desactivado.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al desactivar vehículo",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
-
-    await fetchVehicles();
   };
 
   const handleStatusChange = async (
@@ -423,28 +480,60 @@ function VehiclesPageContent() {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setEditingVehicle(vehicle)}
-                        className="text-muted-foreground hover:text-foreground mr-3 transition-colors"
+                        disabled={deletingId === vehicle.id}
                       >
                         Editar
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setStatusModalVehicle(vehicle)}
-                        className="text-muted-foreground hover:text-foreground mr-3 transition-colors"
+                        disabled={deletingId === vehicle.id}
                       >
                         Cambiar Estado
-                      </button>
+                      </Button>
                       {vehicle.active && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(vehicle.id)}
-                          className="text-destructive hover:text-destructive/80 transition-colors"
-                        >
-                          Desactivar
-                        </button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              disabled={deletingId === vehicle.id}
+                            >
+                              {deletingId === vehicle.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                ¿Desactivar vehículo?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción desactivará el vehículo{" "}
+                                <strong>{vehicle.name}</strong>. No podrá ser
+                                asignado a rutas.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(vehicle.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Desactivar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </td>
                   </tr>

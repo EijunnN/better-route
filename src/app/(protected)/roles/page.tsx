@@ -1,9 +1,22 @@
 "use client";
 
+import { Loader2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
 
 interface Role {
   id: string;
@@ -50,6 +63,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 function RolesPageContent() {
+  const { toast } = useToast();
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -58,6 +72,7 @@ function RolesPageContent() {
     useState<RolePermissionsResponse | null>(null);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
   const [savingPermission, setSavingPermission] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -121,21 +136,30 @@ function RolesPageContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        setFormError(error.error || "Error al crear el rol");
-        return;
+        throw new Error(error.error || "Error al crear el rol");
       }
 
       await fetchRoles();
       setShowForm(false);
       setFormData({ name: "", description: "" });
-    } catch (error) {
-      console.error("Error creating role:", error);
-      setFormError("Error al crear el rol");
+      toast({
+        title: "Rol creado",
+        description: `El rol "${formData.name}" ha sido creado exitosamente.`,
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Error al crear el rol";
+      setFormError(errorMessage);
+      toast({
+        title: "Error al crear rol",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
   };
 
   const handleDeleteRole = async (id: string) => {
-    if (!confirm("¿Está seguro de eliminar este rol?")) return;
+    setDeletingId(id);
+    const role = roles.find((r) => r.id === id);
 
     try {
       const response = await fetch(`/api/roles/${id}`, {
@@ -144,16 +168,27 @@ function RolesPageContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Error al eliminar el rol");
-        return;
+        throw new Error(error.error || "Error al eliminar el rol");
       }
 
       if (selectedRole?.id === id) {
         setSelectedRole(null);
       }
       await fetchRoles();
-    } catch (error) {
-      console.error("Error deleting role:", error);
+      toast({
+        title: "Rol eliminado",
+        description: role
+          ? `El rol "${role.name}" ha sido eliminado.`
+          : "El rol ha sido eliminado.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al eliminar rol",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -378,16 +413,44 @@ function RolesPageContent() {
                         </p>
                       </div>
                       {!role.isSystem && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteRole(role.id);
-                          }}
-                          className="text-destructive hover:text-destructive/80 text-sm"
-                        >
-                          Eliminar
-                        </button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              disabled={deletingId === role.id}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {deletingId === role.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                ¿Eliminar rol?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción eliminará el rol{" "}
+                                <strong>{role.name}</strong>. Los usuarios con
+                                este rol perderán los permisos asociados.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteRole(role.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   </div>

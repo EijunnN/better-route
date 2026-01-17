@@ -1,12 +1,25 @@
 "use client";
 
+import { Loader2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { DriverForm } from "@/components/drivers/driver-form";
 import { DriverStatusModal } from "@/components/drivers/driver-status-modal";
 import { Button } from "@/components/ui/button";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { CompanySelector } from "@/components/company-selector";
+import { useToast } from "@/hooks/use-toast";
 import type { DriverInput } from "@/lib/validations/driver";
 import { isExpired, isExpiringSoon } from "@/lib/validations/driver";
 import type { DriverStatusTransitionInput } from "@/lib/validations/driver-status";
@@ -68,6 +81,7 @@ function DriversPageContent() {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
+  const { toast } = useToast();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +90,7 @@ function DriversPageContent() {
   const [statusModalDriver, setStatusModalDriver] = useState<Driver | null>(
     null,
   );
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchDrivers = useCallback(async () => {
     if (!companyId) return;
@@ -115,62 +130,104 @@ function DriversPageContent() {
   }, [fetchDrivers, fetchFleets, companyId]);
 
   const handleCreate = async (data: DriverInput) => {
-    const response = await fetch("/api/drivers", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId ?? "",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch("/api/drivers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear conductor");
+      }
+
+      await fetchDrivers();
+      setShowForm(false);
+      toast({
+        title: "Conductor creado",
+        description: `El conductor "${data.name}" ha sido creado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al crear conductor",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    await fetchDrivers();
-    setShowForm(false);
   };
 
   const handleUpdate = async (data: DriverInput) => {
     if (!editingDriver) return;
 
-    const response = await fetch(`/api/drivers/${editingDriver.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId ?? "",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch(`/api/drivers/${editingDriver.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al actualizar conductor");
+      }
+
+      await fetchDrivers();
+      setEditingDriver(null);
+      toast({
+        title: "Conductor actualizado",
+        description: `El conductor "${data.name}" ha sido actualizado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar conductor",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    await fetchDrivers();
-    setEditingDriver(null);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Está seguro de desactivar este conductor?")) return;
+    setDeletingId(id);
+    const driver = drivers.find((d) => d.id === id);
 
-    const response = await fetch(`/api/drivers/${id}`, {
-      method: "DELETE",
-      headers: {
-        "x-company-id": companyId ?? "",
-      },
-    });
+    try {
+      const response = await fetch(`/api/drivers/${id}`, {
+        method: "DELETE",
+        headers: {
+          "x-company-id": companyId ?? "",
+        },
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      alert(error.error || error.details || "Error al desactivar el conductor");
-      return;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.details || "Error al desactivar el conductor");
+      }
+
+      await fetchDrivers();
+      toast({
+        title: "Conductor desactivado",
+        description: driver
+          ? `El conductor "${driver.name}" ha sido desactivado.`
+          : "El conductor ha sido desactivado.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al desactivar conductor",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
-
-    await fetchDrivers();
   };
 
   const handleStatusChange = async (
@@ -380,21 +437,52 @@ function DriversPageContent() {
                         </button>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
-                        <button
-                          type="button"
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setEditingDriver(driver)}
-                          className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
+                          disabled={deletingId === driver.id}
                         >
                           Editar
-                        </button>
+                        </Button>
                         {driver.active && (
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(driver.id)}
-                            className="text-destructive hover:text-destructive/80 transition-colors"
-                          >
-                            Desactivar
-                          </button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                disabled={deletingId === driver.id}
+                              >
+                                {deletingId === driver.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  ¿Desactivar conductor?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acción desactivará al conductor{" "}
+                                  <strong>{driver.name}</strong>. No podrá ser
+                                  asignado a rutas.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(driver.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Desactivar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </td>
                     </tr>

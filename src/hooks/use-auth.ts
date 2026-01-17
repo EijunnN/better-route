@@ -1,19 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import useSWR from "swr";
 
 interface User {
   id: string;
-  companyId: string;
+  companyId: string | null;
   email: string;
   name: string;
   role: string;
   active: boolean;
+  permissions: string[];
 }
 
 interface UseAuthReturn {
   user: User | null;
   companyId: string | null;
+  permissions: string[];
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -24,13 +27,46 @@ const TOKEN_REFRESH_MARGIN_MS = 2 * 60 * 1000;
 // Token lifetime from server (15 minutes)
 const TOKEN_LIFETIME_MS = 15 * 60 * 1000;
 
+// Fetcher for SWR
+const fetcher = async (url: string): Promise<User> => {
+  const response = await fetch(url, { credentials: "include" });
+
+  if (!response.ok) {
+    const error = new Error("Failed to fetch user");
+    (error as Error & { status: number }).status = response.status;
+    throw error;
+  }
+
+  return response.json();
+};
+
 export function useAuth(): UseAuthReturn {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isRefreshingRef = useRef(false);
-  const lastRefreshRef = useRef<number>(0);
+  const lastRefreshRef = useRef<number>(Date.now());
+
+  // Use SWR for data fetching with deduplication
+  const { data: user, error, isLoading, mutate } = useSWR<User>(
+    "/api/auth/me",
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 10000, // 10 seconds deduplication
+      errorRetryCount: 1,
+      onError: async (err) => {
+        // If 401, try to refresh token
+        if ((err as Error & { status?: number }).status === 401) {
+          const refreshed = await refreshToken();
+          if (refreshed) {
+            mutate(); // Retry after refresh
+          } else {
+            window.location.href = "/login";
+          }
+        }
+      },
+    }
+  );
 
   // Clear refresh timer
   const clearRefreshTimer = useCallback(() => {
@@ -93,57 +129,13 @@ export function useAuth(): UseAuthReturn {
     }, refreshIn);
   }, [clearRefreshTimer, refreshToken]);
 
-  // Fetch current user
-  const fetchUser = useCallback(async (attemptRefresh = true) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/auth/me", {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Token might be expired, try to refresh
-          if (attemptRefresh) {
-            const refreshed = await refreshToken();
-            if (refreshed) {
-              // Retry fetching user after refresh (without attempting refresh again)
-              return fetchUser(false);
-            }
-          }
-
-          // Refresh failed or not attempted - redirect to login
-          clearRefreshTimer();
-          window.location.href = "/login";
-          return;
-        }
-        throw new Error("Failed to fetch user");
-      }
-
-      const data = await response.json();
-      setUser(data);
-
-      // Schedule proactive token refresh
-      scheduleRefresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error fetching user");
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [refreshToken, scheduleRefresh, clearRefreshTimer]);
-
-  // Initial fetch and cleanup
+  // Schedule token refresh when user is loaded
   useEffect(() => {
-    fetchUser();
-
-    // Cleanup timer on unmount
-    return () => {
-      clearRefreshTimer();
-    };
-  }, [fetchUser, clearRefreshTimer]);
+    if (user) {
+      scheduleRefresh();
+    }
+    return () => clearRefreshTimer();
+  }, [user, scheduleRefresh, clearRefreshTimer]);
 
   // Handle visibility change - refresh token when tab becomes visible
   useEffect(() => {
@@ -155,6 +147,7 @@ export function useAuth(): UseAuthReturn {
           const success = await refreshToken();
           if (success) {
             scheduleRefresh();
+            mutate(); // Refresh user data
           } else {
             window.location.href = "/login";
           }
@@ -166,13 +159,14 @@ export function useAuth(): UseAuthReturn {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [user, refreshToken, scheduleRefresh]);
+  }, [user, refreshToken, scheduleRefresh, mutate]);
 
   return {
-    user,
+    user: user ?? null,
     companyId: user?.companyId ?? null,
+    permissions: user?.permissions ?? [],
     isLoading,
-    error,
-    refetch: () => fetchUser(true),
+    error: error?.message ?? null,
+    refetch: async () => { await mutate(); },
   };
 }

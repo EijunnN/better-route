@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ProtectedPageProps {
   children: React.ReactNode;
@@ -13,12 +13,6 @@ interface ProtectedPageProps {
   redirectTo?: string;
   /** Mostrar mensaje de acceso denegado en lugar de redirigir */
   showAccessDenied?: boolean;
-}
-
-interface UserData {
-  permissions: string[];
-  name: string;
-  role: string;
 }
 
 /**
@@ -43,67 +37,7 @@ export function ProtectedPage({
   showAccessDenied = true,
 }: ProtectedPageProps) {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasAccess, setHasAccess] = useState(false);
-  const [user, setUser] = useState<UserData | null>(null);
-
-  useEffect(() => {
-    async function checkPermissions() {
-      try {
-        const response = await fetch("/api/auth/me");
-
-        if (!response.ok) {
-          // No autenticado, redirigir a login
-          router.push("/login");
-          return;
-        }
-
-        const userData: UserData = await response.json();
-        setUser(userData);
-
-        const permissions = userData.permissions || [];
-
-        // Admin tiene acceso a todo
-        if (permissions.includes("*")) {
-          setHasAccess(true);
-          setIsLoading(false);
-          return;
-        }
-
-        // Verificar permiso único
-        if (requiredPermission) {
-          const allowed = permissions.includes(requiredPermission);
-          setHasAccess(allowed);
-
-          if (!allowed && !showAccessDenied) {
-            router.push(redirectTo);
-          }
-        }
-        // Verificar múltiples permisos (necesita al menos uno)
-        else if (requiredPermissions && requiredPermissions.length > 0) {
-          const allowed = requiredPermissions.some((perm) =>
-            permissions.includes(perm)
-          );
-          setHasAccess(allowed);
-
-          if (!allowed && !showAccessDenied) {
-            router.push(redirectTo);
-          }
-        }
-        // Sin requisitos de permiso, acceso permitido
-        else {
-          setHasAccess(true);
-        }
-      } catch (error) {
-        console.error("Error checking permissions:", error);
-        router.push("/login");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    checkPermissions();
-  }, [requiredPermission, requiredPermissions, redirectTo, showAccessDenied, router]);
+  const { user, permissions, isLoading, error } = useAuth();
 
   // Loading state
   if (isLoading) {
@@ -114,8 +48,38 @@ export function ProtectedPage({
     );
   }
 
-  // Access denied state
-  if (!hasAccess && showAccessDenied) {
+  // Not authenticated - redirect to login
+  if (error || !user) {
+    router.push("/login");
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
+
+  // Check permissions
+  let hasAccess = true;
+
+  // Admin has access to everything
+  if (!permissions.includes("*")) {
+    // Verificar permiso único
+    if (requiredPermission) {
+      hasAccess = permissions.includes(requiredPermission);
+    }
+    // Verificar múltiples permisos (necesita al menos uno)
+    else if (requiredPermissions && requiredPermissions.length > 0) {
+      hasAccess = requiredPermissions.some((perm) => permissions.includes(perm));
+    }
+  }
+
+  // No access - redirect or show denied
+  if (!hasAccess) {
+    if (!showAccessDenied) {
+      router.push(redirectTo);
+      return null;
+    }
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
         <div className="rounded-full bg-destructive/10 p-4 mb-4">
@@ -138,11 +102,9 @@ export function ProtectedPage({
         </h2>
         <p className="text-muted-foreground max-w-md mb-4">
           No tienes permisos para acceder a esta página.
-          {user && (
-            <span className="block mt-2 text-sm">
-              Tu rol actual: <strong>{user.role}</strong>
-            </span>
-          )}
+          <span className="block mt-2 text-sm">
+            Tu rol actual: <strong>{user.role}</strong>
+          </span>
         </p>
         <button
           type="button"

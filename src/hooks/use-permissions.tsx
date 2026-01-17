@@ -4,10 +4,9 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useState,
   type ReactNode,
 } from "react";
+import { useAuth } from "./use-auth";
 
 interface PermissionsContextValue {
   permissions: string[];
@@ -18,47 +17,14 @@ interface PermissionsContextValue {
   refetch: () => Promise<void>;
 }
 
-// Context to share permissions across components (client-swr-dedup pattern)
+// Context to share permissions across components
 const PermissionsContext = createContext<PermissionsContextValue | null>(null);
 
 /**
- * Provider component that fetches permissions once and shares them
+ * Provider component that uses useAuth for permissions (SWR deduplication)
  */
 export function PermissionsProvider({ children }: { children: ReactNode }) {
-  const [permissions, setPermissions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPermissions = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const response = await fetch("/api/auth/me");
-      if (!response.ok) {
-        throw new Error("No autorizado");
-      }
-
-      const data = await response.json();
-
-      // If user has permissions array from roles
-      if (data.permissions) {
-        setPermissions(data.permissions);
-      } else {
-        // Fall back to empty permissions
-        setPermissions([]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar permisos");
-      setPermissions([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPermissions();
-  }, [fetchPermissions]);
+  const { permissions, isLoading, error, refetch } = useAuth();
 
   // Create Set for O(1) lookups - React Compiler handles memoization automatically
   const permissionsSet = new Set(permissions);
@@ -86,14 +52,13 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     [permissionsSet],
   );
 
-  // React Compiler handles memoization of context value automatically
   const value = {
     permissions,
     isLoading,
     error,
     hasPermission,
     hasAnyPermission,
-    refetch: fetchPermissions,
+    refetch,
   };
 
   return (
@@ -105,32 +70,34 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
 
 /**
  * Hook to access permissions from context
- * Falls back to standalone behavior if no provider exists
+ * Falls back to useAuth if no provider exists
  */
 export function usePermissions(): PermissionsContextValue {
   const context = useContext(PermissionsContext);
 
-  // If context exists, use it (single fetch shared across components)
+  // If context exists, use it
   if (context) {
     return context;
   }
 
-  // Fallback for components outside provider - will log warning in dev
-  if (process.env.NODE_ENV === "development") {
-    console.warn(
-      "usePermissions: No PermissionsProvider found. Consider wrapping your app with PermissionsProvider for better performance.",
-    );
-  }
+  // Fallback: use useAuth directly (still gets SWR deduplication)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { permissions, isLoading, error, refetch } = useAuth();
+  const permissionsSet = new Set(permissions);
 
-  // Return a minimal implementation that still works
-  // This prevents breaking existing code but won't dedupe fetches
   return {
-    permissions: [],
-    isLoading: true,
-    error: null,
-    hasPermission: () => false,
-    hasAnyPermission: () => false,
-    refetch: async () => {},
+    permissions,
+    isLoading,
+    error,
+    hasPermission: (entity: string, action: string): boolean => {
+      if (permissionsSet.has("*")) return true;
+      return permissionsSet.has(`${entity}:${action}`);
+    },
+    hasAnyPermission: (checks: Array<{ entity: string; action: string }>): boolean => {
+      if (permissionsSet.has("*")) return true;
+      return checks.some((check) => permissionsSet.has(`${check.entity}:${check.action}`));
+    },
+    refetch,
   };
 }
 
