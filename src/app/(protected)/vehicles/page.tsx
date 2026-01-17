@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Trash2 } from "lucide-react";
+import { AlertCircle, Loader2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import {
@@ -14,7 +14,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { VehicleForm } from "@/components/vehicles/vehicle-form";
 import { VehicleStatusModal } from "@/components/vehicles/vehicle-status-modal";
 import { useCompanyContext } from "@/hooks/use-company-context";
@@ -318,7 +328,8 @@ function VehiclesPageContent() {
                 : "Complete el formulario para crear un nuevo vehículo"}
             </p>
           </div>
-          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+          <Card>
+            <CardContent className="pt-6">
             <VehicleForm
               onSubmit={editingVehicle ? handleUpdate : handleCreate}
               initialData={
@@ -363,19 +374,20 @@ function VehiclesPageContent() {
               drivers={drivers}
               submitLabel={editingVehicle ? "Actualizar" : "Crear"}
             />
-            <div className="mt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingVehicle(null);
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingVehicle(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -404,144 +416,139 @@ function VehiclesPageContent() {
       />
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-        </div>
+        <Card>
+          <CardContent className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </CardContent>
+        </Card>
       ) : vehicles.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-12 text-center shadow-sm">
-          <p className="text-muted-foreground">
-            No hay vehículos registrados. Cree el primer vehículo.
-          </p>
-        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">
+              No hay vehículos registrados. Cree el primer vehículo.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Nombre
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Placa
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Tipo Carga
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Max Pedidos
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Flotas
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Estado
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {vehicles.map((vehicle) => (
-                  <tr
-                    key={vehicle.id}
-                    className="hover:bg-muted/50 transition-colors"
-                  >
-                    <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-foreground">
-                      {vehicle.name}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-muted-foreground">
-                      {vehicle.plate || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-muted-foreground">
-                      {vehicle.loadType || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-muted-foreground">
-                      {vehicle.maxOrders}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground max-w-xs truncate">
-                      {getFleetNames(vehicle)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-2 text-xs font-semibold ${
-                          vehicle.status === "AVAILABLE"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                            : vehicle.status === "IN_MAINTENANCE"
-                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                              : vehicle.status === "ASSIGNED"
-                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                                : "bg-destructive/10 text-destructive"
-                        }`}
-                      >
-                        {VEHICLE_STATUS_LABELS[vehicle.status] ||
-                          vehicle.status}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingVehicle(vehicle)}
-                        disabled={deletingId === vehicle.id}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setStatusModalVehicle(vehicle)}
-                        disabled={deletingId === vehicle.id}
-                      >
-                        Cambiar Estado
-                      </Button>
-                      {vehicle.active && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              disabled={deletingId === vehicle.id}
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Placa</TableHead>
+                <TableHead>Tipo Carga</TableHead>
+                <TableHead>Max Pedidos</TableHead>
+                <TableHead>Flotas</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {vehicles.map((vehicle) => (
+                <TableRow
+                  key={vehicle.id}
+                  className={deletingId === vehicle.id ? "opacity-50" : ""}
+                >
+                  <TableCell className="font-medium">{vehicle.name}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {vehicle.plate || "-"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {vehicle.loadType || "-"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {vehicle.maxOrders}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                    {getFleetNames(vehicle)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        vehicle.status === "AVAILABLE"
+                          ? "default"
+                          : vehicle.status === "IN_MAINTENANCE"
+                            ? "secondary"
+                            : vehicle.status === "ASSIGNED"
+                              ? "outline"
+                              : "destructive"
+                      }
+                      className={
+                        vehicle.status === "AVAILABLE"
+                          ? "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400"
+                          : vehicle.status === "IN_MAINTENANCE"
+                            ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400"
+                            : vehicle.status === "ASSIGNED"
+                              ? "bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400"
+                              : ""
+                      }
+                    >
+                      {VEHICLE_STATUS_LABELS[vehicle.status] || vehicle.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingVehicle(vehicle)}
+                      disabled={deletingId === vehicle.id}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setStatusModalVehicle(vehicle)}
+                      disabled={deletingId === vehicle.id}
+                    >
+                      Cambiar Estado
+                    </Button>
+                    {vehicle.active && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            disabled={deletingId === vehicle.id}
+                          >
+                            {deletingId === vehicle.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              ¿Desactivar vehículo?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción desactivará el vehículo{" "}
+                              <strong>{vehicle.name}</strong>. No podrá ser
+                              asignado a rutas.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(vehicle.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
-                              {deletingId === vehicle.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                ¿Desactivar vehículo?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción desactivará el vehículo{" "}
-                                <strong>{vehicle.name}</strong>. No podrá ser
-                                asignado a rutas.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(vehicle.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Desactivar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                              Desactivar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
       )}
 
       {/* Status Change Modal */}
