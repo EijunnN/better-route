@@ -19,6 +19,8 @@ import {
   Upload,
   User,
   X,
+  Zap,
+  Target,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -121,6 +123,25 @@ interface Zone {
   vehicles: Array<{ id: string; plate: string | null }>;
 }
 
+interface OptimizerEngine {
+  type: string;
+  name: string;
+  displayName: string;
+  description: string;
+  available: boolean;
+  capabilities: {
+    supportsTimeWindows: boolean;
+    supportsSkills: boolean;
+    supportsMultiDimensionalCapacity: boolean;
+    supportsPriorities: boolean;
+    supportsBalancing: boolean;
+    maxOrders: number;
+    maxVehicles: number;
+    speed: string;
+    quality: string;
+  };
+}
+
 // Step configuration
 const STEPS = [
   { id: "vehiculos", label: "Vehículos", icon: Truck },
@@ -190,6 +211,9 @@ function PlanificacionPageContent() {
   const [objective, setObjective] = useState("BALANCED");
   const [serviceTime, setServiceTime] = useState(10);
   const [capacityEnabled, setCapacityEnabled] = useState(true);
+  const [optimizerType, setOptimizerType] = useState("VROOM");
+  const [optimizers, setOptimizers] = useState<OptimizerEngine[]>([]);
+  const [optimizersLoading, setOptimizersLoading] = useState(true);
 
   // Zones state
   const [zones, setZones] = useState<Zone[]>([]);
@@ -372,6 +396,26 @@ function PlanificacionPageContent() {
       console.error("Failed to fetch zones:", err);
     }
   }, [companyId]);
+
+  // Load available optimizers
+  const loadOptimizers = useCallback(async () => {
+    setOptimizersLoading(true);
+    try {
+      const response = await fetch("/api/optimization/engines");
+      if (response.ok) {
+        const data = await response.json();
+        setOptimizers(data.data?.optimizers || []);
+        // Set recommended optimizer as default
+        if (data.data?.recommended) {
+          setOptimizerType(data.data.recommended);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch optimizers:", err);
+    } finally {
+      setOptimizersLoading(false);
+    }
+  }, []);
 
   // Parse CSV file (supports comma, tab, and semicolon delimiters)
   const parseCSV = useCallback((text: string) => {
@@ -718,9 +762,9 @@ function PlanificacionPageContent() {
   useEffect(() => {
     if (companyId) {
       // Use Promise.all to fetch all data in parallel (async-parallel rule)
-      Promise.all([loadFleets(), loadVehicles(), loadOrders(), loadZones()]);
+      Promise.all([loadFleets(), loadVehicles(), loadOrders(), loadZones(), loadOptimizers()]);
     }
-  }, [companyId, loadFleets, loadVehicles, loadOrders, loadZones]);
+  }, [companyId, loadFleets, loadVehicles, loadOrders, loadZones, loadOptimizers]);
 
   // Filtered vehicles
   const filteredVehicles = useMemo(() => {
@@ -945,6 +989,7 @@ function PlanificacionPageContent() {
           serviceTimeMinutes: serviceTime,
           timeWindowStrictness: "SOFT",
           penaltyFactor: 5,
+          optimizerType,
         }),
       });
 
@@ -1420,6 +1465,90 @@ function PlanificacionPageContent() {
                         </p>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Optimizer Engine */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">
+                      Motor de optimización
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Selecciona el algoritmo de optimización
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {optimizersLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      </div>
+                    ) : optimizers.length === 0 ? (
+                      <div className="text-sm text-muted-foreground text-center py-4">
+                        No hay motores disponibles
+                      </div>
+                    ) : (
+                      optimizers.map((opt) => (
+                        <button
+                          key={opt.type}
+                          type="button"
+                          onClick={() => opt.available && setOptimizerType(opt.type)}
+                          disabled={!opt.available}
+                          className={`w-full p-3 rounded-lg border text-left transition-colors ${
+                            optimizerType === opt.type
+                              ? "border-primary bg-primary/5"
+                              : opt.available
+                                ? "border-border hover:border-primary/50"
+                                : "border-border opacity-50 cursor-not-allowed"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {opt.type === "VROOM" ? (
+                              <Zap className="w-4 h-4 text-yellow-500" />
+                            ) : (
+                              <Target className="w-4 h-4 text-blue-500" />
+                            )}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm">
+                                  {opt.type === "VROOM" ? "Optimización Rápida" : "Optimización Avanzada"}
+                                </span>
+                                {!opt.available && (
+                                  <Badge variant="outline" className="text-[10px]">
+                                    No disponible
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {opt.type === "VROOM"
+                                  ? "Rutas en segundos - Ideal para planificación diaria"
+                                  : "Máxima calidad - Para optimización a largo plazo"}
+                              </p>
+                            </div>
+                          </div>
+                          {opt.available && (
+                            <div className="flex gap-2 mt-2 flex-wrap">
+                              <Badge variant="secondary" className="text-[10px]">
+                                {opt.capabilities.speed}
+                              </Badge>
+                              <Badge variant="secondary" className="text-[10px]">
+                                {opt.capabilities.quality}
+                              </Badge>
+                              {opt.capabilities.supportsTimeWindows && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  Ventanas horarias
+                                </Badge>
+                              )}
+                              {opt.capabilities.supportsSkills && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  Habilidades
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </button>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
 

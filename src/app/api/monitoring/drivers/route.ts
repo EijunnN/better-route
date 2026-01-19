@@ -132,6 +132,9 @@ export async function GET(request: NextRequest) {
 
       // Generate alerts based on status
       const alerts: string[] = [];
+      if (!driver.primaryFleetId) {
+        alerts.push("Sin flota asignada");
+      }
       if (failedStops > 0) {
         alerts.push(`${failedStops} parada(s) fallida(s)`);
       }

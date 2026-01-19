@@ -116,6 +116,7 @@ export async function GET(
             name: true,
             brand: true,
             model: true,
+            maxOrders: true,
           },
         },
       },
@@ -193,7 +194,7 @@ export async function GET(
     }
 
     // Calculate utilization (simple estimate based on orders count)
-    const maxOrders = 20; // Default from vehicle schema
+    const maxOrders = vehicle?.maxOrders || 20; // Use vehicle's maxOrders or default
     const utilizationPercentage = Math.min(
       100,
       Math.round((stops.length / maxOrders) * 100),

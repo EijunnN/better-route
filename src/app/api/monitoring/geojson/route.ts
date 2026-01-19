@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
         latitude: true,
         longitude: true,
         address: true,
+        userId: true,
       },
       with: {
         order: {
@@ -94,14 +95,30 @@ export async function GET(request: NextRequest) {
             trackingId: true,
           },
         },
+        user: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
-    // Create a map for quick lookup: routeId-sequence -> status
+    // Create maps for quick lookup
     const stopStatusMap = new Map<string, string>();
+    const routeDriverMap = new Map<string, { id: string; name: string }>();
+
     dbStops.forEach((stop) => {
-      const key = `${stop.routeId}-${stop.sequence}`;
-      stopStatusMap.set(key, stop.status);
+      const statusKey = `${stop.routeId}-${stop.sequence}`;
+      stopStatusMap.set(statusKey, stop.status);
+
+      // Map routeId to driver info (all stops in a route have the same driver)
+      if (stop.user && !routeDriverMap.has(stop.routeId)) {
+        routeDriverMap.set(stop.routeId, {
+          id: stop.user.id,
+          name: stop.user.name,
+        });
+      }
     });
 
     // Color palette for routes
@@ -145,13 +162,19 @@ export async function GET(request: NextRequest) {
             parseFloat(stop.latitude),
           ]);
 
+          // Get driver info from DB (more reliable than job result)
+          const driverInfo = routeDriverMap.get(route.routeId);
+          const driverId = driverInfo?.id || null;
+          const driverName = driverInfo?.name || route.driverName || "Sin asignar";
+
           features.push({
             type: "Feature",
             properties: {
               type: "route",
               routeId: route.routeId,
               vehiclePlate: route.vehiclePlate,
-              driverName: route.driverName || "Sin asignar",
+              driverId,
+              driverName,
               color,
               totalStops: stops.length,
             },
@@ -173,7 +196,8 @@ export async function GET(request: NextRequest) {
                 type: "stop",
                 routeId: route.routeId,
                 vehiclePlate: route.vehiclePlate,
-                driverName: route.driverName || "Sin asignar",
+                driverId,
+                driverName,
                 color,
                 sequence: stop.sequence,
                 trackingId: stop.trackingId,

@@ -46,7 +46,10 @@
       "Skill(react-best-practices)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(ls -la \"C:\\\\Users\\\\vicen\\\\desktop\\\\projects\\\\bun\\\\planeamiento\\\\src\\\\app\\\\\\(protected\\)\\\\planificacion\"\" 2>/dev/null || ls -la \"C:Usersvicendesktopprojectsbunplaneamientosrcapp \")",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:pyvrp.org)"
     ]
   }
 }

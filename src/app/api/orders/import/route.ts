@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import {
+  companyOptimizationProfiles,
   csvColumnMappingTemplates,
   orders,
   timeWindowPresets,
@@ -11,7 +12,9 @@ import {
   batchInsertOrders,
   updateTableStatistics,
 } from "@/lib/batch-operations";
+import { parseProfile, type CompanyOptimizationProfile } from "@/lib/capacity-mapper";
 import { mapCSVRow, suggestColumnMapping } from "@/lib/csv-column-mapping";
+import { validateCsvRow, getCsvFieldsForProfile } from "@/lib/dynamic-csv-fields";
 import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import { orderSchema } from "@/lib/validations/order";
 
@@ -209,24 +212,30 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
   tracking_id: "trackingId",
   "tracking id": "trackingId",
   trackingid: "trackingId",
+  "id de seguimiento": "trackingId",
   customer_name: "customerName",
   "customer name": "customerName",
   customername: "customerName",
+  "nombre del cliente": "customerName",
   customer_phone: "customerPhone",
   "customer phone": "customerPhone",
   customerphone: "customerPhone",
   phone: "customerPhone",
+  "telefono del cliente": "customerPhone",
   customer_email: "customerEmail",
   "customer email": "customerEmail",
   customeremail: "customerEmail",
   email: "customerEmail",
+  "email del cliente": "customerEmail",
   address: "address",
   direccion: "address",
   latitude: "latitude",
   lat: "latitude",
+  latitud: "latitude",
   longitude: "longitude",
   lng: "longitude",
   lon: "longitude",
+  longitud: "longitude",
   time_window_preset_id: "timeWindowPresetId",
   "time window preset id": "timeWindowPresetId",
   timewindowpresetid: "timeWindowPresetId",
@@ -239,14 +248,47 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
   "weight required": "weightRequired",
   weightrequired: "weightRequired",
   weight: "weightRequired",
+  peso: "weightRequired",
+  "peso (g)": "weightRequired",
   volume_required: "volumeRequired",
   "volume required": "volumeRequired",
   volumerequired: "volumeRequired",
   volume: "volumeRequired",
+  volumen: "volumeRequired",
+  "volumen (l)": "volumeRequired",
+  // New fields for multi-company support
+  order_value: "orderValue",
+  "order value": "orderValue",
+  ordervalue: "orderValue",
+  value: "orderValue",
+  valorizado: "orderValue",
+  "valorizado (centimos)": "orderValue",
+  units_required: "unitsRequired",
+  "units required": "unitsRequired",
+  unitsrequired: "unitsRequired",
+  units: "unitsRequired",
+  unidades: "unitsRequired",
+  order_type: "orderType",
+  "order type": "orderType",
+  ordertype: "orderType",
+  "tipo de pedido": "orderType",
+  tipo: "orderType",
+  priority: "priority",
+  prioridad: "priority",
+  time_window_start: "timeWindowStart",
+  "time window start": "timeWindowStart",
+  timewindowstart: "timeWindowStart",
+  "ventana horaria inicio": "timeWindowStart",
+  time_window_end: "timeWindowEnd",
+  "time window end": "timeWindowEnd",
+  timewindowend: "timeWindowEnd",
+  "ventana horaria fin": "timeWindowEnd",
   required_skills: "requiredSkills",
   "required skills": "requiredSkills",
   requiredskills: "requiredSkills",
   skills: "requiredSkills",
+  habilidades: "requiredSkills",
+  "habilidades requeridas": "requiredSkills",
   notes: "notes",
   notas: "notes",
 };
@@ -859,6 +901,27 @@ export async function POST(request: NextRequest) {
               : null,
             volumeRequired: data.volumeRequired
               ? parseInt(String(data.volumeRequired), 10)
+              : null,
+            // New fields for multi-company support
+            orderValue: data.orderValue
+              ? parseInt(String(data.orderValue), 10)
+              : null,
+            unitsRequired: data.unitsRequired
+              ? parseInt(String(data.unitsRequired), 10)
+              : null,
+            orderType: (data.orderType === "NEW" ||
+            data.orderType === "RESCHEDULED" ||
+            data.orderType === "URGENT"
+              ? data.orderType
+              : null) as "NEW" | "RESCHEDULED" | "URGENT" | null,
+            priority: data.priority
+              ? parseInt(String(data.priority), 10)
+              : null,
+            timeWindowStart: data.timeWindowStart
+              ? String(data.timeWindowStart)
+              : null,
+            timeWindowEnd: data.timeWindowEnd
+              ? String(data.timeWindowEnd)
               : null,
             requiredSkills: data.requiredSkills
               ? String(data.requiredSkills)

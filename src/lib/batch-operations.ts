@@ -59,6 +59,13 @@ export async function batchInsertOrders(
     promisedDate?: Date | null;
     weightRequired?: number | null;
     volumeRequired?: number | null;
+    // New fields for multi-company support
+    orderValue?: number | null;
+    unitsRequired?: number | null;
+    orderType?: "NEW" | "RESCHEDULED" | "URGENT" | null;
+    priority?: number | null;
+    timeWindowStart?: string | null;
+    timeWindowEnd?: string | null;
     requiredSkills?: string | null;
     notes?: string | null;
   }>,
@@ -113,6 +120,28 @@ export async function batchInsertOrders(
           : null,
         volumeRequired: data.volumeRequired
           ? parseInt(String(data.volumeRequired), 10)
+          : null,
+        // New fields for multi-company support
+        orderValue: data.orderValue
+          ? parseInt(String(data.orderValue), 10)
+          : null,
+        unitsRequired: data.unitsRequired
+          ? parseInt(String(data.unitsRequired), 10)
+          : null,
+        orderType:
+          data.orderType === "NEW" ||
+          data.orderType === "RESCHEDULED" ||
+          data.orderType === "URGENT"
+            ? data.orderType
+            : null,
+        priority: data.priority
+          ? parseInt(String(data.priority), 10)
+          : null,
+        timeWindowStart: data.timeWindowStart
+          ? String(data.timeWindowStart)
+          : null,
+        timeWindowEnd: data.timeWindowEnd
+          ? String(data.timeWindowEnd)
           : null,
         requiredSkills: data.requiredSkills
           ? String(data.requiredSkills)

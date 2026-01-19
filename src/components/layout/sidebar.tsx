@@ -13,6 +13,7 @@ import {
   Moon,
   Package,
   Route,
+  Settings,
   Settings2,
   Sun,
   Truck,
@@ -44,6 +45,11 @@ const navItems: NavItem[] = [
 ];
 
 const configItems: NavItem[] = [
+  {
+    title: "Perfil Empresa",
+    href: "/configuracion",
+    icon: Settings,
+  },
   {
     title: "Presets Optimización",
     href: "/optimization-presets",

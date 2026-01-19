@@ -210,6 +210,9 @@ export const vehicles = pgTable("vehicles", {
   type: varchar("type", { length: 50 }),
   weightCapacity: integer("weight_capacity"),
   volumeCapacity: integer("volume_capacity"),
+  // New capacity fields for multi-company support
+  maxValueCapacity: integer("max_value_capacity"), // Capacidad de valorizado máximo
+  maxUnitsCapacity: integer("max_units_capacity"), // Capacidad en unidades
   refrigerated: boolean("refrigerated").default(false),
   heated: boolean("heated").default(false),
   lifting: boolean("lifting").default(false),
@@ -661,6 +664,13 @@ export const ORDER_STATUS = {
   CANCELLED: "CANCELLED",
 } as const;
 
+// Order types for prioritization (NEW, RESCHEDULED, URGENT)
+export const ORDER_TYPES = {
+  NEW: "NEW",
+  RESCHEDULED: "RESCHEDULED",
+  URGENT: "URGENT",
+} as const;
+
 // Orders for logistics planning
 export const orders = pgTable("orders", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -686,6 +696,18 @@ export const orders = pgTable("orders", {
   // Capacity requirements
   weightRequired: integer("weight_required"),
   volumeRequired: integer("volume_required"),
+  // New capacity fields for multi-company support
+  orderValue: integer("order_value"), // Valorizado en céntimos
+  unitsRequired: integer("units_required"), // Número de unidades
+  // Order type for prioritization
+  orderType: varchar("order_type", { length: 20 }).$type<
+    keyof typeof ORDER_TYPES
+  >(),
+  // Priority for VROOM (0-100, higher = more important)
+  priority: integer("priority").default(50),
+  // Direct time window fields (alternative to preset)
+  timeWindowStart: time("time_window_start"),
+  timeWindowEnd: time("time_window_end"),
   // Skill requirements (comma-separated skill codes)
   requiredSkills: text("required_skills"),
   // Additional notes
@@ -1600,3 +1622,53 @@ export const userRolesRelations = relations(userRoles, ({ one }) => ({
     references: [roles.id],
   }),
 }));
+
+// ============================================
+// COMPANY OPTIMIZATION PROFILES - Per-company optimization settings
+// ============================================
+
+// Capacity dimension types
+export const CAPACITY_DIMENSIONS = {
+  WEIGHT: "WEIGHT",
+  VOLUME: "VOLUME",
+  VALUE: "VALUE",
+  UNITS: "UNITS",
+} as const;
+
+// Company optimization profiles - defines what fields/dimensions are relevant
+export const companyOptimizationProfiles = pgTable(
+  "company_optimization_profiles",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" })
+      .unique(),
+    // Field toggles for orders
+    enableOrderValue: boolean("enable_order_value").notNull().default(false),
+    enableOrderType: boolean("enable_order_type").notNull().default(false),
+    enableWeight: boolean("enable_weight").notNull().default(true),
+    enableVolume: boolean("enable_volume").notNull().default(true),
+    enableUnits: boolean("enable_units").notNull().default(false),
+    // Active capacity dimensions (JSON array: ["WEIGHT", "VOLUME", "VALUE", "UNITS"])
+    activeDimensions: text("active_dimensions").notNull().default('["WEIGHT","VOLUME"]'),
+    // Priority mapping by order type (JSON: { "NEW": 50, "RESCHEDULED": 80, "URGENT": 100 })
+    priorityMapping: text("priority_mapping").notNull().default('{"NEW":50,"RESCHEDULED":80,"URGENT":100}'),
+    // Default time windows (JSON array of presets)
+    defaultTimeWindows: text("default_time_windows"),
+    // Metadata
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+);
+
+export const companyOptimizationProfilesRelations = relations(
+  companyOptimizationProfiles,
+  ({ one }) => ({
+    company: one(companies, {
+      fields: [companyOptimizationProfiles.companyId],
+      references: [companies.id],
+    }),
+  }),
+);

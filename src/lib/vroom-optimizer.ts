@@ -3,6 +3,8 @@
  *
  * This module bridges our application's data model with VROOM's API,
  * falling back to a simple nearest-neighbor algorithm when VROOM is unavailable.
+ *
+ * Supports dynamic capacity dimensions via company optimization profiles.
  */
 
 import {
@@ -25,6 +27,13 @@ import {
   type BalanceableRoute,
   type BalanceableStop,
 } from "./balance-utils";
+import {
+  type CompanyOptimizationProfile,
+  DEFAULT_PROFILE,
+  mapOrderCapacities,
+  mapVehicleCapacities,
+  getDimensionInfo,
+} from "./capacity-mapper";
 
 // Our domain types
 export interface OrderForOptimization {
@@ -35,6 +44,10 @@ export interface OrderForOptimization {
   longitude: number;
   weightRequired: number;
   volumeRequired: number;
+  // New fields for multi-company support
+  orderValue?: number; // Value in cents
+  unitsRequired?: number; // Number of units
+  orderType?: "NEW" | "RESCHEDULED" | "URGENT";
   timeWindowStart?: string;
   timeWindowEnd?: string;
   skillsRequired?: string[];
@@ -48,6 +61,9 @@ export interface VehicleForOptimization {
   plate: string;
   maxWeight: number;
   maxVolume: number;
+  // New capacity fields for multi-company support
+  maxValueCapacity?: number; // Maximum value capacity
+  maxUnitsCapacity?: number; // Maximum units capacity
   maxOrders?: number; // Maximum number of orders per vehicle
   originLatitude?: number; // Vehicle's starting location
   originLongitude?: number;
@@ -67,6 +83,8 @@ export interface OptimizationConfig {
   objective: "DISTANCE" | "TIME" | "BALANCED";
   maxRoutes?: number;
   balanceFactor?: number;
+  // Company-specific optimization profile (optional, defaults to weight+volume)
+  profile?: CompanyOptimizationProfile;
   // New options for balancing and limits
   balanceVisits?: boolean; // Enable post-optimization balancing
   maxDistanceKm?: number; // Maximum distance per route (km)
@@ -183,6 +201,10 @@ async function optimizeWithVroom(
   const orderIdToIndex = new Map<number, string>();
   const vehicleIdToIndex = new Map<number, string>();
 
+  // Get optimization profile (use default if not specified)
+  const profile = config.profile || DEFAULT_PROFILE;
+  console.log(`[VROOM] Using profile: ${getDimensionInfo(profile)}`);
+
   // Calculate balanced maxOrders if balancing is enabled (pre-balancing)
   const balancedMaxOrders = config.balanceVisits
     ? calculateBalancedMaxOrders(orders.length, vehicles.length, 50)
@@ -218,15 +240,25 @@ async function optimizeWithVroom(
       ? adjustTimeWindow(order.timeWindowEnd, timeWindowTolerance)
       : order.timeWindowEnd;
 
+    // Map order capacities dynamically based on profile
+    const capacityMapping = mapOrderCapacities(
+      {
+        weightRequired: order.weightRequired,
+        volumeRequired: order.volumeRequired,
+        orderValue: order.orderValue,
+        unitsRequired: order.unitsRequired,
+        orderType: order.orderType,
+        priority: order.priority,
+      },
+      profile,
+    );
+
     return createVroomJob(jobId, order.longitude, order.latitude, {
       description: order.trackingId,
       service: order.serviceTime || 300, // 5 min default
-      delivery: [
-        Math.round(order.weightRequired),
-        Math.round(order.volumeRequired),
-      ],
+      delivery: capacityMapping.capacityArray,
       skills,
-      priority: order.priority,
+      priority: capacityMapping.priority ?? order.priority,
       timeWindowStart: adjustedTimeWindowStart,
       timeWindowEnd: adjustedTimeWindowEnd,
     });
@@ -307,16 +339,24 @@ async function optimizeWithVroom(
       openEnd = true;
     }
 
+    // Map vehicle capacities dynamically based on profile
+    const capacityMapping = mapVehicleCapacities(
+      {
+        weightCapacity: vehicle.maxWeight,
+        volumeCapacity: vehicle.maxVolume,
+        maxValueCapacity: vehicle.maxValueCapacity,
+        maxUnitsCapacity: vehicle.maxUnitsCapacity,
+      },
+      profile,
+    );
+
     return createVroomVehicle(
       vehicleId,
       config.openStart ? undefined : startLongitude,
       config.openStart ? undefined : startLatitude,
       {
         description: vehicle.plate,
-        capacity: [
-          Math.round(vehicle.maxWeight),
-          Math.round(vehicle.maxVolume),
-        ],
+        capacity: capacityMapping.capacityArray,
         skills,
         timeWindowStart: config.depot.timeWindowStart,
         timeWindowEnd: config.depot.timeWindowEnd,

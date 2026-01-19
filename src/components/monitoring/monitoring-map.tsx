@@ -7,12 +7,14 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 interface MonitoringMapProps {
   jobId: string | null;
+  companyId: string;
   selectedDriverId: string | null;
   onDriverSelect?: (driverId: string) => void;
 }
 
 export function MonitoringMap({
   jobId: _jobId,
+  companyId,
   selectedDriverId,
   onDriverSelect,
 }: MonitoringMapProps) {
@@ -22,11 +24,11 @@ export function MonitoringMap({
   const [error, setError] = useState<string | null>(null);
 
   const loadMapData = useCallback(async () => {
-    if (!map.current) return;
+    if (!map.current || !companyId) return;
 
     try {
       const response = await fetch("/api/monitoring/geojson", {
-        headers: { "x-company-id": "default-company" },
+        headers: { "x-company-id": companyId },
       });
 
       if (!response.ok) throw new Error("Failed to load map data");
@@ -99,7 +101,7 @@ export function MonitoringMap({
             filter: [
               "all",
               ["==", ["get", "type"], "route"],
-              ["==", ["get", "driverName"], selectedDriverId],
+              ["==", ["get", "driverId"], selectedDriverId],
             ],
             layout: {
               "line-join": "round",
@@ -178,9 +180,9 @@ export function MonitoringMap({
 
         if (features && features.length > 0) {
           const props = features[0].properties as {
-            driverName?: string;
+            driverId?: string;
           } | null;
-          if (props?.driverName) onDriverSelect?.(props.driverName);
+          if (props?.driverId) onDriverSelect?.(props.driverId);
         }
       });
 
@@ -202,7 +204,7 @@ export function MonitoringMap({
       console.error("Failed to load map data:", err);
       setError("Failed to load monitoring data");
     }
-  }, [selectedDriverId, onDriverSelect]);
+  }, [companyId, selectedDriverId, onDriverSelect]);
 
   useEffect(() => {
     if (!mapContainer.current) return;

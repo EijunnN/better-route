@@ -3,12 +3,10 @@
 import {
   AlertCircle,
   AlertTriangle,
-  Calendar,
   CheckCircle2,
   Download,
   Loader2,
   Upload,
-  X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +43,9 @@ interface RouteStop {
   sequence: number;
   estimatedArrival?: string;
   groupedTrackingIds?: string[];
+  address?: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 interface RouteData {
@@ -290,9 +291,9 @@ export function PlanConfirmationDialog({
           stops: route.stops.map((stop) => ({
             ...stop,
             orderId: stop.trackingId,
-            address: "",
-            latitude: "0",
-            longitude: "0",
+            address: stop.address || "",
+            latitude: stop.latitude || "0",
+            longitude: stop.longitude || "0",
           })),
         })),
         metrics: {
@@ -323,19 +324,11 @@ export function PlanConfirmationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         {/* Header */}
-        <DialogHeader className="flex flex-row items-center justify-between p-4 border-b">
+        <DialogHeader className="p-4 border-b">
           <DialogTitle className="flex items-center gap-2 text-primary">
             <span className="text-primary">&lt;</span>
             Edición del plan
           </DialogTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onOpenChange(false)}
-            className="h-6 w-6"
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </DialogHeader>
 
         {isValidating ? (

@@ -313,6 +313,7 @@ function MonitoringPageContent() {
               <div className="h-[500px]">
                 <MonitoringMap
                   jobId={monitoringData?.jobId || null}
+                  companyId={companyId!}
                   selectedDriverId={selectedDriverId}
                   onDriverSelect={handleDriverClick}
                 />
