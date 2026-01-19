@@ -273,7 +273,11 @@ export function createVroomVehicle(
   };
 
   // Set start location unless openStart is true
-  if (!options?.openStart && startLongitude !== undefined && startLatitude !== undefined) {
+  if (
+    !options?.openStart &&
+    startLongitude !== undefined &&
+    startLatitude !== undefined
+  ) {
     vehicle.start = [startLongitude, startLatitude];
   }
 
@@ -286,7 +290,11 @@ export function createVroomVehicle(
       options?.endLatitude !== undefined
     ) {
       vehicle.end = [options.endLongitude, options.endLatitude];
-    } else if (startLongitude !== undefined && startLatitude !== undefined && !options?.openStart) {
+    } else if (
+      startLongitude !== undefined &&
+      startLatitude !== undefined &&
+      !options?.openStart
+    ) {
       // Return to start by default (if start is set)
       vehicle.end = [startLongitude, startLatitude];
     }

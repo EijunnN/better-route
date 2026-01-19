@@ -27,10 +27,10 @@ interface TimePickerProps {
 }
 
 const hours = Array.from({ length: 24 }, (_, i) =>
-  i.toString().padStart(2, "0")
+  i.toString().padStart(2, "0"),
 );
 const minutes = Array.from({ length: 12 }, (_, i) =>
-  (i * 5).toString().padStart(2, "0")
+  (i * 5).toString().padStart(2, "0"),
 );
 
 export function TimePicker({

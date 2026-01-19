@@ -237,7 +237,9 @@ export function PlanningMap({
         bounds.extend([lng, lat]);
 
         // Check if vehicle is selected (if selectedVehicleIds is provided)
-        const isSelected = selectedVehicleIds ? selectedVehicleIds.includes(vehicle.id) : true;
+        const isSelected = selectedVehicleIds
+          ? selectedVehicleIds.includes(vehicle.id)
+          : true;
         const bgColor = isSelected ? "#ffffff" : "#6b7280";
         const iconColor = isSelected ? "#1a1a1a" : "#ffffff";
         const opacity = isSelected ? "1" : "0.7";
@@ -250,7 +252,7 @@ export function PlanningMap({
             width: 38px;
             height: 38px;
             background: ${bgColor};
-            border: 2px solid ${isSelected ? 'rgba(255,255,255,0.3)' : 'rgba(107,114,128,0.5)'};
+            border: 2px solid ${isSelected ? "rgba(255,255,255,0.3)" : "rgba(107,114,128,0.5)"};
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -267,7 +269,10 @@ export function PlanningMap({
               <circle cx="17.5" cy="17.5" r="2.5"/>
             </svg>
           </div>
-          ${isSelected ? '' : `<div style="
+          ${
+            isSelected
+              ? ""
+              : `<div style="
             position: absolute;
             bottom: -4px;
             left: 50%;
@@ -276,10 +281,13 @@ export function PlanningMap({
             color: #9ca3af;
             white-space: nowrap;
             text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-          ">${vehicle.plate || ''}</div>`}
+          ">${vehicle.plate || ""}</div>`
+          }
         `;
 
-        const innerDiv = el.querySelector('.vehicle-marker-inner') as HTMLElement;
+        const innerDiv = el.querySelector(
+          ".vehicle-marker-inner",
+        ) as HTMLElement;
         if (innerDiv) {
           el.addEventListener("mouseenter", () => {
             innerDiv.style.transform = "scale(1.12)";
@@ -293,17 +301,23 @@ export function PlanningMap({
           });
         }
 
-        const popup = new maplibregl.Popup({ offset: 25, closeButton: true }).setHTML(`
+        const popup = new maplibregl.Popup({
+          offset: 25,
+          closeButton: true,
+        }).setHTML(`
           <div class="popup-content">
             <div class="popup-title">${vehicle.plate || vehicle.name}</div>
             ${vehicle.assignedDriver ? `<div class="popup-subtitle">${vehicle.assignedDriver.name}</div>` : ""}
             ${vehicle.originAddress ? `<div class="popup-address">${vehicle.originAddress}</div>` : ""}
-            <span class="popup-badge popup-badge-vehicle">${isSelected ? '✓ Seleccionado' : 'No seleccionado'}</span>
+            <span class="popup-badge popup-badge-vehicle">${isSelected ? "✓ Seleccionado" : "No seleccionado"}</span>
           </div>
         `);
 
         if (map.current) {
-          const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+          const marker = new maplibregl.Marker({
+            element: el,
+            anchor: "center",
+          })
             .setLngLat([lng, lat])
             .setPopup(popup)
             .addTo(map.current);
@@ -349,7 +363,7 @@ export function PlanningMap({
           ">${index + 1}</div>
         `;
 
-        const innerDiv = el.querySelector('.order-marker-inner') as HTMLElement;
+        const innerDiv = el.querySelector(".order-marker-inner") as HTMLElement;
         if (innerDiv) {
           el.addEventListener("mouseenter", () => {
             innerDiv.style.transform = "scale(1.15)";
@@ -361,7 +375,10 @@ export function PlanningMap({
           });
         }
 
-        const popup = new maplibregl.Popup({ offset: 20, closeButton: true }).setHTML(`
+        const popup = new maplibregl.Popup({
+          offset: 20,
+          closeButton: true,
+        }).setHTML(`
           <div class="popup-content">
             <div class="popup-title">${order.trackingId}</div>
             ${order.customerName ? `<div class="popup-subtitle">${order.customerName}</div>` : ""}
@@ -371,7 +388,10 @@ export function PlanningMap({
         `);
 
         if (map.current) {
-          const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+          const marker = new maplibregl.Marker({
+            element: el,
+            anchor: "center",
+          })
             .setLngLat([lng, lat])
             .setPopup(popup)
             .addTo(map.current);
@@ -389,7 +409,14 @@ export function PlanningMap({
         duration: 600,
       });
     }
-  }, [vehicles, orders, showVehicleOrigins, showOrders, isLoaded, selectedVehicleIds]);
+  }, [
+    vehicles,
+    orders,
+    showVehicleOrigins,
+    showOrders,
+    isLoaded,
+    selectedVehicleIds,
+  ]);
 
   // Render zones as polygon layers
   useEffect(() => {
@@ -416,7 +443,7 @@ export function PlanningMap({
     const style = map.current.getStyle();
     if (style?.layers) {
       style.layers.forEach((layer) => {
-        if (layer.id.startsWith('zone-')) {
+        if (layer.id.startsWith("zone-")) {
           if (map.current?.getLayer(layer.id)) {
             map.current.removeLayer(layer.id);
           }
@@ -425,7 +452,7 @@ export function PlanningMap({
     }
     if (style?.sources) {
       Object.keys(style.sources).forEach((sourceId) => {
-        if (sourceId.startsWith('zone-source-')) {
+        if (sourceId.startsWith("zone-source-")) {
           if (map.current?.getSource(sourceId)) {
             map.current.removeSource(sourceId);
           }
@@ -440,17 +467,19 @@ export function PlanningMap({
       const sourceId = `zone-source-${index}`;
       const fillLayerId = `zone-fill-${index}`;
       const outlineLayerId = `zone-outline-${index}`;
-      const color = zone.color || '#3B82F6';
+      const color = zone.color || "#3B82F6";
 
       // Add source
       map.current.addSource(sourceId, {
-        type: 'geojson',
+        type: "geojson",
         data: {
-          type: 'Feature',
+          type: "Feature",
           properties: {
             name: zone.name,
             vehicleCount: zone.vehicleCount,
-            vehicles: zone.vehicles.map(v => v.plate || 'Sin placa').join(', '),
+            vehicles: zone.vehicles
+              .map((v) => v.plate || "Sin placa")
+              .join(", "),
           },
           geometry: zone.geometry as GeoJSON.Geometry,
         },
@@ -459,28 +488,28 @@ export function PlanningMap({
       // Add fill layer (semi-transparent)
       map.current.addLayer({
         id: fillLayerId,
-        type: 'fill',
+        type: "fill",
         source: sourceId,
         paint: {
-          'fill-color': color,
-          'fill-opacity': 0.15,
+          "fill-color": color,
+          "fill-opacity": 0.15,
         },
       });
 
       // Add outline layer
       map.current.addLayer({
         id: outlineLayerId,
-        type: 'line',
+        type: "line",
         source: sourceId,
         paint: {
-          'line-color': color,
-          'line-width': 2,
-          'line-opacity': 0.8,
+          "line-color": color,
+          "line-width": 2,
+          "line-opacity": 0.8,
         },
       });
 
       // Add click handler for zone popup
-      map.current.on('click', fillLayerId, (e) => {
+      map.current.on("click", fillLayerId, (e) => {
         if (!map.current || !e.features?.[0]) return;
 
         const props = e.features[0].properties;
@@ -491,12 +520,16 @@ export function PlanningMap({
           .setHTML(`
             <div class="popup-content">
               <div class="popup-title" style="color: ${color};">${props?.name || zone.name}</div>
-              <div class="popup-subtitle">${zone.vehicleCount} vehículo${zone.vehicleCount !== 1 ? 's' : ''} asignado${zone.vehicleCount !== 1 ? 's' : ''}</div>
-              ${zone.vehicles.length > 0 ? `
+              <div class="popup-subtitle">${zone.vehicleCount} vehículo${zone.vehicleCount !== 1 ? "s" : ""} asignado${zone.vehicleCount !== 1 ? "s" : ""}</div>
+              ${
+                zone.vehicles.length > 0
+                  ? `
                 <div class="popup-address" style="margin-top: 8px;">
-                  ${zone.vehicles.map(v => v.plate || 'Sin placa').join(', ')}
+                  ${zone.vehicles.map((v) => v.plate || "Sin placa").join(", ")}
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
               <span class="popup-badge" style="background: ${color}20; color: ${color};">Zona de entrega</span>
             </div>
           `)
@@ -504,17 +537,19 @@ export function PlanningMap({
       });
 
       // Change cursor on hover
-      map.current.on('mouseenter', fillLayerId, () => {
-        if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+      map.current.on("mouseenter", fillLayerId, () => {
+        if (map.current) map.current.getCanvas().style.cursor = "pointer";
       });
-      map.current.on('mouseleave', fillLayerId, () => {
-        if (map.current) map.current.getCanvas().style.cursor = '';
+      map.current.on("mouseleave", fillLayerId, () => {
+        if (map.current) map.current.getCanvas().style.cursor = "";
       });
     });
-
   }, [zones, isLoaded]);
 
   return (
-    <div ref={mapContainer} className="w-full h-full rounded-lg overflow-hidden" />
+    <div
+      ref={mapContainer}
+      className="w-full h-full rounded-lg overflow-hidden"
+    />
   );
 }

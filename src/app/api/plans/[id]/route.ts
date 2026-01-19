@@ -50,10 +50,7 @@ export async function GET(
     });
 
     if (!job) {
-      return NextResponse.json(
-        { error: "Plan not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
     // Get metrics
@@ -81,9 +78,6 @@ export async function GET(
     });
   } catch (error) {
     console.error("Error fetching plan:", error);
-    return NextResponse.json(
-      { error: "Error fetching plan" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Error fetching plan" }, { status: 500 });
   }
 }

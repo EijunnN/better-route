@@ -9,7 +9,12 @@
  */
 
 import * as turf from "@turf/turf";
-import type { Feature, Polygon, MultiPolygon, GeoJsonProperties } from "geojson";
+import type {
+  Feature,
+  Polygon,
+  MultiPolygon,
+  GeoJsonProperties,
+} from "geojson";
 
 // Day of week types (matching what's stored in the database)
 export type DayOfWeek =
@@ -57,7 +62,7 @@ export interface VehicleWithZones {
  * Parse geometry string to GeoJSON Feature
  */
 function parseGeometry(
-  geometryString: string
+  geometryString: string,
 ): Feature<Polygon | MultiPolygon, GeoJsonProperties> | null {
   try {
     const parsed = JSON.parse(geometryString);
@@ -102,7 +107,7 @@ function parseDays(daysString: string | null | undefined): DayOfWeek[] {
 export function isPointInZone(
   latitude: number,
   longitude: number,
-  zone: ZoneData
+  zone: ZoneData,
 ): boolean {
   const feature = parseGeometry(zone.geometry);
   if (!feature) return false;
@@ -122,7 +127,7 @@ export function isPointInZone(
  */
 export function getZoneForOrder(
   order: OrderWithLocation,
-  zones: ZoneData[]
+  zones: ZoneData[],
 ): ZoneData | null {
   const lat =
     typeof order.latitude === "string"
@@ -164,7 +169,7 @@ export function isZoneActiveOnDay(zone: ZoneData, day: DayOfWeek): boolean {
  */
 export function isVehicleAssignedToZoneOnDay(
   assignment: VehicleZoneAssignment,
-  day: DayOfWeek
+  day: DayOfWeek,
 ): boolean {
   if (!assignment.active) return false;
   const assignedDays = parseDays(assignment.assignedDays);
@@ -179,7 +184,7 @@ export function isVehicleAssignedToZoneOnDay(
 export function getVehiclesForZone(
   zone: ZoneData,
   vehicles: VehicleWithZones[],
-  day: DayOfWeek
+  day: DayOfWeek,
 ): VehicleWithZones[] {
   // Check if zone is active on this day
   if (!isZoneActiveOnDay(zone, day)) {
@@ -204,7 +209,7 @@ export function getVehiclesForZone(
  */
 export function getVehicleZoneIds(
   vehicle: VehicleWithZones,
-  day: DayOfWeek
+  day: DayOfWeek,
 ): string[] {
   const assignments = vehicle.zoneAssignments || [];
 
@@ -227,7 +232,7 @@ export function isVehicleUnrestricted(vehicle: VehicleWithZones): boolean {
  */
 export function groupOrdersByZone<T extends OrderWithLocation>(
   orders: T[],
-  zones: ZoneData[]
+  zones: ZoneData[],
 ): Map<string | "unzoned", T[]> {
   const grouped = new Map<string | "unzoned", T[]>();
 
@@ -259,7 +264,7 @@ export function groupOrdersByZone<T extends OrderWithLocation>(
 export function filterVehiclesForZone<T extends VehicleWithZones>(
   vehicles: T[],
   zoneId: string | "unzoned",
-  day: DayOfWeek
+  day: DayOfWeek,
 ): T[] {
   return vehicles.filter((vehicle) => {
     // Unrestricted vehicles can deliver anywhere
@@ -314,7 +319,10 @@ export function getDayOfWeek(date: Date): DayOfWeek {
  * Create zone batches for optimization
  * Each batch contains orders for a zone and the vehicles that can service them
  */
-export interface ZoneBatch<TOrder extends OrderWithLocation, TVehicle extends VehicleWithZones> {
+export interface ZoneBatch<
+  TOrder extends OrderWithLocation,
+  TVehicle extends VehicleWithZones,
+> {
   zoneId: string | "unzoned";
   zoneName: string;
   orders: TOrder[];
@@ -323,12 +331,12 @@ export interface ZoneBatch<TOrder extends OrderWithLocation, TVehicle extends Ve
 
 export function createZoneBatches<
   TOrder extends OrderWithLocation,
-  TVehicle extends VehicleWithZones
+  TVehicle extends VehicleWithZones,
 >(
   orders: TOrder[],
   vehicles: TVehicle[],
   zones: ZoneData[],
-  day: DayOfWeek
+  day: DayOfWeek,
 ): ZoneBatch<TOrder, TVehicle>[] {
   const batches: ZoneBatch<TOrder, TVehicle>[] = [];
 
@@ -353,7 +361,7 @@ export function createZoneBatches<
     } else {
       // No vehicles for this zone - orders will be unassigned
       console.warn(
-        `No vehicles available for zone ${zone?.name || zoneId} on ${day}. ${zoneOrders.length} orders will be unassigned.`
+        `No vehicles available for zone ${zone?.name || zoneId} on ${day}. ${zoneOrders.length} orders will be unassigned.`,
       );
     }
   }
@@ -376,7 +384,7 @@ export function calculateZoneStats(
   orders: OrderWithLocation[],
   vehicles: VehicleWithZones[],
   zones: ZoneData[],
-  day: DayOfWeek
+  day: DayOfWeek,
 ): { stats: ZoneStats[]; unzonedCount: number; unassignableCount: number } {
   const stats: ZoneStats[] = [];
   let unzonedCount = 0;
@@ -403,10 +411,7 @@ export function calculateZoneStats(
       zoneName: zone?.name || "Unknown",
       orderCount: zoneOrders.length,
       vehicleCount: eligibleVehicles.length,
-      coverage:
-        eligibleVehicles.length > 0
-          ? 100
-          : 0,
+      coverage: eligibleVehicles.length > 0 ? 100 : 0,
     });
 
     if (eligibleVehicles.length === 0) {

@@ -111,7 +111,10 @@ export async function POST(
 
     // Support both single order (legacy) and multiple orders
     const ordersList: Array<{ orderId: string; sourceRouteId: string | null }> =
-      ordersToReassign || (body.orderId ? [{ orderId: body.orderId, sourceRouteId: body.sourceRouteId }] : []);
+      ordersToReassign ||
+      (body.orderId
+        ? [{ orderId: body.orderId, sourceRouteId: body.sourceRouteId }]
+        : []);
 
     if (ordersList.length === 0 || !targetVehicleId) {
       return NextResponse.json(
@@ -203,11 +206,14 @@ export async function POST(
 
       // Check in routes
       if (sourceRouteId) {
-        const sourceRouteIndex = result.routes.findIndex((r) => r.routeId === sourceRouteId);
+        const sourceRouteIndex = result.routes.findIndex(
+          (r) => r.routeId === sourceRouteId,
+        );
         if (sourceRouteIndex !== -1) {
           const route = result.routes[sourceRouteIndex];
           const stopIndex = route.stops.findIndex((s) => {
-            if (s.groupedOrderIds && s.groupedOrderIds.includes(orderId)) return true;
+            if (s.groupedOrderIds && s.groupedOrderIds.includes(orderId))
+              return true;
             return s.orderId === orderId;
           });
 
@@ -295,10 +301,12 @@ export async function POST(
       });
 
       // Get vehicle data
-      const vehicleIds = affectedRouteIds.map((routeId) => {
-        const route = result.routes.find((r) => r.routeId === routeId);
-        return route?.vehicleId;
-      }).filter((id): id is string => !!id);
+      const vehicleIds = affectedRouteIds
+        .map((routeId) => {
+          const route = result.routes.find((r) => r.routeId === routeId);
+          return route?.vehicleId;
+        })
+        .filter((id): id is string => !!id);
 
       const vehicleData = await db.query.vehicles.findMany({
         where: and(
@@ -315,8 +323,12 @@ export async function POST(
         const vehicleInfo = vehicleData.find((v) => v.id === route.vehicleId);
         if (!vehicleInfo) continue;
 
-        const routeOrderIds = route.stops.flatMap((s) => s.groupedOrderIds || [s.orderId]);
-        const routeOrders = orderData.filter((o) => routeOrderIds.includes(o.id));
+        const routeOrderIds = route.stops.flatMap(
+          (s) => s.groupedOrderIds || [s.orderId],
+        );
+        const routeOrders = orderData.filter((o) =>
+          routeOrderIds.includes(o.id),
+        );
 
         if (routeOrders.length === 0) continue;
 
@@ -338,8 +350,18 @@ export async function POST(
           plate: vehicleInfo.plate || vehicleInfo.id,
           maxWeight: vehicleInfo.weightCapacity || 1000,
           maxVolume: vehicleInfo.volumeCapacity || 10,
-          originLatitude: parseFloat(String(vehicleInfo.originLatitude || result.depot?.latitude || -12.0464)),
-          originLongitude: parseFloat(String(vehicleInfo.originLongitude || result.depot?.longitude || -77.0428)),
+          originLatitude: parseFloat(
+            String(
+              vehicleInfo.originLatitude || result.depot?.latitude || -12.0464,
+            ),
+          ),
+          originLongitude: parseFloat(
+            String(
+              vehicleInfo.originLongitude ||
+                result.depot?.longitude ||
+                -77.0428,
+            ),
+          ),
         };
 
         const depot: DepotConfig = {
@@ -361,8 +383,10 @@ export async function POST(
             // Map optimized stops back to our format
             const optimizedStops = optimRoute.stops.map((optStop, idx) => {
               const originalStop = route.stops.find(
-                (s) => s.orderId === optStop.orderId ||
-                       (s.groupedOrderIds && s.groupedOrderIds.includes(optStop.orderId)),
+                (s) =>
+                  s.orderId === optStop.orderId ||
+                  (s.groupedOrderIds &&
+                    s.groupedOrderIds.includes(optStop.orderId)),
               );
               // Convert arrival time to ISO string if it's a number (timestamp)
               const arrivalTime = optStop.arrivalTime
@@ -399,7 +423,9 @@ export async function POST(
 
     // Remove empty routes from source routes
     for (const sourceRouteId of affectedSourceRouteIds) {
-      const routeIndex = result.routes.findIndex((r) => r.routeId === sourceRouteId);
+      const routeIndex = result.routes.findIndex(
+        (r) => r.routeId === sourceRouteId,
+      );
       if (routeIndex !== -1 && result.routes[routeIndex].stops.length === 0) {
         const emptyRoute = result.routes[routeIndex];
 

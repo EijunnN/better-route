@@ -48,8 +48,9 @@ export const USER_ROLES = {
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   // companyId is nullable for ADMIN_SISTEMA who can manage all companies
-  companyId: uuid("company_id")
-    .references(() => companies.id, { onDelete: "restrict" }),
+  companyId: uuid("company_id").references(() => companies.id, {
+    onDelete: "restrict",
+  }),
   // Basic user fields
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull(),
@@ -1438,7 +1439,9 @@ export const optimizationPresets = pgTable("optimization_presets", {
   vehicleRechargeTime: integer("vehicle_recharge_time").default(0), // minutes
   trafficFactor: integer("traffic_factor").default(50), // 0-100 scale
   // Route end configuration: DRIVER_ORIGIN | SPECIFIC_DEPOT | OPEN_END
-  routeEndMode: varchar("route_end_mode", { length: 50 }).notNull().default("DRIVER_ORIGIN"),
+  routeEndMode: varchar("route_end_mode", { length: 50 })
+    .notNull()
+    .default("DRIVER_ORIGIN"),
   endDepotLatitude: varchar("end_depot_latitude", { length: 50 }),
   endDepotLongitude: varchar("end_depot_longitude", { length: 50 }),
   endDepotAddress: varchar("end_depot_address", { length: 500 }),

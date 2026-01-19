@@ -54,7 +54,7 @@ export interface BalanceResult {
  */
 export function calculateIdealStopsPerVehicle(
   totalStops: number,
-  vehicleCount: number
+  vehicleCount: number,
 ): number {
   if (vehicleCount === 0) return 0;
   return Math.ceil(totalStops / vehicleCount);
@@ -74,10 +74,9 @@ export function getBalanceScore(routes: BalanceableRoute[]): number {
 
   // Calculate standard deviation
   const deviations = routes.map((r) =>
-    Math.pow(r.stops.length - idealPerRoute, 2)
+    Math.pow(r.stops.length - idealPerRoute, 2),
   );
-  const variance =
-    deviations.reduce((sum, d) => sum + d, 0) / routes.length;
+  const variance = deviations.reduce((sum, d) => sum + d, 0) / routes.length;
   const stdDev = Math.sqrt(variance);
 
   // Normalize to 0-100 score
@@ -119,7 +118,7 @@ export function getBalanceStats(routes: BalanceableRoute[]): {
  */
 function canAcceptOrder(
   route: BalanceableRoute,
-  order: BalanceableStop
+  order: BalanceableStop,
 ): boolean {
   // Check order limit
   if (route.stops.length >= route.maxOrders) {
@@ -145,7 +144,7 @@ function canAcceptOrder(
  */
 function calculateInsertionCost(
   route: BalanceableRoute,
-  order: BalanceableStop
+  order: BalanceableStop,
 ): number {
   if (route.stops.length === 0) {
     return 0; // Empty route, no cost
@@ -157,7 +156,7 @@ function calculateInsertionCost(
   for (const stop of route.stops) {
     const distance = calculateDistance(
       { latitude: stop.latitude, longitude: stop.longitude },
-      { latitude: order.latitude, longitude: order.longitude }
+      { latitude: order.latitude, longitude: order.longitude },
     );
     minDistance = Math.min(minDistance, distance);
   }
@@ -191,7 +190,7 @@ function sortByStopCountDesc(routes: BalanceableRoute[]): BalanceableRoute[] {
  */
 export function redistributeOrders(
   routes: BalanceableRoute[],
-  config: BalanceConfig = { enabled: true }
+  config: BalanceConfig = { enabled: true },
 ): BalanceResult {
   if (!config.enabled || routes.length <= 1) {
     return {
@@ -237,7 +236,10 @@ export function redistributeOrders(
       ((idealStops - underloaded.stops.length) / idealStops) * 100;
 
     // Stop if within acceptable deviation
-    if (overloadedDeviation <= maxDeviation && underloadedDeviation <= maxDeviation) {
+    if (
+      overloadedDeviation <= maxDeviation &&
+      underloadedDeviation <= maxDeviation
+    ) {
       break;
     }
 
@@ -264,7 +266,7 @@ export function redistributeOrders(
     if (bestOrder) {
       // Remove from overloaded
       const orderIndex = overloaded.stops.findIndex(
-        (s) => s.orderId === bestOrder!.orderId
+        (s) => s.orderId === bestOrder!.orderId,
       );
       if (orderIndex !== -1) {
         overloaded.stops.splice(orderIndex, 1);
@@ -308,7 +310,7 @@ export function redistributeOrders(
 export function calculateBalancedMaxOrders(
   totalOrders: number,
   vehicleCount: number,
-  defaultMaxOrders: number = 50
+  defaultMaxOrders: number = 50,
 ): number {
   if (vehicleCount === 0) return defaultMaxOrders;
 
@@ -324,9 +326,7 @@ export function calculateBalancedMaxOrders(
  * Get balance improvement potential
  * Estimates how much the balance could improve with redistribution
  */
-export function getBalanceImprovementPotential(
-  routes: BalanceableRoute[]
-): {
+export function getBalanceImprovementPotential(routes: BalanceableRoute[]): {
   currentScore: number;
   theoreticalBestScore: number;
   improvementPotential: number;

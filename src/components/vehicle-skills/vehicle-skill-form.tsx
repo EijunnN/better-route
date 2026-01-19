@@ -176,7 +176,9 @@ export function VehicleSkillForm({
             <Checkbox
               id="active"
               checked={formData.active}
-              onCheckedChange={(checked) => updateField("active", checked === true)}
+              onCheckedChange={(checked) =>
+                updateField("active", checked === true)
+              }
               disabled={isSubmitting}
             />
             <Label htmlFor="active" className="text-sm cursor-pointer">

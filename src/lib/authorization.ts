@@ -178,8 +178,14 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
 };
 
 // Precomputed Set versions of role permissions for O(1) lookups
-const ROLE_PERMISSIONS_SETS: Record<string, Set<Permission>> = Object.fromEntries(
-  Object.entries(ROLE_PERMISSIONS).map(([role, perms]) => [role, new Set(perms)])
+const ROLE_PERMISSIONS_SETS: Record<
+  string,
+  Set<Permission>
+> = Object.fromEntries(
+  Object.entries(ROLE_PERMISSIONS).map(([role, perms]) => [
+    role,
+    new Set(perms),
+  ]),
 );
 
 /**
@@ -296,7 +302,10 @@ import {
  * Cache for user permissions to avoid repeated DB queries
  * Key: `${userId}:${entity}:${action}`
  */
-const permissionCache = new Map<string, { allowed: boolean; expiresAt: number }>();
+const permissionCache = new Map<
+  string,
+  { allowed: boolean; expiresAt: number }
+>();
 const CACHE_TTL_MS = 60000; // 1 minute cache
 
 /**
@@ -344,7 +353,10 @@ export async function hasPermissionFromDB(
 
     if (userRolesData.length === 0) {
       // No roles assigned, fall back to legacy role check
-      permissionCache.set(cacheKey, { allowed: false, expiresAt: Date.now() + CACHE_TTL_MS });
+      permissionCache.set(cacheKey, {
+        allowed: false,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
       return false;
     }
 
@@ -354,18 +366,16 @@ export async function hasPermissionFromDB(
     const systemAdminRoles = await db
       .select()
       .from(roles)
-      .where(
-        and(
-          eq(roles.code, "ADMIN_SISTEMA"),
-          eq(roles.active, true),
-        ),
-      );
+      .where(and(eq(roles.code, "ADMIN_SISTEMA"), eq(roles.active, true)));
 
     const adminRoleIdsSet = new Set(systemAdminRoles.map((r) => r.id));
     const isAdmin = roleIds.some((id) => adminRoleIdsSet.has(id));
 
     if (isAdmin) {
-      permissionCache.set(cacheKey, { allowed: true, expiresAt: Date.now() + CACHE_TTL_MS });
+      permissionCache.set(cacheKey, {
+        allowed: true,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
       return true;
     }
 
@@ -390,12 +400,18 @@ export async function hasPermissionFromDB(
         .limit(1);
 
       if (permissionCheck.length > 0) {
-        permissionCache.set(cacheKey, { allowed: true, expiresAt: Date.now() + CACHE_TTL_MS });
+        permissionCache.set(cacheKey, {
+          allowed: true,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        });
         return true;
       }
     }
 
-    permissionCache.set(cacheKey, { allowed: false, expiresAt: Date.now() + CACHE_TTL_MS });
+    permissionCache.set(cacheKey, {
+      allowed: false,
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    });
     return false;
   } catch (error) {
     console.error("Error checking permission from DB:", error);

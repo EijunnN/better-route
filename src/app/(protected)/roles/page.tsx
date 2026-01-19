@@ -80,11 +80,17 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 function RolesPageContent() {
-  const { user: authUser, companyId: authCompanyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    user: authUser,
+    companyId: authCompanyId,
+    isLoading: isAuthLoading,
+  } = useAuth();
   const { toast } = useToast();
   const [roles, setRoles] = useState<Role[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -105,7 +111,8 @@ function RolesPageContent() {
   const isSystemAdmin = authUser?.role === "ADMIN_SISTEMA";
 
   // Use selected company for system admins, otherwise use auth company
-  const effectiveCompanyId = isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;
+  const effectiveCompanyId =
+    isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;
 
   // Fetch companies (only for system admins)
   const fetchCompanies = useCallback(async () => {
@@ -138,23 +145,26 @@ function RolesPageContent() {
     }
   }, [effectiveCompanyId]);
 
-  const fetchRolePermissions = useCallback(async (roleId: string) => {
-    if (!effectiveCompanyId) return;
-    setIsLoadingPermissions(true);
-    try {
-      const response = await fetch(`/api/roles/${roleId}/permissions`, {
-        headers: {
-          "x-company-id": effectiveCompanyId,
-        },
-      });
-      const data = await response.json();
-      setRolePermissions(data);
-    } catch (error) {
-      console.error("Error fetching role permissions:", error);
-    } finally {
-      setIsLoadingPermissions(false);
-    }
-  }, [effectiveCompanyId]);
+  const fetchRolePermissions = useCallback(
+    async (roleId: string) => {
+      if (!effectiveCompanyId) return;
+      setIsLoadingPermissions(true);
+      try {
+        const response = await fetch(`/api/roles/${roleId}/permissions`, {
+          headers: {
+            "x-company-id": effectiveCompanyId,
+          },
+        });
+        const data = await response.json();
+        setRolePermissions(data);
+      } catch (error) {
+        console.error("Error fetching role permissions:", error);
+      } finally {
+        setIsLoadingPermissions(false);
+      }
+    },
+    [effectiveCompanyId],
+  );
 
   // Fetch companies for system admins
   useEffect(() => {
@@ -165,7 +175,12 @@ function RolesPageContent() {
 
   // Auto-select first company for system admins when companies load
   useEffect(() => {
-    if (isSystemAdmin && !authCompanyId && !selectedCompanyId && companies.length > 0) {
+    if (
+      isSystemAdmin &&
+      !authCompanyId &&
+      !selectedCompanyId &&
+      companies.length > 0
+    ) {
       setSelectedCompanyId(companies[0].id);
     }
   }, [isSystemAdmin, authCompanyId, selectedCompanyId, companies]);
@@ -225,7 +240,8 @@ function RolesPageContent() {
         description: `El rol "${formData.name}" ha sido creado exitosamente.`,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Error al crear el rol";
+      const errorMessage =
+        err instanceof Error ? err.message : "Error al crear el rol";
       setFormError(errorMessage);
       toast({
         title: "Error al crear rol",
@@ -266,7 +282,8 @@ function RolesPageContent() {
     } catch (err) {
       toast({
         title: "Error al eliminar rol",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -332,7 +349,13 @@ function RolesPageContent() {
     category: string,
     enable: boolean,
   ) => {
-    if (!selectedRole || !rolePermissions || selectedRole.isSystem || !effectiveCompanyId) return;
+    if (
+      !selectedRole ||
+      !rolePermissions ||
+      selectedRole.isSystem ||
+      !effectiveCompanyId
+    )
+      return;
 
     const permsInCategory = rolePermissions.permissions[category] || [];
     const updates = permsInCategory
@@ -342,13 +365,13 @@ function RolesPageContent() {
     if (updates.length === 0) return;
 
     // Optimistically update local state first (for smooth animation)
-    const permissionIdsToUpdate = new Set(updates.map(u => u.permissionId));
+    const permissionIdsToUpdate = new Set(updates.map((u) => u.permissionId));
     setRolePermissions((prev) => {
       if (!prev) return prev;
       const updated = { ...prev };
       updated.permissions = { ...updated.permissions };
       updated.permissions[category] = updated.permissions[category].map((p) =>
-        permissionIdsToUpdate.has(p.id) ? { ...p, enabled: enable } : p
+        permissionIdsToUpdate.has(p.id) ? { ...p, enabled: enable } : p,
       );
       return updated;
     });
@@ -358,9 +381,12 @@ function RolesPageContent() {
     setRoles((prev) =>
       prev.map((r) =>
         r.id === selectedRole.id
-          ? { ...r, enabledPermissionsCount: r.enabledPermissionsCount + countDelta }
-          : r
-      )
+          ? {
+              ...r,
+              enabledPermissionsCount: r.enabledPermissionsCount + countDelta,
+            }
+          : r,
+      ),
     );
 
     try {
@@ -495,7 +521,9 @@ function RolesPageContent() {
         <Card>
           <CardContent className="flex items-center gap-4 py-3">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
-            <span className="text-sm text-muted-foreground">Cargando empresas...</span>
+            <span className="text-sm text-muted-foreground">
+              Cargando empresas...
+            </span>
           </CardContent>
         </Card>
       )}
@@ -598,7 +626,9 @@ function RolesPageContent() {
                               )}
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogContent
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <AlertDialogHeader>
                               <AlertDialogTitle>
                                 ¿Eliminar rol?

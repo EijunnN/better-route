@@ -5,7 +5,9 @@ import { csvColumnMappingTemplates } from "@/db/schema";
 import { requireTenantContext, setTenantContext } from "@/lib/tenant";
 import { updateCsvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
 
-function extractTenantContext(request: NextRequest): { companyId: string; userId: string | undefined } | null {
+function extractTenantContext(
+  request: NextRequest,
+): { companyId: string; userId: string | undefined } | null {
   const companyId = request.headers.get("x-company-id");
   const userId = request.headers.get("x-user-id");
   if (!companyId) return null;

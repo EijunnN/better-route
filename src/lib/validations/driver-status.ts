@@ -9,7 +9,7 @@ const DRIVER_STATUS_TRANSITIONS_SETS: Record<
   Object.entries(DRIVER_STATUS_TRANSITIONS).map(([status, transitions]) => [
     status,
     new Set(transitions as (keyof typeof DRIVER_STATUS)[]),
-  ])
+  ]),
 ) as Record<keyof typeof DRIVER_STATUS, Set<keyof typeof DRIVER_STATUS>>;
 
 /**

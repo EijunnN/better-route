@@ -44,7 +44,10 @@ export async function GET(request: NextRequest) {
 
     const whereClause =
       conditions.length > 0
-        ? and(withTenantFilter(alertRules, [], tenantCtx.companyId), ...conditions)
+        ? and(
+            withTenantFilter(alertRules, [], tenantCtx.companyId),
+            ...conditions,
+          )
         : withTenantFilter(alertRules, [], tenantCtx.companyId);
 
     // Get rules with filters

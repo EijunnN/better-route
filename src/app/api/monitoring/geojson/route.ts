@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs } from "@/db/schema";
+import { optimizationJobs, routeStops } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
 
@@ -77,6 +77,33 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Get actual stop statuses from the database
+    const dbStops = await db.query.routeStops.findMany({
+      where: eq(routeStops.jobId, confirmedJob.id),
+      columns: {
+        routeId: true,
+        sequence: true,
+        status: true,
+        latitude: true,
+        longitude: true,
+        address: true,
+      },
+      with: {
+        order: {
+          columns: {
+            trackingId: true,
+          },
+        },
+      },
+    });
+
+    // Create a map for quick lookup: routeId-sequence -> status
+    const stopStatusMap = new Map<string, string>();
+    dbStops.forEach((stop) => {
+      const key = `${stop.routeId}-${stop.sequence}`;
+      stopStatusMap.set(key, stop.status);
+    });
+
     // Color palette for routes
     const colors = [
       "#3b82f6", // blue
@@ -124,7 +151,7 @@ export async function GET(request: NextRequest) {
               type: "route",
               routeId: route.routeId,
               vehiclePlate: route.vehiclePlate,
-              driverName: route.driverName || "Unassigned",
+              driverName: route.driverName || "Sin asignar",
               color,
               totalStops: stops.length,
             },
@@ -135,19 +162,23 @@ export async function GET(request: NextRequest) {
           });
 
           // Add stop point features
-          stops.forEach((stop, stopIndex: number) => {
+          stops.forEach((stop) => {
+            // Get real status from database, fallback to PENDING if not found
+            const statusKey = `${route.routeId}-${stop.sequence}`;
+            const realStatus = stopStatusMap.get(statusKey) || "PENDING";
+
             features.push({
               type: "Feature",
               properties: {
                 type: "stop",
                 routeId: route.routeId,
                 vehiclePlate: route.vehiclePlate,
-                driverName: route.driverName || "Unassigned",
+                driverName: route.driverName || "Sin asignar",
                 color,
                 sequence: stop.sequence,
                 trackingId: stop.trackingId,
                 address: stop.address,
-                status: getStopStatusForMap(stopIndex, stops.length),
+                status: realStatus,
               },
               geometry: {
                 type: "Point",
@@ -175,12 +206,4 @@ export async function GET(request: NextRequest) {
       { status: 500 },
     );
   }
-}
-
-// Mock stop status for map visualization
-function getStopStatusForMap(index: number, totalStops: number): string {
-  const completedThreshold = Math.floor(totalStops * 0.5);
-  if (index < completedThreshold) return "COMPLETED";
-  if (index === completedThreshold) return "IN_PROGRESS";
-  return "PENDING";
 }

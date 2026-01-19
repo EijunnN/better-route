@@ -43,7 +43,9 @@ export async function GET(request: NextRequest) {
       Object.fromEntries(searchParams),
     );
 
-    const conditions = [withTenantFilter(optimizationConfigurations, [], tenantCtx.companyId)];
+    const conditions = [
+      withTenantFilter(optimizationConfigurations, [], tenantCtx.companyId),
+    ];
 
     if (query.status) {
       conditions.push(eq(optimizationConfigurations.status, query.status));

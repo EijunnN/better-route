@@ -167,7 +167,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (isPrimary && role.code) {
       await db
         .update(users)
-        .set({ role: role.code as keyof typeof import("@/db/schema").USER_ROLES, updatedAt: new Date() })
+        .set({
+          role: role.code as keyof typeof import("@/db/schema").USER_ROLES,
+          updatedAt: new Date(),
+        })
         .where(eq(users.id, id));
     }
 

@@ -77,6 +77,9 @@ interface RouteMapProps {
   variant?: "card" | "fullscreen";
   showLegend?: boolean;
   showDepot?: boolean;
+  onMapReady?: (map: maplibregl.Map) => void;
+  /** Order IDs that should be highlighted as selected (for pencil selection feedback) */
+  highlightedOrderIds?: string[];
 }
 
 /**
@@ -139,7 +142,7 @@ export const ROUTE_COLORS = [
 ];
 
 const UNSELECTED_COLOR = "#4a5568"; // Gray for unselected routes
-const UNASSIGNED_COLOR = "#6b7280"; // Gray for unassigned items
+const UNASSIGNED_COLOR = "#9ca3af"; // Light gray for unassigned items (subtle)
 
 export function RouteMap({
   routes,
@@ -152,6 +155,8 @@ export function RouteMap({
   variant = "card",
   showLegend = true,
   showDepot = false,
+  onMapReady,
+  highlightedOrderIds = [],
 }: RouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -206,6 +211,48 @@ export function RouteMap({
       }
     });
   }, [selectedRouteId, routes]);
+
+  // Highlight selected orders (for pencil selection feedback)
+  useEffect(() => {
+    if (!map.current) return;
+
+    const highlightedSet = new Set(highlightedOrderIds);
+
+    markersRef.current.forEach((marker) => {
+      const el = marker.getElement();
+      const orderIdsAttr = el.getAttribute("data-order-ids");
+      const singleOrderId = el.getAttribute("data-order-id");
+      const pin = el.querySelector(".pin-marker") as HTMLElement;
+
+      if (!pin) return;
+
+      // Check if any of this marker's orders are highlighted
+      let isHighlighted = false;
+
+      if (orderIdsAttr) {
+        try {
+          const orderIds = JSON.parse(orderIdsAttr) as string[];
+          isHighlighted = orderIds.some((id) => highlightedSet.has(id));
+        } catch {
+          // Ignore parse errors
+        }
+      } else if (singleOrderId) {
+        isHighlighted = highlightedSet.has(singleOrderId);
+      }
+
+      if (isHighlighted) {
+        pin.style.transform = "scale(1.25)";
+        pin.style.filter =
+          "drop-shadow(0 0 8px #f59e0b) drop-shadow(0 0 4px #f59e0b)";
+        pin.style.zIndex = "100";
+      } else {
+        // Always reset styles when not highlighted (including when selection is cleared)
+        pin.style.transform = "";
+        pin.style.filter = "";
+        pin.style.zIndex = "";
+      }
+    });
+  }, [highlightedOrderIds]);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -459,7 +506,14 @@ export function RouteMap({
             route.stops.forEach((stop) => {
               const markerEl = document.createElement("div");
               markerEl.setAttribute("data-route-id", route.routeId);
-              const hasMultipleOrders = stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1;
+              // Store all order IDs for this stop (for selection highlighting)
+              const orderIds =
+                stop.groupedOrderIds && stop.groupedOrderIds.length > 1
+                  ? stop.groupedOrderIds
+                  : [stop.orderId];
+              markerEl.setAttribute("data-order-ids", JSON.stringify(orderIds));
+              const hasMultipleOrders =
+                stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1;
               const orderBadge = hasMultipleOrders
                 ? `<span style="
                     position: absolute;
@@ -500,17 +554,24 @@ export function RouteMap({
               `;
 
               markerEl.addEventListener("mouseenter", () => {
-                const pin = markerEl.querySelector('.pin-marker') as HTMLElement;
+                const pin = markerEl.querySelector(
+                  ".pin-marker",
+                ) as HTMLElement;
                 if (pin) pin.style.transform = "scale(1.15) translateY(-3px)";
               });
               markerEl.addEventListener("mouseleave", () => {
-                const pin = markerEl.querySelector('.pin-marker') as HTMLElement;
+                const pin = markerEl.querySelector(
+                  ".pin-marker",
+                ) as HTMLElement;
                 if (pin) pin.style.transform = "scale(1) translateY(0)";
               });
 
               // Generate popup content based on whether stop has grouped orders
-              const isGrouped = stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1;
-              const orderCount = isGrouped ? stop.groupedTrackingIds!.length : 1;
+              const isGrouped =
+                stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1;
+              const orderCount = isGrouped
+                ? stop.groupedTrackingIds!.length
+                : 1;
 
               const popupContent = isGrouped
                 ? `
@@ -520,12 +581,16 @@ export function RouteMap({
                       <span style="color: #888; font-size: 11px;">${orderCount} pedidos</span>
                     </div>
                     <div style="margin-bottom: 8px;">
-                      ${stop.groupedTrackingIds!.map((tid, idx) => `
+                      ${stop
+                        .groupedTrackingIds!.map(
+                          (tid, idx) => `
                         <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
                           <span style="background: ${color}33; color: ${color}; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">R${routeIndex + 1}-${stop.sequence}.${idx + 1}</span>
                           <span style="color: #fff; font-size: 12px;">${tid}</span>
                         </div>
-                      `).join("")}
+                      `,
+                        )
+                        .join("")}
                     </div>
                     <span style="color: ${color}; font-weight: 600;">${route.vehiclePlate}</span>
                     ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${route.driverName}</span>` : ""}
@@ -552,7 +617,10 @@ export function RouteMap({
               }).setHTML(popupContent);
 
               if (map.current) {
-                const marker = new maplibregl.Marker({ element: markerEl, anchor: "bottom" })
+                const marker = new maplibregl.Marker({
+                  element: markerEl,
+                  anchor: "bottom",
+                })
                   .setLngLat([
                     parseFloat(stop.longitude),
                     parseFloat(stop.latitude),
@@ -574,30 +642,32 @@ export function RouteMap({
             });
           });
 
-          // Add unassigned orders markers (gray)
+          // Add unassigned orders markers (subtle gray - reduced visibility)
           unassignedOrders.forEach((order) => {
             if (!map.current || !order.latitude || !order.longitude) return;
 
             const markerEl = document.createElement("div");
             markerEl.setAttribute("data-type", "unassigned");
+            markerEl.setAttribute("data-order-id", order.orderId);
             markerEl.innerHTML = `
               <div class="pin-marker" style="
                 position: relative;
                 cursor: pointer;
-                transition: transform 0.15s ease;
-                opacity: 0.7;
+                transition: all 0.15s ease;
+                opacity: 0.35;
+                filter: saturate(0.5);
               ">
-                <svg width="28" height="35" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="20" height="25" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M16 0C7.163 0 0 7.163 0 16c0 12 16 24 16 24s16-12 16-24C32 7.163 24.837 0 16 0z" fill="${UNASSIGNED_COLOR}"/>
                   <path d="M16 1C7.716 1 1 7.716 1 16c0 5.5 4 11 8 15.5 2.5 2.8 5.5 5.5 7 6.8 1.5-1.3 4.5-4 7-6.8 4-4.5 8-10 8-15.5 0-8.284-6.716-15-15-15z" fill="rgba(255,255,255,0.1)"/>
                   <circle cx="16" cy="14" r="10" fill="rgba(0,0,0,0.2)"/>
                 </svg>
                 <span style="
                   position: absolute;
-                  top: 5px;
+                  top: 3px;
                   left: 50%;
                   transform: translateX(-50%);
-                  font-size: 10px;
+                  font-size: 8px;
                   font-weight: 700;
                   color: white;
                   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
@@ -606,12 +676,20 @@ export function RouteMap({
             `;
 
             markerEl.addEventListener("mouseenter", () => {
-              const pin = markerEl.querySelector('.pin-marker') as HTMLElement;
-              if (pin) pin.style.transform = "scale(1.15) translateY(-3px)";
+              const pin = markerEl.querySelector(".pin-marker") as HTMLElement;
+              if (pin) {
+                pin.style.transform = "scale(1.3) translateY(-3px)";
+                pin.style.opacity = "0.7";
+                pin.style.filter = "saturate(1)";
+              }
             });
             markerEl.addEventListener("mouseleave", () => {
-              const pin = markerEl.querySelector('.pin-marker') as HTMLElement;
-              if (pin) pin.style.transform = "scale(1) translateY(0)";
+              const pin = markerEl.querySelector(".pin-marker") as HTMLElement;
+              if (pin) {
+                pin.style.transform = "scale(1) translateY(0)";
+                pin.style.opacity = "0.35";
+                pin.style.filter = "saturate(0.5)";
+              }
             });
 
             const popup = new maplibregl.Popup({
@@ -629,7 +707,10 @@ export function RouteMap({
               </div>
             `);
 
-            const marker = new maplibregl.Marker({ element: markerEl, anchor: "bottom" })
+            const marker = new maplibregl.Marker({
+              element: markerEl,
+              anchor: "bottom",
+            })
               .setLngLat([
                 parseFloat(order.longitude),
                 parseFloat(order.latitude),
@@ -642,7 +723,12 @@ export function RouteMap({
 
           // Add vehicles without routes markers (distinctive with truck icon and dashed border)
           vehiclesWithoutRoutes.forEach((vehicle) => {
-            if (!map.current || !vehicle.originLatitude || !vehicle.originLongitude) return;
+            if (
+              !map.current ||
+              !vehicle.originLatitude ||
+              !vehicle.originLongitude
+            )
+              return;
 
             const vehicleEl = document.createElement("div");
             vehicleEl.setAttribute("data-type", "vehicle-no-route");
@@ -689,11 +775,15 @@ export function RouteMap({
             `;
 
             vehicleEl.addEventListener("mouseenter", () => {
-              const inner = vehicleEl.querySelector('.vehicle-no-route-marker') as HTMLElement;
+              const inner = vehicleEl.querySelector(
+                ".vehicle-no-route-marker",
+              ) as HTMLElement;
               if (inner) inner.style.transform = "scale(1.15)";
             });
             vehicleEl.addEventListener("mouseleave", () => {
-              const inner = vehicleEl.querySelector('.vehicle-no-route-marker') as HTMLElement;
+              const inner = vehicleEl.querySelector(
+                ".vehicle-no-route-marker",
+              ) as HTMLElement;
               if (inner) inner.style.transform = "scale(1)";
             });
 
@@ -722,7 +812,11 @@ export function RouteMap({
           });
 
           // Fit bounds to show all markers
-          if (routes.length > 0 || unassignedOrders.length > 0 || vehiclesWithoutRoutes.length > 0) {
+          if (
+            routes.length > 0 ||
+            unassignedOrders.length > 0 ||
+            vehiclesWithoutRoutes.length > 0
+          ) {
             const allCoords: [number, number][] = [];
 
             if (showDepot && depot) {
@@ -776,6 +870,11 @@ export function RouteMap({
           }
 
           setIsLoading(false);
+
+          // Notify parent when map is ready
+          if (map.current && onMapReady) {
+            onMapReady(map.current);
+          }
         });
 
         // Click on map to deselect
@@ -815,7 +914,7 @@ export function RouteMap({
     const style = map.current.getStyle();
     if (style?.layers) {
       style.layers.forEach((layer) => {
-        if (layer.id.startsWith('zone-')) {
+        if (layer.id.startsWith("zone-")) {
           if (map.current?.getLayer(layer.id)) {
             map.current.removeLayer(layer.id);
           }
@@ -824,7 +923,7 @@ export function RouteMap({
     }
     if (style?.sources) {
       Object.keys(style.sources).forEach((sourceId) => {
-        if (sourceId.startsWith('zone-source-')) {
+        if (sourceId.startsWith("zone-source-")) {
           if (map.current?.getSource(sourceId)) {
             map.current.removeSource(sourceId);
           }
@@ -839,17 +938,19 @@ export function RouteMap({
       const sourceId = `zone-source-${index}`;
       const fillLayerId = `zone-fill-${index}`;
       const outlineLayerId = `zone-outline-${index}`;
-      const color = zone.color || '#3B82F6';
+      const color = zone.color || "#3B82F6";
 
       // Add source
       map.current.addSource(sourceId, {
-        type: 'geojson',
+        type: "geojson",
         data: {
-          type: 'Feature',
+          type: "Feature",
           properties: {
             name: zone.name,
             vehicleCount: zone.vehicleCount,
-            vehicles: zone.vehicles.map(v => v.plate || 'Sin placa').join(', '),
+            vehicles: zone.vehicles
+              .map((v) => v.plate || "Sin placa")
+              .join(", "),
           },
           geometry: zone.geometry as GeoJSON.Geometry,
         },
@@ -858,58 +959,65 @@ export function RouteMap({
       // Add fill layer (semi-transparent)
       map.current.addLayer({
         id: fillLayerId,
-        type: 'fill',
+        type: "fill",
         source: sourceId,
         paint: {
-          'fill-color': color,
-          'fill-opacity': 0.15,
+          "fill-color": color,
+          "fill-opacity": 0.15,
         },
       });
 
       // Add outline layer
       map.current.addLayer({
         id: outlineLayerId,
-        type: 'line',
+        type: "line",
         source: sourceId,
         paint: {
-          'line-color': color,
-          'line-width': 2,
-          'line-opacity': 0.8,
+          "line-color": color,
+          "line-width": 2,
+          "line-opacity": 0.8,
         },
       });
 
       // Add click handler for zone popup (dynamically import maplibregl for popup)
-      map.current.on('click', fillLayerId, async (e) => {
+      map.current.on("click", fillLayerId, async (e) => {
         if (!map.current || !e.features?.[0]) return;
 
         const maplibreglModule = await import("maplibre-gl");
         const props = e.features[0].properties;
         const coordinates = e.lngLat;
 
-        new maplibreglModule.Popup({ closeButton: true, offset: 10, className: "dark-popup" })
+        new maplibreglModule.Popup({
+          closeButton: true,
+          offset: 10,
+          className: "dark-popup",
+        })
           .setLngLat(coordinates)
           .setHTML(`
             <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 160px;">
               <strong style="color: ${color}; font-size: 14px;">${props?.name || zone.name}</strong><br/>
-              <span style="color: #aaa; font-size: 12px;">${zone.vehicleCount} vehículo${zone.vehicleCount !== 1 ? 's' : ''} asignado${zone.vehicleCount !== 1 ? 's' : ''}</span>
-              ${zone.vehicles.length > 0 ? `
+              <span style="color: #aaa; font-size: 12px;">${zone.vehicleCount} vehículo${zone.vehicleCount !== 1 ? "s" : ""} asignado${zone.vehicleCount !== 1 ? "s" : ""}</span>
+              ${
+                zone.vehicles.length > 0
+                  ? `
                 <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
-                <span style="color: #888; font-size: 11px;">${zone.vehicles.map(v => v.plate || 'Sin placa').join(', ')}</span>
-              ` : ''}
+                <span style="color: #888; font-size: 11px;">${zone.vehicles.map((v) => v.plate || "Sin placa").join(", ")}</span>
+              `
+                  : ""
+              }
             </div>
           `)
           .addTo(map.current);
       });
 
       // Change cursor on hover
-      map.current.on('mouseenter', fillLayerId, () => {
-        if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+      map.current.on("mouseenter", fillLayerId, () => {
+        if (map.current) map.current.getCanvas().style.cursor = "pointer";
       });
-      map.current.on('mouseleave', fillLayerId, () => {
-        if (map.current) map.current.getCanvas().style.cursor = '';
+      map.current.on("mouseleave", fillLayerId, () => {
+        if (map.current) map.current.getCanvas().style.cursor = "";
       });
     });
-
   }, [zones, isLoading]);
 
   if (error) {
@@ -997,10 +1105,12 @@ export function RouteMap({
                       ? "opacity-40 hover:opacity-70"
                       : "hover:bg-gray-800"
                 }`}
-                style={{
-                  borderColor: ROUTE_COLORS[i % ROUTE_COLORS.length],
-                  "--tw-ring-color": ROUTE_COLORS[i % ROUTE_COLORS.length],
-                } as React.CSSProperties}
+                style={
+                  {
+                    borderColor: ROUTE_COLORS[i % ROUTE_COLORS.length],
+                    "--tw-ring-color": ROUTE_COLORS[i % ROUTE_COLORS.length],
+                  } as React.CSSProperties
+                }
               >
                 <div
                   className="w-3 h-3 rounded-full"

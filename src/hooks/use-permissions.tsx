@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, type ReactNode } from "react";
 import { useAuth } from "./use-auth";
 
 interface PermissionsContextValue {
@@ -13,7 +8,9 @@ interface PermissionsContextValue {
   isLoading: boolean;
   error: string | null;
   hasPermission: (entity: string, action: string) => boolean;
-  hasAnyPermission: (checks: Array<{ entity: string; action: string }>) => boolean;
+  hasAnyPermission: (
+    checks: Array<{ entity: string; action: string }>,
+  ) => boolean;
   refetch: () => Promise<void>;
 }
 
@@ -93,9 +90,13 @@ export function usePermissions(): PermissionsContextValue {
       if (permissionsSet.has("*")) return true;
       return permissionsSet.has(`${entity}:${action}`);
     },
-    hasAnyPermission: (checks: Array<{ entity: string; action: string }>): boolean => {
+    hasAnyPermission: (
+      checks: Array<{ entity: string; action: string }>,
+    ): boolean => {
       if (permissionsSet.has("*")) return true;
-      return checks.some((check) => permissionsSet.has(`${check.entity}:${check.action}`));
+      return checks.some((check) =>
+        permissionsSet.has(`${check.entity}:${check.action}`),
+      );
     },
     refetch,
   };

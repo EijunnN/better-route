@@ -68,7 +68,12 @@ export async function GET(
         timeWindowPresets,
         eq(orders.timeWindowPresetId, timeWindowPresets.id),
       )
-      .where(and(eq(orders.id, id), withTenantFilter(orders, [], tenantCtx.companyId)))
+      .where(
+        and(
+          eq(orders.id, id),
+          withTenantFilter(orders, [], tenantCtx.companyId),
+        ),
+      )
       .limit(1);
 
     if (result.length === 0) {

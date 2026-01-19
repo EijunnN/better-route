@@ -54,13 +54,15 @@ function detectSeparator(headerLine: string): string {
 }
 
 function parseCSV(text: string): CSVRow[] {
-  const lines = text.split(/\r?\n/).filter(line => line.trim());
+  const lines = text.split(/\r?\n/).filter((line) => line.trim());
   if (lines.length < 2) return [];
 
   // Auto-detect separator from header line
   const separator = detectSeparator(lines[0]);
 
-  const headers = parseCSVLine(lines[0], separator).map(h => h.trim().toLowerCase());
+  const headers = parseCSVLine(lines[0], separator).map((h) =>
+    h.trim().toLowerCase(),
+  );
   const rows: CSVRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
@@ -114,7 +116,15 @@ function parseCSVLine(line: string, separator: string): string[] {
 }
 
 const VALID_ROLES = ["ADMIN_FLOTA", "PLANIFICADOR", "MONITOR", "CONDUCTOR"];
-const VALID_DRIVER_STATUS = ["AVAILABLE", "ASSIGNED", "IN_ROUTE", "ON_PAUSE", "COMPLETED", "UNAVAILABLE", "ABSENT"];
+const VALID_DRIVER_STATUS = [
+  "AVAILABLE",
+  "ASSIGNED",
+  "IN_ROUTE",
+  "ON_PAUSE",
+  "COMPLETED",
+  "UNAVAILABLE",
+  "ABSENT",
+];
 
 // Parse date in various formats: DD/MM/YYYY, YYYY-MM-DD, DD-MM-YYYY
 function parseDate(dateStr: string): Date | null {
@@ -147,7 +157,11 @@ function validateRow(row: CSVRow, rowNumber: number): ImportError[] {
   const errors: ImportError[] = [];
 
   if (!row.name || row.name.length < 2) {
-    errors.push({ row: rowNumber, field: "name", message: "Nombre requerido (mín. 2 caracteres)" });
+    errors.push({
+      row: rowNumber,
+      field: "name",
+      message: "Nombre requerido (mín. 2 caracteres)",
+    });
   }
 
   if (!row.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
@@ -155,20 +169,36 @@ function validateRow(row: CSVRow, rowNumber: number): ImportError[] {
   }
 
   if (!row.username || row.username.length < 3) {
-    errors.push({ row: rowNumber, field: "username", message: "Username requerido (mín. 3 caracteres)" });
+    errors.push({
+      row: rowNumber,
+      field: "username",
+      message: "Username requerido (mín. 3 caracteres)",
+    });
   }
 
   if (!row.password || row.password.length < 8) {
-    errors.push({ row: rowNumber, field: "password", message: "Contraseña requerida (mín. 8 caracteres)" });
+    errors.push({
+      row: rowNumber,
+      field: "password",
+      message: "Contraseña requerida (mín. 8 caracteres)",
+    });
   }
 
   if (!row.role || !VALID_ROLES.includes(row.role)) {
-    errors.push({ row: rowNumber, field: "role", message: `Rol inválido. Usar: ${VALID_ROLES.join(", ")}` });
+    errors.push({
+      row: rowNumber,
+      field: "role",
+      message: `Rol inválido. Usar: ${VALID_ROLES.join(", ")}`,
+    });
   }
 
   if (row.role === "CONDUCTOR") {
     if (row.driverStatus && !VALID_DRIVER_STATUS.includes(row.driverStatus)) {
-      errors.push({ row: rowNumber, field: "driverStatus", message: `Estado inválido. Usar: ${VALID_DRIVER_STATUS.join(", ")}` });
+      errors.push({
+        row: rowNumber,
+        field: "driverStatus",
+        message: `Estado inválido. Usar: ${VALID_DRIVER_STATUS.join(", ")}`,
+      });
     }
   }
 
@@ -192,7 +222,11 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { success: false, created: 0, errors: [{ row: 0, field: "file", message: "No se recibió archivo" }] },
+        {
+          success: false,
+          created: 0,
+          errors: [{ row: 0, field: "file", message: "No se recibió archivo" }],
+        },
         { status: 400 },
       );
     }
@@ -210,7 +244,17 @@ export async function POST(request: NextRequest) {
 
     if (rows.length === 0) {
       return NextResponse.json(
-        { success: false, created: 0, errors: [{ row: 0, field: "file", message: "Archivo vacío o formato inválido" }] },
+        {
+          success: false,
+          created: 0,
+          errors: [
+            {
+              row: 0,
+              field: "file",
+              message: "Archivo vacío o formato inválido",
+            },
+          ],
+        },
         { status: 400 },
       );
     }
@@ -236,13 +280,21 @@ export async function POST(request: NextRequest) {
 
     for (const { row, rowNumber } of validRows) {
       if (emails.has(row.email.toLowerCase())) {
-        allErrors.push({ row: rowNumber, field: "email", message: "Email duplicado en el archivo" });
+        allErrors.push({
+          row: rowNumber,
+          field: "email",
+          message: "Email duplicado en el archivo",
+        });
       } else {
         emails.add(row.email.toLowerCase());
       }
 
       if (usernames.has(row.username.toLowerCase())) {
-        allErrors.push({ row: rowNumber, field: "username", message: "Username duplicado en el archivo" });
+        allErrors.push({
+          row: rowNumber,
+          field: "username",
+          message: "Username duplicado en el archivo",
+        });
       } else {
         usernames.add(row.username.toLowerCase());
       }
@@ -271,25 +323,41 @@ export async function POST(request: NextRequest) {
           email: row.email.toLowerCase(),
           username: row.username.toLowerCase(),
           password: hashedPassword,
-          role: row.role as "ADMIN_FLOTA" | "PLANIFICADOR" | "MONITOR" | "CONDUCTOR",
+          role: row.role as
+            | "ADMIN_FLOTA"
+            | "PLANIFICADOR"
+            | "MONITOR"
+            | "CONDUCTOR",
           phone: row.phone || null,
           companyId: tenantCtx.companyId,
           // Driver fields
-          identification: isConductor ? (row.identification || null) : null,
-          licenseNumber: isConductor ? (row.licenseNumber || null) : null,
-          licenseExpiry: isConductor && row.licenseExpiry
-            ? parseDate(row.licenseExpiry)
-            : null,
-          licenseCategories: isConductor ? (row.licenseCategories || null) : null,
+          identification: isConductor ? row.identification || null : null,
+          licenseNumber: isConductor ? row.licenseNumber || null : null,
+          licenseExpiry:
+            isConductor && row.licenseExpiry
+              ? parseDate(row.licenseExpiry)
+              : null,
+          licenseCategories: isConductor ? row.licenseCategories || null : null,
           driverStatus: isConductor
-            ? (row.driverStatus || "AVAILABLE") as "AVAILABLE" | "ASSIGNED" | "IN_ROUTE" | "ON_PAUSE" | "COMPLETED" | "UNAVAILABLE" | "ABSENT"
+            ? ((row.driverStatus || "AVAILABLE") as
+                | "AVAILABLE"
+                | "ASSIGNED"
+                | "IN_ROUTE"
+                | "ON_PAUSE"
+                | "COMPLETED"
+                | "UNAVAILABLE"
+                | "ABSENT")
             : null,
-          primaryFleetId: isConductor ? (row.primaryFleetId || null) : null,
+          primaryFleetId: isConductor ? row.primaryFleetId || null : null,
           active: true,
         };
 
         // Check for license expiry and set status accordingly
-        if (isConductor && userData.licenseExpiry && isExpired(userData.licenseExpiry.toISOString())) {
+        if (
+          isConductor &&
+          userData.licenseExpiry &&
+          isExpired(userData.licenseExpiry.toISOString())
+        ) {
           userData.driverStatus = "UNAVAILABLE";
         }
 
@@ -298,18 +366,38 @@ export async function POST(request: NextRequest) {
         await logCreate("users", newUser.id, newUser);
         created++;
       } catch (error: unknown) {
-        const err = error as { code?: string; constraint?: string; message?: string };
+        const err = error as {
+          code?: string;
+          constraint?: string;
+          message?: string;
+        };
 
         if (err.code === "23505") {
           if (err.constraint?.includes("email")) {
-            createErrors.push({ row: rowNumber, field: "email", message: "Email ya existe en el sistema" });
+            createErrors.push({
+              row: rowNumber,
+              field: "email",
+              message: "Email ya existe en el sistema",
+            });
           } else if (err.constraint?.includes("username")) {
-            createErrors.push({ row: rowNumber, field: "username", message: "Username ya existe en el sistema" });
+            createErrors.push({
+              row: rowNumber,
+              field: "username",
+              message: "Username ya existe en el sistema",
+            });
           } else {
-            createErrors.push({ row: rowNumber, field: "general", message: "Registro duplicado" });
+            createErrors.push({
+              row: rowNumber,
+              field: "general",
+              message: "Registro duplicado",
+            });
           }
         } else {
-          createErrors.push({ row: rowNumber, field: "general", message: err.message || "Error al crear usuario" });
+          createErrors.push({
+            row: rowNumber,
+            field: "general",
+            message: err.message || "Error al crear usuario",
+          });
         }
       }
     }
@@ -322,7 +410,13 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error importing users:", error);
     return NextResponse.json(
-      { success: false, created: 0, errors: [{ row: 0, field: "general", message: "Error interno del servidor" }] },
+      {
+        success: false,
+        created: 0,
+        errors: [
+          { row: 0, field: "general", message: "Error interno del servidor" },
+        ],
+      },
       { status: 500 },
     );
   }

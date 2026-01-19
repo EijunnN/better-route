@@ -59,7 +59,8 @@ export function ZoneForm({
   const [selectedDays, setSelectedDays] = useState<string[]>(
     initialData?.activeDays ?? [],
   );
-  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(initialVehicleIds);
+  const [selectedVehicleIds, setSelectedVehicleIds] =
+    useState<string[]>(initialVehicleIds);
   const [vehicleSearch, setVehicleSearch] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,7 +103,7 @@ export function ZoneForm({
     setSelectedVehicleIds((prev) =>
       prev.includes(vehicleId)
         ? prev.filter((id) => id !== vehicleId)
-        : [...prev, vehicleId]
+        : [...prev, vehicleId],
     );
   };
 
@@ -400,8 +401,8 @@ export function ZoneForm({
           </span>
         </div>
         <p className="text-sm text-muted-foreground">
-          Selecciona los vehículos que pueden entregar en esta zona. Solo estos vehículos
-          recibirán pedidos de esta zona durante la optimización.
+          Selecciona los vehículos que pueden entregar en esta zona. Solo estos
+          vehículos recibirán pedidos de esta zona durante la optimización.
         </p>
 
         {/* Search vehicles */}
@@ -460,9 +461,7 @@ export function ZoneForm({
                     onClick={() => toggleVehicle(vehicle.id)}
                     disabled={isSubmitting}
                     className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${
-                      isSelected
-                        ? "bg-primary/10"
-                        : "hover:bg-muted/50"
+                      isSelected ? "bg-primary/10" : "hover:bg-muted/50"
                     }`}
                   >
                     <div
@@ -472,7 +471,9 @@ export function ZoneForm({
                           : "border-input"
                       }`}
                     >
-                      {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                      {isSelected && (
+                        <Check className="w-3 h-3 text-primary-foreground" />
+                      )}
                     </div>
                     <Truck className="w-4 h-4 text-muted-foreground" />
                     <div className="flex-1 min-w-0">

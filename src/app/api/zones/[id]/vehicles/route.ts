@@ -40,7 +40,11 @@ export async function GET(
     const { id: zoneId } = await params;
 
     // Verify zone exists and belongs to tenant
-    const whereClause = withTenantFilter(zones, [eq(zones.id, zoneId)], tenantCtx.companyId);
+    const whereClause = withTenantFilter(
+      zones,
+      [eq(zones.id, zoneId)],
+      tenantCtx.companyId,
+    );
     const [zone] = await db.select().from(zones).where(whereClause).limit(1);
 
     if (!zone) {
@@ -108,7 +112,11 @@ export async function POST(
     const validatedData = bulkZoneVehicleSchema.parse({ ...body, zoneId });
 
     // Verify zone exists and belongs to tenant
-    const whereClause = withTenantFilter(zones, [eq(zones.id, zoneId)], tenantCtx.companyId);
+    const whereClause = withTenantFilter(
+      zones,
+      [eq(zones.id, zoneId)],
+      tenantCtx.companyId,
+    );
     const [zone] = await db.select().from(zones).where(whereClause).limit(1);
 
     if (!zone) {
@@ -117,9 +125,11 @@ export async function POST(
 
     // Verify all vehicles exist and belong to tenant
     if (validatedData.vehicleIds.length > 0) {
-      const vehicleWhereClause = withTenantFilter(vehicles, [
-        inArray(vehicles.id, validatedData.vehicleIds),
-      ], tenantCtx.companyId);
+      const vehicleWhereClause = withTenantFilter(
+        vehicles,
+        [inArray(vehicles.id, validatedData.vehicleIds)],
+        tenantCtx.companyId,
+      );
       const existingVehicles = await db
         .select({ id: vehicles.id })
         .from(vehicles)
@@ -271,7 +281,11 @@ export async function DELETE(
     const { id: zoneId } = await params;
 
     // Verify zone exists and belongs to tenant
-    const whereClause = withTenantFilter(zones, [eq(zones.id, zoneId)], tenantCtx.companyId);
+    const whereClause = withTenantFilter(
+      zones,
+      [eq(zones.id, zoneId)],
+      tenantCtx.companyId,
+    );
     const [zone] = await db.select().from(zones).where(whereClause).limit(1);
 
     if (!zone) {

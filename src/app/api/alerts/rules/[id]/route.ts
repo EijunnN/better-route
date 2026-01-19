@@ -31,7 +31,10 @@ export async function GET(
     const { id } = await params;
 
     const rule = await db.query.alertRules.findFirst({
-      where: and(withTenantFilter(alertRules, [], tenantCtx.companyId), eq(alertRules.id, id)),
+      where: and(
+        withTenantFilter(alertRules, [], tenantCtx.companyId),
+        eq(alertRules.id, id),
+      ),
       with: {
         alerts: true,
       },
@@ -76,7 +79,10 @@ export async function PUT(
 
     // First verify the rule exists and belongs to tenant
     const existingRule = await db.query.alertRules.findFirst({
-      where: and(withTenantFilter(alertRules, [], tenantCtx.companyId), eq(alertRules.id, id)),
+      where: and(
+        withTenantFilter(alertRules, [], tenantCtx.companyId),
+        eq(alertRules.id, id),
+      ),
     });
 
     if (!existingRule) {
@@ -134,7 +140,10 @@ export async function DELETE(
 
     // First verify the rule exists and belongs to tenant
     const existingRule = await db.query.alertRules.findFirst({
-      where: and(withTenantFilter(alertRules, [], tenantCtx.companyId), eq(alertRules.id, id)),
+      where: and(
+        withTenantFilter(alertRules, [], tenantCtx.companyId),
+        eq(alertRules.id, id),
+      ),
     });
 
     if (!existingRule) {

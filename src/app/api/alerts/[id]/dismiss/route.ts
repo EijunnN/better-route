@@ -41,7 +41,10 @@ export async function POST(
 
     // First get the alert to verify tenant access
     const existingAlert = await db.query.alerts.findFirst({
-      where: and(withTenantFilter(alerts, [], tenantCtx.companyId), eq(alerts.id, id)),
+      where: and(
+        withTenantFilter(alerts, [], tenantCtx.companyId),
+        eq(alerts.id, id),
+      ),
     });
 
     if (!existingAlert) {

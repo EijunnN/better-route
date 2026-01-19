@@ -91,35 +91,35 @@ interface DriverRouteDetailProps {
 
 const STOP_STATUS_CONFIG = {
   PENDING: {
-    label: "Pending",
+    label: "Pendiente",
     icon: Clock,
     color: "text-gray-500",
     bgColor: "bg-gray-500/10",
     borderColor: "border-gray-500/30",
   },
   IN_PROGRESS: {
-    label: "In Progress",
+    label: "En progreso",
     icon: Loader2,
     color: "text-blue-500",
     bgColor: "bg-blue-500/10",
     borderColor: "border-blue-500/30",
   },
   COMPLETED: {
-    label: "Completed",
+    label: "Completada",
     icon: CheckCircle2,
     color: "text-green-500",
     bgColor: "bg-green-500/10",
     borderColor: "border-green-500/30",
   },
   FAILED: {
-    label: "Failed",
+    label: "Fallida",
     icon: XCircle,
     color: "text-red-500",
     bgColor: "bg-red-500/10",
     borderColor: "border-red-500/30",
   },
   SKIPPED: {
-    label: "Skipped",
+    label: "Omitida",
     icon: XCircle,
     color: "text-gray-400",
     bgColor: "bg-gray-400/10",
@@ -228,7 +228,7 @@ export function DriverRouteDetail({
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onClose}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Overview
+            Volver al resumen
           </Button>
           {onRefresh && (
             <Button
@@ -240,7 +240,7 @@ export function DriverRouteDetail({
               {updatingStatus ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : null}
-              Refresh
+              Actualizar
             </Button>
           )}
         </div>
@@ -248,39 +248,39 @@ export function DriverRouteDetail({
         {/* Driver Info Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Driver Information</CardTitle>
+            <CardTitle>Información del conductor</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Name:</span>
+                  <span className="text-muted-foreground">Nombre:</span>
                   <span className="font-medium">{driver.name}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">ID:</span>
+                  <span className="text-muted-foreground">Identificación:</span>
                   <span className="font-medium">{driver.identification}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Email:</span>
+                  <span className="text-muted-foreground">Correo:</span>
                   <span className="font-medium">{driver.email}</span>
                 </div>
                 {driver.phone && (
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Phone:</span>
+                    <span className="text-muted-foreground">Teléfono:</span>
                     <span className="font-medium">{driver.phone}</span>
                   </div>
                 )}
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Fleet:</span>
+                  <span className="text-muted-foreground">Flota:</span>
                   <Badge variant="outline">{driver.fleet.name}</Badge>
                   <Badge variant="secondary">{driver.fleet.type}</Badge>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Status:</span>
+                  <span className="text-muted-foreground">Estado:</span>
                   <Badge>{driver.status}</Badge>
                 </div>
               </div>
@@ -294,13 +294,13 @@ export function DriverRouteDetail({
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Route Information</CardTitle>
+                  <CardTitle>Información de la ruta</CardTitle>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-sm">
-                      {completedStops} / {totalStops} stops
+                      {completedStops} / {totalStops} paradas
                     </Badge>
                     <Badge className="text-sm">
-                      {progressPercentage}% complete
+                      {progressPercentage}% completado
                     </Badge>
                   </div>
                 </div>
@@ -323,7 +323,7 @@ export function DriverRouteDetail({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <div className="text-sm text-muted-foreground">
-                      Total Distance
+                      Distancia total
                     </div>
                     <div className="text-lg font-semibold">
                       {formatDistance(route.metrics.totalDistance)}
@@ -331,7 +331,7 @@ export function DriverRouteDetail({
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">
-                      Duration
+                      Duración
                     </div>
                     <div className="text-lg font-semibold">
                       {formatDuration(route.metrics.totalDuration)}
@@ -339,7 +339,7 @@ export function DriverRouteDetail({
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">
-                      Capacity Used
+                      Capacidad usada
                     </div>
                     <div className="text-lg font-semibold">
                       {route.metrics.utilizationPercentage}%
@@ -347,7 +347,7 @@ export function DriverRouteDetail({
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">
-                      Time Violations
+                      Violaciones de horario
                     </div>
                     <div className="text-lg font-semibold">
                       {route.metrics.timeWindowViolations}
@@ -393,7 +393,7 @@ export function DriverRouteDetail({
             {/* Stops List */}
             <Card>
               <CardHeader>
-                <CardTitle>Route Stops</CardTitle>
+                <CardTitle>Paradas de la ruta</CardTitle>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[400px]">
@@ -434,21 +434,22 @@ export function DriverRouteDetail({
                                 <div className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
                                   <span>
-                                    ETA: {formatTime(stop.estimatedArrival)}
+                                    Llegada est.:{" "}
+                                    {formatTime(stop.estimatedArrival)}
                                   </span>
                                 </div>
                                 {stop.completedAt && (
                                   <div className="flex items-center gap-1">
                                     <CheckCircle2 className="w-3 h-3" />
                                     <span>
-                                      Completed: {formatTime(stop.completedAt)}
+                                      Completada: {formatTime(stop.completedAt)}
                                     </span>
                                   </div>
                                 )}
                               </div>
                               {stop.notes && (
                                 <div className="mt-1 text-xs text-muted-foreground italic">
-                                  Note: {stop.notes}
+                                  Nota: {stop.notes}
                                 </div>
                               )}
                             </div>
@@ -474,7 +475,7 @@ export function DriverRouteDetail({
         ) : (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
-              No active route assigned to this driver.
+              Este conductor no tiene una ruta asignada activa.
             </CardContent>
           </Card>
         )}

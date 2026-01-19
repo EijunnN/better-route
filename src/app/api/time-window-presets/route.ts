@@ -49,7 +49,11 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(timeWindowPresets.active, query.active));
     }
 
-    const whereClause = withTenantFilter(timeWindowPresets, conditions, tenantCtx.companyId);
+    const whereClause = withTenantFilter(
+      timeWindowPresets,
+      conditions,
+      tenantCtx.companyId,
+    );
 
     const [data, totalResult] = await Promise.all([
       db

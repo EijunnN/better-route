@@ -20,7 +20,7 @@ const STATUS_TRANSITION_SETS: Record<string, Set<string>> = Object.fromEntries(
   Object.entries(STATUS_TRANSITION_RULES).map(([status, transitions]) => [
     status,
     new Set(transitions),
-  ])
+  ]),
 );
 
 // Status transitions that require checking for active routes/assignments

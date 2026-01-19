@@ -177,7 +177,8 @@ function FleetsPageContent() {
     } catch (err) {
       toast({
         title: "Error al crear flota",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -211,7 +212,8 @@ function FleetsPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar flota",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -232,7 +234,9 @@ function FleetsPageContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al desactivar la flota");
+        throw new Error(
+          error.error || error.details || "Error al desactivar la flota",
+        );
       }
 
       await fetchFleets();
@@ -245,7 +249,8 @@ function FleetsPageContent() {
     } catch (err) {
       toast({
         title: "Error al desactivar flota",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {

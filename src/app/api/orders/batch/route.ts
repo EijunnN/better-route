@@ -14,21 +14,24 @@ function extractTenantContext(request: NextRequest) {
 
 // Schema for batch order creation
 const batchOrderSchema = z.object({
-  orders: z.array(
-    z.object({
-      trackingId: z.string().min(1).max(50),
-      address: z.string().min(1),
-      latitude: z.string().regex(/^-?\d+\.?\d*$/),
-      longitude: z.string().regex(/^-?\d+\.?\d*$/),
-      customerName: z.string().max(255).optional(),
-      customerPhone: z.string().max(50).optional(),
-      customerEmail: z.string().email().optional(),
-      notes: z.string().optional(),
-      weightRequired: z.number().int().positive().optional(),
-      volumeRequired: z.number().int().positive().optional(),
-      timeWindowPresetId: z.string().uuid().optional(),
-    })
-  ).min(1).max(2000), // Max 2000 orders per batch
+  orders: z
+    .array(
+      z.object({
+        trackingId: z.string().min(1).max(50),
+        address: z.string().min(1),
+        latitude: z.string().regex(/^-?\d+\.?\d*$/),
+        longitude: z.string().regex(/^-?\d+\.?\d*$/),
+        customerName: z.string().max(255).optional(),
+        customerPhone: z.string().max(50).optional(),
+        customerEmail: z.string().email().optional(),
+        notes: z.string().optional(),
+        weightRequired: z.number().int().positive().optional(),
+        volumeRequired: z.number().int().positive().optional(),
+        timeWindowPresetId: z.string().uuid().optional(),
+      }),
+    )
+    .min(1)
+    .max(2000), // Max 2000 orders per batch
   skipDuplicates: z.boolean().default(true),
 });
 
@@ -38,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -57,11 +60,13 @@ export async function POST(request: NextRequest) {
         and(
           eq(orders.companyId, context.companyId),
           eq(orders.active, true),
-          inArray(orders.trackingId, trackingIds)
-        )
+          inArray(orders.trackingId, trackingIds),
+        ),
       );
 
-    const existingTrackingIds = new Set(existingOrders.map((o) => o.trackingId));
+    const existingTrackingIds = new Set(
+      existingOrders.map((o) => o.trackingId),
+    );
 
     // Filter out duplicates if skipDuplicates is true
     const ordersToCreate = validated.skipDuplicates
@@ -96,11 +101,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (validOrders.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: "No valid orders to create",
-        invalidOrders,
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No valid orders to create",
+          invalidOrders,
+        },
+        { status: 400 },
+      );
     }
 
     // Batch insert all orders
@@ -121,14 +129,19 @@ export async function POST(request: NextRequest) {
       active: true,
     }));
 
-    const createdOrders = await db.insert(orders).values(insertData).returning({ id: orders.id });
+    const createdOrders = await db
+      .insert(orders)
+      .values(insertData)
+      .returning({ id: orders.id });
 
     return NextResponse.json({
       success: true,
       created: createdOrders.length,
       skipped: existingTrackingIds.size,
       invalid: invalidOrders.length,
-      duplicates: validated.skipDuplicates ? Array.from(existingTrackingIds).slice(0, 10) : [],
+      duplicates: validated.skipDuplicates
+        ? Array.from(existingTrackingIds).slice(0, 10)
+        : [],
       invalidOrders: invalidOrders.slice(0, 10),
       message: `${createdOrders.length} orders created successfully`,
     });
@@ -142,16 +155,17 @@ export async function POST(request: NextRequest) {
             message: issue.message,
           })),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     console.error("Batch order creation error:", error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to create orders",
+        error:
+          error instanceof Error ? error.message : "Failed to create orders",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

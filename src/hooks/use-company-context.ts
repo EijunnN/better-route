@@ -36,24 +36,29 @@ interface UseCompanyContextReturn {
  * Handles the complexity of ADMIN_SISTEMA users who can switch between companies.
  */
 export function useCompanyContext(): UseCompanyContextReturn {
-  const { user, companyId: authCompanyId, isLoading: isAuthLoading } = useAuth();
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const {
+    user,
+    companyId: authCompanyId,
+    isLoading: isAuthLoading,
+  } = useAuth();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    null,
+  );
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(false);
 
   const isSystemAdmin = user?.role === "ADMIN_SISTEMA";
 
   // Effective companyId: for system admins use selected, otherwise use auth
-  const effectiveCompanyId = isSystemAdmin && selectedCompanyId
-    ? selectedCompanyId
-    : authCompanyId;
+  const effectiveCompanyId =
+    isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;
 
   // Ready when auth is done AND we have an effective companyId
   // For system admins, we wait until they have selected a company
-  const isReady = !isAuthLoading && (
-    (!isSystemAdmin && !!authCompanyId) ||
-    (isSystemAdmin && !!effectiveCompanyId)
-  );
+  const isReady =
+    !isAuthLoading &&
+    ((!isSystemAdmin && !!authCompanyId) ||
+      (isSystemAdmin && !!effectiveCompanyId));
 
   // Fetch companies for system admins
   const fetchCompanies = useCallback(async () => {
@@ -82,7 +87,12 @@ export function useCompanyContext(): UseCompanyContextReturn {
 
   // Auto-select first company for system admins when companies load
   useEffect(() => {
-    if (isSystemAdmin && !authCompanyId && !selectedCompanyId && companies.length > 0) {
+    if (
+      isSystemAdmin &&
+      !authCompanyId &&
+      !selectedCompanyId &&
+      companies.length > 0
+    ) {
       setSelectedCompanyId(companies[0].id);
     }
   }, [isSystemAdmin, authCompanyId, selectedCompanyId, companies]);

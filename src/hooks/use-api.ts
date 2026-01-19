@@ -6,10 +6,7 @@ import useSWRMutation from "swr/mutation";
 /**
  * Generic fetcher for SWR with company header
  */
-async function fetcher<T>(
-  url: string,
-  companyId?: string
-): Promise<T> {
+async function fetcher<T>(url: string, companyId?: string): Promise<T> {
   const headers: HeadersInit = {};
   if (companyId) {
     headers["x-company-id"] = companyId;
@@ -17,7 +14,9 @@ async function fetcher<T>(
 
   const response = await fetch(url, { headers });
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Request failed" }));
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Request failed" }));
     throw new Error(error.error || error.message || "Request failed");
   }
 
@@ -38,7 +37,7 @@ export function createCompanyFetcher(companyId: string) {
 export function useApiData<T>(
   url: string | null,
   companyId: string | null | undefined,
-  config?: SWRConfiguration<T>
+  config?: SWRConfiguration<T>,
 ) {
   return useSWR<T>(
     url && companyId ? [url, companyId] : null,
@@ -47,7 +46,7 @@ export function useApiData<T>(
       revalidateOnFocus: false,
       dedupingInterval: 5000,
       ...config,
-    }
+    },
   );
 }
 
@@ -58,7 +57,7 @@ export function useApiList<T>(
   baseUrl: string | null,
   companyId: string | null | undefined,
   params?: Record<string, string | number | boolean | undefined>,
-  config?: SWRConfiguration<T[]>
+  config?: SWRConfiguration<T[]>,
 ) {
   const url = baseUrl ? buildUrl(baseUrl, params) : null;
 
@@ -69,7 +68,7 @@ export function useApiList<T>(
       revalidateOnFocus: false,
       dedupingInterval: 5000,
       ...config,
-    }
+    },
   );
 }
 
@@ -78,7 +77,7 @@ export function useApiList<T>(
  */
 function buildUrl(
   baseUrl: string,
-  params?: Record<string, string | number | boolean | undefined>
+  params?: Record<string, string | number | boolean | undefined>,
 ): string {
   if (!params) return baseUrl;
 
@@ -98,28 +97,32 @@ function buildUrl(
  */
 export function useApiMutation<TData, TResult = unknown>(
   url: string,
-  method: "POST" | "PATCH" | "DELETE" = "POST"
+  method: "POST" | "PATCH" | "DELETE" = "POST",
 ) {
-  return useSWRMutation<TResult, Error, string, { data: TData; companyId: string }>(
-    url,
-    async (url, { arg }) => {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": arg.companyId,
-        },
-        body: method !== "DELETE" ? JSON.stringify(arg.data) : undefined,
-      });
+  return useSWRMutation<
+    TResult,
+    Error,
+    string,
+    { data: TData; companyId: string }
+  >(url, async (url, { arg }) => {
+    const response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": arg.companyId,
+      },
+      body: method !== "DELETE" ? JSON.stringify(arg.data) : undefined,
+    });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Request failed" }));
-        throw new Error(error.error || error.message || "Request failed");
-      }
-
-      return response.json();
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Request failed" }));
+      throw new Error(error.error || error.message || "Request failed");
     }
-  );
+
+    return response.json();
+  });
 }
 
 /**
@@ -129,7 +132,7 @@ export function useApiPolling<T>(
   url: string | null,
   companyId: string | null | undefined,
   refreshInterval: number = 30000,
-  config?: SWRConfiguration<T>
+  config?: SWRConfiguration<T>,
 ) {
   return useSWR<T>(
     url && companyId ? [url, companyId] : null,
@@ -139,7 +142,7 @@ export function useApiPolling<T>(
       revalidateOnFocus: true,
       dedupingInterval: 2000,
       ...config,
-    }
+    },
   );
 }
 
@@ -148,7 +151,7 @@ export function useApiPolling<T>(
  */
 export function useApiImmutable<T>(
   url: string | null,
-  companyId: string | null | undefined
+  companyId: string | null | undefined,
 ) {
   return useSWR<T>(
     url && companyId ? [url, companyId] : null,
@@ -157,6 +160,6 @@ export function useApiImmutable<T>(
       revalidateIfStale: false,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-    }
+    },
   );
 }

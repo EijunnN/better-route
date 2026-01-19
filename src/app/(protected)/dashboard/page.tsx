@@ -245,7 +245,9 @@ export default async function DashboardPage() {
           maintenance: sql<number>`count(*) filter (where ${vehicles.status} = 'IN_MAINTENANCE')`,
         })
         .from(vehicles)
-        .where(and(eq(vehicles.companyId, companyId), eq(vehicles.active, true))),
+        .where(
+          and(eq(vehicles.companyId, companyId), eq(vehicles.active, true)),
+        ),
       // Obtener pedidos recientes
       db
         .select({

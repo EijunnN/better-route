@@ -31,7 +31,10 @@ export async function GET(
     const { id } = await params;
 
     const alert = await db.query.alerts.findFirst({
-      where: and(withTenantFilter(alerts, [], tenantCtx.companyId), eq(alerts.id, id)),
+      where: and(
+        withTenantFilter(alerts, [], tenantCtx.companyId),
+        eq(alerts.id, id),
+      ),
       with: {
         rule: true,
         acknowledgedByUser: true,
@@ -85,7 +88,10 @@ export async function PATCH(
 
     // First get the alert to verify tenant access
     const existingAlert = await db.query.alerts.findFirst({
-      where: and(withTenantFilter(alerts, [], tenantCtx.companyId), eq(alerts.id, id)),
+      where: and(
+        withTenantFilter(alerts, [], tenantCtx.companyId),
+        eq(alerts.id, id),
+      ),
     });
 
     if (!existingAlert) {
@@ -143,7 +149,10 @@ export async function DELETE(
 
     // First verify the alert exists and belongs to tenant
     const existingAlert = await db.query.alerts.findFirst({
-      where: and(withTenantFilter(alerts, [], tenantCtx.companyId), eq(alerts.id, id)),
+      where: and(
+        withTenantFilter(alerts, [], tenantCtx.companyId),
+        eq(alerts.id, id),
+      ),
     });
 
     if (!existingAlert) {

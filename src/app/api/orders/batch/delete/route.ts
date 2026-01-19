@@ -18,7 +18,7 @@ export async function DELETE(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -59,9 +59,10 @@ export async function DELETE(request: NextRequest) {
     console.error("Batch delete error:", error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to delete orders",
+        error:
+          error instanceof Error ? error.message : "Failed to delete orders",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

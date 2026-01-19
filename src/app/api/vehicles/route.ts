@@ -78,7 +78,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply tenant filtering
-    const whereClause = withTenantFilter(vehicles, conditions, tenantCtx.companyId);
+    const whereClause = withTenantFilter(
+      vehicles,
+      conditions,
+      tenantCtx.companyId,
+    );
 
     // Use query API to include fleet associations
     const data = await db.query.vehicles.findMany({

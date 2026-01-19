@@ -157,7 +157,8 @@ function OrdersPageContent() {
     } catch (err) {
       toast({
         title: "Error al crear pedido",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -192,7 +193,8 @@ function OrdersPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar pedido",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -230,7 +232,8 @@ function OrdersPageContent() {
     } catch (err) {
       toast({
         title: "Error al eliminar pedido",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -262,7 +265,8 @@ function OrdersPageContent() {
     } catch (err) {
       toast({
         title: "Error al eliminar pedidos",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -487,7 +491,7 @@ function OrdersPageContent() {
                   <td className="p-4">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${getStrictnessColor(
-                        order.effectiveStrictness
+                        order.effectiveStrictness,
                       )}`}
                     >
                       {order.effectiveStrictness}
@@ -496,7 +500,7 @@ function OrdersPageContent() {
                   <td className="p-4">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                        order.status
+                        order.status,
                       )}`}
                     >
                       {order.status}
@@ -528,9 +532,7 @@ function OrdersPageContent() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            ¿Eliminar pedido?
-                          </AlertDialogTitle>
+                          <AlertDialogTitle>¿Eliminar pedido?</AlertDialogTitle>
                           <AlertDialogDescription>
                             Esta acción eliminará el pedido{" "}
                             <strong>{order.trackingId}</strong>. Esta acción no

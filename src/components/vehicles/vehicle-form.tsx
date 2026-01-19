@@ -95,8 +95,7 @@ export function VehicleForm({
     setErrors({});
     setIsSubmitting(true);
 
-    const emptyToNull = <T,>(val: T): T | null =>
-      val === "" ? null : val;
+    const emptyToNull = <T,>(val: T): T | null => (val === "" ? null : val);
 
     const submitData: VehicleInput = {
       ...formData,
@@ -115,7 +114,9 @@ export function VehicleForm({
       inspectionExpiry: emptyToNull(formData.inspectionExpiry),
       loadType: emptyToNull(formData.loadType) as VehicleInput["loadType"],
       type: emptyToNull(formData.type) as VehicleInput["type"],
-      licenseRequired: emptyToNull(formData.licenseRequired) as VehicleInput["licenseRequired"],
+      licenseRequired: emptyToNull(
+        formData.licenseRequired,
+      ) as VehicleInput["licenseRequired"],
       assignedDriverId: emptyToNull(formData.assignedDriverId),
     };
 
@@ -206,7 +207,9 @@ export function VehicleForm({
                   <Label htmlFor="loadType">Tipo de Carga</Label>
                   <Select
                     value={formData.loadType ?? ""}
-                    onValueChange={(value) => updateField("loadType", value || null)}
+                    onValueChange={(value) =>
+                      updateField("loadType", value || null)
+                    }
                     disabled={isSubmitting}
                   >
                     <SelectTrigger id="loadType">
@@ -232,7 +235,10 @@ export function VehicleForm({
                     }
                     disabled={isSubmitting}
                   />
-                  <Label htmlFor="useNameAsPlate" className="text-sm cursor-pointer">
+                  <Label
+                    htmlFor="useNameAsPlate"
+                    className="text-sm cursor-pointer"
+                  >
                     El nombre es la placa patente
                   </Label>
                 </div>
@@ -257,7 +263,10 @@ export function VehicleForm({
 
                 {/* Max Orders */}
                 <div className="space-y-2">
-                  <Label htmlFor="maxOrders" className="flex items-center gap-1">
+                  <Label
+                    htmlFor="maxOrders"
+                    className="flex items-center gap-1"
+                  >
                     Capacidad Máx. Pedidos *
                     <Info className="h-3 w-3 text-muted-foreground" />
                   </Label>
@@ -267,7 +276,10 @@ export function VehicleForm({
                     min="1"
                     value={formData.maxOrders}
                     onChange={(e) =>
-                      updateField("maxOrders", parseInt(e.target.value, 10) || 20)
+                      updateField(
+                        "maxOrders",
+                        parseInt(e.target.value, 10) || 20,
+                      )
                     }
                     disabled={isSubmitting}
                     placeholder="20"
@@ -364,7 +376,9 @@ export function VehicleForm({
                   <Input
                     id="originAddress"
                     value={formData.originAddress ?? ""}
-                    onChange={(e) => updateField("originAddress", e.target.value)}
+                    onChange={(e) =>
+                      updateField("originAddress", e.target.value)
+                    }
                     disabled={isSubmitting}
                     placeholder="Av. Principal 123, Lima"
                   />
@@ -377,7 +391,9 @@ export function VehicleForm({
                     onChange={(e) => {
                       const value = e.target.value;
                       // Detectar si se pegó "lat, lng" o "lat,lng"
-                      const coordsMatch = value.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+                      const coordsMatch = value.match(
+                        /^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/,
+                      );
                       if (coordsMatch) {
                         updateField("originLatitude", coordsMatch[1]);
                         updateField("originLongitude", coordsMatch[2]);
@@ -394,7 +410,9 @@ export function VehicleForm({
                   <Input
                     id="originLongitude"
                     value={formData.originLongitude ?? ""}
-                    onChange={(e) => updateField("originLongitude", e.target.value)}
+                    onChange={(e) =>
+                      updateField("originLongitude", e.target.value)
+                    }
                     disabled={isSubmitting}
                     placeholder="-77.0428"
                   />
@@ -462,7 +480,10 @@ export function VehicleForm({
                     }
                     disabled={isSubmitting}
                   />
-                  <Label htmlFor="hasBreakTime" className="text-sm cursor-pointer">
+                  <Label
+                    htmlFor="hasBreakTime"
+                    className="text-sm cursor-pointer"
+                  >
                     Tiempo de descanso
                   </Label>
                 </div>
@@ -470,21 +491,28 @@ export function VehicleForm({
                 {formData.hasBreakTime && (
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="breakDuration" className="text-xs">Duración (min)</Label>
+                      <Label htmlFor="breakDuration" className="text-xs">
+                        Duración (min)
+                      </Label>
                       <Input
                         id="breakDuration"
                         type="number"
                         min="1"
                         value={formData.breakDuration ?? ""}
                         onChange={(e) =>
-                          updateField("breakDuration", parseInt(e.target.value, 10) || null)
+                          updateField(
+                            "breakDuration",
+                            parseInt(e.target.value, 10) || null,
+                          )
                         }
                         disabled={isSubmitting}
                         placeholder="60"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="breakTimeStart" className="text-xs">Inicio</Label>
+                      <Label htmlFor="breakTimeStart" className="text-xs">
+                        Inicio
+                      </Label>
                       <TimePicker
                         id="breakTimeStart"
                         value={formData.breakTimeStart}
@@ -493,7 +521,9 @@ export function VehicleForm({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="breakTimeEnd" className="text-xs">Fin</Label>
+                      <Label htmlFor="breakTimeEnd" className="text-xs">
+                        Fin
+                      </Label>
                       <TimePicker
                         id="breakTimeEnd"
                         value={formData.breakTimeEnd}
@@ -516,7 +546,10 @@ export function VehicleForm({
               <Select
                 value={formData.assignedDriverId ?? "__none__"}
                 onValueChange={(value) =>
-                  updateField("assignedDriverId", value === "__none__" ? null : value)
+                  updateField(
+                    "assignedDriverId",
+                    value === "__none__" ? null : value,
+                  )
                 }
                 disabled={isSubmitting}
               >
@@ -540,24 +573,42 @@ export function VehicleForm({
               <h4 className="font-medium text-sm">Vencimientos</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="insuranceExpiry" className="text-xs">Seguro</Label>
+                  <Label htmlFor="insuranceExpiry" className="text-xs">
+                    Seguro
+                  </Label>
                   <DatePicker
                     id="insuranceExpiry"
-                    value={formData.insuranceExpiry ? new Date(formData.insuranceExpiry) : null}
+                    value={
+                      formData.insuranceExpiry
+                        ? new Date(formData.insuranceExpiry)
+                        : null
+                    }
                     onChange={(date) =>
-                      updateField("insuranceExpiry", date ? date.toISOString().split("T")[0] : null)
+                      updateField(
+                        "insuranceExpiry",
+                        date ? date.toISOString().split("T")[0] : null,
+                      )
                     }
                     placeholder="Fecha"
                     disabled={isSubmitting}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="inspectionExpiry" className="text-xs">Inspección</Label>
+                  <Label htmlFor="inspectionExpiry" className="text-xs">
+                    Inspección
+                  </Label>
                   <DatePicker
                     id="inspectionExpiry"
-                    value={formData.inspectionExpiry ? new Date(formData.inspectionExpiry) : null}
+                    value={
+                      formData.inspectionExpiry
+                        ? new Date(formData.inspectionExpiry)
+                        : null
+                    }
                     onChange={(date) =>
-                      updateField("inspectionExpiry", date ? date.toISOString().split("T")[0] : null)
+                      updateField(
+                        "inspectionExpiry",
+                        date ? date.toISOString().split("T")[0] : null,
+                      )
                     }
                     placeholder="Fecha"
                     disabled={isSubmitting}
@@ -571,7 +622,12 @@ export function VehicleForm({
 
       <div className="flex justify-end gap-3 pt-4 border-t">
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
             Cancelar
           </Button>
         )}

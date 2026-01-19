@@ -48,7 +48,10 @@ import { ZONE_TYPE_LABELS, type ZoneInput } from "@/lib/validations/zone";
 
 // Dynamic map components (bundle-dynamic-imports rule)
 const ZoneMapEditor = dynamic(
-  () => import("@/components/zones/zone-map-editor").then((mod) => mod.ZoneMapEditor),
+  () =>
+    import("@/components/zones/zone-map-editor").then(
+      (mod) => mod.ZoneMapEditor,
+    ),
   {
     ssr: false,
     loading: () => (
@@ -60,19 +63,25 @@ const ZoneMapEditor = dynamic(
 );
 
 const ZonePreviewMap = dynamic(
-  () => import("@/components/zones/zone-preview-map").then((mod) => mod.ZonePreviewMap),
+  () =>
+    import("@/components/zones/zone-preview-map").then(
+      (mod) => mod.ZonePreviewMap,
+    ),
   {
     ssr: false,
     loading: () => <div className="h-full bg-muted animate-pulse rounded-lg" />,
-  }
+  },
 );
 
 const ZoneFormPreview = dynamic(
-  () => import("@/components/zones/zone-form-preview").then((mod) => mod.ZoneFormPreview),
+  () =>
+    import("@/components/zones/zone-form-preview").then(
+      (mod) => mod.ZoneFormPreview,
+    ),
   {
     ssr: false,
     loading: () => <div className="h-full bg-muted animate-pulse rounded-lg" />,
-  }
+  },
 );
 
 interface Zone {
@@ -129,8 +138,11 @@ function ZonesPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
-  const [editingZoneVehicleIds, setEditingZoneVehicleIds] = useState<string[]>([]);
-  const [pendingFormData, setPendingFormData] = useState<Partial<ZoneInput> | null>(null);
+  const [editingZoneVehicleIds, setEditingZoneVehicleIds] = useState<string[]>(
+    [],
+  );
+  const [pendingFormData, setPendingFormData] =
+    useState<Partial<ZoneInput> | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -158,11 +170,13 @@ function ZonesPageContent() {
       });
       const data = await response.json();
       setVehicles(
-        (data.data || []).map((v: { id: string; name?: string; plate?: string | null }) => ({
-          id: v.id,
-          name: v.name || v.plate || "Sin nombre",
-          plate: v.plate ?? null,
-        }))
+        (data.data || []).map(
+          (v: { id: string; name?: string; plate?: string | null }) => ({
+            id: v.id,
+            name: v.name || v.plate || "Sin nombre",
+            plate: v.plate ?? null,
+          }),
+        ),
       );
     } catch (error) {
       console.error("Error fetching vehicles:", error);
@@ -180,7 +194,10 @@ function ZonesPageContent() {
     try {
       const response = await fetch("/api/zones", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
         body: JSON.stringify(data),
       });
 
@@ -193,8 +210,14 @@ function ZonesPageContent() {
       if (vehicleIds.length > 0 && createdZone.id) {
         await fetch(`/api/zones/${createdZone.id}/vehicles`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
-          body: JSON.stringify({ vehicleIds, assignedDays: data.activeDays || null }),
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": companyId ?? "",
+          },
+          body: JSON.stringify({
+            vehicleIds,
+            assignedDays: data.activeDays || null,
+          }),
         });
       }
 
@@ -208,7 +231,8 @@ function ZonesPageContent() {
     } catch (err) {
       toast({
         title: "Error al crear zona",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -221,7 +245,10 @@ function ZonesPageContent() {
     try {
       const response = await fetch(`/api/zones/${editingZone.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
         body: JSON.stringify(data),
       });
 
@@ -232,8 +259,14 @@ function ZonesPageContent() {
 
       await fetch(`/api/zones/${editingZone.id}/vehicles`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
-        body: JSON.stringify({ vehicleIds, assignedDays: data.activeDays || null }),
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify({
+          vehicleIds,
+          assignedDays: data.activeDays || null,
+        }),
       });
 
       await fetchZones();
@@ -248,7 +281,8 @@ function ZonesPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar zona",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -281,7 +315,8 @@ function ZonesPageContent() {
     } catch (err) {
       toast({
         title: "Error al desactivar zona",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -315,7 +350,9 @@ function ZonesPageContent() {
       });
       if (response.ok) {
         const data = await response.json();
-        setEditingZoneVehicleIds((data.vehicles || []).map((v: { id: string }) => v.id));
+        setEditingZoneVehicleIds(
+          (data.vehicles || []).map((v: { id: string }) => v.id),
+        );
       }
     } catch {
       setEditingZoneVehicleIds([]);
@@ -349,7 +386,13 @@ function ZonesPageContent() {
   // Map editor view
   if (viewMode === "map-editor") {
     const currentGeometry = pendingFormData?.geometry
-      ? (() => { try { return JSON.parse(pendingFormData.geometry); } catch { return null; } })()
+      ? (() => {
+          try {
+            return JSON.parse(pendingFormData.geometry);
+          } catch {
+            return null;
+          }
+        })()
       : editingZone?.parsedGeometry || null;
 
     return (
@@ -357,13 +400,16 @@ function ZonesPageContent() {
         <div className="border-b bg-background px-6 py-4 shrink-0">
           <h1 className="text-xl font-bold">Dibujar Área de Zona</h1>
           <p className="text-sm text-muted-foreground">
-            Haz clic en el mapa para agregar puntos. Cierra el polígono cerca del primer punto.
+            Haz clic en el mapa para agregar puntos. Cierra el polígono cerca
+            del primer punto.
           </p>
         </div>
         <div className="flex-1 min-h-0">
           <ZoneMapEditor
             initialGeometry={currentGeometry}
-            zoneColor={pendingFormData?.color || editingZone?.color || "#3B82F6"}
+            zoneColor={
+              pendingFormData?.color || editingZone?.color || "#3B82F6"
+            }
             onSave={handleMapSave}
             onCancel={() => setViewMode("form")}
             height="100%"
@@ -374,8 +420,10 @@ function ZonesPageContent() {
   }
 
   // Get current form geometry for preview
-  const currentFormGeometry = pendingFormData?.geometry || editingZone?.geometry;
-  const currentFormColor = pendingFormData?.color || editingZone?.color || "#3B82F6";
+  const currentFormGeometry =
+    pendingFormData?.geometry || editingZone?.geometry;
+  const currentFormColor =
+    pendingFormData?.color || editingZone?.color || "#3B82F6";
 
   // Form view
   if (viewMode === "form") {
@@ -402,7 +450,10 @@ function ZonesPageContent() {
                   className="w-10 h-10 rounded-lg flex items-center justify-center"
                   style={{ backgroundColor: `${currentFormColor}20` }}
                 >
-                  <MapPin className="w-5 h-5" style={{ color: currentFormColor }} />
+                  <MapPin
+                    className="w-5 h-5"
+                    style={{ color: currentFormColor }}
+                  />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold">
@@ -444,7 +495,8 @@ function ZonesPageContent() {
                         geometry: editingZone.geometry,
                         color: editingZone.color,
                         isDefault: editingZone.isDefault,
-                        activeDays: editingZone.activeDays as ZoneInput["activeDays"],
+                        activeDays:
+                          editingZone.activeDays as ZoneInput["activeDays"],
                         active: editingZone.active,
                         parsedGeometry: editingZone.parsedGeometry,
                       }
@@ -528,11 +580,15 @@ function ZonesPageContent() {
             <div className="flex items-center gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-muted-foreground">{activeZones} activas</span>
+                <span className="text-muted-foreground">
+                  {activeZones} activas
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{zones.length} total</span>
+                <span className="text-muted-foreground">
+                  {zones.length} total
+                </span>
               </div>
             </div>
             <Button onClick={handleStartNew}>
@@ -573,7 +629,11 @@ function ZonesPageContent() {
                   {searchQuery ? "Sin resultados" : "No hay zonas configuradas"}
                 </p>
                 {!searchQuery && (
-                  <Button variant="link" onClick={handleStartNew} className="mt-2">
+                  <Button
+                    variant="link"
+                    onClick={handleStartNew}
+                    className="mt-2"
+                  >
                     Crear primera zona
                   </Button>
                 )}
@@ -598,21 +658,31 @@ function ZonesPageContent() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{zone.name}</span>
+                        <span className="font-medium truncate">
+                          {zone.name}
+                        </span>
                         {zone.isDefault && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5">
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5"
+                          >
                             Default
                           </Badge>
                         )}
                         {!zone.active && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 text-muted-foreground">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 text-muted-foreground"
+                          >
                             Inactiva
                           </Badge>
                         )}
                       </div>
 
                       <p className="text-xs text-muted-foreground mt-1">
-                        {ZONE_TYPE_LABELS[zone.type as keyof typeof ZONE_TYPE_LABELS] || zone.type}
+                        {ZONE_TYPE_LABELS[
+                          zone.type as keyof typeof ZONE_TYPE_LABELS
+                        ] || zone.type}
                       </p>
 
                       <div className="flex items-center gap-3 mt-2">
@@ -627,9 +697,11 @@ function ZonesPageContent() {
                       </div>
                     </div>
 
-                    <ChevronRight className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${
-                      selectedZoneId === zone.id ? "rotate-90" : ""
-                    }`} />
+                    <ChevronRight
+                      className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${
+                        selectedZoneId === zone.id ? "rotate-90" : ""
+                      }`}
+                    />
                   </div>
                 </div>
               ))
@@ -657,12 +729,18 @@ function ZonesPageContent() {
                     className="w-10 h-10 rounded-lg flex items-center justify-center"
                     style={{ backgroundColor: `${selectedZone.color}20` }}
                   >
-                    <MapPin className="w-5 h-5" style={{ color: selectedZone.color }} />
+                    <MapPin
+                      className="w-5 h-5"
+                      style={{ color: selectedZone.color }}
+                    />
                   </div>
                   <div>
                     <h3 className="font-semibold">{selectedZone.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {selectedZone.description || ZONE_TYPE_LABELS[selectedZone.type as keyof typeof ZONE_TYPE_LABELS]}
+                      {selectedZone.description ||
+                        ZONE_TYPE_LABELS[
+                          selectedZone.type as keyof typeof ZONE_TYPE_LABELS
+                        ]}
                     </p>
                   </div>
                 </div>
@@ -695,9 +773,7 @@ function ZonesPageContent() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            ¿Desactivar zona?
-                          </AlertDialogTitle>
+                          <AlertDialogTitle>¿Desactivar zona?</AlertDialogTitle>
                           <AlertDialogDescription>
                             Esta acción desactivará la zona{" "}
                             <strong>{selectedZone.name}</strong>. Los vehículos
@@ -726,14 +802,18 @@ function ZonesPageContent() {
                     <Truck className="w-4 h-4" />
                     <span>Vehículos</span>
                   </div>
-                  <p className="text-xl font-semibold mt-1">{selectedZone.vehicleCount}</p>
+                  <p className="text-xl font-semibold mt-1">
+                    {selectedZone.vehicleCount}
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2 text-muted-foreground text-sm">
                     <Calendar className="w-4 h-4" />
                     <span>Días activos</span>
                   </div>
-                  <p className="text-xl font-semibold mt-1">{selectedZone.activeDays?.length || 7}</p>
+                  <p className="text-xl font-semibold mt-1">
+                    {selectedZone.activeDays?.length || 7}
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -751,18 +831,23 @@ function ZonesPageContent() {
               </div>
 
               {/* Active days */}
-              {selectedZone.activeDays && selectedZone.activeDays.length > 0 && (
-                <div className="mt-4 flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Días:</span>
-                  <div className="flex gap-1">
-                    {selectedZone.activeDays.map((day) => (
-                      <Badge key={day} variant="secondary" className="text-xs">
-                        {DAY_LABELS[day] || day}
-                      </Badge>
-                    ))}
+              {selectedZone.activeDays &&
+                selectedZone.activeDays.length > 0 && (
+                  <div className="mt-4 flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Días:</span>
+                    <div className="flex gap-1">
+                      {selectedZone.activeDays.map((day) => (
+                        <Badge
+                          key={day}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {DAY_LABELS[day] || day}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           )}
         </div>

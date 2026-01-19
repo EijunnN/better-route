@@ -14,7 +14,10 @@ import { updateCompanySchema } from "@/lib/validations/company";
 
 // Companies don't use tenant filtering - they ARE the tenants
 // ADMIN_SISTEMA can access all companies, others only their own
-function canAccessCompany(user: { role: string; companyId: string | null }, companyId: string): boolean {
+function canAccessCompany(
+  user: { role: string; companyId: string | null },
+  companyId: string,
+): boolean {
   if (user.role === "ADMIN_SISTEMA") return true;
   return user.companyId === companyId;
 }
@@ -121,10 +124,7 @@ export async function PATCH(
       }
     }
 
-    if (
-      validatedData.email &&
-      validatedData.email !== existingCompany.email
-    ) {
+    if (validatedData.email && validatedData.email !== existingCompany.email) {
       const duplicateEmail = await db
         .select()
         .from(companies)

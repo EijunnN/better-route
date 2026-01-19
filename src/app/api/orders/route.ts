@@ -52,7 +52,11 @@ export async function GET(request: NextRequest) {
       if (searchCondition) conditions.push(searchCondition);
     }
 
-    const whereClause = withTenantFilter(orders, conditions, tenantCtx.companyId);
+    const whereClause = withTenantFilter(
+      orders,
+      conditions,
+      tenantCtx.companyId,
+    );
 
     // Join with time window presets to get strictness info
     const data = await db
@@ -196,7 +200,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
       // Zod errors are in 'issues' property, not 'errors'
-      const zodError = error as unknown as { issues: Array<{ path: (string | number)[]; message: string }> };
+      const zodError = error as unknown as {
+        issues: Array<{ path: (string | number)[]; message: string }>;
+      };
       return NextResponse.json(
         {
           error: "Validation failed",

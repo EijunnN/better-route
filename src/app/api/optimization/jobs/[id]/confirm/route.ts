@@ -2,7 +2,6 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
-import { getAuditLogContext, getTenantContext } from "@/db/tenant-aware";
 import { createAuditLog } from "@/lib/audit";
 import type { OptimizationResult } from "@/lib/optimization-runner";
 import {
@@ -14,10 +13,18 @@ import {
   canConfirmPlan,
   validatePlanForConfirmation,
 } from "@/lib/plan-validation";
+import { setTenantContext } from "@/lib/tenant";
 import {
   type PlanConfirmationSchema,
   planConfirmationSchema,
 } from "@/lib/validations/plan-confirmation";
+
+function extractTenantContext(request: NextRequest) {
+  const companyId = request.headers.get("x-company-id");
+  const userId = request.headers.get("x-user-id");
+  if (!companyId) return null;
+  return { companyId, userId: userId || undefined };
+}
 
 /**
  * POST /api/optimization/jobs/[id]/confirm
@@ -31,15 +38,22 @@ export async function POST(
 ) {
   try {
     const { id: jobId } = await params;
-    const tenantContext = getTenantContext();
-    const auditContext = getAuditLogContext();
+    const tenantContext = extractTenantContext(request);
 
-    if (!tenantContext.companyId) {
+    if (!tenantContext?.companyId) {
       return NextResponse.json(
         { error: "Company context required" },
         { status: 400 },
       );
     }
+
+    setTenantContext(tenantContext);
+
+    const auditContext = {
+      tenantId: tenantContext.companyId,
+      companyId: tenantContext.companyId,
+      userId: tenantContext.userId,
+    };
 
     // Parse request body
     const body = await request.json().catch(() => ({}));
@@ -269,19 +283,21 @@ export async function POST(
  * Returns the confirmation status of a plan.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: jobId } = await params;
-    const tenantContext = getTenantContext();
+    const tenantContext = extractTenantContext(request);
 
-    if (!tenantContext.companyId) {
+    if (!tenantContext?.companyId) {
       return NextResponse.json(
         { error: "Company context required" },
         { status: 400 },
       );
     }
+
+    setTenantContext(tenantContext);
 
     // Fetch the job with configuration
     const [job] = await db

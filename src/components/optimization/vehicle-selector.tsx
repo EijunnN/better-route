@@ -104,7 +104,9 @@ export function VehicleSelector({
   }, [companyId, fleetFilter]);
 
   // Get unique vehicle types - use toSorted for immutability
-  const vehicleTypes = Array.from(new Set(vehicles.map((v) => v.type))).toSorted();
+  const vehicleTypes = Array.from(
+    new Set(vehicles.map((v) => v.type)),
+  ).toSorted();
 
   // Create Set for O(1) lookups - React Compiler handles memoization
   const selectedIdsSet = new Set(selectedIds);
@@ -127,9 +129,7 @@ export function VehicleSelector({
   // Handle select all
   const handleSelectAll = () => {
     const allIdsSet = new Set(filteredVehicles.map((v) => v.id));
-    const allSelected = filteredVehicles.every((v) =>
-      selectedIdsSet.has(v.id),
-    );
+    const allSelected = filteredVehicles.every((v) => selectedIdsSet.has(v.id));
 
     if (allSelected) {
       // Deselect all filtered vehicles

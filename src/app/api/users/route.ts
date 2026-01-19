@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
     // Directly filter by companyId from header (more reliable than AsyncLocalStorage)
     const whereClause = and(
       eq(users.companyId, tenantCtx.companyId),
-      ...validConditions
+      ...validConditions,
     );
 
     const [data, totalResult] = await Promise.all([
@@ -269,7 +269,8 @@ export async function POST(request: NextRequest) {
     }
 
     // ADMIN_SISTEMA users should not have a companyId - they can access all companies
-    const userCompanyId = validatedData.role === "ADMIN_SISTEMA" ? null : tenantCtx.companyId;
+    const userCompanyId =
+      validatedData.role === "ADMIN_SISTEMA" ? null : tenantCtx.companyId;
 
     const [newUser] = await db
       .insert(users)

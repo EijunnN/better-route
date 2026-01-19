@@ -2,7 +2,6 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
-import { getTenantContext } from "@/db/tenant-aware";
 import type { OptimizationResult } from "@/lib/optimization-runner";
 import {
   getIssuesByCategory,
@@ -10,7 +9,15 @@ import {
   getValidationSummaryText,
   validatePlanForConfirmation,
 } from "@/lib/plan-validation";
+import { setTenantContext } from "@/lib/tenant";
 import type { PlanValidationRequestSchema } from "@/lib/validations/plan-confirmation";
+
+function extractTenantContext(request: NextRequest) {
+  const companyId = request.headers.get("x-company-id");
+  const userId = request.headers.get("x-user-id");
+  if (!companyId) return null;
+  return { companyId, userId: userId || undefined };
+}
 
 /**
  * GET /api/optimization/jobs/[id]/validate
@@ -24,14 +31,16 @@ export async function GET(
 ) {
   try {
     const { id: jobId } = await params;
-    const tenantContext = getTenantContext();
+    const tenantContext = extractTenantContext(request);
 
-    if (!tenantContext.companyId) {
+    if (!tenantContext?.companyId) {
       return NextResponse.json(
         { error: "Company context required" },
         { status: 400 },
       );
     }
+
+    setTenantContext(tenantContext);
 
     // Parse query parameters for validation config
     const searchParams = request.nextUrl.searchParams;
@@ -152,6 +161,12 @@ export async function GET(
       issuesByCategory: getIssuesByCategory(validationResult.issues),
       issuesBySeverity: getIssuesBySeverity(validationResult.issues),
       summaryText: getValidationSummaryText(validationResult),
+      // Include result for confirmation dialog display
+      result: {
+        routes: result.routes,
+        summary: result.summary,
+        metrics: result.metrics,
+      },
     };
 
     return NextResponse.json(response);

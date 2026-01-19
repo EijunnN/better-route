@@ -31,7 +31,10 @@ export async function GET(
   try {
     // Verify stop exists and belongs to tenant
     const stop = await db.query.routeStops.findFirst({
-      where: and(eq(routeStops.id, stopId), withTenantFilter(routeStops, [], tenantCtx.companyId)),
+      where: and(
+        eq(routeStops.id, stopId),
+        withTenantFilter(routeStops, [], tenantCtx.companyId),
+      ),
     });
 
     if (!stop) {

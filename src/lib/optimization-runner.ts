@@ -69,9 +69,22 @@ type OrderGroupMap = Map<string, { orderIds: string[]; trackingIds: string[] }>;
  * Group orders that share the same coordinates
  * Returns grouped orders and a map to ungroup later
  */
-function groupOrdersByLocation<T extends { id: string; trackingId: string; latitude: string | number; longitude: string | number }>(
+function groupOrdersByLocation<
+  T extends {
+    id: string;
+    trackingId: string;
+    latitude: string | number;
+    longitude: string | number;
+  },
+>(
   orders: T[],
-): { groupedOrders: (T & { groupedOrderIds: string[]; groupedTrackingIds: string[] })[]; groupMap: OrderGroupMap } {
+): {
+  groupedOrders: (T & {
+    groupedOrderIds: string[];
+    groupedTrackingIds: string[];
+  })[];
+  groupMap: OrderGroupMap;
+} {
   const locationMap = new Map<string, T[]>();
 
   // Group by coordinates (rounded to 6 decimal places for precision)
@@ -85,14 +98,17 @@ function groupOrdersByLocation<T extends { id: string; trackingId: string; latit
     locationMap.set(key, existing);
   }
 
-  const groupedOrders: (T & { groupedOrderIds: string[]; groupedTrackingIds: string[] })[] = [];
+  const groupedOrders: (T & {
+    groupedOrderIds: string[];
+    groupedTrackingIds: string[];
+  })[] = [];
   const groupMap: OrderGroupMap = new Map();
 
   for (const [, ordersAtLocation] of locationMap) {
     // Use first order as representative
     const representative = ordersAtLocation[0];
-    const orderIds = ordersAtLocation.map(o => o.id);
-    const trackingIds = ordersAtLocation.map(o => o.trackingId);
+    const orderIds = ordersAtLocation.map((o) => o.id);
+    const trackingIds = ordersAtLocation.map((o) => o.trackingId);
 
     groupedOrders.push({
       ...representative,
@@ -393,7 +409,9 @@ export async function runOptimization(
   // Get service time from config (in minutes), convert to seconds
   // Default to 10 minutes (600 seconds) if not set
   const serviceTimeSeconds = (config.serviceTimeMinutes || 10) * 60;
-  console.log(`[Optimization] Service time configured: ${config.serviceTimeMinutes} minutes (${serviceTimeSeconds} seconds)`);
+  console.log(
+    `[Optimization] Service time configured: ${config.serviceTimeMinutes} minutes (${serviceTimeSeconds} seconds)`,
+  );
 
   // Prepare orders with location info
   const ordersWithLocation = pendingOrders.map((order) => ({
@@ -410,7 +428,10 @@ export async function runOptimization(
 
   // Create lookup map for order details (used when populating unassigned orders)
   const orderDetailsMap = new Map(
-    ordersWithLocation.map((o) => [o.id, { latitude: o.latitude, longitude: o.longitude, address: o.address }])
+    ordersWithLocation.map((o) => [
+      o.id,
+      { latitude: o.latitude, longitude: o.longitude, address: o.address },
+    ]),
   );
 
   // Prepare vehicles with zone assignments
@@ -427,9 +448,16 @@ export async function runOptimization(
   }));
 
   // Create map of driverId -> vehicle origin (for drivers without routes display)
-  const driverVehicleOriginMap = new Map<string, { latitude: string; longitude: string }>();
+  const driverVehicleOriginMap = new Map<
+    string,
+    { latitude: string; longitude: string }
+  >();
   for (const vehicle of selectedVehicles) {
-    if (vehicle.assignedDriverId && vehicle.originLatitude && vehicle.originLongitude) {
+    if (
+      vehicle.assignedDriverId &&
+      vehicle.originLatitude &&
+      vehicle.originLongitude
+    ) {
       driverVehicleOriginMap.set(vehicle.assignedDriverId, {
         latitude: vehicle.originLatitude,
         longitude: vehicle.originLongitude,
@@ -471,14 +499,19 @@ export async function runOptimization(
     maxTravelTimeMinutes: preset?.vehicleRechargeTime ?? undefined, // vehicleRechargeTime acts as max travel time
     trafficFactor: preset?.trafficFactor ?? undefined,
     // Route end configuration
-    routeEndMode: (preset?.routeEndMode as "DRIVER_ORIGIN" | "SPECIFIC_DEPOT" | "OPEN_END") ?? "DRIVER_ORIGIN",
-    endDepot: preset?.endDepotLatitude && preset?.endDepotLongitude
-      ? {
-          latitude: parseFloat(preset.endDepotLatitude),
-          longitude: parseFloat(preset.endDepotLongitude),
-          address: preset.endDepotAddress ?? undefined,
-        }
-      : undefined,
+    routeEndMode:
+      (preset?.routeEndMode as
+        | "DRIVER_ORIGIN"
+        | "SPECIFIC_DEPOT"
+        | "OPEN_END") ?? "DRIVER_ORIGIN",
+    endDepot:
+      preset?.endDepotLatitude && preset?.endDepotLongitude
+        ? {
+            latitude: parseFloat(preset.endDepotLatitude),
+            longitude: parseFloat(preset.endDepotLongitude),
+            address: preset.endDepotAddress ?? undefined,
+          }
+        : undefined,
     // Additional optimization options
     openStart: preset?.openStart ?? false,
     minimizeVehicles: preset?.minimizeVehicles ?? false,
@@ -547,9 +580,10 @@ export async function runOptimization(
 
       if (availableVehicles.length === 0) {
         // No vehicles available for this zone - mark all orders as unassigned
-        const reason = oneRoutePerVehicle && batch.vehicles.length > 0
-          ? `Vehículos de zona ${batch.zoneName} ya tienen rutas asignadas (1 ruta por vehículo habilitado)`
-          : `No hay vehículos disponibles para la zona ${batch.zoneName} el día ${dayOfWeek}`;
+        const reason =
+          oneRoutePerVehicle && batch.vehicles.length > 0
+            ? `Vehículos de zona ${batch.zoneName} ya tienen rutas asignadas (1 ruta por vehículo habilitado)`
+            : `No hay vehículos disponibles para la zona ${batch.zoneName} el día ${dayOfWeek}`;
 
         for (const order of batch.orders) {
           const details = orderDetailsMap.get(order.id);
@@ -754,7 +788,8 @@ export async function runOptimization(
     // Apply grouping if enabled
     let ordersToProcess = ordersWithLocation;
     if (groupSameLocation) {
-      const { groupedOrders, groupMap } = groupOrdersByLocation(ordersWithLocation);
+      const { groupedOrders, groupMap } =
+        groupOrdersByLocation(ordersWithLocation);
       // Store in global map for later ungrouping
       for (const [key, value] of groupMap) {
         globalGroupMap.set(key, value);
@@ -975,12 +1010,13 @@ export async function runOptimization(
   // Perform intelligent driver assignment ONLY for vehicles without pre-assigned drivers
   checkAbort();
   const strategy = config?.objective === "TIME" ? "AVAILABILITY" : "BALANCED";
-  const driverAssignments = routeAssignments.length > 0
-    ? await assignDriversToRoutes(routeAssignments, {
-        ...DEFAULT_ASSIGNMENT_CONFIG,
-        strategy,
-      })
-    : new Map<string, DriverAssignmentResult>();
+  const driverAssignments =
+    routeAssignments.length > 0
+      ? await assignDriversToRoutes(routeAssignments, {
+          ...DEFAULT_ASSIGNMENT_CONFIG,
+          strategy,
+        })
+      : new Map<string, DriverAssignmentResult>();
 
   // Update routes with assigned drivers and vehicle origin
   for (const route of routes) {
@@ -988,7 +1024,10 @@ export async function runOptimization(
     const preAssignedDriverId = vehicleDriverMap.get(route.vehicleId);
 
     // Check if this vehicle has a pre-assigned driver that should be used directly
-    if (preAssignedDriverId && vehiclesWithPreAssignedDrivers.has(route.vehicleId)) {
+    if (
+      preAssignedDriverId &&
+      vehiclesWithPreAssignedDrivers.has(route.vehicleId)
+    ) {
       // Use pre-assigned driver directly WITHOUT scoring
       const driver = driverDetailsMap.get(preAssignedDriverId);
       if (driver) {
@@ -1015,7 +1054,9 @@ export async function runOptimization(
     }
 
     // Get vehicle origin from vehiclesWithZones
-    const vehicleWithZone = vehiclesWithZones.find((v) => v.id === route.vehicleId);
+    const vehicleWithZone = vehiclesWithZones.find(
+      (v) => v.id === route.vehicleId,
+    );
     if (vehicleWithZone?.originLatitude && vehicleWithZone?.originLongitude) {
       route.driverOrigin = {
         latitude: vehicleWithZone.originLatitude,
@@ -1079,7 +1120,9 @@ export async function runOptimization(
     await getAssignmentQualityMetrics(assignmentResults);
 
   // Calculate drivers without routes
-  const assignedDriverIds = new Set(routes.map((r) => r.driverId).filter(Boolean));
+  const assignedDriverIds = new Set(
+    routes.map((r) => r.driverId).filter(Boolean),
+  );
   const driversWithoutRoutes = selectedDrivers
     .filter((d) => !assignedDriverIds.has(d.id))
     .map((d) => {

@@ -16,6 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { useState } from "react";
+import { useCompanyContext } from "@/hooks/use-company-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -309,7 +310,10 @@ function RouteCard({
                 <div
                   key={stop.orderId}
                   className="flex items-start gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors"
-                  style={{ contentVisibility: "auto", containIntrinsicSize: "0 60px" }}
+                  style={{
+                    contentVisibility: "auto",
+                    containIntrinsicSize: "0 60px",
+                  }}
                 >
                   <div className="flex flex-col items-center">
                     <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
@@ -390,7 +394,10 @@ function UnassignedOrdersList({
           <div
             key={order.orderId}
             className="flex items-center gap-3 p-3 rounded-lg border border-orange-200 bg-orange-50/50"
-            style={{ contentVisibility: "auto", containIntrinsicSize: "0 50px" }}
+            style={{
+              contentVisibility: "auto",
+              containIntrinsicSize: "0 50px",
+            }}
           >
             <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">
@@ -432,6 +439,7 @@ export function OptimizationResults({
   isPlanConfirmed,
   jobId,
 }: OptimizationResultsProps) {
+  const { effectiveCompanyId: companyId } = useCompanyContext();
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned" | "map">(
     "routes",
@@ -472,7 +480,9 @@ export function OptimizationResults({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Resumen de Optimizaci&oacute;n</h2>
+            <h2 className="text-xl font-semibold">
+              Resumen de Optimizaci&oacute;n
+            </h2>
             <p className="text-sm text-muted-foreground">
               Objetivo: {result.summary.objective} &bull; Procesado en{" "}
               {(result.summary.processingTimeMs / 1000).toFixed(2)}s
@@ -553,7 +563,8 @@ export function OptimizationResults({
               </span>
             </div>
             <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">
-              Revise la pesta&ntilde;a de Pedidos No Asignados para m&aacute;s detalles.
+              Revise la pesta&ntilde;a de Pedidos No Asignados para m&aacute;s
+              detalles.
             </p>
           </div>
         )}
@@ -596,20 +607,25 @@ export function OptimizationResults({
               {result.routes.map((route) => (
                 <div
                   key={route.routeId}
-                  style={{ contentVisibility: "auto", containIntrinsicSize: "0 80px" }}
+                  style={{
+                    contentVisibility: "auto",
+                    containIntrinsicSize: "0 80px",
+                  }}
                 >
-                <RouteCard
-                  route={route}
-                  isSelected={selectedRouteId === route.routeId}
-                  onToggle={() =>
-                    setSelectedRouteId(
-                      selectedRouteId === route.routeId ? null : route.routeId,
-                    )
-                  }
-                  onReassignDriver={
-                    onReassignDriver ? handleReassignDriver : undefined
-                  }
-                />
+                  <RouteCard
+                    route={route}
+                    isSelected={selectedRouteId === route.routeId}
+                    onToggle={() =>
+                      setSelectedRouteId(
+                        selectedRouteId === route.routeId
+                          ? null
+                          : route.routeId,
+                      )
+                    }
+                    onReassignDriver={
+                      onReassignDriver ? handleReassignDriver : undefined
+                    }
+                  />
                 </div>
               ))}
             </div>
@@ -740,11 +756,12 @@ export function OptimizationResults({
       )}
 
       {/* Plan Confirmation Dialog */}
-      {jobId && (
+      {jobId && companyId && (
         <PlanConfirmationDialog
           open={confirmDialogOpen}
           onOpenChange={setConfirmDialogOpen}
           jobId={jobId}
+          companyId={companyId}
           onConfirmed={() => {
             setConfirmDialogOpen(false);
             if (onConfirm) {

@@ -189,7 +189,10 @@ async function optimizeWithVroom(
     : undefined;
 
   // Helper function to adjust time windows for flexibility
-  const adjustTimeWindow = (time: string | undefined, adjustMinutes: number): string | undefined => {
+  const adjustTimeWindow = (
+    time: string | undefined,
+    adjustMinutes: number,
+  ): string | undefined => {
     if (!time) return undefined;
     const date = new Date(`1970-01-01T${time}`);
     date.setMinutes(date.getMinutes() + adjustMinutes);
@@ -230,9 +233,10 @@ async function optimizeWithVroom(
   });
 
   // Calculate speed factor from traffic factor (0-100 -> 0.5-1.5)
-  const speedFactor = config.trafficFactor !== undefined
-    ? 1.5 - (config.trafficFactor / 100) // 0 traffic = 1.5x speed, 100 traffic = 0.5x speed
-    : undefined;
+  const speedFactor =
+    config.trafficFactor !== undefined
+      ? 1.5 - config.trafficFactor / 100 // 0 traffic = 1.5x speed, 100 traffic = 0.5x speed
+      : undefined;
 
   // Calculate max travel time in seconds
   // Can come from maxTravelTimeMinutes directly, or estimated from maxDistanceKm
@@ -248,7 +252,9 @@ async function optimizeWithVroom(
     // Add 20% buffer for service times and variability
     const estimatedTimeHours = (config.maxDistanceKm / AVERAGE_SPEED_KMH) * 1.2;
     maxTravelTime = Math.round(estimatedTimeHours * 3600); // Convert to seconds
-    console.log(`Max distance ${config.maxDistanceKm}km -> estimated max travel time: ${Math.round(estimatedTimeHours * 60)} minutes`);
+    console.log(
+      `Max distance ${config.maxDistanceKm}km -> estimated max travel time: ${Math.round(estimatedTimeHours * 60)} minutes`,
+    );
   }
 
   // Calculate minimum vehicles needed if minimizeVehicles is enabled
@@ -345,7 +351,9 @@ async function optimizeWithVroom(
     }
   })();
 
-  console.log(`[VROOM] Optimization objective: ${config.objective} -> ${JSON.stringify(vroomObjectives)}`);
+  console.log(
+    `[VROOM] Optimization objective: ${config.objective} -> ${JSON.stringify(vroomObjectives)}`,
+  );
 
   // Build VROOM request
   const request: VroomRequest = {
@@ -394,7 +402,8 @@ async function optimizeWithVroom(
         }),
         totalWeight: r.totalWeight,
         totalVolume: r.totalVolume,
-        maxWeight: vehicles.find((v) => v.id === r.vehicleId)?.maxWeight || 10000,
+        maxWeight:
+          vehicles.find((v) => v.id === r.vehicleId)?.maxWeight || 10000,
         maxVolume: vehicles.find((v) => v.id === r.vehicleId)?.maxVolume || 100,
         maxOrders: vehicles.find((v) => v.id === r.vehicleId)?.maxOrders || 50,
       }));
@@ -408,13 +417,13 @@ async function optimizeWithVroom(
       // Only apply if improvement is significant
       if (balanceResult.newScore > initialScore + 5) {
         console.log(
-          `Balance improved from ${initialScore} to ${balanceResult.newScore} (moved ${balanceResult.movedOrders} orders)`
+          `Balance improved from ${initialScore} to ${balanceResult.newScore} (moved ${balanceResult.movedOrders} orders)`,
         );
 
         // Update routes with balanced results
         for (const balancedRoute of balanceResult.routes) {
           const originalRoute = result.routes.find(
-            (r) => r.vehicleId === balancedRoute.vehicleId
+            (r) => r.vehicleId === balancedRoute.vehicleId,
           );
           if (originalRoute) {
             originalRoute.stops = balancedRoute.stops.map((s) => ({
@@ -443,7 +452,7 @@ async function optimizeWithVroom(
     for (const route of result.routes) {
       if (route.totalDistance > maxDistanceMeters) {
         console.warn(
-          `Route ${route.vehiclePlate} exceeds max distance: ${(route.totalDistance / 1000).toFixed(1)}km > ${config.maxDistanceKm}km`
+          `Route ${route.vehiclePlate} exceeds max distance: ${(route.totalDistance / 1000).toFixed(1)}km > ${config.maxDistanceKm}km`,
         );
         // Note: We could move excess orders to unassigned here, but for now just warn
         // Full implementation would require re-routing which is complex
@@ -520,7 +529,9 @@ function convertVroomResponse(
       const totalTravelTime = vroomDuration;
       const totalDuration = totalTravelTime + totalServiceTime + waitingTime;
 
-      console.log(`[VROOM Route ${vehicle.plate}] VROOM duration: ${vroomDuration}s, service: ${totalServiceTime}s, waiting: ${waitingTime}s -> travel: ${totalTravelTime}s, total: ${totalDuration}s`);
+      console.log(
+        `[VROOM Route ${vehicle.plate}] VROOM duration: ${vroomDuration}s, service: ${totalServiceTime}s, waiting: ${waitingTime}s -> travel: ${totalTravelTime}s, total: ${totalDuration}s`,
+      );
 
       routes.push({
         vehicleId,
@@ -648,7 +659,8 @@ function optimizeWithNearestNeighbor(
         // Check skills
         if (order.skillsRequired && order.skillsRequired.length > 0) {
           const vehicleSkills = new Set(vehicle.skills || []);
-          if (!order.skillsRequired.every((s) => vehicleSkills.has(s))) continue;
+          if (!order.skillsRequired.every((s) => vehicleSkills.has(s)))
+            continue;
         }
 
         const orderCoords: Coordinates = {
@@ -700,7 +712,10 @@ function optimizeWithNearestNeighbor(
       const routeResult = calculateRouteDistance(routeCoords);
 
       // Calculate service time from stops
-      const totalServiceTime = stops.reduce((sum, s) => sum + (s.serviceTime || 0), 0);
+      const totalServiceTime = stops.reduce(
+        (sum, s) => sum + (s.serviceTime || 0),
+        0,
+      );
       const totalTravelTime = routeResult.durationSeconds;
       const totalDuration = totalTravelTime + totalServiceTime;
 

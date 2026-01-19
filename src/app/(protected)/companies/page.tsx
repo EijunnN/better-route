@@ -44,7 +44,12 @@ const fetcher = async (url: string): Promise<Company[]> => {
 };
 
 function CompaniesPageContent() {
-  const { data: companies = [], isLoading, error, mutate } = useSWR("/api/companies", fetcher, {
+  const {
+    data: companies = [],
+    isLoading,
+    error,
+    mutate,
+  } = useSWR("/api/companies", fetcher, {
     revalidateOnFocus: false,
   });
   const [showForm, setShowForm] = useState(false);
@@ -74,7 +79,8 @@ function CompaniesPageContent() {
     } catch (err) {
       toast({
         title: "Error al crear empresa",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -86,7 +92,7 @@ function CompaniesPageContent() {
 
     // Optimistic update
     const optimisticData = companies.map((c) =>
-      c.id === editingCompany.id ? { ...c, ...data } : c
+      c.id === editingCompany.id ? { ...c, ...data } : c,
     );
 
     try {
@@ -109,7 +115,7 @@ function CompaniesPageContent() {
           optimisticData,
           rollbackOnError: true,
           revalidate: false,
-        }
+        },
       );
 
       setEditingCompany(null);
@@ -120,7 +126,8 @@ function CompaniesPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar empresa",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -133,7 +140,7 @@ function CompaniesPageContent() {
 
     // Optimistic update - mark as inactive
     const optimisticData = companies.map((c) =>
-      c.id === id ? { ...c, active: false } : c
+      c.id === id ? { ...c, active: false } : c,
     );
 
     try {
@@ -154,7 +161,7 @@ function CompaniesPageContent() {
           optimisticData,
           rollbackOnError: true,
           revalidate: false,
-        }
+        },
       );
 
       toast({
@@ -166,7 +173,8 @@ function CompaniesPageContent() {
     } catch (err) {
       toast({
         title: "Error al desactivar empresa",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {

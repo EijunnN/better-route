@@ -142,9 +142,7 @@ export function DriverSelector({
   // Handle select all
   const handleSelectAll = () => {
     const allIdsSet = new Set(filteredDrivers.map((d) => d.id));
-    const allSelected = filteredDrivers.every((d) =>
-      selectedIdsSet.has(d.id),
-    );
+    const allSelected = filteredDrivers.every((d) => selectedIdsSet.has(d.id));
 
     if (allSelected) {
       onChange(selectedIds.filter((id) => !allIdsSet.has(id)));

@@ -134,7 +134,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // System roles cannot have permissions modified
     if (role.isSystem) {
       return NextResponse.json(
-        { error: "Los permisos de roles del sistema no pueden ser modificados" },
+        {
+          error: "Los permisos de roles del sistema no pueden ser modificados",
+        },
         { status: 403 },
       );
     }
@@ -235,7 +237,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (role.isSystem) {
       return NextResponse.json(
-        { error: "Los permisos de roles del sistema no pueden ser modificados" },
+        {
+          error: "Los permisos de roles del sistema no pueden ser modificados",
+        },
         { status: 403 },
       );
     }

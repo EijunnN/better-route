@@ -37,7 +37,9 @@ export async function GET(request: NextRequest) {
       Object.fromEntries(searchParams),
     );
 
-    const conditions = [withTenantFilter(optimizationJobs, [], tenantCtx.companyId)];
+    const conditions = [
+      withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+    ];
 
     if (query.status) {
       conditions.push(eq(optimizationJobs.status, query.status));

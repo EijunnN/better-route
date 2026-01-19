@@ -77,7 +77,7 @@ export function LocationPicker({
 
     map.current.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
-      "top-right"
+      "top-right",
     );
 
     map.current.on("load", () => {
@@ -116,7 +116,7 @@ export function LocationPicker({
         map.current = null;
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update marker when value changes externally
@@ -168,7 +168,7 @@ export function LocationPicker({
           headers: {
             "User-Agent": "PlaneamientoApp/1.0",
           },
-        }
+        },
       );
 
       const results = await response.json();

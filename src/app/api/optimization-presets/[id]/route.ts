@@ -46,10 +46,7 @@ export async function GET(
     });
 
     if (!preset) {
-      return NextResponse.json(
-        { error: "Preset not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Preset not found" }, { status: 404 });
     }
 
     return NextResponse.json({ data: preset });
@@ -92,10 +89,7 @@ export async function PUT(
     });
 
     if (!existingPreset) {
-      return NextResponse.json(
-        { error: "Preset not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Preset not found" }, { status: 404 });
     }
 
     // If this preset is being set as default, unset other defaults
@@ -117,19 +111,24 @@ export async function PUT(
         name: body.name ?? existingPreset.name,
         description: body.description ?? existingPreset.description,
         balanceVisits: body.balanceVisits ?? existingPreset.balanceVisits,
-        minimizeVehicles: body.minimizeVehicles ?? existingPreset.minimizeVehicles,
+        minimizeVehicles:
+          body.minimizeVehicles ?? existingPreset.minimizeVehicles,
         openStart: body.openStart ?? existingPreset.openStart,
         openEnd: body.openEnd ?? existingPreset.openEnd,
         mergeSimilar: body.mergeSimilar ?? existingPreset.mergeSimilar,
         mergeSimilarV2: body.mergeSimilarV2 ?? existingPreset.mergeSimilarV2,
-        oneRoutePerVehicle: body.oneRoutePerVehicle ?? existingPreset.oneRoutePerVehicle,
+        oneRoutePerVehicle:
+          body.oneRoutePerVehicle ?? existingPreset.oneRoutePerVehicle,
         simplify: body.simplify ?? existingPreset.simplify,
         bigVrp: body.bigVrp ?? existingPreset.bigVrp,
-        flexibleTimeWindows: body.flexibleTimeWindows ?? existingPreset.flexibleTimeWindows,
+        flexibleTimeWindows:
+          body.flexibleTimeWindows ?? existingPreset.flexibleTimeWindows,
         mergeByDistance: body.mergeByDistance ?? existingPreset.mergeByDistance,
-        groupSameLocation: body.groupSameLocation ?? existingPreset.groupSameLocation,
+        groupSameLocation:
+          body.groupSameLocation ?? existingPreset.groupSameLocation,
         maxDistanceKm: body.maxDistanceKm ?? existingPreset.maxDistanceKm,
-        vehicleRechargeTime: body.vehicleRechargeTime ?? existingPreset.vehicleRechargeTime,
+        vehicleRechargeTime:
+          body.vehicleRechargeTime ?? existingPreset.vehicleRechargeTime,
         trafficFactor: body.trafficFactor ?? existingPreset.trafficFactor,
         isDefault: body.isDefault ?? existingPreset.isDefault,
         updatedAt: new Date(),
@@ -176,10 +175,7 @@ export async function DELETE(
     });
 
     if (!existingPreset) {
-      return NextResponse.json(
-        { error: "Preset not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Preset not found" }, { status: 404 });
     }
 
     // Soft delete

@@ -25,17 +25,13 @@ export const LICENSE_CATEGORIES = [
 ] as const;
 
 // Load types for vehicles
-export const LOAD_TYPES = [
-  "LIGHT",
-  "HEAVY",
-] as const;
+export const LOAD_TYPES = ["LIGHT", "HEAVY"] as const;
 
 // Time format regex (HH:MM or HH:MM:SS)
 const TIME_FORMAT = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
 
 // Helper to transform empty strings to null
-const emptyStringToNull = (val: unknown) =>
-  val === "" ? null : val;
+const emptyStringToNull = (val: unknown) => (val === "" ? null : val);
 
 // Helper to normalize time values (strip seconds and handle empty)
 const normalizeTime = (val: unknown): string | null => {
@@ -57,7 +53,7 @@ export const vehicleSchema = z
     useNameAsPlate: z.boolean().default(false),
     plate: z.preprocess(
       emptyStringToNull,
-      z.string().max(50, "Matrícula demasiado larga").optional().nullable()
+      z.string().max(50, "Matrícula demasiado larga").optional().nullable(),
     ),
 
     // Capacity
@@ -68,7 +64,7 @@ export const vehicleSchema = z
           message: "Tipo de carga debe ser LIGHT o HEAVY",
         })
         .optional()
-        .nullable()
+        .nullable(),
     ),
     maxOrders: z
       .number()
@@ -79,31 +75,39 @@ export const vehicleSchema = z
     // Origin
     originAddress: z.preprocess(
       emptyStringToNull,
-      z.string().max(500, "Dirección demasiado larga").optional().nullable()
+      z.string().max(500, "Dirección demasiado larga").optional().nullable(),
     ),
     originLatitude: z.preprocess(
       emptyStringToNull,
-      z.string().max(20, "Latitud demasiado larga").optional().nullable()
+      z.string().max(20, "Latitud demasiado larga").optional().nullable(),
     ),
     originLongitude: z.preprocess(
       emptyStringToNull,
-      z.string().max(20, "Longitud demasiado larga").optional().nullable()
+      z.string().max(20, "Longitud demasiado larga").optional().nullable(),
     ),
 
     // Assigned driver
     assignedDriverId: z.preprocess(
       emptyStringToNull,
-      z.string().uuid("ID de conductor inválido").optional().nullable()
+      z.string().uuid("ID de conductor inválido").optional().nullable(),
     ),
 
     // Workday configuration
     workdayStart: z.preprocess(
       normalizeTime,
-      z.string().regex(TIME_FORMAT, "Formato de hora inválido (HH:MM)").optional().nullable()
+      z
+        .string()
+        .regex(TIME_FORMAT, "Formato de hora inválido (HH:MM)")
+        .optional()
+        .nullable(),
     ),
     workdayEnd: z.preprocess(
       normalizeTime,
-      z.string().regex(TIME_FORMAT, "Formato de hora inválido (HH:MM)").optional().nullable()
+      z
+        .string()
+        .regex(TIME_FORMAT, "Formato de hora inválido (HH:MM)")
+        .optional()
+        .nullable(),
     ),
     hasBreakTime: z.boolean().default(false),
     breakDuration: z
@@ -114,11 +118,19 @@ export const vehicleSchema = z
       .nullable(),
     breakTimeStart: z.preprocess(
       normalizeTime,
-      z.string().regex(TIME_FORMAT, "Formato de hora inválido (HH:MM)").optional().nullable()
+      z
+        .string()
+        .regex(TIME_FORMAT, "Formato de hora inválido (HH:MM)")
+        .optional()
+        .nullable(),
     ),
     breakTimeEnd: z.preprocess(
       normalizeTime,
-      z.string().regex(TIME_FORMAT, "Formato de hora inválido (HH:MM)").optional().nullable()
+      z
+        .string()
+        .regex(TIME_FORMAT, "Formato de hora inválido (HH:MM)")
+        .optional()
+        .nullable(),
     ),
 
     // Fleet IDs (M:N relationship)
@@ -127,11 +139,11 @@ export const vehicleSchema = z
     // Legacy fields (kept for backward compatibility)
     brand: z.preprocess(
       emptyStringToNull,
-      z.string().max(100, "Marca demasiado larga").optional().nullable()
+      z.string().max(100, "Marca demasiado larga").optional().nullable(),
     ),
     model: z.preprocess(
       emptyStringToNull,
-      z.string().max(100, "Modelo demasiado largo").optional().nullable()
+      z.string().max(100, "Modelo demasiado largo").optional().nullable(),
     ),
     year: z
       .number()
@@ -142,7 +154,7 @@ export const vehicleSchema = z
       .nullable(),
     type: z.preprocess(
       emptyStringToNull,
-      z.enum(VEHICLE_TYPES).optional().nullable()
+      z.enum(VEHICLE_TYPES).optional().nullable(),
     ),
     weightCapacity: z.number().positive().optional().nullable(),
     volumeCapacity: z.number().positive().optional().nullable(),
@@ -151,15 +163,15 @@ export const vehicleSchema = z
     lifting: z.boolean().default(false),
     licenseRequired: z.preprocess(
       emptyStringToNull,
-      z.enum(LICENSE_CATEGORIES).optional().nullable()
+      z.enum(LICENSE_CATEGORIES).optional().nullable(),
     ),
     insuranceExpiry: z.preprocess(
       emptyStringToNull,
-      z.string().datetime().optional().nullable()
+      z.string().datetime().optional().nullable(),
     ),
     inspectionExpiry: z.preprocess(
       emptyStringToNull,
-      z.string().datetime().optional().nullable()
+      z.string().datetime().optional().nullable(),
     ),
 
     status: z
@@ -223,16 +235,15 @@ const emptyToNull = (val: unknown): unknown =>
   val === "" || val === undefined ? null : val;
 
 // Helper to create nullable enum that accepts empty/invalid values and converts them to null
-const nullableEnum = <T extends readonly [string, ...string[]]>(enumValues: T) => {
+const nullableEnum = <T extends readonly [string, ...string[]]>(
+  enumValues: T,
+) => {
   const validValues = new Set(enumValues as unknown as string[]);
-  return z.preprocess(
-    (val) => {
-      if (val === null || val === undefined || val === "") return null;
-      if (typeof val === "string" && !validValues.has(val)) return null;
-      return val;
-    },
-    z.enum(enumValues).nullable().optional()
-  );
+  return z.preprocess((val) => {
+    if (val === null || val === undefined || val === "") return null;
+    if (typeof val === "string" && !validValues.has(val)) return null;
+    return val;
+  }, z.enum(enumValues).nullable().optional());
 };
 
 export const updateVehicleSchema = z.object({
@@ -243,37 +254,37 @@ export const updateVehicleSchema = z.object({
   maxOrders: z.number().int().positive().optional(),
   originAddress: z.preprocess(
     emptyToNull,
-    z.string().max(500).optional().nullable()
+    z.string().max(500).optional().nullable(),
   ),
   originLatitude: z.preprocess(
     emptyToNull,
-    z.string().max(20).optional().nullable()
+    z.string().max(20).optional().nullable(),
   ),
   originLongitude: z.preprocess(
     emptyToNull,
-    z.string().max(20).optional().nullable()
+    z.string().max(20).optional().nullable(),
   ),
   assignedDriverId: z.preprocess(
     emptyToNull,
-    z.string().uuid().optional().nullable()
+    z.string().uuid().optional().nullable(),
   ),
   workdayStart: z.preprocess(
     normalizeTime,
-    z.string().regex(TIME_FORMAT).optional().nullable()
+    z.string().regex(TIME_FORMAT).optional().nullable(),
   ),
   workdayEnd: z.preprocess(
     normalizeTime,
-    z.string().regex(TIME_FORMAT).optional().nullable()
+    z.string().regex(TIME_FORMAT).optional().nullable(),
   ),
   hasBreakTime: z.boolean().optional(),
   breakDuration: z.number().int().positive().optional().nullable(),
   breakTimeStart: z.preprocess(
     normalizeTime,
-    z.string().regex(TIME_FORMAT).optional().nullable()
+    z.string().regex(TIME_FORMAT).optional().nullable(),
   ),
   breakTimeEnd: z.preprocess(
     normalizeTime,
-    z.string().regex(TIME_FORMAT).optional().nullable()
+    z.string().regex(TIME_FORMAT).optional().nullable(),
   ),
   fleetIds: z.array(z.string().uuid()).optional(),
   // Legacy fields
@@ -295,11 +306,11 @@ export const updateVehicleSchema = z.object({
   licenseRequired: nullableEnum(LICENSE_CATEGORIES),
   insuranceExpiry: z.preprocess(
     emptyToNull,
-    z.string().datetime().optional().nullable()
+    z.string().datetime().optional().nullable(),
   ),
   inspectionExpiry: z.preprocess(
     emptyToNull,
-    z.string().datetime().optional().nullable()
+    z.string().datetime().optional().nullable(),
   ),
   status: z.enum(VEHICLE_STATUS).optional(),
   active: z.boolean().optional(),

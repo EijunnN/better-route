@@ -154,7 +154,8 @@ function DriversPageContent() {
     } catch (err) {
       toast({
         title: "Error al crear conductor",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -188,7 +189,8 @@ function DriversPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar conductor",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -209,7 +211,9 @@ function DriversPageContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al desactivar el conductor");
+        throw new Error(
+          error.error || error.details || "Error al desactivar el conductor",
+        );
       }
 
       await fetchDrivers();
@@ -222,7 +226,8 @@ function DriversPageContent() {
     } catch (err) {
       toast({
         title: "Error al desactivar conductor",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {

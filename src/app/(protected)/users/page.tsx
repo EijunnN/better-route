@@ -116,7 +116,11 @@ const getLicenseStatusLabel = (expiryDate: string | null | undefined) => {
 };
 
 function UsersPageContent() {
-  const { user: authUser, companyId: authCompanyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    user: authUser,
+    companyId: authCompanyId,
+    isLoading: isAuthLoading,
+  } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
@@ -128,14 +132,17 @@ function UsersPageContent() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingUserRoleIds, setEditingUserRoleIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("all");
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Check if user is system admin (can manage users across companies)
   const isSystemAdmin = authUser?.role === "ADMIN_SISTEMA";
 
   // Use selected company for system admins, otherwise use auth company
-  const effectiveCompanyId = isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;
+  const effectiveCompanyId =
+    isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;
 
   const fetchUsers = useCallback(async () => {
     if (!effectiveCompanyId) return;
@@ -200,21 +207,24 @@ function UsersPageContent() {
     }
   }, [isSystemAdmin]);
 
-  const fetchUserRoles = useCallback(async (userId: string) => {
-    if (!effectiveCompanyId) return [];
-    try {
-      const response = await fetch(`/api/users/${userId}/roles`, {
-        headers: {
-          "x-company-id": effectiveCompanyId,
-        },
-      });
-      const data = await response.json();
-      return (data.data || []).map((ur: { roleId: string }) => ur.roleId);
-    } catch (error) {
-      console.error("Error fetching user roles:", error);
-      return [];
-    }
-  }, [effectiveCompanyId]);
+  const fetchUserRoles = useCallback(
+    async (userId: string) => {
+      if (!effectiveCompanyId) return [];
+      try {
+        const response = await fetch(`/api/users/${userId}/roles`, {
+          headers: {
+            "x-company-id": effectiveCompanyId,
+          },
+        });
+        const data = await response.json();
+        return (data.data || []).map((ur: { roleId: string }) => ur.roleId);
+      } catch (error) {
+        console.error("Error fetching user roles:", error);
+        return [];
+      }
+    },
+    [effectiveCompanyId],
+  );
 
   // Fetch companies for system admins
   useEffect(() => {
@@ -225,7 +235,12 @@ function UsersPageContent() {
 
   // Auto-select first company for system admins when companies load
   useEffect(() => {
-    if (isSystemAdmin && !authCompanyId && !selectedCompanyId && companies.length > 0) {
+    if (
+      isSystemAdmin &&
+      !authCompanyId &&
+      !selectedCompanyId &&
+      companies.length > 0
+    ) {
       setSelectedCompanyId(companies[0].id);
     }
   }, [isSystemAdmin, authCompanyId, selectedCompanyId, companies]);
@@ -246,12 +261,16 @@ function UsersPageContent() {
     }
   }, [effectiveCompanyId, fetchUsers]);
 
-  const assignRolesToUser = async (userId: string, roleIds: string[], currentRoleIds: string[] = []) => {
+  const assignRolesToUser = async (
+    userId: string,
+    roleIds: string[],
+    currentRoleIds: string[] = [],
+  ) => {
     if (!effectiveCompanyId) return;
     // Roles to add
-    const rolesToAdd = roleIds.filter(id => !currentRoleIds.includes(id));
+    const rolesToAdd = roleIds.filter((id) => !currentRoleIds.includes(id));
     // Roles to remove
-    const rolesToRemove = currentRoleIds.filter(id => !roleIds.includes(id));
+    const rolesToRemove = currentRoleIds.filter((id) => !roleIds.includes(id));
 
     // Add new roles
     for (const roleId of rolesToAdd) {
@@ -261,7 +280,10 @@ function UsersPageContent() {
           "Content-Type": "application/json",
           "x-company-id": effectiveCompanyId,
         },
-        body: JSON.stringify({ roleId, isPrimary: rolesToAdd.indexOf(roleId) === 0 }),
+        body: JSON.stringify({
+          roleId,
+          isPrimary: rolesToAdd.indexOf(roleId) === 0,
+        }),
       });
     }
 
@@ -276,7 +298,10 @@ function UsersPageContent() {
     }
   };
 
-  const handleCreate = async (data: CreateUserInput, selectedRoleIds: string[]) => {
+  const handleCreate = async (
+    data: CreateUserInput,
+    selectedRoleIds: string[],
+  ) => {
     if (!effectiveCompanyId) return;
     try {
       const response = await fetch("/api/users", {
@@ -310,14 +335,18 @@ function UsersPageContent() {
     } catch (err) {
       toast({
         title: "Error al crear usuario",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
     }
   };
 
-  const handleUpdate = async (data: CreateUserInput, selectedRoleIds: string[]) => {
+  const handleUpdate = async (
+    data: CreateUserInput,
+    selectedRoleIds: string[],
+  ) => {
     if (!editingUser || !effectiveCompanyId) return;
 
     try {
@@ -342,7 +371,11 @@ function UsersPageContent() {
       }
 
       // Update roles
-      await assignRolesToUser(editingUser.id, selectedRoleIds, editingUserRoleIds);
+      await assignRolesToUser(
+        editingUser.id,
+        selectedRoleIds,
+        editingUserRoleIds,
+      );
 
       await fetchUsers();
       setEditingUser(null);
@@ -354,7 +387,8 @@ function UsersPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar usuario",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -376,7 +410,9 @@ function UsersPageContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al desactivar el usuario");
+        throw new Error(
+          error.error || error.details || "Error al desactivar el usuario",
+        );
       }
 
       await fetchUsers();
@@ -389,7 +425,8 @@ function UsersPageContent() {
     } catch (err) {
       toast({
         title: "Error al desactivar usuario",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -446,37 +483,37 @@ function UsersPageContent() {
           </p>
         </div>
         <UserForm
-            onSubmit={editingUser ? handleUpdate : handleCreate}
-            onCancel={handleCancel}
-            initialData={
-              editingUser
-                ? {
-                    name: editingUser.name,
-                    email: editingUser.email,
-                    username: editingUser.username,
-                    role: editingUser.role as CreateUserInput["role"],
-                    phone: editingUser.phone,
-                    identification: editingUser.identification,
-                    birthDate: editingUser.birthDate,
-                    photo: editingUser.photo,
-                    licenseNumber: editingUser.licenseNumber,
-                    licenseExpiry: editingUser.licenseExpiry,
-                    licenseCategories: editingUser.licenseCategories,
-                    certifications: editingUser.certifications,
-                    driverStatus:
-                      editingUser.driverStatus as CreateUserInput["driverStatus"],
-                    primaryFleetId: editingUser.primaryFleetId,
-                    active: editingUser.active,
-                  }
-                : undefined
-            }
-            fleets={fleets}
-            roles={roles}
-            initialRoleIds={editingUserRoleIds}
-            submitLabel={editingUser ? "Actualizar" : "Crear"}
-            isEditing={!!editingUser}
-            companyId={effectiveCompanyId ?? undefined}
-          />
+          onSubmit={editingUser ? handleUpdate : handleCreate}
+          onCancel={handleCancel}
+          initialData={
+            editingUser
+              ? {
+                  name: editingUser.name,
+                  email: editingUser.email,
+                  username: editingUser.username,
+                  role: editingUser.role as CreateUserInput["role"],
+                  phone: editingUser.phone,
+                  identification: editingUser.identification,
+                  birthDate: editingUser.birthDate,
+                  photo: editingUser.photo,
+                  licenseNumber: editingUser.licenseNumber,
+                  licenseExpiry: editingUser.licenseExpiry,
+                  licenseCategories: editingUser.licenseCategories,
+                  certifications: editingUser.certifications,
+                  driverStatus:
+                    editingUser.driverStatus as CreateUserInput["driverStatus"],
+                  primaryFleetId: editingUser.primaryFleetId,
+                  active: editingUser.active,
+                }
+              : undefined
+          }
+          fleets={fleets}
+          roles={roles}
+          initialRoleIds={editingUserRoleIds}
+          submitLabel={editingUser ? "Actualizar" : "Crear"}
+          isEditing={!!editingUser}
+          companyId={effectiveCompanyId ?? undefined}
+        />
       </div>
     );
   }
@@ -515,7 +552,9 @@ function UsersPageContent() {
         <Card>
           <CardContent className="flex items-center gap-4 py-3">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
-            <span className="text-sm text-muted-foreground">Cargando empresas...</span>
+            <span className="text-sm text-muted-foreground">
+              Cargando empresas...
+            </span>
           </CardContent>
         </Card>
       )}
@@ -726,8 +765,8 @@ function UsersPageContent() {
                               </AlertDialogTitle>
                               <AlertDialogDescription>
                                 Esta acción desactivará al usuario{" "}
-                                <strong>{user.name}</strong>. No podrá acceder al
-                                sistema.
+                                <strong>{user.name}</strong>. No podrá acceder
+                                al sistema.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

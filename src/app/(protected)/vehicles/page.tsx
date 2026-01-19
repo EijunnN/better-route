@@ -200,7 +200,8 @@ function VehiclesPageContent() {
     } catch (err) {
       toast({
         title: "Error al crear vehículo",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -234,7 +235,8 @@ function VehiclesPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar vehículo",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -255,7 +257,9 @@ function VehiclesPageContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al desactivar el vehículo");
+        throw new Error(
+          error.error || error.details || "Error al desactivar el vehículo",
+        );
       }
 
       await fetchVehicles();
@@ -268,7 +272,8 @@ function VehiclesPageContent() {
     } catch (err) {
       toast({
         title: "Error al desactivar vehículo",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {

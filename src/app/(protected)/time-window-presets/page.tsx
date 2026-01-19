@@ -62,10 +62,7 @@ const STRICTNESS_LABELS: Record<string, string> = {
 };
 
 function TimeWindowPresetsPageContent() {
-  const {
-    effectiveCompanyId: companyId,
-    isReady,
-  } = useCompanyContext();
+  const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
   const { toast } = useToast();
   const [presets, setPresets] = useState<TimeWindowPreset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -126,7 +123,8 @@ function TimeWindowPresetsPageContent() {
     } catch (err) {
       toast({
         title: "Error al crear preset",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -164,7 +162,8 @@ function TimeWindowPresetsPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar preset",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -202,7 +201,8 @@ function TimeWindowPresetsPageContent() {
     } catch (err) {
       toast({
         title: "Error al eliminar preset",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -238,7 +238,8 @@ function TimeWindowPresetsPageContent() {
             Presets de Ventanas de Tiempo
           </h1>
           <p className="text-muted-foreground mt-1">
-            Administre configuraciones reutilizables de ventanas de tiempo para programación de entregas
+            Administre configuraciones reutilizables de ventanas de tiempo para
+            programación de entregas
           </p>
         </div>
         <Button onClick={() => setShowForm(true)}>Crear Preset</Button>
@@ -292,14 +293,17 @@ function TimeWindowPresetsPageContent() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={preset.strictness === "HARD" ? "destructive" : "outline"}
+                      variant={
+                        preset.strictness === "HARD" ? "destructive" : "outline"
+                      }
                       className={
                         preset.strictness === "SOFT"
                           ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400"
                           : ""
                       }
                     >
-                      {STRICTNESS_LABELS[preset.strictness] || preset.strictness}
+                      {STRICTNESS_LABELS[preset.strictness] ||
+                        preset.strictness}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -340,12 +344,11 @@ function TimeWindowPresetsPageContent() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            ¿Eliminar preset?
-                          </AlertDialogTitle>
+                          <AlertDialogTitle>¿Eliminar preset?</AlertDialogTitle>
                           <AlertDialogDescription>
                             Esta acción eliminará permanentemente el preset{" "}
-                            <strong>{preset.name}</strong>. Esta acción no se puede deshacer.
+                            <strong>{preset.name}</strong>. Esta acción no se
+                            puede deshacer.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

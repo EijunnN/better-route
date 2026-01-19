@@ -239,7 +239,9 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    after(() => console.error("Error creating manual driver assignment:", error));
+    after(() =>
+      console.error("Error creating manual driver assignment:", error),
+    );
     return NextResponse.json(
       { error: "Error creating manual driver assignment" },
       { status: 500 },

@@ -6,7 +6,14 @@ import maplibregl, {
 } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Eraser, MousePointer2, Pencil, PenTool, Trash2, Undo } from "lucide-react";
+import {
+  Eraser,
+  MousePointer2,
+  Pencil,
+  PenTool,
+  Trash2,
+  Undo,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // CartoDB Dark Matter style for consistency
@@ -58,26 +65,27 @@ function lineIntersection(
   p1: [number, number],
   p2: [number, number],
   p3: [number, number],
-  p4: [number, number]
+  p4: [number, number],
 ): [number, number] | null {
-  const d = (p2[0] - p1[0]) * (p4[1] - p3[1]) - (p2[1] - p1[1]) * (p4[0] - p3[0]);
+  const d =
+    (p2[0] - p1[0]) * (p4[1] - p3[1]) - (p2[1] - p1[1]) * (p4[0] - p3[0]);
   if (Math.abs(d) < 1e-10) return null;
 
-  const t = ((p3[0] - p1[0]) * (p4[1] - p3[1]) - (p3[1] - p1[1]) * (p4[0] - p3[0])) / d;
-  const u = -((p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0])) / d;
+  const t =
+    ((p3[0] - p1[0]) * (p4[1] - p3[1]) - (p3[1] - p1[1]) * (p4[0] - p3[0])) / d;
+  const u =
+    -((p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0])) /
+    d;
 
   if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-    return [
-      p1[0] + t * (p2[0] - p1[0]),
-      p1[1] + t * (p2[1] - p1[1]),
-    ];
+    return [p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])];
   }
   return null;
 }
 
 // Find if the path crosses itself and return the closed polygon (Snake.io style)
 function findClosedPolygon(
-  path: [number, number][]
+  path: [number, number][],
 ): [number, number][] | null {
   if (path.length < 4) return null;
 
@@ -92,7 +100,7 @@ function findClosedPolygon(
       path[i],
       path[i + 1],
       newSegmentStart,
-      newSegmentEnd
+      newSegmentEnd,
     );
 
     if (intersection) {
@@ -110,7 +118,10 @@ function findClosedPolygon(
 }
 
 // Simplify path by removing points that are too close together
-function simplifyPath(points: [number, number][], tolerance: number): [number, number][] {
+function simplifyPath(
+  points: [number, number][],
+  tolerance: number,
+): [number, number][] {
   if (points.length < 3) return points;
 
   const result: [number, number][] = [points[0]];
@@ -119,7 +130,8 @@ function simplifyPath(points: [number, number][], tolerance: number): [number, n
     const lastPoint = result[result.length - 1];
     const currentPoint = points[i];
     const distance = Math.sqrt(
-      (currentPoint[0] - lastPoint[0]) ** 2 + (currentPoint[1] - lastPoint[1]) ** 2
+      (currentPoint[0] - lastPoint[0]) ** 2 +
+        (currentPoint[1] - lastPoint[1]) ** 2,
     );
 
     if (distance > tolerance) {
@@ -144,14 +156,19 @@ export function ZoneMapEditor({
   const [drawMode, setDrawMode] = useState<DrawMode>("draw");
   const [points, setPoints] = useState<[number, number][]>([]);
   const [isPolygonClosed, setIsPolygonClosed] = useState(false);
-  const [mousePosition, setMousePosition] = useState<[number, number] | null>(null);
+  const [mousePosition, setMousePosition] = useState<[number, number] | null>(
+    null,
+  );
   const [isDrawingFreehand, setIsDrawingFreehand] = useState(false);
   const [freehandPath, setFreehandPath] = useState<[number, number][]>([]);
 
   // Initialize points from initial geometry
   useEffect(() => {
     if (initialGeometry?.coordinates?.[0]) {
-      const coords = initialGeometry.coordinates[0].slice(0, -1) as [number, number][];
+      const coords = initialGeometry.coordinates[0].slice(0, -1) as [
+        number,
+        number,
+      ][];
       setPoints(coords);
       setIsPolygonClosed(coords.length >= 3);
       setDrawMode("select");
@@ -294,7 +311,7 @@ export function ZoneMapEditor({
 
       mapInstance.addControl(
         new maplibregl.AttributionControl({ compact: true }),
-        "bottom-right"
+        "bottom-right",
       );
       mapInstance.addControl(new maplibregl.NavigationControl(), "top-right");
 
@@ -328,9 +345,15 @@ export function ZoneMapEditor({
     if (!map.current) return;
 
     const mapInstance = map.current;
-    const polygonSource = mapInstance.getSource("polygon") as maplibregl.GeoJSONSource;
-    const outlineSource = mapInstance.getSource("polygon-outline") as maplibregl.GeoJSONSource;
-    const verticesSource = mapInstance.getSource("vertices") as maplibregl.GeoJSONSource;
+    const polygonSource = mapInstance.getSource(
+      "polygon",
+    ) as maplibregl.GeoJSONSource;
+    const outlineSource = mapInstance.getSource(
+      "polygon-outline",
+    ) as maplibregl.GeoJSONSource;
+    const verticesSource = mapInstance.getSource(
+      "vertices",
+    ) as maplibregl.GeoJSONSource;
 
     if (!polygonSource || !outlineSource || !verticesSource) return;
 
@@ -353,11 +376,13 @@ export function ZoneMapEditor({
 
       outlineSource.setData({
         type: "FeatureCollection",
-        features: [{
-          type: "Feature",
-          properties: {},
-          geometry: { type: "LineString", coordinates: lineCoords },
-        }],
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: { type: "LineString", coordinates: lineCoords },
+          },
+        ],
       });
     } else {
       outlineSource.setData({ type: "FeatureCollection", features: [] });
@@ -367,11 +392,16 @@ export function ZoneMapEditor({
     if (isPolygonClosed && points.length >= 3) {
       polygonSource.setData({
         type: "FeatureCollection",
-        features: [{
-          type: "Feature",
-          properties: {},
-          geometry: { type: "Polygon", coordinates: [[...points, points[0]]] },
-        }],
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "Polygon",
+              coordinates: [[...points, points[0]]],
+            },
+          },
+        ],
       });
     } else {
       polygonSource.setData({ type: "FeatureCollection", features: [] });
@@ -382,17 +412,21 @@ export function ZoneMapEditor({
   useEffect(() => {
     if (!map.current) return;
 
-    const freehandSource = map.current.getSource("freehand-path") as maplibregl.GeoJSONSource;
+    const freehandSource = map.current.getSource(
+      "freehand-path",
+    ) as maplibregl.GeoJSONSource;
     if (!freehandSource) return;
 
     if (isDrawingFreehand && freehandPath.length >= 2) {
       freehandSource.setData({
         type: "FeatureCollection",
-        features: [{
-          type: "Feature",
-          properties: {},
-          geometry: { type: "LineString", coordinates: freehandPath },
-        }],
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: { type: "LineString", coordinates: freehandPath },
+          },
+        ],
       });
     } else {
       freehandSource.setData({ type: "FeatureCollection", features: [] });
@@ -403,11 +437,18 @@ export function ZoneMapEditor({
   useEffect(() => {
     if (!map.current) return;
 
-    const previewSource = map.current.getSource("preview-line") as maplibregl.GeoJSONSource;
+    const previewSource = map.current.getSource(
+      "preview-line",
+    ) as maplibregl.GeoJSONSource;
     if (!previewSource) return;
 
     // Show preview line only in draw mode (not freehand), with points, not closed
-    if (drawMode === "draw" && points.length > 0 && !isPolygonClosed && mousePosition) {
+    if (
+      drawMode === "draw" &&
+      points.length > 0 &&
+      !isPolygonClosed &&
+      mousePosition
+    ) {
       const lastPoint = points[points.length - 1];
 
       const features: GeoJSON.Feature[] = [
@@ -503,7 +544,8 @@ export function ZoneMapEditor({
         if (points.length >= 3) {
           const firstPoint = points[0];
           const distance = Math.sqrt(
-            (newPoint[0] - firstPoint[0]) ** 2 + (newPoint[1] - firstPoint[1]) ** 2
+            (newPoint[0] - firstPoint[0]) ** 2 +
+              (newPoint[1] - firstPoint[1]) ** 2,
           );
 
           if (distance < 0.001) {
@@ -706,13 +748,17 @@ export function ZoneMapEditor({
           <span>
             <strong>Modo Puntos:</strong> Clic para agregar puntos.
             {points.length >= 3 && (
-              <span className="text-green-500"> Clic en el punto verde para cerrar.</span>
+              <span className="text-green-500">
+                {" "}
+                Clic en el punto verde para cerrar.
+              </span>
             )}
           </span>
         )}
         {drawMode === "freehand" && !isPolygonClosed && !isDrawingFreehand && (
           <span>
-            <strong>Modo Lápiz:</strong> Mantén presionado y dibuja. Cuando cruces tu trazo, se cerrará la zona automáticamente.
+            <strong>Modo Lápiz:</strong> Mantén presionado y dibuja. Cuando
+            cruces tu trazo, se cerrará la zona automáticamente.
           </span>
         )}
         {drawMode === "freehand" && isDrawingFreehand && (
@@ -721,7 +767,9 @@ export function ZoneMapEditor({
           </span>
         )}
         {drawMode === "delete" && (
-          <span><strong>Modo Borrar:</strong> Clic en un punto para eliminarlo.</span>
+          <span>
+            <strong>Modo Borrar:</strong> Clic en un punto para eliminarlo.
+          </span>
         )}
         {drawMode === "select" && (
           <span>
@@ -750,7 +798,11 @@ export function ZoneMapEditor({
         <Button variant="outline" onClick={onCancel} className="shadow-lg">
           Cancelar
         </Button>
-        <Button onClick={handleSave} disabled={points.length < 3} className="shadow-lg">
+        <Button
+          onClick={handleSave}
+          disabled={points.length < 3}
+          className="shadow-lg"
+        >
           Guardar Zona
         </Button>
       </div>

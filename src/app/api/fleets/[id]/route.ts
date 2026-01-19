@@ -46,7 +46,11 @@ export async function GET(
     const { id } = await params;
 
     // Apply tenant filtering
-    const whereClause = withTenantFilter(fleets, [eq(fleets.id, id)], tenantCtx.companyId);
+    const whereClause = withTenantFilter(
+      fleets,
+      [eq(fleets.id, id)],
+      tenantCtx.companyId,
+    );
 
     const [fleet] = await db.select().from(fleets).where(whereClause).limit(1);
 
@@ -124,7 +128,11 @@ export async function PATCH(
     const validatedData = updateFleetSchema.parse({ ...body, id });
 
     // Apply tenant filtering when fetching existing fleet
-    const existingWhereClause = withTenantFilter(fleets, [eq(fleets.id, id)], tenantCtx.companyId);
+    const existingWhereClause = withTenantFilter(
+      fleets,
+      [eq(fleets.id, id)],
+      tenantCtx.companyId,
+    );
 
     const [existingFleet] = await db
       .select()
@@ -336,7 +344,11 @@ export async function DELETE(
     const { id } = await params;
 
     // Apply tenant filtering when fetching existing fleet
-    const whereClause = withTenantFilter(fleets, [eq(fleets.id, id)], tenantCtx.companyId);
+    const whereClause = withTenantFilter(
+      fleets,
+      [eq(fleets.id, id)],
+      tenantCtx.companyId,
+    );
 
     const [existingFleet] = await db
       .select()

@@ -107,10 +107,7 @@ const getCategoryColor = (category: string) => {
 };
 
 function UserSkillsPageContent() {
-  const {
-    effectiveCompanyId: companyId,
-    isReady,
-  } = useCompanyContext();
+  const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
   const { toast } = useToast();
   const [userSkills, setUserSkills] = useState<UserSkill[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -130,9 +127,12 @@ function UserSkillsPageContent() {
     if (!companyId) return;
     try {
       const params = new URLSearchParams();
-      if (filterUser && filterUser !== "__all__") params.append("userId", filterUser);
-      if (filterStatus && filterStatus !== "__all__") params.append("active", filterStatus);
-      if (filterExpiry && filterExpiry !== "__all__") params.append("status", filterExpiry);
+      if (filterUser && filterUser !== "__all__")
+        params.append("userId", filterUser);
+      if (filterStatus && filterStatus !== "__all__")
+        params.append("active", filterStatus);
+      if (filterExpiry && filterExpiry !== "__all__")
+        params.append("status", filterExpiry);
 
       const response = await fetch(`/api/user-skills?${params.toString()}`, {
         headers: {
@@ -217,7 +217,8 @@ function UserSkillsPageContent() {
     } catch (err) {
       toast({
         title: "Error al asignar habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -246,12 +247,14 @@ function UserSkillsPageContent() {
       setEditingUserSkill(null);
       toast({
         title: "Habilidad actualizada",
-        description: "La habilidad del usuario ha sido actualizada exitosamente.",
+        description:
+          "La habilidad del usuario ha sido actualizada exitosamente.",
       });
     } catch (err) {
       toast({
         title: "Error al actualizar habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -272,7 +275,9 @@ function UserSkillsPageContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al desactivar la habilidad");
+        throw new Error(
+          error.error || error.details || "Error al desactivar la habilidad",
+        );
       }
 
       await fetchUserSkills();
@@ -285,7 +290,8 @@ function UserSkillsPageContent() {
     } catch (err) {
       toast({
         title: "Error al desactivar habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -306,7 +312,9 @@ function UserSkillsPageContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al actualizar el estado");
+        throw new Error(
+          error.error || error.details || "Error al actualizar el estado",
+        );
       }
 
       await fetchUserSkills();
@@ -317,7 +325,8 @@ function UserSkillsPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar estado",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     }
@@ -389,7 +398,8 @@ function UserSkillsPageContent() {
             Gestión de Habilidades de Usuarios
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Asigne y administre las habilidades y certificaciones de los usuarios (conductores)
+            Asigne y administre las habilidades y certificaciones de los
+            usuarios (conductores)
           </p>
         </div>
         <Button onClick={() => setShowForm(true)}>Asignar Habilidad</Button>
@@ -455,7 +465,9 @@ function UserSkillsPageContent() {
                 <SelectContent>
                   <SelectItem value="__all__">Todos</SelectItem>
                   <SelectItem value="valid">Vigentes</SelectItem>
-                  <SelectItem value="expiring_soon">Prontos a vencer</SelectItem>
+                  <SelectItem value="expiring_soon">
+                    Prontos a vencer
+                  </SelectItem>
                   <SelectItem value="expired">Vencidas</SelectItem>
                 </SelectContent>
               </Select>
@@ -475,7 +487,8 @@ function UserSkillsPageContent() {
           <CardContent className="py-12 text-center">
             <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              No hay habilidades asignadas. Asigne la primera habilidad a un usuario.
+              No hay habilidades asignadas. Asigne la primera habilidad a un
+              usuario.
             </p>
           </CardContent>
         </Card>
@@ -509,9 +522,12 @@ function UserSkillsPageContent() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={getCategoryColor(userSkill.skill.category)}>
-                      {VEHICLE_SKILL_CATEGORY_LABELS[userSkill.skill.category] ||
-                        userSkill.skill.category}
+                    <Badge
+                      className={getCategoryColor(userSkill.skill.category)}
+                    >
+                      {VEHICLE_SKILL_CATEGORY_LABELS[
+                        userSkill.skill.category
+                      ] || userSkill.skill.category}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
@@ -532,11 +548,17 @@ function UserSkillsPageContent() {
                                 : "text-muted-foreground"
                           }`}
                         >
-                          {EXPIRY_STATUS_LABELS[userSkill.expiryStatus || "valid"]}
+                          {
+                            EXPIRY_STATUS_LABELS[
+                              userSkill.expiryStatus || "valid"
+                            ]
+                          }
                         </span>
                       </div>
                     ) : (
-                      <span className="text-muted-foreground">Sin vencimiento</span>
+                      <span className="text-muted-foreground">
+                        Sin vencimiento
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -591,8 +613,8 @@ function UserSkillsPageContent() {
                             </AlertDialogTitle>
                             <AlertDialogDescription>
                               Esta acción desactivará la habilidad{" "}
-                              <strong>{userSkill.skill.name}</strong> del usuario{" "}
-                              <strong>{userSkill.user.name}</strong>.
+                              <strong>{userSkill.skill.name}</strong> del
+                              usuario <strong>{userSkill.user.name}</strong>.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

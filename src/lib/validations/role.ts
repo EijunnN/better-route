@@ -23,7 +23,7 @@ export const rolePermissionsSchema = z.object({
     z.object({
       permissionId: z.string().uuid("ID de permiso inválido"),
       enabled: z.boolean(),
-    })
+    }),
   ),
 });
 

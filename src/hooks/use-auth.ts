@@ -46,27 +46,28 @@ export function useAuth(): UseAuthReturn {
   const lastRefreshRef = useRef<number>(Date.now());
 
   // Use SWR for data fetching with deduplication
-  const { data: user, error, isLoading, mutate } = useSWR<User>(
-    "/api/auth/me",
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 10000, // 10 seconds deduplication
-      errorRetryCount: 1,
-      onError: async (err) => {
-        // If 401, try to refresh token
-        if ((err as Error & { status?: number }).status === 401) {
-          const refreshed = await refreshToken();
-          if (refreshed) {
-            mutate(); // Retry after refresh
-          } else {
-            window.location.href = "/login";
-          }
+  const {
+    data: user,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR<User>("/api/auth/me", fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 10000, // 10 seconds deduplication
+    errorRetryCount: 1,
+    onError: async (err) => {
+      // If 401, try to refresh token
+      if ((err as Error & { status?: number }).status === 401) {
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          mutate(); // Retry after refresh
+        } else {
+          window.location.href = "/login";
         }
-      },
-    }
-  );
+      }
+    },
+  });
 
   // Clear refresh timer
   const clearRefreshTimer = useCallback(() => {
@@ -143,7 +144,10 @@ export function useAuth(): UseAuthReturn {
       if (document.visibilityState === "visible" && user) {
         // Tab became visible, check if we need to refresh
         const timeSinceLastRefresh = Date.now() - lastRefreshRef.current;
-        if (timeSinceLastRefresh > TOKEN_LIFETIME_MS - TOKEN_REFRESH_MARGIN_MS) {
+        if (
+          timeSinceLastRefresh >
+          TOKEN_LIFETIME_MS - TOKEN_REFRESH_MARGIN_MS
+        ) {
           const success = await refreshToken();
           if (success) {
             scheduleRefresh();
@@ -167,6 +171,8 @@ export function useAuth(): UseAuthReturn {
     permissions: user?.permissions ?? [],
     isLoading,
     error: error?.message ?? null,
-    refetch: async () => { await mutate(); },
+    refetch: async () => {
+      await mutate();
+    },
   };
 }

@@ -52,7 +52,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply tenant filtering
-    const whereClause = withTenantFilter(fleets, conditions, tenantCtx.companyId);
+    const whereClause = withTenantFilter(
+      fleets,
+      conditions,
+      tenantCtx.companyId,
+    );
 
     const [fleetsData, totalResult] = await Promise.all([
       db

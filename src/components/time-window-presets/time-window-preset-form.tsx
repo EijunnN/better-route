@@ -192,7 +192,10 @@ export function TimeWindowPresetForm({
             <Select
               value={formData.type}
               onValueChange={(value) =>
-                handleChange("type", value as (typeof TIME_WINDOW_TYPES)[number])
+                handleChange(
+                  "type",
+                  value as (typeof TIME_WINDOW_TYPES)[number],
+                )
               }
               disabled={isSubmitting}
             >
@@ -220,7 +223,9 @@ export function TimeWindowPresetForm({
                 <TimePicker
                   id="startTime"
                   value={formData.startTime || null}
-                  onChange={(time) => handleChange("startTime", time || undefined)}
+                  onChange={(time) =>
+                    handleChange("startTime", time || undefined)
+                  }
                   placeholder="Seleccionar"
                   disabled={isSubmitting}
                 />
@@ -234,7 +239,9 @@ export function TimeWindowPresetForm({
                 <TimePicker
                   id="endTime"
                   value={formData.endTime || null}
-                  onChange={(time) => handleChange("endTime", time || undefined)}
+                  onChange={(time) =>
+                    handleChange("endTime", time || undefined)
+                  }
                   placeholder="Seleccionar"
                   disabled={isSubmitting}
                 />
@@ -253,7 +260,9 @@ export function TimeWindowPresetForm({
                 <TimePicker
                   id="exactTime"
                   value={formData.exactTime || null}
-                  onChange={(time) => handleChange("exactTime", time || undefined)}
+                  onChange={(time) =>
+                    handleChange("exactTime", time || undefined)
+                  }
                   placeholder="Seleccionar"
                   disabled={isSubmitting}
                 />

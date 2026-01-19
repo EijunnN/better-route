@@ -82,7 +82,7 @@ export function ZonePreviewMap({
 
       mapInstance.addControl(
         new maplibregl.AttributionControl({ compact: true }),
-        "bottom-right"
+        "bottom-right",
       );
 
       map.current = mapInstance;
@@ -322,10 +322,7 @@ export function ZonePreviewMap({
         </div>
       )}
 
-      <div
-        ref={mapContainer}
-        className="h-full w-full rounded-lg"
-      />
+      <div ref={mapContainer} className="h-full w-full rounded-lg" />
     </div>
   );
 }

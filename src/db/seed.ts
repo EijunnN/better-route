@@ -146,7 +146,9 @@ async function seed() {
         active: true,
       });
 
-      console.log(`✅ Created admin user: admin@planeamiento.com / admin123 (no company - system admin)`);
+      console.log(
+        `✅ Created admin user: admin@planeamiento.com / admin123 (no company - system admin)`,
+      );
     } else {
       console.log(`ℹ️  Admin user already exists`);
     }
@@ -705,10 +707,7 @@ async function seed() {
     // ============================================
 
     // Check if permissions exist
-    const existingPermissions = await db
-      .select()
-      .from(permissions)
-      .limit(1);
+    const existingPermissions = await db.select().from(permissions).limit(1);
 
     if (existingPermissions.length === 0) {
       // Define all system permissions
@@ -721,74 +720,424 @@ async function seed() {
         displayOrder: number;
       }> = [
         // ORDERS
-        { entity: "orders", action: "VIEW", name: "Ver pedidos", description: "Ver lista de pedidos y detalles", category: "ORDERS", displayOrder: 1 },
-        { entity: "orders", action: "CREATE", name: "Crear pedidos", description: "Crear nuevos pedidos", category: "ORDERS", displayOrder: 2 },
-        { entity: "orders", action: "EDIT", name: "Editar pedidos", description: "Modificar pedidos existentes", category: "ORDERS", displayOrder: 3 },
-        { entity: "orders", action: "DELETE", name: "Eliminar pedidos", description: "Eliminar pedidos", category: "ORDERS", displayOrder: 4 },
-        { entity: "orders", action: "IMPORT", name: "Importar pedidos", description: "Importar pedidos desde CSV", category: "ORDERS", displayOrder: 5 },
-        { entity: "orders", action: "EXPORT", name: "Exportar pedidos", description: "Exportar pedidos a CSV", category: "ORDERS", displayOrder: 6 },
+        {
+          entity: "orders",
+          action: "VIEW",
+          name: "Ver pedidos",
+          description: "Ver lista de pedidos y detalles",
+          category: "ORDERS",
+          displayOrder: 1,
+        },
+        {
+          entity: "orders",
+          action: "CREATE",
+          name: "Crear pedidos",
+          description: "Crear nuevos pedidos",
+          category: "ORDERS",
+          displayOrder: 2,
+        },
+        {
+          entity: "orders",
+          action: "EDIT",
+          name: "Editar pedidos",
+          description: "Modificar pedidos existentes",
+          category: "ORDERS",
+          displayOrder: 3,
+        },
+        {
+          entity: "orders",
+          action: "DELETE",
+          name: "Eliminar pedidos",
+          description: "Eliminar pedidos",
+          category: "ORDERS",
+          displayOrder: 4,
+        },
+        {
+          entity: "orders",
+          action: "IMPORT",
+          name: "Importar pedidos",
+          description: "Importar pedidos desde CSV",
+          category: "ORDERS",
+          displayOrder: 5,
+        },
+        {
+          entity: "orders",
+          action: "EXPORT",
+          name: "Exportar pedidos",
+          description: "Exportar pedidos a CSV",
+          category: "ORDERS",
+          displayOrder: 6,
+        },
 
         // VEHICLES
-        { entity: "vehicles", action: "VIEW", name: "Ver vehículos", description: "Ver lista de vehículos y detalles", category: "VEHICLES", displayOrder: 1 },
-        { entity: "vehicles", action: "CREATE", name: "Crear vehículos", description: "Registrar nuevos vehículos", category: "VEHICLES", displayOrder: 2 },
-        { entity: "vehicles", action: "EDIT", name: "Editar vehículos", description: "Modificar vehículos existentes", category: "VEHICLES", displayOrder: 3 },
-        { entity: "vehicles", action: "DELETE", name: "Eliminar vehículos", description: "Eliminar vehículos", category: "VEHICLES", displayOrder: 4 },
-        { entity: "vehicles", action: "ASSIGN", name: "Asignar vehículos", description: "Asignar conductores a vehículos", category: "VEHICLES", displayOrder: 5 },
+        {
+          entity: "vehicles",
+          action: "VIEW",
+          name: "Ver vehículos",
+          description: "Ver lista de vehículos y detalles",
+          category: "VEHICLES",
+          displayOrder: 1,
+        },
+        {
+          entity: "vehicles",
+          action: "CREATE",
+          name: "Crear vehículos",
+          description: "Registrar nuevos vehículos",
+          category: "VEHICLES",
+          displayOrder: 2,
+        },
+        {
+          entity: "vehicles",
+          action: "EDIT",
+          name: "Editar vehículos",
+          description: "Modificar vehículos existentes",
+          category: "VEHICLES",
+          displayOrder: 3,
+        },
+        {
+          entity: "vehicles",
+          action: "DELETE",
+          name: "Eliminar vehículos",
+          description: "Eliminar vehículos",
+          category: "VEHICLES",
+          displayOrder: 4,
+        },
+        {
+          entity: "vehicles",
+          action: "ASSIGN",
+          name: "Asignar vehículos",
+          description: "Asignar conductores a vehículos",
+          category: "VEHICLES",
+          displayOrder: 5,
+        },
 
         // DRIVERS
-        { entity: "drivers", action: "VIEW", name: "Ver conductores", description: "Ver lista de conductores y detalles", category: "DRIVERS", displayOrder: 1 },
-        { entity: "drivers", action: "CREATE", name: "Crear conductores", description: "Registrar nuevos conductores", category: "DRIVERS", displayOrder: 2 },
-        { entity: "drivers", action: "EDIT", name: "Editar conductores", description: "Modificar conductores existentes", category: "DRIVERS", displayOrder: 3 },
-        { entity: "drivers", action: "DELETE", name: "Eliminar conductores", description: "Eliminar conductores", category: "DRIVERS", displayOrder: 4 },
-        { entity: "drivers", action: "MANAGE", name: "Gestionar estado", description: "Cambiar estado de conductores", category: "DRIVERS", displayOrder: 5 },
+        {
+          entity: "drivers",
+          action: "VIEW",
+          name: "Ver conductores",
+          description: "Ver lista de conductores y detalles",
+          category: "DRIVERS",
+          displayOrder: 1,
+        },
+        {
+          entity: "drivers",
+          action: "CREATE",
+          name: "Crear conductores",
+          description: "Registrar nuevos conductores",
+          category: "DRIVERS",
+          displayOrder: 2,
+        },
+        {
+          entity: "drivers",
+          action: "EDIT",
+          name: "Editar conductores",
+          description: "Modificar conductores existentes",
+          category: "DRIVERS",
+          displayOrder: 3,
+        },
+        {
+          entity: "drivers",
+          action: "DELETE",
+          name: "Eliminar conductores",
+          description: "Eliminar conductores",
+          category: "DRIVERS",
+          displayOrder: 4,
+        },
+        {
+          entity: "drivers",
+          action: "MANAGE",
+          name: "Gestionar estado",
+          description: "Cambiar estado de conductores",
+          category: "DRIVERS",
+          displayOrder: 5,
+        },
 
         // FLEETS
-        { entity: "fleets", action: "VIEW", name: "Ver flotas", description: "Ver lista de flotas", category: "FLEETS", displayOrder: 1 },
-        { entity: "fleets", action: "CREATE", name: "Crear flotas", description: "Crear nuevas flotas", category: "FLEETS", displayOrder: 2 },
-        { entity: "fleets", action: "EDIT", name: "Editar flotas", description: "Modificar flotas existentes", category: "FLEETS", displayOrder: 3 },
-        { entity: "fleets", action: "DELETE", name: "Eliminar flotas", description: "Eliminar flotas", category: "FLEETS", displayOrder: 4 },
-        { entity: "fleets", action: "MANAGE", name: "Gestionar vehículos", description: "Asignar vehículos a flotas", category: "FLEETS", displayOrder: 5 },
+        {
+          entity: "fleets",
+          action: "VIEW",
+          name: "Ver flotas",
+          description: "Ver lista de flotas",
+          category: "FLEETS",
+          displayOrder: 1,
+        },
+        {
+          entity: "fleets",
+          action: "CREATE",
+          name: "Crear flotas",
+          description: "Crear nuevas flotas",
+          category: "FLEETS",
+          displayOrder: 2,
+        },
+        {
+          entity: "fleets",
+          action: "EDIT",
+          name: "Editar flotas",
+          description: "Modificar flotas existentes",
+          category: "FLEETS",
+          displayOrder: 3,
+        },
+        {
+          entity: "fleets",
+          action: "DELETE",
+          name: "Eliminar flotas",
+          description: "Eliminar flotas",
+          category: "FLEETS",
+          displayOrder: 4,
+        },
+        {
+          entity: "fleets",
+          action: "MANAGE",
+          name: "Gestionar vehículos",
+          description: "Asignar vehículos a flotas",
+          category: "FLEETS",
+          displayOrder: 5,
+        },
 
         // ROUTES
-        { entity: "routes", action: "VIEW", name: "Ver rutas", description: "Ver rutas planificadas", category: "ROUTES", displayOrder: 1 },
-        { entity: "routes", action: "ASSIGN", name: "Asignar rutas", description: "Asignar rutas a conductores", category: "ROUTES", displayOrder: 2 },
-        { entity: "routes", action: "EDIT", name: "Modificar rutas", description: "Reasignar paradas de rutas", category: "ROUTES", displayOrder: 3 },
-        { entity: "routes", action: "CONFIRM", name: "Confirmar rutas", description: "Confirmar planes de ruta", category: "ROUTES", displayOrder: 4 },
-        { entity: "routes", action: "CANCEL", name: "Cancelar rutas", description: "Cancelar rutas planificadas", category: "ROUTES", displayOrder: 5 },
+        {
+          entity: "routes",
+          action: "VIEW",
+          name: "Ver rutas",
+          description: "Ver rutas planificadas",
+          category: "ROUTES",
+          displayOrder: 1,
+        },
+        {
+          entity: "routes",
+          action: "ASSIGN",
+          name: "Asignar rutas",
+          description: "Asignar rutas a conductores",
+          category: "ROUTES",
+          displayOrder: 2,
+        },
+        {
+          entity: "routes",
+          action: "EDIT",
+          name: "Modificar rutas",
+          description: "Reasignar paradas de rutas",
+          category: "ROUTES",
+          displayOrder: 3,
+        },
+        {
+          entity: "routes",
+          action: "CONFIRM",
+          name: "Confirmar rutas",
+          description: "Confirmar planes de ruta",
+          category: "ROUTES",
+          displayOrder: 4,
+        },
+        {
+          entity: "routes",
+          action: "CANCEL",
+          name: "Cancelar rutas",
+          description: "Cancelar rutas planificadas",
+          category: "ROUTES",
+          displayOrder: 5,
+        },
 
         // OPTIMIZATION
-        { entity: "optimization", action: "VIEW", name: "Ver optimización", description: "Ver trabajos de optimización", category: "OPTIMIZATION", displayOrder: 1 },
-        { entity: "optimization", action: "CREATE", name: "Crear optimización", description: "Ejecutar optimización de rutas", category: "OPTIMIZATION", displayOrder: 2 },
-        { entity: "optimization", action: "MANAGE", name: "Configurar optimización", description: "Configurar parámetros de optimización", category: "OPTIMIZATION", displayOrder: 3 },
-        { entity: "optimization", action: "CANCEL", name: "Cancelar optimización", description: "Cancelar trabajos en progreso", category: "OPTIMIZATION", displayOrder: 4 },
+        {
+          entity: "optimization",
+          action: "VIEW",
+          name: "Ver optimización",
+          description: "Ver trabajos de optimización",
+          category: "OPTIMIZATION",
+          displayOrder: 1,
+        },
+        {
+          entity: "optimization",
+          action: "CREATE",
+          name: "Crear optimización",
+          description: "Ejecutar optimización de rutas",
+          category: "OPTIMIZATION",
+          displayOrder: 2,
+        },
+        {
+          entity: "optimization",
+          action: "MANAGE",
+          name: "Configurar optimización",
+          description: "Configurar parámetros de optimización",
+          category: "OPTIMIZATION",
+          displayOrder: 3,
+        },
+        {
+          entity: "optimization",
+          action: "CANCEL",
+          name: "Cancelar optimización",
+          description: "Cancelar trabajos en progreso",
+          category: "OPTIMIZATION",
+          displayOrder: 4,
+        },
 
         // ALERTS
-        { entity: "alerts", action: "VIEW", name: "Ver alertas", description: "Ver alertas del sistema", category: "ALERTS", displayOrder: 1 },
-        { entity: "alerts", action: "MANAGE", name: "Gestionar alertas", description: "Reconocer y descartar alertas", category: "ALERTS", displayOrder: 2 },
-        { entity: "alerts", action: "CREATE", name: "Configurar reglas", description: "Crear reglas de alertas", category: "ALERTS", displayOrder: 3 },
-        { entity: "alerts", action: "DELETE", name: "Eliminar reglas", description: "Eliminar reglas de alertas", category: "ALERTS", displayOrder: 4 },
+        {
+          entity: "alerts",
+          action: "VIEW",
+          name: "Ver alertas",
+          description: "Ver alertas del sistema",
+          category: "ALERTS",
+          displayOrder: 1,
+        },
+        {
+          entity: "alerts",
+          action: "MANAGE",
+          name: "Gestionar alertas",
+          description: "Reconocer y descartar alertas",
+          category: "ALERTS",
+          displayOrder: 2,
+        },
+        {
+          entity: "alerts",
+          action: "CREATE",
+          name: "Configurar reglas",
+          description: "Crear reglas de alertas",
+          category: "ALERTS",
+          displayOrder: 3,
+        },
+        {
+          entity: "alerts",
+          action: "DELETE",
+          name: "Eliminar reglas",
+          description: "Eliminar reglas de alertas",
+          category: "ALERTS",
+          displayOrder: 4,
+        },
 
         // USERS
-        { entity: "users", action: "VIEW", name: "Ver usuarios", description: "Ver lista de usuarios", category: "USERS", displayOrder: 1 },
-        { entity: "users", action: "CREATE", name: "Crear usuarios", description: "Crear nuevos usuarios", category: "USERS", displayOrder: 2 },
-        { entity: "users", action: "EDIT", name: "Editar usuarios", description: "Modificar usuarios existentes", category: "USERS", displayOrder: 3 },
-        { entity: "users", action: "DELETE", name: "Eliminar usuarios", description: "Desactivar usuarios", category: "USERS", displayOrder: 4 },
-        { entity: "roles", action: "VIEW", name: "Ver roles", description: "Ver lista de roles", category: "USERS", displayOrder: 5 },
-        { entity: "roles", action: "MANAGE", name: "Gestionar roles", description: "Crear, editar y eliminar roles", category: "USERS", displayOrder: 6 },
+        {
+          entity: "users",
+          action: "VIEW",
+          name: "Ver usuarios",
+          description: "Ver lista de usuarios",
+          category: "USERS",
+          displayOrder: 1,
+        },
+        {
+          entity: "users",
+          action: "CREATE",
+          name: "Crear usuarios",
+          description: "Crear nuevos usuarios",
+          category: "USERS",
+          displayOrder: 2,
+        },
+        {
+          entity: "users",
+          action: "EDIT",
+          name: "Editar usuarios",
+          description: "Modificar usuarios existentes",
+          category: "USERS",
+          displayOrder: 3,
+        },
+        {
+          entity: "users",
+          action: "DELETE",
+          name: "Eliminar usuarios",
+          description: "Desactivar usuarios",
+          category: "USERS",
+          displayOrder: 4,
+        },
+        {
+          entity: "roles",
+          action: "VIEW",
+          name: "Ver roles",
+          description: "Ver lista de roles",
+          category: "USERS",
+          displayOrder: 5,
+        },
+        {
+          entity: "roles",
+          action: "MANAGE",
+          name: "Gestionar roles",
+          description: "Crear, editar y eliminar roles",
+          category: "USERS",
+          displayOrder: 6,
+        },
 
         // SETTINGS
-        { entity: "settings", action: "VIEW", name: "Ver configuración", description: "Ver configuración del sistema", category: "SETTINGS", displayOrder: 1 },
-        { entity: "settings", action: "EDIT", name: "Editar configuración", description: "Modificar configuración", category: "SETTINGS", displayOrder: 2 },
-        { entity: "zones", action: "VIEW", name: "Ver zonas", description: "Ver zonas geográficas", category: "SETTINGS", displayOrder: 3 },
-        { entity: "zones", action: "MANAGE", name: "Gestionar zonas", description: "Crear y editar zonas", category: "SETTINGS", displayOrder: 4 },
-        { entity: "presets", action: "VIEW", name: "Ver presets", description: "Ver presets de optimización", category: "SETTINGS", displayOrder: 5 },
-        { entity: "presets", action: "MANAGE", name: "Gestionar presets", description: "Crear y editar presets", category: "SETTINGS", displayOrder: 6 },
+        {
+          entity: "settings",
+          action: "VIEW",
+          name: "Ver configuración",
+          description: "Ver configuración del sistema",
+          category: "SETTINGS",
+          displayOrder: 1,
+        },
+        {
+          entity: "settings",
+          action: "EDIT",
+          name: "Editar configuración",
+          description: "Modificar configuración",
+          category: "SETTINGS",
+          displayOrder: 2,
+        },
+        {
+          entity: "zones",
+          action: "VIEW",
+          name: "Ver zonas",
+          description: "Ver zonas geográficas",
+          category: "SETTINGS",
+          displayOrder: 3,
+        },
+        {
+          entity: "zones",
+          action: "MANAGE",
+          name: "Gestionar zonas",
+          description: "Crear y editar zonas",
+          category: "SETTINGS",
+          displayOrder: 4,
+        },
+        {
+          entity: "presets",
+          action: "VIEW",
+          name: "Ver presets",
+          description: "Ver presets de optimización",
+          category: "SETTINGS",
+          displayOrder: 5,
+        },
+        {
+          entity: "presets",
+          action: "MANAGE",
+          name: "Gestionar presets",
+          description: "Crear y editar presets",
+          category: "SETTINGS",
+          displayOrder: 6,
+        },
 
         // REPORTS
-        { entity: "reports", action: "VIEW", name: "Ver reportes", description: "Ver reportes y métricas", category: "REPORTS", displayOrder: 1 },
-        { entity: "reports", action: "EXPORT", name: "Exportar reportes", description: "Exportar reportes a PDF/CSV", category: "REPORTS", displayOrder: 2 },
-        { entity: "metrics", action: "VIEW", name: "Ver métricas", description: "Ver métricas de rendimiento", category: "REPORTS", displayOrder: 3 },
-        { entity: "history", action: "VIEW", name: "Ver historial", description: "Ver historial de planificaciones", category: "REPORTS", displayOrder: 4 },
+        {
+          entity: "reports",
+          action: "VIEW",
+          name: "Ver reportes",
+          description: "Ver reportes y métricas",
+          category: "REPORTS",
+          displayOrder: 1,
+        },
+        {
+          entity: "reports",
+          action: "EXPORT",
+          name: "Exportar reportes",
+          description: "Exportar reportes a PDF/CSV",
+          category: "REPORTS",
+          displayOrder: 2,
+        },
+        {
+          entity: "metrics",
+          action: "VIEW",
+          name: "Ver métricas",
+          description: "Ver métricas de rendimiento",
+          category: "REPORTS",
+          displayOrder: 3,
+        },
+        {
+          entity: "history",
+          action: "VIEW",
+          name: "Ver historial",
+          description: "Ver historial de planificaciones",
+          category: "REPORTS",
+          displayOrder: 4,
+        },
       ];
 
       await db.insert(permissions).values(systemPermissions);
@@ -807,11 +1156,14 @@ async function seed() {
     if (existingRoles.length === 0) {
       // Get all permissions for role assignment
       const allPermissions = await db.select().from(permissions);
-      const permissionsByEntity = allPermissions.reduce((acc, p) => {
-        if (!acc[p.entity]) acc[p.entity] = [];
-        acc[p.entity].push(p);
-        return acc;
-      }, {} as Record<string, typeof allPermissions>);
+      const permissionsByEntity = allPermissions.reduce(
+        (acc, p) => {
+          if (!acc[p.entity]) acc[p.entity] = [];
+          acc[p.entity].push(p);
+          return acc;
+        },
+        {} as Record<string, typeof allPermissions>,
+      );
 
       // Create system roles
       const systemRolesData = [
@@ -827,7 +1179,14 @@ async function seed() {
           description: "Gestión de pedidos, optimización y rutas",
           code: "PLANIFICADOR",
           isSystem: true,
-          entities: ["orders", "optimization", "routes", "reports", "metrics", "history"],
+          entities: [
+            "orders",
+            "optimization",
+            "routes",
+            "reports",
+            "metrics",
+            "history",
+          ],
         },
         {
           name: "Monitor",
@@ -860,7 +1219,11 @@ async function seed() {
           .returning();
 
         // Assign permissions to role
-        const permissionsToAssign: Array<{ roleId: string; permissionId: string; enabled: boolean }> = [];
+        const permissionsToAssign: Array<{
+          roleId: string;
+          permissionId: string;
+          enabled: boolean;
+        }> = [];
 
         for (const perm of allPermissions) {
           let enabled = false;
@@ -916,7 +1279,8 @@ async function seed() {
       const customRolesData = [
         {
           name: "Jefe de Operaciones",
-          description: "Supervisor con capacidad de configurar el sistema además de planificar",
+          description:
+            "Supervisor con capacidad de configurar el sistema además de planificar",
           code: "JEFE_OPERACIONES",
           isSystem: false,
           permissionCodes: [
@@ -931,7 +1295,8 @@ async function seed() {
         },
         {
           name: "Analista",
-          description: "Acceso de solo lectura para reportes y análisis de datos",
+          description:
+            "Acceso de solo lectura para reportes y análisis de datos",
           code: "ANALISTA",
           isSystem: false,
           permissionCodes: [
@@ -946,7 +1311,8 @@ async function seed() {
         },
         {
           name: "Operador Turno",
-          description: "Monitor con capacidad de replanificar en ausencia del planificador",
+          description:
+            "Monitor con capacidad de replanificar en ausencia del planificador",
           code: "OPERADOR_TURNO",
           isSystem: false,
           permissionCodes: [
@@ -972,7 +1338,11 @@ async function seed() {
           .returning();
 
         // Find and assign specific permissions
-        const permissionsToAssign: Array<{ roleId: string; permissionId: string; enabled: boolean }> = [];
+        const permissionsToAssign: Array<{
+          roleId: string;
+          permissionId: string;
+          enabled: boolean;
+        }> = [];
 
         for (const perm of allPermissions) {
           const permCode = `${perm.entity}:${perm.action}`;

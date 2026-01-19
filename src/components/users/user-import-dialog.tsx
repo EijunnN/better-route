@@ -1,6 +1,14 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Loader2, Upload, X } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Download,
+  FileSpreadsheet,
+  Loader2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +67,10 @@ export function UserImportDialog({
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile.type === "text/csv" || droppedFile.name.endsWith(".csv")) {
+      if (
+        droppedFile.type === "text/csv" ||
+        droppedFile.name.endsWith(".csv")
+      ) {
         setFile(droppedFile);
         setResult(null);
       }
@@ -101,7 +112,9 @@ export function UserImportDialog({
       setResult({
         success: false,
         created: 0,
-        errors: [{ row: 0, field: "file", message: "Error al procesar el archivo" }],
+        errors: [
+          { row: 0, field: "file", message: "Error al procesar el archivo" },
+        ],
       });
     } finally {
       setIsUploading(false);
@@ -141,7 +154,9 @@ export function UserImportDialog({
           <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <div className="text-sm">
               <p className="font-medium">Plantilla CSV</p>
-              <p className="text-muted-foreground text-xs">Descarga el formato requerido</p>
+              <p className="text-muted-foreground text-xs">
+                Descarga el formato requerido
+              </p>
             </div>
             <Button variant="outline" size="sm" onClick={downloadTemplate}>
               <Download className="h-4 w-4 mr-1" />
@@ -155,8 +170,8 @@ export function UserImportDialog({
               dragActive
                 ? "border-primary bg-primary/5"
                 : file
-                ? "border-green-500 bg-green-50 dark:bg-green-900/10"
-                : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                  ? "border-green-500 bg-green-50 dark:bg-green-900/10"
+                  : "border-muted-foreground/25 hover:border-muted-foreground/50"
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -196,8 +211,12 @@ export function UserImportDialog({
             ) : (
               <div className="space-y-2">
                 <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-                <p className="text-sm font-medium">Arrastra un archivo CSV aquí</p>
-                <p className="text-xs text-muted-foreground">o haz clic para seleccionar</p>
+                <p className="text-sm font-medium">
+                  Arrastra un archivo CSV aquí
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  o haz clic para seleccionar
+                </p>
               </div>
             )}
           </div>
@@ -209,21 +228,23 @@ export function UserImportDialog({
                 result.success && result.errors.length === 0
                   ? "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300"
                   : result.errors.length > 0
-                  ? "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300"
-                  : "bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300"
+                    ? "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300"
+                    : "bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300"
               }`}
             >
               {result.success && result.created > 0 && (
                 <p className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4" />
-                  {result.created} usuario{result.created > 1 ? "s" : ""} creado{result.created > 1 ? "s" : ""} exitosamente
+                  {result.created} usuario{result.created > 1 ? "s" : ""} creado
+                  {result.created > 1 ? "s" : ""} exitosamente
                 </p>
               )}
               {result.errors.length > 0 && (
                 <div className="space-y-1">
                   <p className="flex items-center gap-2 font-medium">
                     <AlertCircle className="h-4 w-4" />
-                    {result.errors.length} error{result.errors.length > 1 ? "es" : ""}:
+                    {result.errors.length} error
+                    {result.errors.length > 1 ? "es" : ""}:
                   </p>
                   <ul className="list-disc list-inside text-xs max-h-32 overflow-y-auto">
                     {result.errors.slice(0, 10).map((err, i) => (
@@ -243,7 +264,9 @@ export function UserImportDialog({
           {/* Format info */}
           <div className="text-xs text-muted-foreground space-y-2 bg-muted/50 p-3 rounded-lg">
             <div>
-              <p className="font-medium text-foreground">Campos requeridos (todos los usuarios):</p>
+              <p className="font-medium text-foreground">
+                Campos requeridos (todos los usuarios):
+              </p>
               <p>name, email, username, password, role</p>
             </div>
             <div>
@@ -251,18 +274,32 @@ export function UserImportDialog({
               <p>ADMIN_FLOTA, PLANIFICADOR, MONITOR, CONDUCTOR</p>
             </div>
             <div>
-              <p className="font-medium text-foreground">Campos adicionales (solo CONDUCTOR):</p>
-              <p>identification, licenseNumber, licenseExpiry, licenseCategories, driverStatus</p>
-              <p className="text-xs italic mt-1">Los campos de conductor se ignoran para otros roles</p>
+              <p className="font-medium text-foreground">
+                Campos adicionales (solo CONDUCTOR):
+              </p>
+              <p>
+                identification, licenseNumber, licenseExpiry, licenseCategories,
+                driverStatus
+              </p>
+              <p className="text-xs italic mt-1">
+                Los campos de conductor se ignoran para otros roles
+              </p>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={isUploading}
+            >
               Cancelar
             </Button>
-            <Button onClick={handleUpload} disabled={!file || isUploading || !companyId}>
+            <Button
+              onClick={handleUpload}
+              disabled={!file || isUploading || !companyId}
+            >
               {isUploading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

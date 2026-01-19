@@ -2,12 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  type LucideIcon,
-} from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, type LucideIcon } from "lucide-react";
 
 export interface KpiCardProps {
   title: string;
@@ -81,12 +76,7 @@ export function KpiCard({
           )}
         </div>
         {Icon && (
-          <div
-            className={cn(
-              "rounded-lg p-2",
-              iconBgColors[status],
-            )}
-          >
+          <div className={cn("rounded-lg p-2", iconBgColors[status])}>
             <Icon className="h-5 w-5" />
           </div>
         )}
@@ -114,11 +104,7 @@ export interface KpiGridProps {
   className?: string;
 }
 
-export function KpiGrid({
-  children,
-  columns = 4,
-  className,
-}: KpiGridProps) {
+export function KpiGrid({ children, columns = 4, className }: KpiGridProps) {
   const gridCols = {
     2: "grid-cols-1 sm:grid-cols-2",
     3: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",

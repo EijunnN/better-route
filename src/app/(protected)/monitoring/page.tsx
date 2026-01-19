@@ -4,8 +4,9 @@ import { AlertCircle, Bell, Loader2, RefreshCw } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
 import useSWR from "swr";
-import { ProtectedPage } from "@/components/auth/protected-page";
 import { AlertPanel } from "@/components/alerts/alert-panel";
+import { ProtectedPage } from "@/components/auth/protected-page";
+import { CompanySelector } from "@/components/company-selector";
 import { DriverListItem } from "@/components/monitoring/driver-list-item";
 import { DriverRouteDetail } from "@/components/monitoring/driver-route-detail";
 import { MonitoringMetrics } from "@/components/monitoring/monitoring-metrics";
@@ -14,11 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { CompanySelector } from "@/components/company-selector";
 
 // Dynamic import for heavy map component (bundle-dynamic-imports rule)
 const MonitoringMap = dynamic(
-  () => import("@/components/monitoring/monitoring-map").then((mod) => mod.MonitoringMap),
+  () =>
+    import("@/components/monitoring/monitoring-map").then(
+      (mod) => mod.MonitoringMap,
+    ),
   {
     ssr: false,
     loading: () => (
@@ -161,7 +164,7 @@ function MonitoringPageContent() {
       refreshInterval: POLLING_INTERVAL,
       revalidateOnFocus: true,
       dedupingInterval: 2000,
-    }
+    },
   );
 
   // SWR for drivers list with automatic polling
@@ -176,13 +179,14 @@ function MonitoringPageContent() {
       refreshInterval: POLLING_INTERVAL,
       revalidateOnFocus: true,
       dedupingInterval: 2000,
-    }
+    },
   );
 
   // SWR for driver detail (only fetched when selected)
   const {
     data: driverDetail,
     isLoading: isLoadingDetail,
+    mutate: mutateDetail,
   } = useSWR<DriverDetailData>(
     companyId && selectedDriverId && view === "detail"
       ? [`/api/monitoring/drivers/${selectedDriverId}`, companyId]
@@ -190,7 +194,7 @@ function MonitoringPageContent() {
     ([url, cId]: [string, string]) => fetcher(url, cId),
     {
       revalidateOnFocus: false,
-    }
+    },
   );
 
   const alertsCount = monitoringData?.metrics?.activeAlerts ?? 0;
@@ -214,6 +218,12 @@ function MonitoringPageContent() {
     mutateDrivers();
   }, [mutateMonitoring, mutateDrivers]);
 
+  const handleDetailRefresh = useCallback(() => {
+    mutateDetail();
+    mutateDrivers();
+    mutateMonitoring();
+  }, [mutateDetail, mutateDrivers, mutateMonitoring]);
+
   const formatLastUpdate = (date: Date) => {
     return date.toLocaleTimeString();
   };
@@ -235,10 +245,10 @@ function MonitoringPageContent() {
           <CardContent className="py-8 text-center">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
             <h2 className="text-lg font-semibold mb-2">
-              Failed to load monitoring data
+              Error al cargar los datos de monitoreo
             </h2>
             <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>Retry</Button>
+            <Button onClick={() => window.location.reload()}>Reintentar</Button>
           </CardContent>
         </Card>
       </div>
@@ -250,9 +260,9 @@ function MonitoringPageContent() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Monitoring Dashboard</h1>
+          <h1 className="text-3xl font-bold">Panel de Monitoreo</h1>
           <p className="text-muted-foreground mt-2">
-            Real-time tracking of drivers and route execution
+            Seguimiento en tiempo real de conductores y ejecución de rutas
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -265,15 +275,11 @@ function MonitoringPageContent() {
           />
           <Badge variant="outline" className="text-sm">
             <RefreshCw className="w-3 h-3 mr-1" />
-            Updated: {formatLastUpdate(lastUpdate)}
+            Actualizado: {formatLastUpdate(lastUpdate)}
           </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-          >
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
+            Actualizar
           </Button>
           <Button
             variant={alertsCount > 0 ? "destructive" : "outline"}
@@ -281,7 +287,7 @@ function MonitoringPageContent() {
             onClick={() => setShowAlerts(!showAlerts)}
           >
             <Bell className="w-4 h-4 mr-2" />
-            Alerts
+            Alertas
             {alertsCount > 0 && (
               <Badge variant="secondary" className="ml-2 px-1.5 min-w-[20px]">
                 {alertsCount}
@@ -316,7 +322,7 @@ function MonitoringPageContent() {
             {/* Driver List - takes 1 column */}
             <Card className="h-[500px] flex flex-col">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Drivers</CardTitle>
+                <CardTitle className="text-lg">Conductores</CardTitle>
               </CardHeader>
               <CardContent className="p-0 flex-1 overflow-hidden">
                 <ScrollArea className="h-full px-6">
@@ -327,7 +333,7 @@ function MonitoringPageContent() {
                       </div>
                     ) : driversData.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
-                        No drivers found
+                        No se encontraron conductores
                       </div>
                     ) : (
                       driversData.map((driver) => (
@@ -372,11 +378,12 @@ function MonitoringPageContent() {
               driver={driverDetail.driver}
               route={driverDetail.route}
               onClose={handleBackToOverview}
+              onRefresh={handleDetailRefresh}
             />
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                Failed to load driver details
+                Error al cargar los detalles del conductor
               </CardContent>
             </Card>
           )}

@@ -46,7 +46,10 @@ export async function GET(request: NextRequest) {
       }),
       // Get all driver (users with CONDUCTOR role) statuses from the company
       db.query.users.findMany({
-        where: and(withTenantFilter(users, [], tenantCtx.companyId), eq(users.role, USER_ROLES.CONDUCTOR)),
+        where: and(
+          withTenantFilter(users, [], tenantCtx.companyId),
+          eq(users.role, USER_ROLES.CONDUCTOR),
+        ),
         columns: {
           id: true,
           name: true,
@@ -58,7 +61,12 @@ export async function GET(request: NextRequest) {
       db
         .select({ count: sql<number>`count(*)` })
         .from(alerts)
-        .where(and(withTenantFilter(alerts, [], tenantCtx.companyId), eq(alerts.status, "ACTIVE"))),
+        .where(
+          and(
+            withTenantFilter(alerts, [], tenantCtx.companyId),
+            eq(alerts.status, "ACTIVE"),
+          ),
+        ),
     ]);
 
     const activeAlerts = activeAlertsResult[0]?.count || 0;

@@ -43,7 +43,7 @@ const shortCache = new LRUCache<string, any>({
 export async function getCached<T>(
   key: string,
   fetcher: () => Promise<T>,
-  options: { ttl?: "short" | "normal" } = {}
+  options: { ttl?: "short" | "normal" } = {},
 ): Promise<T> {
   const cacheInstance = options.ttl === "short" ? shortCache : entityCache;
 

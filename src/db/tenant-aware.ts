@@ -27,7 +27,7 @@ type DrizzleTable = Record<string, any>;
 export function withTenantFilter(
   table: DrizzleTable,
   conditions: SQL[] = [],
-  companyId?: string | null
+  companyId?: string | null,
 ) {
   // Use explicitly passed companyId, or fall back to context (which may fail)
   const effectiveCompanyId = companyId ?? requireTenantContext().companyId;

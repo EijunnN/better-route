@@ -284,7 +284,9 @@ function PlanificacionHistorialPageContent() {
       return;
     }
 
-    router.push(`/planificacion/${job.configurationId}/results?reoptimize=true`);
+    router.push(
+      `/planificacion/${job.configurationId}/results?reoptimize=true`,
+    );
   };
 
   const toggleJobSelection = (jobId: string) => {
@@ -317,7 +319,9 @@ function PlanificacionHistorialPageContent() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">Historial de Planificaciones</h1>
+              <h1 className="text-3xl font-bold">
+                Historial de Planificaciones
+              </h1>
               <p className="text-muted-foreground mt-1">
                 Revisa y compara optimizaciones anteriores
               </p>
@@ -341,22 +345,27 @@ function PlanificacionHistorialPageContent() {
 
         {/* Status Filter */}
         <div className="flex gap-2 flex-wrap">
-          {["all", "COMPLETED", "CANCELLED", "FAILED", "RUNNING", "PENDING"].map(
-            (status) => (
-              <button
-                type="button"
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  statusFilter === status
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted hover:bg-muted/80"
-                }`}
-              >
-                {STATUS_LABELS[status]}
-              </button>
-            ),
-          )}
+          {[
+            "all",
+            "COMPLETED",
+            "CANCELLED",
+            "FAILED",
+            "RUNNING",
+            "PENDING",
+          ].map((status) => (
+            <button
+              type="button"
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                statusFilter === status
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted hover:bg-muted/80"
+              }`}
+            >
+              {STATUS_LABELS[status]}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -445,38 +454,52 @@ function PlanificacionHistorialPageContent() {
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Paradas:</span>
+                          <span className="text-muted-foreground">
+                            Paradas:
+                          </span>
                           <span className="font-medium">
                             {job1.result.metrics.totalStops}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Distancia:</span>
+                          <span className="text-muted-foreground">
+                            Distancia:
+                          </span>
                           <span className="font-medium">
                             {formatDistance(job1.result.metrics.totalDistance)}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Duración:</span>
+                          <span className="text-muted-foreground">
+                            Duración:
+                          </span>
                           <span className="font-medium">
-                            {formatDuration(job1.result.metrics.totalDuration * 1000)}
+                            {formatDuration(
+                              job1.result.metrics.totalDuration * 1000,
+                            )}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Utilización:</span>
+                          <span className="text-muted-foreground">
+                            Utilización:
+                          </span>
                           <span className="font-medium">
                             {job1.result.metrics.utilizationRate}%
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Cumplimiento:</span>
+                          <span className="text-muted-foreground">
+                            Cumplimiento:
+                          </span>
                           <span className="font-medium">
                             {job1.result.metrics.timeWindowComplianceRate}%
                           </span>
                         </div>
                         {job1.result.unassignedOrders.length > 0 && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Sin asignar:</span>
+                            <span className="text-muted-foreground">
+                              Sin asignar:
+                            </span>
                             <span className="font-medium text-orange-600">
                               {job1.result.unassignedOrders.length}
                             </span>
@@ -522,7 +545,9 @@ function PlanificacionHistorialPageContent() {
                           />
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Paradas:</span>
+                          <span className="text-muted-foreground">
+                            Paradas:
+                          </span>
                           <CompareValue
                             value={job2.result.metrics.totalStops}
                             compareValue={job1.result.metrics.totalStops}
@@ -530,7 +555,9 @@ function PlanificacionHistorialPageContent() {
                           />
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Distancia:</span>
+                          <span className="text-muted-foreground">
+                            Distancia:
+                          </span>
                           <CompareValue
                             value={job2.result.metrics.totalDistance}
                             compareValue={job1.result.metrics.totalDistance}
@@ -538,15 +565,21 @@ function PlanificacionHistorialPageContent() {
                           />
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Duración:</span>
+                          <span className="text-muted-foreground">
+                            Duración:
+                          </span>
                           <CompareValue
                             value={job2.result.metrics.totalDuration * 1000}
-                            compareValue={job1.result.metrics.totalDuration * 1000}
+                            compareValue={
+                              job1.result.metrics.totalDuration * 1000
+                            }
                             format={formatDuration}
                           />
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Utilización:</span>
+                          <span className="text-muted-foreground">
+                            Utilización:
+                          </span>
                           <CompareValue
                             value={job2.result.metrics.utilizationRate}
                             compareValue={job1.result.metrics.utilizationRate}
@@ -554,15 +587,21 @@ function PlanificacionHistorialPageContent() {
                           />
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Cumplimiento:</span>
+                          <span className="text-muted-foreground">
+                            Cumplimiento:
+                          </span>
                           <CompareValue
                             value={job2.result.metrics.timeWindowComplianceRate}
-                            compareValue={job1.result.metrics.timeWindowComplianceRate}
+                            compareValue={
+                              job1.result.metrics.timeWindowComplianceRate
+                            }
                             format={(v) => `${v}%`}
                           />
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Sin asignar:</span>
+                          <span className="text-muted-foreground">
+                            Sin asignar:
+                          </span>
                           <CompareValue
                             value={job2.result.unassignedOrders.length}
                             compareValue={job1.result.unassignedOrders.length}
@@ -642,7 +681,8 @@ function PlanificacionHistorialPageContent() {
                             </>
                           ) : (
                             <p className="text-muted-foreground">
-                              Configuración {job.configurationId?.slice(0, 8)}...
+                              Configuración {job.configurationId?.slice(0, 8)}
+                              ...
                             </p>
                           )}
                         </div>
@@ -665,12 +705,16 @@ function PlanificacionHistorialPageContent() {
                             <div className="text-center">
                               <p className="text-muted-foreground">Distancia</p>
                               <p className="font-medium">
-                                {formatDistance(job.result.metrics.totalDistance)}
+                                {formatDistance(
+                                  job.result.metrics.totalDistance,
+                                )}
                               </p>
                             </div>
                             {job.result.unassignedOrders.length > 0 && (
                               <div className="text-center">
-                                <p className="text-muted-foreground">Sin asignar</p>
+                                <p className="text-muted-foreground">
+                                  Sin asignar
+                                </p>
                                 <p className="font-medium text-orange-600">
                                   {job.result.unassignedOrders.length}
                                 </p>
@@ -683,7 +727,9 @@ function PlanificacionHistorialPageContent() {
                         <div className="text-sm text-muted-foreground w-40 text-right">
                           <p>
                             {formatDate(
-                              job.completedAt || job.cancelledAt || job.createdAt,
+                              job.completedAt ||
+                                job.cancelledAt ||
+                                job.createdAt,
                             )}
                           </p>
                           {job.status === "RUNNING" && job.progress > 0 && (
@@ -694,7 +740,8 @@ function PlanificacionHistorialPageContent() {
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 ml-4">
-                        {job.status === "COMPLETED" || job.status === "CANCELLED" ? (
+                        {job.status === "COMPLETED" ||
+                        job.status === "CANCELLED" ? (
                           <>
                             <Button
                               variant="ghost"

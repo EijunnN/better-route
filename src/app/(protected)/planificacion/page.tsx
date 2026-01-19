@@ -212,8 +212,10 @@ function PlanificacionPageContent() {
       departamento: string;
       provincia: string;
       distrito: string;
-      longitud: string;
       latitud: string;
+      longitud: string;
+      nombre_cliente?: string;
+      telefono?: string;
     }>
   >([]);
 
@@ -345,23 +347,25 @@ function PlanificacionPageContent() {
         // Map API response to our Zone interface (use parsedGeometry as geometry)
         const mappedZones: Zone[] = (data.data || [])
           .filter((z: { parsedGeometry: unknown }) => z.parsedGeometry) // Only zones with valid geometry
-          .map((z: {
-            id: string;
-            name: string;
-            parsedGeometry: { type: string; coordinates: number[][][] };
-            color: string | null;
-            active: boolean;
-            vehicleCount: number;
-            vehicles: Array<{ id: string; plate: string | null }>;
-          }) => ({
-            id: z.id,
-            name: z.name,
-            geometry: z.parsedGeometry,
-            color: z.color,
-            active: z.active,
-            vehicleCount: z.vehicleCount,
-            vehicles: z.vehicles || [],
-          }));
+          .map(
+            (z: {
+              id: string;
+              name: string;
+              parsedGeometry: { type: string; coordinates: number[][][] };
+              color: string | null;
+              active: boolean;
+              vehicleCount: number;
+              vehicles: Array<{ id: string; plate: string | null }>;
+            }) => ({
+              id: z.id,
+              name: z.name,
+              geometry: z.parsedGeometry,
+              color: z.color,
+              active: z.active,
+              vehicleCount: z.vehicleCount,
+              vehicles: z.vehicles || [],
+            }),
+          );
         setZones(mappedZones);
       }
     } catch (err) {
@@ -371,9 +375,14 @@ function PlanificacionPageContent() {
 
   // Parse CSV file (supports comma, tab, and semicolon delimiters)
   const parseCSV = useCallback((text: string) => {
-    const lines = text.split("\n").filter((line) => line.trim());
+    // Remove BOM if present (UTF-8 BOM: \uFEFF)
+    const cleanText = text.replace(/^\uFEFF/, "");
+
+    const lines = cleanText.split("\n").filter((line) => line.trim());
     if (lines.length < 2) {
-      throw new Error("El archivo CSV debe tener al menos una fila de encabezados y una de datos");
+      throw new Error(
+        "El archivo CSV debe tener al menos una fila de encabezados y una de datos",
+      );
     }
 
     // Auto-detect delimiter from first line
@@ -385,8 +394,22 @@ function PlanificacionPageContent() {
       delimiter = ";";
     }
 
-    // Parse headers (first line)
-    const headers = firstLine.split(delimiter).map((h) => h.trim().toLowerCase());
+    // Parse headers (first line) - normalize accents and special chars
+    const normalizeHeader = (h: string) => {
+      return h
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remove accents
+        .replace(/ñ/g, "n")
+        .replace(/[^a-z0-9_]/g, "_"); // Replace special chars with underscore
+    };
+
+    const headers = firstLine.split(delimiter).map((h) => normalizeHeader(h));
+    const originalHeaders = firstLine
+      .split(delimiter)
+      .map((h) => h.trim().toLowerCase());
+
     const requiredHeaders = [
       "trackcode",
       "direccion",
@@ -394,26 +417,40 @@ function PlanificacionPageContent() {
       "departamento",
       "provincia",
       "distrito",
-      "longitud",
       "latitud",
+      "longitud",
     ];
 
-    // Check for missing headers
-    const missingHeaders = requiredHeaders.filter((h) => !headers.includes(h));
+    // Check for missing headers (check both normalized and original)
+    const missingHeaders = requiredHeaders.filter((h) => {
+      const normalizedH = normalizeHeader(h);
+      return !headers.includes(normalizedH) && !originalHeaders.includes(h);
+    });
+
     if (missingHeaders.length > 0) {
-      throw new Error(`Faltan columnas requeridas: ${missingHeaders.join(", ")}`);
+      throw new Error(
+        `Faltan columnas requeridas: ${missingHeaders.join(", ")}`,
+      );
     }
 
-    // Get column indexes
+    // Get column indexes (check both normalized and original headers)
+    const getIndex = (name: string) => {
+      const idx = headers.indexOf(normalizeHeader(name));
+      return idx !== -1 ? idx : originalHeaders.indexOf(name);
+    };
+
     const indexes = {
-      trackcode: headers.indexOf("trackcode"),
-      direccion: headers.indexOf("direccion"),
-      referencia: headers.indexOf("referencia"),
-      departamento: headers.indexOf("departamento"),
-      provincia: headers.indexOf("provincia"),
-      distrito: headers.indexOf("distrito"),
-      longitud: headers.indexOf("longitud"),
-      latitud: headers.indexOf("latitud"),
+      trackcode: getIndex("trackcode"),
+      direccion: getIndex("direccion"),
+      referencia: getIndex("referencia"),
+      departamento: getIndex("departamento"),
+      provincia: getIndex("provincia"),
+      distrito: getIndex("distrito"),
+      latitud: getIndex("latitud"),
+      longitud: getIndex("longitud"),
+      // Optional fields
+      nombre_cliente: getIndex("nombre_cliente"),
+      telefono: getIndex("telefono"),
     };
 
     // Parse data rows
@@ -428,8 +465,17 @@ function PlanificacionPageContent() {
           departamento: values[indexes.departamento] || "",
           provincia: values[indexes.provincia] || "",
           distrito: values[indexes.distrito] || "",
-          longitud: values[indexes.longitud] || "",
           latitud: values[indexes.latitud] || "",
+          longitud: values[indexes.longitud] || "",
+          // Optional fields
+          nombre_cliente:
+            indexes.nombre_cliente !== -1
+              ? values[indexes.nombre_cliente] || ""
+              : undefined,
+          telefono:
+            indexes.telefono !== -1
+              ? values[indexes.telefono] || ""
+              : undefined,
         });
       }
     }
@@ -437,30 +483,55 @@ function PlanificacionPageContent() {
     return data;
   }, []);
 
-  // Handle CSV file selection
+  // Handle CSV file selection with proper encoding detection
   const handleCsvFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
       setCsvFile(file);
       setCsvError(null);
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const text = event.target?.result as string;
-          const data = parseCSV(text);
-          setCsvPreview(data);
-        } catch (err) {
-          setCsvError(err instanceof Error ? err.message : "Error al leer el archivo");
-          setCsvPreview([]);
+      try {
+        // Read file as ArrayBuffer to detect encoding
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+
+        // Detect encoding by checking BOM or trying to decode
+        let text: string;
+
+        // Check for UTF-8 BOM (EF BB BF)
+        if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+          text = new TextDecoder("utf-8").decode(buffer);
         }
-      };
-      reader.onerror = () => {
-        setCsvError("Error al leer el archivo");
-      };
-      reader.readAsText(file);
+        // Check for UTF-16 LE BOM (FF FE)
+        else if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+          text = new TextDecoder("utf-16le").decode(buffer);
+        }
+        // Check for UTF-16 BE BOM (FE FF)
+        else if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+          text = new TextDecoder("utf-16be").decode(buffer);
+        }
+        // Try UTF-8 first, if it fails or has replacement chars, try Windows-1252 (Latin-1)
+        else {
+          const utf8Text = new TextDecoder("utf-8").decode(buffer);
+          // Check if UTF-8 decoding produced replacement characters (indicates wrong encoding)
+          if (utf8Text.includes("\uFFFD")) {
+            // Fallback to Windows-1252 (common for Excel CSV exports)
+            text = new TextDecoder("windows-1252").decode(buffer);
+          } else {
+            text = utf8Text;
+          }
+        }
+
+        const data = parseCSV(text);
+        setCsvPreview(data);
+      } catch (err) {
+        setCsvError(
+          err instanceof Error ? err.message : "Error al leer el archivo",
+        );
+        setCsvPreview([]);
+      }
     },
     [parseCSV],
   );
@@ -530,6 +601,8 @@ function PlanificacionPageContent() {
           latitude: string;
           longitude: string;
           notes?: string;
+          customerName?: string;
+          customerPhone?: string;
         } = {
           trackingId: String(row.trackcode).trim().slice(0, 50),
           address: fullAddress.slice(0, 500),
@@ -537,16 +610,30 @@ function PlanificacionPageContent() {
           longitude: lng,
         };
 
-        const notes = row.referencia?.trim()?.slice(0, 500);
-        if (notes) {
-          orderData.notes = notes;
+        // Build notes with referencia, cliente and phone
+        const notesParts: string[] = [];
+        if (row.referencia?.trim()) {
+          notesParts.push(row.referencia.trim());
+        }
+        if (row.nombre_cliente?.trim()) {
+          notesParts.push(`Cliente: ${row.nombre_cliente.trim()}`);
+          orderData.customerName = row.nombre_cliente.trim().slice(0, 100);
+        }
+        if (row.telefono?.trim()) {
+          notesParts.push(`Tel: ${row.telefono.trim()}`);
+          orderData.customerPhone = row.telefono.trim().slice(0, 20);
+        }
+        if (notesParts.length > 0) {
+          orderData.notes = notesParts.join(" | ").slice(0, 500);
         }
 
         validOrders.push(orderData);
       }
 
       if (validOrders.length === 0) {
-        setCsvError(`No hay órdenes válidas para subir.\n${skippedRows.slice(0, 5).join("\n")}`);
+        setCsvError(
+          `No hay órdenes válidas para subir.\n${skippedRows.slice(0, 5).join("\n")}`,
+        );
         return;
       }
 
@@ -573,15 +660,24 @@ function PlanificacionPageContent() {
 
         // Build success message
         const messages: string[] = [];
-        if (result.created > 0) messages.push(`${result.created} órdenes creadas`);
-        if (result.skipped > 0) messages.push(`${result.skipped} duplicados saltados`);
+        if (result.created > 0)
+          messages.push(`${result.created} órdenes creadas`);
+        if (result.skipped > 0)
+          messages.push(`${result.skipped} duplicados saltados`);
         if (result.invalid > 0) messages.push(`${result.invalid} inválidos`);
-        if (skippedRows.length > 0) messages.push(`${skippedRows.length} filas sin datos`);
+        if (skippedRows.length > 0)
+          messages.push(`${skippedRows.length} filas sin datos`);
 
-        if (result.skipped > 0 || result.invalid > 0 || skippedRows.length > 0) {
+        if (
+          result.skipped > 0 ||
+          result.invalid > 0 ||
+          skippedRows.length > 0
+        ) {
           const details: string[] = [];
           if (result.duplicates?.length > 0) {
-            details.push(`Duplicados: ${result.duplicates.slice(0, 3).join(", ")}${result.duplicates.length > 3 ? "..." : ""}`);
+            details.push(
+              `Duplicados: ${result.duplicates.slice(0, 3).join(", ")}${result.duplicates.length > 3 ? "..." : ""}`,
+            );
           }
           if (skippedRows.length > 0) {
             details.push(...skippedRows.slice(0, 3));
@@ -600,14 +696,19 @@ function PlanificacionPageContent() {
         let errorMsg = result.error || "Error al subir órdenes";
         if (result.details) {
           const details = result.details
-            .map((d: { field?: string; message?: string }) => `${d.field}: ${d.message}`)
+            .map(
+              (d: { field?: string; message?: string }) =>
+                `${d.field}: ${d.message}`,
+            )
             .join(", ");
           errorMsg = `${errorMsg}: ${details}`;
         }
         setCsvError(errorMsg);
       }
     } catch (err) {
-      setCsvError(err instanceof Error ? err.message : "Error al subir órdenes");
+      setCsvError(
+        err instanceof Error ? err.message : "Error al subir órdenes",
+      );
     } finally {
       setCsvUploading(false);
     }
@@ -718,7 +819,9 @@ function PlanificacionPageContent() {
 
       setEditingOrder(null);
     } catch (err) {
-      setUpdateOrderError(err instanceof Error ? err.message : "Error desconocido");
+      setUpdateOrderError(
+        err instanceof Error ? err.message : "Error desconocido",
+      );
     } finally {
       setIsUpdatingOrder(false);
     }
@@ -729,7 +832,9 @@ function PlanificacionPageContent() {
   const selectedOrderIdsSet = new Set(selectedOrderIds);
 
   // Selected vehicles data for map - React Compiler handles memoization
-  const selectedVehicles = vehicles.filter((v) => selectedVehicleIdsSet.has(v.id));
+  const selectedVehicles = vehicles.filter((v) =>
+    selectedVehicleIdsSet.has(v.id),
+  );
 
   // Selected orders data for map - React Compiler handles memoization
   const selectedOrders = orders.filter((o) => selectedOrderIdsSet.has(o.id));
@@ -789,9 +894,7 @@ function PlanificacionPageContent() {
     );
     if (allSelected) {
       const filteredSet = new Set(filteredOrders.map((o) => o.id));
-      setSelectedOrderIds((prev) =>
-        prev.filter((id) => !filteredSet.has(id)),
-      );
+      setSelectedOrderIds((prev) => prev.filter((id) => !filteredSet.has(id)));
     } else {
       const newIds = filteredOrders.map((o) => o.id);
       setSelectedOrderIds((prev) => [...new Set([...prev, ...newIds])]);
@@ -942,169 +1045,168 @@ function PlanificacionPageContent() {
 
           {/* Step: Vehículos */}
           {currentStep === "vehiculos" && (
-            <div className="p-4 space-y-4">
-              {/* Date/Time selector */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Fecha y hora de inicio
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="plan-date" className="text-xs">
-                        Fecha
-                      </Label>
-                      <Input
-                        id="plan-date"
-                        type="date"
-                        value={planDate}
-                        onChange={(e) => setPlanDate(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="plan-time" className="text-xs">
-                        Hora inicio
-                      </Label>
-                      <Input
-                        id="plan-time"
-                        type="time"
-                        value={planTime}
-                        onChange={(e) => setPlanTime(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Fleet filter */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Flota</Label>
-                <Select value={fleetFilter} onValueChange={setFleetFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas las flotas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Todas las flotas</SelectItem>
-                    {fleets.map((fleet) => (
-                      <SelectItem key={fleet.id} value={fleet.id}>
-                        {fleet.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar vehículo o conductor..."
-                  value={vehicleSearch}
-                  onChange={(e) => setVehicleSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-
-              {/* Select all */}
-              {filteredVehicles.length > 0 && (
-                <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="select-all-vehicles"
-                      checked={filteredVehicles.every((v) =>
-                        selectedVehicleIdsSet.has(v.id),
-                      )}
-                      onCheckedChange={selectAllVehicles}
-                    />
+            <div className="h-full flex flex-col">
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {/* Date/Time selector */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
                     <Label
-                      htmlFor="select-all-vehicles"
-                      className="text-sm cursor-pointer"
+                      htmlFor="plan-date"
+                      className="text-xs text-muted-foreground"
                     >
-                      Seleccionar todos
+                      Fecha
                     </Label>
+                    <Input
+                      id="plan-date"
+                      type="date"
+                      value={planDate}
+                      onChange={(e) => setPlanDate(e.target.value)}
+                      className="h-9"
+                    />
                   </div>
-                  <Badge variant="secondary">
-                    {selectedVehicleIds.length} / {filteredVehicles.length}
-                  </Badge>
-                </div>
-              )}
-
-              {/* Vehicle list */}
-              <div className="space-y-2 max-h-[calc(100vh-32rem)] overflow-y-auto">
-                {vehiclesLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  </div>
-                ) : filteredVehicles.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Truck className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No hay vehículos disponibles</p>
-                  </div>
-                ) : (
-                  filteredVehicles.map((vehicle) => (
-                    <label
-                      key={vehicle.id}
-                      htmlFor={`vehicle-${vehicle.id}`}
-                      className={`block p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedVehicleIdsSet.has(vehicle.id)
-                          ? "border-primary bg-primary/5 shadow-sm"
-                          : "border-border hover:border-primary/50 hover:bg-muted/50"
-                      }`}
+                  <div>
+                    <Label
+                      htmlFor="plan-time"
+                      className="text-xs text-muted-foreground"
                     >
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          id={`vehicle-${vehicle.id}`}
-                          checked={selectedVehicleIdsSet.has(vehicle.id)}
-                          onCheckedChange={() => toggleVehicle(vehicle.id)}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">
-                              {vehicle.plate || vehicle.name}
-                            </span>
-                            {vehicle.type && (
-                              <Badge variant="outline" className="text-xs">
-                                {vehicle.type}
-                              </Badge>
-                            )}
-                          </div>
-                          {vehicle.assignedDriver && (
-                            <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                              <User className="w-3 h-3" />
-                              <span>{vehicle.assignedDriver.name}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                            {vehicle.weightCapacity && (
-                              <span>{vehicle.weightCapacity} kg</span>
-                            )}
-                            {vehicle.volumeCapacity && (
-                              <span>{vehicle.volumeCapacity} L</span>
-                            )}
-                            {vehicle.maxOrders && (
-                              <span>Max {vehicle.maxOrders} pedidos</span>
-                            )}
-                          </div>
-                          {vehicle.originAddress && (
-                            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                              <MapPin className="w-3 h-3" />
-                              <span className="truncate">
-                                {vehicle.originAddress}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </label>
-                  ))
+                      Hora inicio
+                    </Label>
+                    <Input
+                      id="plan-time"
+                      type="time"
+                      value={planTime}
+                      onChange={(e) => setPlanTime(e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+
+                {/* Fleet filter and Search in row */}
+                <div className="flex gap-2">
+                  <Select value={fleetFilter} onValueChange={setFleetFilter}>
+                    <SelectTrigger className="w-[140px] h-9">
+                      <SelectValue placeholder="Todas las flotas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">Todas las flotas</SelectItem>
+                      {fleets.map((fleet) => (
+                        <SelectItem key={fleet.id} value={fleet.id}>
+                          {fleet.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar..."
+                      value={vehicleSearch}
+                      onChange={(e) => setVehicleSearch(e.target.value)}
+                      className="pl-8 h-9"
+                    />
+                  </div>
+                </div>
+
+                {/* Select all */}
+                {filteredVehicles.length > 0 && (
+                  <div className="flex items-center justify-between py-1.5 px-2 bg-muted/50 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="select-all-vehicles"
+                        checked={filteredVehicles.every((v) =>
+                          selectedVehicleIdsSet.has(v.id),
+                        )}
+                        onCheckedChange={selectAllVehicles}
+                      />
+                      <Label
+                        htmlFor="select-all-vehicles"
+                        className="text-sm cursor-pointer"
+                      >
+                        Seleccionar todos
+                      </Label>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {selectedVehicleIds.length}/{filteredVehicles.length}
+                    </Badge>
+                  </div>
                 )}
+
+                {/* Vehicle list */}
+                <div className="space-y-1.5">
+                  {vehiclesLoading ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    </div>
+                  ) : filteredVehicles.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <Truck className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No hay vehículos disponibles</p>
+                    </div>
+                  ) : (
+                    filteredVehicles.map((vehicle) => (
+                      <label
+                        key={vehicle.id}
+                        htmlFor={`vehicle-${vehicle.id}`}
+                        className={`block p-2 rounded-md border cursor-pointer transition-colors ${
+                          selectedVehicleIdsSet.has(vehicle.id)
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`vehicle-${vehicle.id}`}
+                            checked={selectedVehicleIdsSet.has(vehicle.id)}
+                            onCheckedChange={() => toggleVehicle(vehicle.id)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">
+                                {vehicle.plate || vehicle.name}
+                              </span>
+                              {vehicle.type && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 py-0"
+                                >
+                                  {vehicle.type}
+                                </Badge>
+                              )}
+                              {vehicle.assignedDriver && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <User className="w-3 h-3" />
+                                  {vehicle.assignedDriver.name}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                              {vehicle.weightCapacity && (
+                                <span>{vehicle.weightCapacity}kg</span>
+                              )}
+                              {vehicle.volumeCapacity && (
+                                <span>{vehicle.volumeCapacity}L</span>
+                              )}
+                              {vehicle.maxOrders && (
+                                <span>Max {vehicle.maxOrders}</span>
+                              )}
+                              {vehicle.originAddress && (
+                                <span className="truncate flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 shrink-0" />
+                                  {vehicle.originAddress}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
               </div>
 
-              {/* Next button */}
-              <div className="pt-4 border-t">
+              {/* Next button - Fixed at bottom */}
+              <div className="p-4 border-t bg-background">
                 <Button
                   className="w-full"
                   onClick={nextStep}
@@ -1119,170 +1221,168 @@ function PlanificacionPageContent() {
 
           {/* Step: Visitas (Orders) */}
           {currentStep === "visitas" && (
-            <div className="p-4 space-y-4">
-              {/* Header with upload button */}
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-muted-foreground">
-                  Pedidos pendientes
-                </h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCsvUpload(true)}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Subir CSV
-                </Button>
-              </div>
-
-              {/* Tabs */}
-              <Tabs value={orderTab} onValueChange={setOrderTab}>
-                <TabsList className="w-full">
-                  <TabsTrigger value="todas" className="flex-1">
-                    Todas ({orders.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="alertas" className="flex-1">
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    Alertas ({ordersWithIssues.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="conHorario" className="flex-1">
-                    <Clock className="w-3 h-3 mr-1" />
-                    Con horario
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="todas" className="mt-0" />
-                <TabsContent value="alertas" className="mt-0" />
-                <TabsContent value="conHorario" className="mt-0" />
-              </Tabs>
-
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar pedido..."
-                  value={orderSearch}
-                  onChange={(e) => setOrderSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-
-              {/* Select all */}
-              {filteredOrders.length > 0 && (
-                <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="select-all-orders"
-                      checked={filteredOrders.every((o) =>
-                        selectedOrderIdsSet.has(o.id),
-                      )}
-                      onCheckedChange={selectAllOrders}
-                    />
-                    <Label
-                      htmlFor="select-all-orders"
-                      className="text-sm cursor-pointer"
-                    >
-                      Seleccionar todos
-                    </Label>
-                  </div>
-                  <Badge variant="secondary">
-                    {selectedOrderIds.length} / {filteredOrders.length}
-                  </Badge>
+            <div className="h-full flex flex-col">
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {/* Header with upload button */}
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Pedidos pendientes
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => setShowCsvUpload(true)}
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                    CSV
+                  </Button>
                 </div>
-              )}
 
-              {/* Order list */}
-              <div className="space-y-2 max-h-[calc(100vh-26rem)] overflow-y-auto">
-                {ordersLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  </div>
-                ) : filteredOrders.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No hay pedidos pendientes</p>
-                  </div>
-                ) : (
-                  filteredOrders.map((order) => {
-                    const hasIssue = !order.latitude || !order.longitude;
-                    return (
-                      <div
-                        key={order.id}
-                        className={`p-3 rounded-lg border transition-colors ${
-                          selectedOrderIdsSet.has(order.id)
-                            ? "border-primary bg-primary/5 shadow-sm"
-                            : "border-border hover:border-primary/50 hover:bg-muted/50"
-                        } ${hasIssue ? "border-orange-300 bg-orange-50/50" : ""}`}
+                {/* Tabs */}
+                <Tabs value={orderTab} onValueChange={setOrderTab}>
+                  <TabsList className="w-full h-8">
+                    <TabsTrigger value="todas" className="flex-1 text-xs h-7">
+                      Todas ({orders.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="alertas" className="flex-1 text-xs h-7">
+                      <AlertTriangle className="w-3 h-3 mr-1" />(
+                      {ordersWithIssues.length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="conHorario"
+                      className="flex-1 text-xs h-7"
+                    >
+                      <Clock className="w-3 h-3 mr-1" />
+                      Horario
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="todas" className="mt-0" />
+                  <TabsContent value="alertas" className="mt-0" />
+                  <TabsContent value="conHorario" className="mt-0" />
+                </Tabs>
+
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar..."
+                    value={orderSearch}
+                    onChange={(e) => setOrderSearch(e.target.value)}
+                    className="pl-8 h-9"
+                  />
+                </div>
+
+                {/* Select all */}
+                {filteredOrders.length > 0 && (
+                  <div className="flex items-center justify-between py-1.5 px-2 bg-muted/50 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="select-all-orders"
+                        checked={filteredOrders.every((o) =>
+                          selectedOrderIdsSet.has(o.id),
+                        )}
+                        onCheckedChange={selectAllOrders}
+                      />
+                      <Label
+                        htmlFor="select-all-orders"
+                        className="text-sm cursor-pointer"
                       >
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            id={`order-${order.id}`}
-                            checked={selectedOrderIdsSet.has(order.id)}
-                            onCheckedChange={() => toggleOrder(order.id)}
-                            className="mt-1"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <label
-                                htmlFor={`order-${order.id}`}
-                                className="font-medium cursor-pointer"
-                              >
-                                {order.trackingId}
-                              </label>
-                              {hasIssue && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs border-orange-400 text-orange-600"
-                                >
-                                  <AlertTriangle className="w-3 h-3 mr-1" />
-                                  Sin ubicación
-                                </Badge>
-                              )}
-                              {order.priority === "HIGH" && (
-                                <Badge
-                                  variant="destructive"
-                                  className="text-xs"
-                                >
-                                  Urgente
-                                </Badge>
-                              )}
-                            </div>
-                            {order.customerName && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {order.customerName}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1 truncate">
-                              {order.address}
-                            </p>
-                            {order.presetName && (
-                              <div className="flex items-center gap-1 mt-1 text-xs text-blue-600">
-                                <Clock className="w-3 h-3" />
-                                <span>{order.presetName}</span>
-                              </div>
-                            )}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="shrink-0 h-8 w-8 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEditOrder(order);
-                            }}
-                            title="Editar dirección y coordenadas"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })
+                        Seleccionar todos
+                      </Label>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {selectedOrderIds.length}/{filteredOrders.length}
+                    </Badge>
+                  </div>
                 )}
+
+                {/* Order list - compact */}
+                <div className="space-y-1">
+                  {ordersLoading ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    </div>
+                  ) : filteredOrders.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <Package className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No hay pedidos pendientes</p>
+                    </div>
+                  ) : (
+                    filteredOrders.map((order) => {
+                      const hasIssue = !order.latitude || !order.longitude;
+                      return (
+                        <label
+                          key={order.id}
+                          htmlFor={`order-${order.id}`}
+                          className={`block p-2 rounded-md border cursor-pointer transition-colors ${
+                            selectedOrderIdsSet.has(order.id)
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50 hover:bg-muted/50"
+                          } ${hasIssue ? "border-orange-300 bg-orange-50/50 dark:bg-orange-950/20" : ""}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id={`order-${order.id}`}
+                              checked={selectedOrderIdsSet.has(order.id)}
+                              onCheckedChange={() => toggleOrder(order.id)}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-medium text-sm truncate">
+                                  {order.trackingId}
+                                </span>
+                                {hasIssue && (
+                                  <AlertTriangle className="w-3 h-3 text-orange-500 shrink-0" />
+                                )}
+                                {order.priority === "HIGH" && (
+                                  <Badge
+                                    variant="destructive"
+                                    className="text-[10px] px-1 py-0 h-4"
+                                  >
+                                    !
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                {order.customerName && (
+                                  <span className="truncate">
+                                    {order.customerName}
+                                  </span>
+                                )}
+                                {order.customerName && order.address && (
+                                  <span>·</span>
+                                )}
+                                <span className="truncate">
+                                  {order.address}
+                                </span>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0 h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openEditOrder(order);
+                              }}
+                              title="Editar"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
               </div>
 
-              {/* Navigation buttons */}
-              <div className="pt-4 border-t flex gap-2">
+              {/* Navigation buttons - Fixed at bottom */}
+              <div className="p-4 border-t bg-background flex gap-2">
                 <Button variant="outline" onClick={prevStep} className="flex-1">
                   Volver
                 </Button>
@@ -1300,118 +1400,121 @@ function PlanificacionPageContent() {
 
           {/* Step: Configuración */}
           {currentStep === "configuracion" && (
-            <div className="p-4 space-y-4">
-              {/* Summary */}
-              <Card className="bg-primary/5 border-primary/20">
-                <CardContent className="py-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Vehículos</p>
-                      <p className="font-semibold text-lg">
-                        {selectedVehicleIds.length}
-                      </p>
+            <div className="h-full flex flex-col">
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Summary */}
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardContent className="py-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Vehículos</p>
+                        <p className="font-semibold text-lg">
+                          {selectedVehicleIds.length}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Visitas</p>
+                        <p className="font-semibold text-lg">
+                          {selectedOrderIds.length}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Visitas</p>
-                      <p className="font-semibold text-lg">
-                        {selectedOrderIds.length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Objective */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    Objetivo de optimización
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Define qué debe priorizar el algoritmo
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {OBJECTIVES.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setObjective(opt.value)}
-                      className={`w-full p-3 rounded-lg border text-left transition-colors ${
-                        objective === opt.value
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <p className="font-medium text-sm">{opt.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {opt.description}
-                      </p>
-                    </button>
-                  ))}
-                </CardContent>
-              </Card>
+                {/* Objective */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">
+                      Objetivo de optimización
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Define qué debe priorizar el algoritmo
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {OBJECTIVES.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setObjective(opt.value)}
+                        className={`w-full p-3 rounded-lg border text-left transition-colors ${
+                          objective === opt.value
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <p className="font-medium text-sm">{opt.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {opt.description}
+                        </p>
+                      </button>
+                    ))}
+                  </CardContent>
+                </Card>
 
-              {/* Service time */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    Tiempo de servicio
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Tiempo promedio por entrega
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={60}
-                      value={serviceTime}
-                      onChange={(e) => setServiceTime(Number(e.target.value))}
-                      className="w-20"
-                    />
-                    <span className="text-sm text-muted-foreground">
-                      minutos
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Capacity */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    Restricciones de capacidad
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      id="capacity-enabled"
-                      checked={capacityEnabled}
-                      onCheckedChange={(checked) =>
-                        setCapacityEnabled(!!checked)
-                      }
-                    />
-                    <Label
-                      htmlFor="capacity-enabled"
-                      className="cursor-pointer"
-                    >
-                      <span className="text-sm">
-                        Respetar capacidad de vehículos
+                {/* Service time */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">
+                      Tiempo de servicio
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Tiempo promedio por entrega
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={serviceTime}
+                        onChange={(e) => setServiceTime(Number(e.target.value))}
+                        className="w-20"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        minutos
                       </span>
-                      <p className="text-xs text-muted-foreground">
-                        Considera peso y volumen máximo
-                      </p>
-                    </Label>
-                  </div>
-                </CardContent>
-              </Card>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {/* Submit */}
-              <div className="pt-4 border-t space-y-2">
+                {/* Capacity */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">
+                      Restricciones de capacidad
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id="capacity-enabled"
+                        checked={capacityEnabled}
+                        onCheckedChange={(checked) =>
+                          setCapacityEnabled(!!checked)
+                        }
+                      />
+                      <Label
+                        htmlFor="capacity-enabled"
+                        className="cursor-pointer"
+                      >
+                        <span className="text-sm">
+                          Respetar capacidad de vehículos
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          Considera peso y volumen máximo
+                        </p>
+                      </Label>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Action buttons - Fixed at bottom */}
+              <div className="p-4 border-t bg-background space-y-2">
                 <Button
                   className="w-full"
                   size="lg"
@@ -1441,14 +1544,18 @@ function PlanificacionPageContent() {
         {/* Right panel - Map */}
         <div className="flex-1 relative">
           <PlanningMap
-            vehicles={currentStep === "vehiculos" ? filteredVehicles : selectedVehicles}
+            vehicles={
+              currentStep === "vehiculos" ? filteredVehicles : selectedVehicles
+            }
             orders={selectedOrders}
             zones={showZones ? zones : []}
             showVehicleOrigins={currentStep === "vehiculos"}
             showOrders={
               currentStep === "visitas" || currentStep === "configuracion"
             }
-            selectedVehicleIds={currentStep === "vehiculos" ? selectedVehicleIds : undefined}
+            selectedVehicleIds={
+              currentStep === "vehiculos" ? selectedVehicleIds : undefined
+            }
           />
 
           {/* Map controls */}
@@ -1464,7 +1571,11 @@ function PlanificacionPageContent() {
                     : "bg-background/95 backdrop-blur text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {showZones ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                {showZones ? (
+                  <Eye className="w-4 h-4" />
+                ) : (
+                  <EyeOff className="w-4 h-4" />
+                )}
                 Zonas ({zones.length})
               </button>
             )}
@@ -1500,10 +1611,20 @@ function PlanificacionPageContent() {
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Subir pedidos desde CSV</DialogTitle>
-            <DialogDescription>
-              Sube un archivo CSV con los siguientes headers: trackcode,
-              direccion, referencia, departamento, provincia, distrito,
-              longitud, latitud
+            <DialogDescription className="space-y-1">
+              <span className="block">
+                Headers requeridos:{" "}
+                <span className="font-mono text-xs">
+                  trackcode, direccion, referencia, departamento, provincia,
+                  distrito, latitud, longitud
+                </span>
+              </span>
+              <span className="block text-muted-foreground">
+                Opcionales:{" "}
+                <span className="font-mono text-xs">
+                  nombre_cliente, telefono
+                </span>
+              </span>
             </DialogDescription>
           </DialogHeader>
 
@@ -1539,6 +1660,9 @@ function PlanificacionPageContent() {
                             Trackcode
                           </th>
                           <th className="px-2 py-2 text-left font-medium">
+                            Cliente
+                          </th>
+                          <th className="px-2 py-2 text-left font-medium">
                             Dirección
                           </th>
                           <th className="px-2 py-2 text-left font-medium">
@@ -1554,6 +1678,16 @@ function PlanificacionPageContent() {
                           <tr key={index} className="border-t">
                             <td className="px-2 py-1.5 font-mono text-xs">
                               {row.trackcode}
+                            </td>
+                            <td className="px-2 py-1.5 truncate max-w-[120px] text-xs">
+                              {row.nombre_cliente || (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                              {row.telefono && (
+                                <span className="block text-muted-foreground">
+                                  {row.telefono}
+                                </span>
+                              )}
                             </td>
                             <td className="px-2 py-1.5 truncate max-w-[150px]">
                               {row.direccion}
@@ -1616,12 +1750,16 @@ function PlanificacionPageContent() {
       </Dialog>
 
       {/* Order Edit Dialog */}
-      <Dialog open={!!editingOrder} onOpenChange={(open) => !open && setEditingOrder(null)}>
+      <Dialog
+        open={!!editingOrder}
+        onOpenChange={(open) => !open && setEditingOrder(null)}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar ubicación del pedido</DialogTitle>
             <DialogDescription>
-              {editingOrder?.trackingId} - {editingOrder?.customerName || "Sin nombre"}
+              {editingOrder?.trackingId} -{" "}
+              {editingOrder?.customerName || "Sin nombre"}
             </DialogDescription>
           </DialogHeader>
 
@@ -1633,7 +1771,10 @@ function PlanificacionPageContent() {
                 id="edit-address"
                 value={editOrderData.address}
                 onChange={(e) =>
-                  setEditOrderData((prev) => ({ ...prev, address: e.target.value }))
+                  setEditOrderData((prev) => ({
+                    ...prev,
+                    address: e.target.value,
+                  }))
                 }
                 placeholder="Ingresa la dirección completa"
               />
@@ -1647,7 +1788,10 @@ function PlanificacionPageContent() {
                   id="edit-latitude"
                   value={editOrderData.latitude}
                   onChange={(e) =>
-                    setEditOrderData((prev) => ({ ...prev, latitude: e.target.value }))
+                    setEditOrderData((prev) => ({
+                      ...prev,
+                      latitude: e.target.value,
+                    }))
                   }
                   placeholder="-12.0464"
                 />
@@ -1658,7 +1802,10 @@ function PlanificacionPageContent() {
                   id="edit-longitude"
                   value={editOrderData.longitude}
                   onChange={(e) =>
-                    setEditOrderData((prev) => ({ ...prev, longitude: e.target.value }))
+                    setEditOrderData((prev) => ({
+                      ...prev,
+                      longitude: e.target.value,
+                    }))
                   }
                   placeholder="-77.0428"
                 />
@@ -1667,8 +1814,8 @@ function PlanificacionPageContent() {
 
             {/* Coordinates hint */}
             <p className="text-xs text-muted-foreground">
-              Puedes obtener las coordenadas desde Google Maps haciendo clic derecho
-              en el punto y copiando las coordenadas.
+              Puedes obtener las coordenadas desde Google Maps haciendo clic
+              derecho en el punto y copiando las coordenadas.
             </p>
 
             {/* Error message */}

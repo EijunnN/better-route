@@ -69,7 +69,9 @@ export function ProtectedPage({
     }
     // Verificar múltiples permisos (necesita al menos uno)
     else if (requiredPermissions && requiredPermissions.length > 0) {
-      hasAccess = requiredPermissions.some((perm) => permissions.includes(perm));
+      hasAccess = requiredPermissions.some((perm) =>
+        permissions.includes(perm),
+      );
     }
   }
 

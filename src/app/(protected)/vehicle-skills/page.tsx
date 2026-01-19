@@ -62,10 +62,7 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
 };
 
 function VehicleSkillsPageContent() {
-  const {
-    effectiveCompanyId: companyId,
-    isReady,
-  } = useCompanyContext();
+  const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
   const { toast } = useToast();
   const [skills, setSkills] = useState<VehicleSkill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,7 +131,8 @@ function VehicleSkillsPageContent() {
     } catch (err) {
       toast({
         title: "Error al crear habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -168,7 +166,8 @@ function VehicleSkillsPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -190,7 +189,9 @@ function VehicleSkillsPageContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al eliminar la habilidad");
+        throw new Error(
+          error.error || error.details || "Error al eliminar la habilidad",
+        );
       }
 
       await fetchSkills();
@@ -203,7 +204,8 @@ function VehicleSkillsPageContent() {
     } catch (err) {
       toast({
         title: "Error al eliminar habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -236,7 +238,8 @@ function VehicleSkillsPageContent() {
     } catch (err) {
       toast({
         title: "Error al actualizar estado",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     }
@@ -320,10 +323,7 @@ function VehicleSkillsPageContent() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="category">Categoría</Label>
-              <Select
-                value={filterCategory}
-                onValueChange={setFilterCategory}
-              >
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
@@ -341,10 +341,7 @@ function VehicleSkillsPageContent() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="active">Estado</Label>
-              <Select
-                value={filterActive}
-                onValueChange={setFilterActive}
-              >
+              <Select value={filterActive} onValueChange={setFilterActive}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -462,7 +459,8 @@ function VehicleSkillsPageContent() {
                           </AlertDialogTitle>
                           <AlertDialogDescription>
                             Esta acción eliminará permanentemente la habilidad{" "}
-                            <strong>{skill.name}</strong>. Esta acción no se puede deshacer.
+                            <strong>{skill.name}</strong>. Esta acción no se
+                            puede deshacer.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

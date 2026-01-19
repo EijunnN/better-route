@@ -41,7 +41,11 @@ export async function GET(
     const { id } = await params;
 
     // Verify the fleet exists and belongs to the tenant's company
-    const fleetWhereClause = withTenantFilter(fleets, [eq(fleets.id, id)], tenantCtx.companyId);
+    const fleetWhereClause = withTenantFilter(
+      fleets,
+      [eq(fleets.id, id)],
+      tenantCtx.companyId,
+    );
     const [fleet] = await db
       .select()
       .from(fleets)
@@ -111,7 +115,7 @@ export async function GET(
 
     // Calculate utilization metrics using Map for O(1) lookups
     const statusCountMap = new Map(
-      statusCounts.map((c) => [c.status, c.count])
+      statusCounts.map((c) => [c.status, c.count]),
     );
     const assignedCount = statusCountMap.get("ASSIGNED") || 0;
     const availableCount = statusCountMap.get("AVAILABLE") || 0;

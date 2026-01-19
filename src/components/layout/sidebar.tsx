@@ -44,7 +44,11 @@ const navItems: NavItem[] = [
 ];
 
 const configItems: NavItem[] = [
-  { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2 },
+  {
+    title: "Presets Optimización",
+    href: "/optimization-presets",
+    icon: Settings2,
+  },
   { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock },
   { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award },
   { title: "Habilidades Usuarios", href: "/user-skills", icon: Award },
@@ -186,7 +190,9 @@ export function Sidebar() {
             collapsed && "justify-center px-2",
           )}
           onClick={toggleTheme}
-          title={collapsed ? (isDark ? "Modo claro" : "Modo oscuro") : undefined}
+          title={
+            collapsed ? (isDark ? "Modo claro" : "Modo oscuro") : undefined
+          }
         >
           {isDark ? (
             <Sun className="h-5 w-5 shrink-0" />

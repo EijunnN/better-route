@@ -45,7 +45,11 @@ interface ZoneFormPreviewProps {
   onEdit: () => void;
 }
 
-export function ZoneFormPreview({ geometry, color, onEdit }: ZoneFormPreviewProps) {
+export function ZoneFormPreview({
+  geometry,
+  color,
+  onEdit,
+}: ZoneFormPreviewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -183,7 +187,8 @@ export function ZoneFormPreview({ geometry, color, onEdit }: ZoneFormPreviewProp
             <Map className="w-8 h-8" style={{ color }} />
           </div>
           <p className="text-sm text-muted-foreground mb-4 text-center px-4">
-            No hay área definida.<br />
+            No hay área definida.
+            <br />
             Dibuja el polígono en el mapa.
           </p>
           <Button onClick={onEdit} size="sm">
