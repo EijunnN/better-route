@@ -158,6 +158,9 @@ export const vehicleSchema = z
     ),
     weightCapacity: z.number().positive().optional().nullable(),
     volumeCapacity: z.number().positive().optional().nullable(),
+    // New capacity fields for multi-company support
+    maxValueCapacity: z.number().int().positive("Capacidad de valorizado debe ser mayor a 0").optional().nullable(),
+    maxUnitsCapacity: z.number().int().positive("Capacidad de unidades debe ser mayor a 0").optional().nullable(),
     refrigerated: z.boolean().default(false),
     heated: z.boolean().default(false),
     lifting: z.boolean().default(false),
@@ -300,6 +303,9 @@ export const updateVehicleSchema = z.object({
   type: nullableEnum(VEHICLE_TYPES),
   weightCapacity: z.number().positive().optional().nullable(),
   volumeCapacity: z.number().positive().optional().nullable(),
+  // New capacity fields for multi-company support
+  maxValueCapacity: z.number().int().positive().optional().nullable(),
+  maxUnitsCapacity: z.number().int().positive().optional().nullable(),
   refrigerated: z.boolean().optional(),
   heated: z.boolean().optional(),
   lifting: z.boolean().optional(),

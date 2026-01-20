@@ -541,7 +541,7 @@ export function OrderForm({
 
               {companyProfile.enableOrderValue && (
                 <div>
-                  <Label htmlFor="orderValue">Valorizado (céntimos)</Label>
+                  <Label htmlFor="orderValue">Valorizado</Label>
                   <Input
                     id="orderValue"
                     type="number"

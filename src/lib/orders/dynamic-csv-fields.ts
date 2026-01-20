@@ -72,13 +72,13 @@ const BASE_REQUIRED_FIELDS: CsvFieldDefinition[] = [
   },
 ];
 
-// Optional customer fields
+// Customer fields - customerName is required, others optional
 const CUSTOMER_FIELDS: CsvFieldDefinition[] = [
   {
     key: "customerName",
     label: "Customer Name",
     labelEs: "Nombre del Cliente",
-    required: false,
+    required: true, // Always required
     type: "string",
     description: "Customer's full name",
     descriptionEs: "Nombre completo del cliente",
@@ -134,7 +134,7 @@ const VOLUME_FIELD: CsvFieldDefinition = {
 const VALUE_FIELD: CsvFieldDefinition = {
   key: "orderValue",
   label: "Order Value (cents)",
-  labelEs: "Valorizado (céntimos)",
+  labelEs: "Valorizado",
   required: false,
   type: "number",
   description: "Order value in cents (e.g., 15000 = $150.00)",
@@ -233,6 +233,7 @@ const ADDITIONAL_FIELDS: CsvFieldDefinition[] = [
 
 /**
  * Get CSV field definitions based on company profile
+ * When a capacity dimension is enabled in the profile, its CSV field becomes REQUIRED
  */
 export function getCsvFieldsForProfile(
   profile?: CompanyOptimizationProfile | null,
@@ -243,27 +244,27 @@ export function getCsvFieldsForProfile(
   // Add customer fields
   fields.push(...CUSTOMER_FIELDS);
 
-  // Add capacity fields based on profile
+  // Add capacity fields based on profile - REQUIRED when enabled
   if (effectiveProfile.enableWeight) {
-    fields.push(WEIGHT_FIELD);
+    fields.push({ ...WEIGHT_FIELD, required: true });
   }
 
   if (effectiveProfile.enableVolume) {
-    fields.push(VOLUME_FIELD);
+    fields.push({ ...VOLUME_FIELD, required: true });
   }
 
   if (effectiveProfile.enableOrderValue) {
-    fields.push(VALUE_FIELD);
+    fields.push({ ...VALUE_FIELD, required: true });
   }
 
   if (effectiveProfile.enableUnits) {
-    fields.push(UNITS_FIELD);
+    fields.push({ ...UNITS_FIELD, required: true });
   }
 
-  // Add order type field if enabled
+  // Add order type field if enabled - REQUIRED when enabled
   if (effectiveProfile.enableOrderType) {
-    fields.push(ORDER_TYPE_FIELD);
-    fields.push(PRIORITY_FIELD);
+    fields.push({ ...ORDER_TYPE_FIELD, required: true });
+    fields.push(PRIORITY_FIELD); // Priority remains optional even when order type is enabled
   }
 
   // Add time window fields
@@ -284,20 +285,26 @@ export function getRequiredFieldsForProfile(
   return getCsvFieldsForProfile(profile).filter((f) => f.required);
 }
 
+// BOM UTF-8 para que Excel detecte correctamente la codificación
+const UTF8_BOM = "\uFEFF";
+
 /**
  * Generate CSV header row based on profile
  */
 export function generateCsvHeader(
   profile?: CompanyOptimizationProfile | null,
   locale: "en" | "es" = "es",
+  separator: string = ";",
 ): string {
   const fields = getCsvFieldsForProfile(profile);
   const headers = fields.map((f) => (locale === "es" ? f.labelEs : f.label));
-  return headers.join(",");
+  return headers.join(separator);
 }
 
 /**
  * Generate CSV template with example row
+ * Uses semicolon separator for Excel compatibility in Spanish locales
+ * Includes UTF-8 BOM for proper encoding detection
  */
 export function generateCsvTemplate(
   profile?: CompanyOptimizationProfile | null,
@@ -306,8 +313,10 @@ export function generateCsvTemplate(
   const fields = getCsvFieldsForProfile(profile);
   const headers = fields.map((f) => (locale === "es" ? f.labelEs : f.label));
   const examples = fields.map((f) => f.example);
+  // Use semicolon for Spanish locale (Excel default), comma for English
+  const separator = locale === "es" ? ";" : ",";
 
-  return `${headers.join(",")}\n${examples.join(",")}`;
+  return `${UTF8_BOM}${headers.join(separator)}\n${examples.join(separator)}`;
 }
 
 /**
@@ -469,7 +478,7 @@ ORD-002,Av. Santa Fe 2000,-34.5955,-58.3911,1000,10`,
   HIGH_VALUE: {
     name: "Productos de Alto Valor",
     description: "Valorizado y tipo de pedido para priorización",
-    example: `ID de Seguimiento,Dirección,Latitud,Longitud,Valorizado (céntimos),Tipo de Pedido
+    example: `ID de Seguimiento,Dirección,Latitud,Longitud,Valorizado,Tipo de Pedido
 ORD-001,Av. Corrientes 1234,-34.6037,-58.3816,150000,NEW
 ORD-002,Av. Santa Fe 2000,-34.5955,-58.3911,250000,URGENT`,
   },

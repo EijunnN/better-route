@@ -219,6 +219,13 @@ function PlanificacionPageContent() {
   const [zones, setZones] = useState<Zone[]>([]);
   const [showZones, setShowZones] = useState(true);
 
+  // Company profile state (for dynamic CSV fields)
+  const [companyProfile, setCompanyProfile] = useState<{
+    enableOrderValue: boolean;
+    enableWeight: boolean;
+    enableVolume: boolean;
+  } | null>(null);
+
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -231,6 +238,7 @@ function PlanificacionPageContent() {
   const [csvPreview, setCsvPreview] = useState<
     Array<{
       trackcode: string;
+      nombre_cliente: string;
       direccion: string;
       referencia: string;
       departamento: string;
@@ -238,8 +246,7 @@ function PlanificacionPageContent() {
       distrito: string;
       latitud: string;
       longitud: string;
-      nombre_cliente?: string;
-      telefono?: string;
+      telefono: string;
     }>
   >([]);
 
@@ -417,6 +424,39 @@ function PlanificacionPageContent() {
     }
   }, []);
 
+  // Load company profile for dynamic CSV fields
+  const loadCompanyProfile = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const response = await fetch("/api/company-profiles", {
+        headers: { "x-company-id": companyId },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data?.profile) {
+          setCompanyProfile({
+            enableOrderValue: data.data.profile.enableOrderValue ?? false,
+            enableWeight: data.data.profile.enableWeight ?? false,
+            enableVolume: data.data.profile.enableVolume ?? false,
+          });
+        } else {
+          setCompanyProfile({
+            enableOrderValue: false,
+            enableWeight: false,
+            enableVolume: false,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch company profile:", err);
+      setCompanyProfile({
+        enableOrderValue: false,
+        enableWeight: false,
+        enableVolume: false,
+      });
+    }
+  }, [companyId]);
+
   // Parse CSV file (supports comma, tab, and semicolon delimiters)
   const parseCSV = useCallback((text: string) => {
     // Remove BOM if present (UTF-8 BOM: \uFEFF)
@@ -456,6 +496,7 @@ function PlanificacionPageContent() {
 
     const requiredHeaders = [
       "trackcode",
+      "nombre_cliente",
       "direccion",
       "referencia",
       "departamento",
@@ -463,6 +504,7 @@ function PlanificacionPageContent() {
       "distrito",
       "latitud",
       "longitud",
+      "telefono",
     ];
 
     // Check for missing headers (check both normalized and original)
@@ -485,6 +527,7 @@ function PlanificacionPageContent() {
 
     const indexes = {
       trackcode: getIndex("trackcode"),
+      nombre_cliente: getIndex("nombre_cliente"),
       direccion: getIndex("direccion"),
       referencia: getIndex("referencia"),
       departamento: getIndex("departamento"),
@@ -492,8 +535,6 @@ function PlanificacionPageContent() {
       distrito: getIndex("distrito"),
       latitud: getIndex("latitud"),
       longitud: getIndex("longitud"),
-      // Optional fields
-      nombre_cliente: getIndex("nombre_cliente"),
       telefono: getIndex("telefono"),
     };
 
@@ -504,6 +545,7 @@ function PlanificacionPageContent() {
       if (values.length >= requiredHeaders.length) {
         data.push({
           trackcode: values[indexes.trackcode] || "",
+          nombre_cliente: values[indexes.nombre_cliente] || "",
           direccion: values[indexes.direccion] || "",
           referencia: values[indexes.referencia] || "",
           departamento: values[indexes.departamento] || "",
@@ -511,15 +553,7 @@ function PlanificacionPageContent() {
           distrito: values[indexes.distrito] || "",
           latitud: values[indexes.latitud] || "",
           longitud: values[indexes.longitud] || "",
-          // Optional fields
-          nombre_cliente:
-            indexes.nombre_cliente !== -1
-              ? values[indexes.nombre_cliente] || ""
-              : undefined,
-          telefono:
-            indexes.telefono !== -1
-              ? values[indexes.telefono] || ""
-              : undefined,
+          telefono: values[indexes.telefono] || "",
         });
       }
     }
@@ -762,9 +796,9 @@ function PlanificacionPageContent() {
   useEffect(() => {
     if (companyId) {
       // Use Promise.all to fetch all data in parallel (async-parallel rule)
-      Promise.all([loadFleets(), loadVehicles(), loadOrders(), loadZones(), loadOptimizers()]);
+      Promise.all([loadFleets(), loadVehicles(), loadOrders(), loadZones(), loadOptimizers(), loadCompanyProfile()]);
     }
-  }, [companyId, loadFleets, loadVehicles, loadOrders, loadZones, loadOptimizers]);
+  }, [companyId, loadFleets, loadVehicles, loadOrders, loadZones, loadOptimizers, loadCompanyProfile]);
 
   // Filtered vehicles
   const filteredVehicles = useMemo(() => {
@@ -1744,15 +1778,15 @@ function PlanificacionPageContent() {
               <span className="block">
                 Headers requeridos:{" "}
                 <span className="font-mono text-xs">
-                  trackcode, direccion, referencia, departamento, provincia,
-                  distrito, latitud, longitud
+                  trackcode, nombre_cliente, direccion, referencia, departamento, provincia,
+                  distrito, latitud, longitud, telefono
+                  {companyProfile?.enableOrderValue && ", valorizado"}
+                  {companyProfile?.enableWeight && ", peso"}
+                  {companyProfile?.enableVolume && ", volumen"}
                 </span>
               </span>
-              <span className="block text-muted-foreground">
-                Opcionales:{" "}
-                <span className="font-mono text-xs">
-                  nombre_cliente, telefono
-                </span>
+              <span className="block text-muted-foreground text-xs">
+                * referencia y telefono: header requerido, datos opcionales
               </span>
             </DialogDescription>
           </DialogHeader>

@@ -59,6 +59,9 @@ interface Vehicle {
   type: string | null;
   weightCapacity: number | null;
   volumeCapacity: number | null;
+  // New capacity fields
+  maxValueCapacity: number | null;
+  maxUnitsCapacity: number | null;
   refrigerated: boolean;
   heated: boolean;
   lifting: boolean;
@@ -69,6 +72,13 @@ interface Vehicle {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+interface CompanyProfile {
+  enableOrderValue: boolean;
+  enableUnits: boolean;
+  enableWeight: boolean;
+  enableVolume: boolean;
 }
 
 interface Fleet {
@@ -102,6 +112,7 @@ function VehiclesPageContent() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
@@ -169,11 +180,49 @@ function VehiclesPageContent() {
     }
   }, [companyId]);
 
+  const fetchCompanyProfile = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const response = await fetch("/api/company-profiles", {
+        headers: {
+          "x-company-id": companyId ?? "",
+        },
+      });
+      const data = await response.json();
+      if (data.data?.profile) {
+        setCompanyProfile({
+          enableOrderValue: data.data.profile.enableOrderValue ?? false,
+          enableUnits: data.data.profile.enableUnits ?? false,
+          enableWeight: data.data.profile.enableWeight ?? true,
+          enableVolume: data.data.profile.enableVolume ?? true,
+        });
+      } else {
+        // Default profile
+        setCompanyProfile({
+          enableOrderValue: false,
+          enableUnits: false,
+          enableWeight: true,
+          enableVolume: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching company profile:", error);
+      // Set defaults on error
+      setCompanyProfile({
+        enableOrderValue: false,
+        enableUnits: false,
+        enableWeight: true,
+        enableVolume: true,
+      });
+    }
+  }, [companyId]);
+
   useEffect(() => {
     fetchVehicles();
     fetchFleets();
     fetchDrivers();
-  }, [companyId, fetchDrivers, fetchFleets, fetchVehicles]);
+    fetchCompanyProfile();
+  }, [companyId, fetchDrivers, fetchFleets, fetchVehicles, fetchCompanyProfile]);
 
   const handleCreate = async (data: VehicleInput) => {
     try {
@@ -362,6 +411,8 @@ function VehiclesPageContent() {
                       type: editingVehicle.type as VehicleInput["type"],
                       weightCapacity: editingVehicle.weightCapacity,
                       volumeCapacity: editingVehicle.volumeCapacity,
+                      maxValueCapacity: editingVehicle.maxValueCapacity,
+                      maxUnitsCapacity: editingVehicle.maxUnitsCapacity,
                       refrigerated: editingVehicle.refrigerated,
                       heated: editingVehicle.heated,
                       lifting: editingVehicle.lifting,
@@ -376,6 +427,7 @@ function VehiclesPageContent() {
               }
               fleets={fleets}
               drivers={drivers}
+              companyProfile={companyProfile ?? undefined}
               submitLabel={editingVehicle ? "Actualizar" : "Crear"}
               onCancel={() => {
                 setShowForm(false);

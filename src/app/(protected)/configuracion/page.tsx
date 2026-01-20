@@ -257,9 +257,27 @@ function ConfiguracionPageContent() {
     setHasChanges(true);
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     if (!companyId) return;
-    window.open(`/api/orders/csv-template?locale=es`, "_blank");
+    try {
+      const response = await fetch(`/api/orders/csv-template?locale=es`, {
+        headers: { "x-company-id": companyId },
+      });
+      if (!response.ok) {
+        throw new Error("Error al descargar plantilla");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ordenes_template.csv";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Error downloading template:", error);
+    }
   };
 
   if (!isReady || isLoading) {

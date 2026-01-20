@@ -1,6 +1,6 @@
 "use client";
 
-import { Info } from "lucide-react";
+import { Box, DollarSign, Info, Package, Scale } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,14 @@ import {
 } from "@/components/ui/select";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 
+// Company profile fields relevant to vehicle form
+interface CompanyProfile {
+  enableOrderValue?: boolean;
+  enableUnits?: boolean;
+  enableWeight?: boolean;
+  enableVolume?: boolean;
+}
+
 interface VehicleFormProps {
   onSubmit: (data: VehicleInput) => Promise<void>;
   initialData?: Partial<VehicleInput>;
@@ -27,6 +35,7 @@ interface VehicleFormProps {
   drivers: Array<{ id: string; name: string }>;
   submitLabel?: string;
   onCancel?: () => void;
+  companyProfile?: CompanyProfile;
 }
 
 const LOAD_TYPES = [
@@ -48,6 +57,7 @@ export function VehicleForm({
   drivers,
   submitLabel = "Guardar",
   onCancel,
+  companyProfile,
 }: VehicleFormProps) {
   const defaultData: VehicleInput = {
     name: initialData?.name ?? "",
@@ -72,6 +82,8 @@ export function VehicleForm({
     type: initialData?.type ?? null,
     weightCapacity: initialData?.weightCapacity ?? null,
     volumeCapacity: initialData?.volumeCapacity ?? null,
+    maxValueCapacity: initialData?.maxValueCapacity ?? null,
+    maxUnitsCapacity: initialData?.maxUnitsCapacity ?? null,
     refrigerated: initialData?.refrigerated ?? false,
     heated: initialData?.heated ?? false,
     lifting: initialData?.lifting ?? false,
@@ -285,6 +297,128 @@ export function VehicleForm({
                     placeholder="20"
                   />
                 </div>
+
+                {/* Max Value Capacity - Conditional based on company profile */}
+                {companyProfile?.enableOrderValue && (
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="maxValueCapacity"
+                      className="flex items-center gap-1"
+                    >
+                      <DollarSign className="h-3 w-3 text-amber-500" />
+                      Capacidad Máx. Valorizado
+                    </Label>
+                    <Input
+                      id="maxValueCapacity"
+                      type="number"
+                      min="1"
+                      value={formData.maxValueCapacity ?? ""}
+                      onChange={(e) =>
+                        updateField(
+                          "maxValueCapacity",
+                          e.target.value ? parseInt(e.target.value, 10) : null,
+                        )
+                      }
+                      disabled={isSubmitting}
+                      placeholder="Ej: 50000"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Valor máximo en moneda local que puede transportar
+                    </p>
+                  </div>
+                )}
+
+                {/* Max Units Capacity - Conditional based on company profile */}
+                {companyProfile?.enableUnits && (
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="maxUnitsCapacity"
+                      className="flex items-center gap-1"
+                    >
+                      <Package className="h-3 w-3 text-purple-500" />
+                      Capacidad Máx. Unidades
+                    </Label>
+                    <Input
+                      id="maxUnitsCapacity"
+                      type="number"
+                      min="1"
+                      value={formData.maxUnitsCapacity ?? ""}
+                      onChange={(e) =>
+                        updateField(
+                          "maxUnitsCapacity",
+                          e.target.value ? parseInt(e.target.value, 10) : null,
+                        )
+                      }
+                      disabled={isSubmitting}
+                      placeholder="Ej: 100"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Cantidad máxima de unidades/items que puede transportar
+                    </p>
+                  </div>
+                )}
+
+                {/* Weight Capacity - Conditional based on company profile */}
+                {companyProfile?.enableWeight && (
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="weightCapacity"
+                      className="flex items-center gap-1"
+                    >
+                      <Scale className="h-3 w-3 text-blue-500" />
+                      Capacidad Máx. Peso (kg)
+                    </Label>
+                    <Input
+                      id="weightCapacity"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={formData.weightCapacity ?? ""}
+                      onChange={(e) =>
+                        updateField(
+                          "weightCapacity",
+                          e.target.value ? parseFloat(e.target.value) : null,
+                        )
+                      }
+                      disabled={isSubmitting}
+                      placeholder="Ej: 1000"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Peso máximo en kilogramos que puede transportar
+                    </p>
+                  </div>
+                )}
+
+                {/* Volume Capacity - Conditional based on company profile */}
+                {companyProfile?.enableVolume && (
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="volumeCapacity"
+                      className="flex items-center gap-1"
+                    >
+                      <Box className="h-3 w-3 text-green-500" />
+                      Capacidad Máx. Volumen (m³)
+                    </Label>
+                    <Input
+                      id="volumeCapacity"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={formData.volumeCapacity ?? ""}
+                      onChange={(e) =>
+                        updateField(
+                          "volumeCapacity",
+                          e.target.value ? parseFloat(e.target.value) : null,
+                        )
+                      }
+                      disabled={isSubmitting}
+                      placeholder="Ej: 10"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Volumen máximo en metros cúbicos que puede transportar
+                    </p>
+                  </div>
+                )}
 
                 {/* Status */}
                 <div className="space-y-2">

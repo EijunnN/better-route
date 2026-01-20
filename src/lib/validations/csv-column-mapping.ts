@@ -10,17 +10,25 @@ export const CSV_SYSTEM_FIELDS = [
   "latitude",
   "longitude",
   "timeWindowPresetId",
+  "timeWindowStart",
+  "timeWindowEnd",
   "strictness",
   "promisedDate",
   "weightRequired",
   "volumeRequired",
+  "orderValue",
+  "unitsRequired",
+  "orderType",
+  "priority",
   "requiredSkills",
   "notes",
 ] as const;
 
-// Required fields for order import
+// Base required fields for order import (always required)
+// Additional fields may be required based on company profile
 export const CSV_REQUIRED_FIELDS = [
   "trackingId",
+  "customerName",
   "address",
   "latitude",
   "longitude",
