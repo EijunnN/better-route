@@ -144,14 +144,20 @@ const VROOM_TIMEOUT = Number(process.env.VROOM_TIMEOUT) || 60000; // 60 seconds
 
 /**
  * Check if VROOM service is available
+ * VROOM doesn't have a /health endpoint, so we send a minimal POST request
+ * and check if we get any response (even an error response means it's running)
  */
 export async function isVroomAvailable(): Promise<boolean> {
   try {
-    const response = await fetch(`${VROOM_URL}/health`, {
-      method: "GET",
+    const response = await fetch(VROOM_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vehicles: [], jobs: [] }),
       signal: AbortSignal.timeout(5000),
     });
-    return response.ok;
+    // VROOM returns 200 even for validation errors, with error in body
+    // Any response means the service is available
+    return response.status === 200;
   } catch {
     return false;
   }

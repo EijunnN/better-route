@@ -1,6 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  companyOptimizationProfiles,
   optimizationConfigurations,
   optimizationJobs,
   optimizationPresets,
@@ -44,6 +45,7 @@ import {
   type VehicleZoneAssignment,
   type ZoneData,
 } from "../geo/zone-utils";
+import { parseProfile } from "./capacity-mapper";
 
 // Type for grouped orders (multiple orders at same location)
 interface GroupedOrder {
@@ -422,6 +424,8 @@ export async function runOptimization(
     longitude: order.longitude,
     weightRequired: order.weightRequired || 0,
     volumeRequired: order.volumeRequired || 0,
+    orderValue: order.orderValue || 0,
+    unitsRequired: order.unitsRequired || 0,
     promisedDate: order.promisedDate,
     serviceTime: serviceTimeSeconds,
   }));
@@ -441,6 +445,8 @@ export async function runOptimization(
     name: vehicle.name,
     weightCapacity: vehicle.weightCapacity,
     volumeCapacity: vehicle.volumeCapacity,
+    maxValueCapacity: vehicle.maxValueCapacity,
+    maxUnitsCapacity: vehicle.maxUnitsCapacity,
     maxOrders: vehicle.maxOrders || 30,
     originLatitude: vehicle.originLatitude,
     originLongitude: vehicle.originLongitude,
@@ -488,11 +494,30 @@ export async function runOptimization(
   // Global map to track grouped orders for ungrouping later
   const globalGroupMap: OrderGroupMap = new Map();
 
+  // Load company optimization profile for dynamic capacity mapping
+  const [companyProfileRow] = await db
+    .select()
+    .from(companyOptimizationProfiles)
+    .where(
+      and(
+        eq(companyOptimizationProfiles.companyId, input.companyId),
+        eq(companyOptimizationProfiles.active, true),
+      ),
+    )
+    .limit(1);
+
+  const companyProfile = parseProfile(companyProfileRow ?? null);
+  console.log(
+    `[Optimization] Company profile loaded: enableOrderValue=${companyProfile.enableOrderValue}, activeDimensions=${companyProfile.activeDimensions.join(",")}`,
+  );
+
   // Optimization config with preset values
   const vroomConfig: VroomOptConfig = {
     depot: depotConfig,
     objective:
       (config?.objective as "DISTANCE" | "TIME" | "BALANCED") || "BALANCED",
+    // Company-specific optimization profile for capacity mapping
+    profile: companyProfile,
     // Apply preset settings if available
     balanceVisits: preset?.balanceVisits ?? false,
     maxDistanceKm: preset?.maxDistanceKm ?? undefined,
@@ -809,6 +834,8 @@ export async function runOptimization(
         longitude: parseFloat(String(order.longitude)),
         weightRequired: order.weightRequired,
         volumeRequired: order.volumeRequired,
+        orderValue: order.orderValue,
+        unitsRequired: order.unitsRequired,
         timeWindowStart: order.promisedDate
           ? new Date(order.promisedDate).toTimeString().slice(0, 5)
           : undefined,
@@ -829,6 +856,8 @@ export async function runOptimization(
         plate: vehicle.plate,
         maxWeight: vehicle.weightCapacity || 10000,
         maxVolume: vehicle.volumeCapacity || 100,
+        maxValueCapacity: vehicle.maxValueCapacity ?? undefined,
+        maxUnitsCapacity: vehicle.maxUnitsCapacity ?? undefined,
         maxOrders: vehicle.maxOrders || 30,
         originLatitude: vehicle.originLatitude
           ? parseFloat(vehicle.originLatitude)
