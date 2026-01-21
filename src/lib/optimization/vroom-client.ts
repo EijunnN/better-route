@@ -144,20 +144,35 @@ const VROOM_TIMEOUT = Number(process.env.VROOM_TIMEOUT) || 60000; // 60 seconds
 
 /**
  * Check if VROOM service is available
- * VROOM doesn't have a /health endpoint, so we send a minimal POST request
- * and check if we get any response (even an error response means it's running)
+ * Send a minimal valid request with Lima coordinates to verify connectivity
  */
 export async function isVroomAvailable(): Promise<boolean> {
   try {
+    // Send a minimal request with valid Lima coordinates
+    const testRequest = {
+      vehicles: [{
+        id: 1,
+        start: [-77.0428, -12.0464],  // Lima centro
+        end: [-77.0428, -12.0464]
+      }],
+      jobs: [{
+        id: 1,
+        location: [-77.0300, -12.0500]  // Nearby in Lima
+      }],
+    };
     const response = await fetch(VROOM_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vehicles: [], jobs: [] }),
+      body: JSON.stringify(testRequest),
       signal: AbortSignal.timeout(5000),
     });
-    // VROOM returns 200 even for validation errors, with error in body
-    // Any response means the service is available
-    return response.status === 200;
+
+    if (response.status !== 200) return false;
+
+    const result = await response.json();
+    // code 0 = success, code 1 = internal error, code 2 = input error, code 3 = routing error
+    // We consider it available if VROOM responds (even with routing errors)
+    return result.code === 0 || result.code === 3;
   } catch {
     return false;
   }
@@ -167,6 +182,27 @@ export async function isVroomAvailable(): Promise<boolean> {
  * Solve a Vehicle Routing Problem using VROOM
  */
 export async function solveVRP(request: VroomRequest): Promise<VroomResponse> {
+  // Debug: Log full request for troubleshooting
+  console.log("[VROOM] ============ VROOM REQUEST ============");
+  console.log(`[VROOM] Jobs count: ${request.jobs?.length || 0}`);
+  console.log(`[VROOM] Vehicles count: ${request.vehicles?.length || 0}`);
+
+  // Log first 3 jobs and vehicles for debugging
+  if (request.jobs && request.jobs.length > 0) {
+    for (let i = 0; i < Math.min(3, request.jobs.length); i++) {
+      console.log(`[VROOM] Job ${i + 1}: ${JSON.stringify(request.jobs[i])}`);
+    }
+  }
+  if (request.vehicles && request.vehicles.length > 0) {
+    for (let i = 0; i < Math.min(3, request.vehicles.length); i++) {
+      console.log(`[VROOM] Vehicle ${i + 1}: ${JSON.stringify(request.vehicles[i])}`);
+    }
+  }
+
+  // CRITICAL: Log full request to file for debugging
+  console.log("[VROOM] Full request JSON:");
+  console.log(JSON.stringify(request, null, 2));
+
   const response = await fetch(VROOM_URL, {
     method: "POST",
     headers: {
@@ -178,12 +214,15 @@ export async function solveVRP(request: VroomRequest): Promise<VroomResponse> {
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`[VROOM] HTTP error: ${response.status} - ${errorText}`);
     throw new Error(`VROOM error: ${response.status} - ${errorText}`);
   }
 
   const result: VroomResponse = await response.json();
 
   if (result.code !== 0) {
+    console.error(`[VROOM] Optimization failed: ${result.error}`);
+    console.error(`[VROOM] Full response: ${JSON.stringify(result)}`);
     throw new Error(
       `VROOM optimization failed: ${result.error || "Unknown error"}`,
     );
@@ -205,10 +244,24 @@ export function toVroomTime(date: Date): number {
 
 /**
  * Convert time window string (HH:MM) to VROOM format
+ * Returns null if the time string is invalid
  */
-export function parseTimeWindow(timeStr: string): number {
+export function parseTimeWindow(timeStr: string): number | null {
+  if (!timeStr || timeStr === "Invalid Date") {
+    return null;
+  }
   const [hours, minutes] = timeStr.split(":").map(Number);
-  return hours * 3600 + (minutes || 0) * 60;
+  // Validate parsed values
+  if (isNaN(hours) || hours < 0 || hours > 23) {
+    console.warn(`[VROOM] Invalid time window hours: ${timeStr}`);
+    return null;
+  }
+  const mins = minutes || 0;
+  if (isNaN(mins) || mins < 0 || mins > 59) {
+    console.warn(`[VROOM] Invalid time window minutes: ${timeStr}`);
+    return null;
+  }
+  return hours * 3600 + mins * 60;
 }
 
 /**
@@ -240,12 +293,12 @@ export function createVroomJob(
   if (options?.priority) job.priority = options.priority;
 
   if (options?.timeWindowStart && options?.timeWindowEnd) {
-    job.time_windows = [
-      [
-        parseTimeWindow(options.timeWindowStart),
-        parseTimeWindow(options.timeWindowEnd),
-      ],
-    ];
+    const start = parseTimeWindow(options.timeWindowStart);
+    const end = parseTimeWindow(options.timeWindowEnd);
+    // Only set time_windows if both values are valid
+    if (start !== null && end !== null && start <= end) {
+      job.time_windows = [[start, end]];
+    }
   }
 
   return job;
@@ -314,10 +367,12 @@ export function createVroomVehicle(
   if (options?.maxTravelTime) vehicle.max_travel_time = options.maxTravelTime;
 
   if (options?.timeWindowStart && options?.timeWindowEnd) {
-    vehicle.time_window = [
-      parseTimeWindow(options.timeWindowStart),
-      parseTimeWindow(options.timeWindowEnd),
-    ];
+    const start = parseTimeWindow(options.timeWindowStart);
+    const end = parseTimeWindow(options.timeWindowEnd);
+    // Only set time_window if both values are valid
+    if (start !== null && end !== null && start <= end) {
+      vehicle.time_window = [start, end];
+    }
   }
 
   return vehicle;

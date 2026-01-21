@@ -31,7 +31,7 @@ const BASE_REQUIRED_FIELDS: CsvFieldDefinition[] = [
   {
     key: "trackingId",
     label: "Tracking ID",
-    labelEs: "ID de Seguimiento",
+    labelEs: "trackcode",
     required: true,
     type: "string",
     description: "Unique order identifier",
@@ -41,33 +41,33 @@ const BASE_REQUIRED_FIELDS: CsvFieldDefinition[] = [
   {
     key: "address",
     label: "Address",
-    labelEs: "Dirección",
+    labelEs: "direccion",
     required: true,
     type: "string",
     description: "Delivery address",
     descriptionEs: "Dirección de entrega",
-    example: "Av. Corrientes 1234, CABA",
+    example: "Av. Corrientes 1234",
   },
   {
     key: "latitude",
     label: "Latitude",
-    labelEs: "Latitud",
+    labelEs: "latitud",
     required: true,
     type: "number",
     description: "Geographic latitude (-90 to 90)",
     descriptionEs: "Latitud geográfica (-90 a 90)",
-    example: "-34.6037",
+    example: "-12.0464",
     validation: { min: -90, max: 90 },
   },
   {
     key: "longitude",
     label: "Longitude",
-    labelEs: "Longitud",
+    labelEs: "longitud",
     required: true,
     type: "number",
     description: "Geographic longitude (-180 to 180)",
     descriptionEs: "Longitud geográfica (-180 a 180)",
-    example: "-58.3816",
+    example: "-77.0428",
     validation: { min: -180, max: 180 },
   },
 ];
@@ -77,7 +77,7 @@ const CUSTOMER_FIELDS: CsvFieldDefinition[] = [
   {
     key: "customerName",
     label: "Customer Name",
-    labelEs: "Nombre del Cliente",
+    labelEs: "nombre_cliente",
     required: true, // Always required
     type: "string",
     description: "Customer's full name",
@@ -87,17 +87,17 @@ const CUSTOMER_FIELDS: CsvFieldDefinition[] = [
   {
     key: "customerPhone",
     label: "Customer Phone",
-    labelEs: "Teléfono del Cliente",
+    labelEs: "telefono",
     required: false,
     type: "string",
     description: "Customer's phone number",
     descriptionEs: "Número de teléfono del cliente",
-    example: "+54 11 1234-5678",
+    example: "987654321",
   },
   {
     key: "customerEmail",
     label: "Customer Email",
-    labelEs: "Email del Cliente",
+    labelEs: "email",
     required: false,
     type: "string",
     description: "Customer's email address",
@@ -110,7 +110,7 @@ const CUSTOMER_FIELDS: CsvFieldDefinition[] = [
 const WEIGHT_FIELD: CsvFieldDefinition = {
   key: "weightRequired",
   label: "Weight (g)",
-  labelEs: "Peso (g)",
+  labelEs: "peso",
   required: false,
   type: "number",
   description: "Package weight in grams",
@@ -122,7 +122,7 @@ const WEIGHT_FIELD: CsvFieldDefinition = {
 const VOLUME_FIELD: CsvFieldDefinition = {
   key: "volumeRequired",
   label: "Volume (L)",
-  labelEs: "Volumen (L)",
+  labelEs: "volumen",
   required: false,
   type: "number",
   description: "Package volume in liters",
@@ -133,20 +133,20 @@ const VOLUME_FIELD: CsvFieldDefinition = {
 
 const VALUE_FIELD: CsvFieldDefinition = {
   key: "orderValue",
-  label: "Order Value (cents)",
-  labelEs: "Valorizado",
+  label: "Order Value",
+  labelEs: "valorizado",
   required: false,
   type: "number",
-  description: "Order value in cents (e.g., 15000 = $150.00)",
-  descriptionEs: "Valor del pedido en céntimos (ej: 15000 = $150.00)",
-  example: "15000",
+  description: "Order monetary value",
+  descriptionEs: "Valor monetario del pedido",
+  example: "3400",
   validation: { min: 0 },
 };
 
 const UNITS_FIELD: CsvFieldDefinition = {
   key: "unitsRequired",
   label: "Units",
-  labelEs: "Unidades",
+  labelEs: "unidades",
   required: false,
   type: "number",
   description: "Number of units/items",
@@ -159,24 +159,24 @@ const UNITS_FIELD: CsvFieldDefinition = {
 const ORDER_TYPE_FIELD: CsvFieldDefinition = {
   key: "orderType",
   label: "Order Type",
-  labelEs: "Tipo de Pedido",
+  labelEs: "tipo_pedido",
   required: false,
   type: "enum",
-  description: "Type of order for prioritization",
-  descriptionEs: "Tipo de pedido para priorización",
-  example: "NEW",
-  enumValues: ["NEW", "RESCHEDULED", "URGENT"],
+  description: "Type of order for prioritization (NEW, RESCHEDULED, URGENT)",
+  descriptionEs: "Tipo de pedido para priorización (NUEVO, REPROGRAMADO, URGENTE)",
+  example: "NUEVO",
+  enumValues: ["NEW", "RESCHEDULED", "URGENT", "NUEVO", "REPROGRAMADO", "URGENTE"],
 };
 
 // Priority field
 const PRIORITY_FIELD: CsvFieldDefinition = {
   key: "priority",
   label: "Priority",
-  labelEs: "Prioridad",
+  labelEs: "prioridad",
   required: false,
   type: "number",
   description: "Priority score (0-100, higher = more important)",
-  descriptionEs: "Puntuación de prioridad (0-100, mayor = más importante)",
+  descriptionEs: "Prioridad (0-100, mayor = más importante). Ej: URGENTE=100, REPROGRAMADO=80, NUEVO=50",
   example: "50",
   validation: { min: 0, max: 100 },
 };
@@ -207,12 +207,56 @@ const TIME_WINDOW_FIELDS: CsvFieldDefinition[] = [
   },
 ];
 
+// Location detail fields (for address building)
+const LOCATION_DETAIL_FIELDS: CsvFieldDefinition[] = [
+  {
+    key: "referencia",
+    label: "Reference",
+    labelEs: "referencia",
+    required: false,
+    type: "string",
+    description: "Address reference or landmark",
+    descriptionEs: "Referencia o punto de referencia",
+    example: "Frente al parque",
+  },
+  {
+    key: "departamento",
+    label: "Department/State",
+    labelEs: "departamento",
+    required: false,
+    type: "string",
+    description: "Department or state",
+    descriptionEs: "Departamento",
+    example: "LIMA",
+  },
+  {
+    key: "provincia",
+    label: "Province",
+    labelEs: "provincia",
+    required: false,
+    type: "string",
+    description: "Province",
+    descriptionEs: "Provincia",
+    example: "LIMA",
+  },
+  {
+    key: "distrito",
+    label: "District",
+    labelEs: "distrito",
+    required: false,
+    type: "string",
+    description: "District",
+    descriptionEs: "Distrito",
+    example: "MIRAFLORES",
+  },
+];
+
 // Additional optional fields
 const ADDITIONAL_FIELDS: CsvFieldDefinition[] = [
   {
     key: "notes",
     label: "Notes",
-    labelEs: "Notas",
+    labelEs: "notas",
     required: false,
     type: "string",
     description: "Additional delivery instructions",
@@ -222,7 +266,7 @@ const ADDITIONAL_FIELDS: CsvFieldDefinition[] = [
   {
     key: "requiredSkills",
     label: "Required Skills",
-    labelEs: "Habilidades Requeridas",
+    labelEs: "habilidades",
     required: false,
     type: "string",
     description: "Comma-separated skill codes",
@@ -269,6 +313,9 @@ export function getCsvFieldsForProfile(
 
   // Add time window fields
   fields.push(...TIME_WINDOW_FIELDS);
+
+  // Add location detail fields
+  fields.push(...LOCATION_DETAIL_FIELDS);
 
   // Add additional fields
   fields.push(...ADDITIONAL_FIELDS);
@@ -463,32 +510,33 @@ export function getFieldDocumentation(
 
 /**
  * Profile-specific CSV templates for common company types
+ * Headers match the labelEs values for Spanish locale compatibility
  */
 export const CSV_TEMPLATES = {
   // Traditional logistics: weight + volume
   LOGISTICS: {
     name: "Logística Tradicional",
     description: "Peso y volumen como restricciones principales",
-    example: `ID de Seguimiento,Dirección,Latitud,Longitud,Peso (g),Volumen (L)
-ORD-001,Av. Corrientes 1234,-34.6037,-58.3816,500,5
-ORD-002,Av. Santa Fe 2000,-34.5955,-58.3911,1000,10`,
+    example: `trackcode;nombre_cliente;direccion;latitud;longitud;peso;volumen
+ORD-001;Juan Pérez;Av. Corrientes 1234;-34.6037;-58.3816;500;5
+ORD-002;María García;Av. Santa Fe 2000;-34.5955;-58.3911;1000;10`,
   },
 
   // High-value goods: value-based
   HIGH_VALUE: {
     name: "Productos de Alto Valor",
     description: "Valorizado y tipo de pedido para priorización",
-    example: `ID de Seguimiento,Dirección,Latitud,Longitud,Valorizado,Tipo de Pedido
-ORD-001,Av. Corrientes 1234,-34.6037,-58.3816,150000,NEW
-ORD-002,Av. Santa Fe 2000,-34.5955,-58.3911,250000,URGENT`,
+    example: `trackcode;nombre_cliente;direccion;latitud;longitud;valorizado;tipo_pedido;prioridad
+ORD-001;Juan Pérez;Av. Corrientes 1234;-34.6037;-58.3816;150000;NUEVO;50
+ORD-002;María García;Av. Santa Fe 2000;-34.5955;-58.3911;250000;URGENTE;100`,
   },
 
   // Simple delivery: units only
   SIMPLE: {
     name: "Entrega Simple",
     description: "Solo conteo de unidades",
-    example: `ID de Seguimiento,Dirección,Latitud,Longitud,Unidades
-ORD-001,Av. Corrientes 1234,-34.6037,-58.3816,3
-ORD-002,Av. Santa Fe 2000,-34.5955,-58.3911,5`,
+    example: `trackcode;nombre_cliente;direccion;latitud;longitud;unidades
+ORD-001;Juan Pérez;Av. Corrientes 1234;-34.6037;-58.3816;3
+ORD-002;María García;Av. Santa Fe 2000;-34.5955;-58.3911;5`,
   },
 } as const;

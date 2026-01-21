@@ -197,13 +197,59 @@ async function optimizeWithVroom(
   config: OptimizationConfig,
   startTime: number,
 ): Promise<OptimizationOutput> {
+  // Validate inputs
+  if (orders.length === 0) {
+    console.warn("[VROOM] No orders to optimize, returning empty result");
+    return {
+      routes: [],
+      unassigned: [],
+      metrics: {
+        totalDistance: 0,
+        totalDuration: 0,
+        totalRoutes: 0,
+        totalStops: 0,
+        computingTimeMs: Date.now() - startTime,
+      },
+      usedVroom: false,
+    };
+  }
+
+  if (vehicles.length === 0) {
+    console.warn("[VROOM] No vehicles available, returning all orders as unassigned");
+    return {
+      routes: [],
+      unassigned: orders.map((o) => ({
+        orderId: o.id,
+        trackingId: o.trackingId,
+        reason: "No hay vehículos disponibles",
+      })),
+      metrics: {
+        totalDistance: 0,
+        totalDuration: 0,
+        totalRoutes: 0,
+        totalStops: 0,
+        computingTimeMs: Date.now() - startTime,
+      },
+      usedVroom: false,
+    };
+  }
+
   // Build order ID to index mapping
   const orderIdToIndex = new Map<number, string>();
   const vehicleIdToIndex = new Map<number, string>();
 
   // Get optimization profile (use default if not specified)
-  const profile = config.profile || DEFAULT_PROFILE;
+  let profile = config.profile || DEFAULT_PROFILE;
+
+  // Safeguard: If no active dimensions, fall back to default profile
+  if (!profile.activeDimensions || profile.activeDimensions.length === 0) {
+    console.warn("[VROOM] Profile has no active dimensions, falling back to default (WEIGHT, VOLUME)");
+    profile = DEFAULT_PROFILE;
+  }
+
   console.log(`[VROOM] Using profile: ${getDimensionInfo(profile)}`);
+  console.log(`[VROOM] Active dimensions: ${profile.activeDimensions.join(", ")}`);
+  console.log(`[VROOM] Orders: ${orders.length}, Vehicles: ${vehicles.length}`);
 
   // Calculate balanced maxOrders if balancing is enabled (pre-balancing)
   const balancedMaxOrders = config.balanceVisits
@@ -252,6 +298,14 @@ async function optimizeWithVroom(
       },
       profile,
     );
+
+    // Log first few orders for debugging
+    if (index < 3) {
+      console.log(`[VROOM] Order ${jobId}: trackingId=${order.trackingId}, ` +
+        `coords=[${order.longitude}, ${order.latitude}], ` +
+        `orderValue=${order.orderValue}, unitsRequired=${order.unitsRequired}, ` +
+        `delivery=${JSON.stringify(capacityMapping.capacityArray)}`);
+    }
 
     return createVroomJob(jobId, order.longitude, order.latitude, {
       description: order.trackingId,
@@ -350,6 +404,13 @@ async function optimizeWithVroom(
       profile,
     );
 
+    // Log first few vehicles for debugging
+    if (index < 3) {
+      console.log(`[VROOM] Vehicle ${vehicleId}: plate=${vehicle.plate}, ` +
+        `maxValueCapacity=${vehicle.maxValueCapacity}, maxUnitsCapacity=${vehicle.maxUnitsCapacity}, ` +
+        `capacity=${JSON.stringify(capacityMapping.capacityArray)}`);
+    }
+
     return createVroomVehicle(
       vehicleId,
       config.openStart ? undefined : startLongitude,
@@ -404,6 +465,37 @@ async function optimizeWithVroom(
     },
     objectives: vroomObjectives,
   };
+
+  // Debug: Log request summary
+  console.log(`[VROOM] Request: ${jobs.length} jobs, ${vroomVehicles.length} vehicles`);
+  if (jobs.length > 0) {
+    const sampleJob = jobs[0];
+    console.log(`[VROOM] Sample job: id=${sampleJob.id}, location=[${sampleJob.location}], delivery=${JSON.stringify(sampleJob.delivery)}`);
+  }
+  if (vroomVehicles.length > 0) {
+    const sampleVehicle = vroomVehicles[0];
+    console.log(`[VROOM] Sample vehicle: id=${sampleVehicle.id}, capacity=${JSON.stringify(sampleVehicle.capacity)}`);
+  }
+
+  // Validate jobs have valid coordinates
+  for (const job of jobs) {
+    if (!job.location || isNaN(job.location[0]) || isNaN(job.location[1])) {
+      console.error(`[VROOM] Invalid job coordinates: id=${job.id}, location=${JSON.stringify(job.location)}`);
+      throw new Error(`Job ${job.id} has invalid coordinates: ${JSON.stringify(job.location)}`);
+    }
+  }
+
+  // Validate capacity array dimensions match between jobs and vehicles
+  if (jobs.length > 0 && vroomVehicles.length > 0) {
+    const jobDeliveryLength = jobs[0].delivery?.length || 0;
+    const vehicleCapacityLength = vroomVehicles[0].capacity?.length || 0;
+    if (jobDeliveryLength !== vehicleCapacityLength) {
+      console.error(`[VROOM] Capacity dimension mismatch: jobs have ${jobDeliveryLength} dimensions, vehicles have ${vehicleCapacityLength}`);
+      console.error(`[VROOM] Profile dimensions: ${profile.activeDimensions.join(", ")}`);
+      throw new Error(`Capacity dimension mismatch: jobs=${jobDeliveryLength}, vehicles=${vehicleCapacityLength}`);
+    }
+    console.log(`[VROOM] Capacity dimensions validated: ${jobDeliveryLength} dimensions (${profile.activeDimensions.join(", ")})`);
+  }
 
   // Call VROOM
   const response = await solveVRP(request);

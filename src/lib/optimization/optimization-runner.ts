@@ -415,20 +415,38 @@ export async function runOptimization(
     `[Optimization] Service time configured: ${config.serviceTimeMinutes} minutes (${serviceTimeSeconds} seconds)`,
   );
 
-  // Prepare orders with location info
-  const ordersWithLocation = pendingOrders.map((order) => ({
-    id: order.id,
-    trackingId: order.trackingId,
-    address: order.address,
-    latitude: order.latitude,
-    longitude: order.longitude,
-    weightRequired: order.weightRequired || 0,
-    volumeRequired: order.volumeRequired || 0,
-    orderValue: order.orderValue || 0,
-    unitsRequired: order.unitsRequired || 0,
-    promisedDate: order.promisedDate,
-    serviceTime: serviceTimeSeconds,
-  }));
+  // Prepare orders with location info - filter out orders with missing coordinates
+  const ordersWithInvalidCoords: typeof pendingOrders = [];
+  const ordersWithLocation = pendingOrders
+    .filter((order) => {
+      const lat = parseFloat(String(order.latitude));
+      const lng = parseFloat(String(order.longitude));
+      if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+        ordersWithInvalidCoords.push(order);
+        return false;
+      }
+      return true;
+    })
+    .map((order) => ({
+      id: order.id,
+      trackingId: order.trackingId,
+      address: order.address,
+      latitude: order.latitude,
+      longitude: order.longitude,
+      weightRequired: order.weightRequired || 0,
+      volumeRequired: order.volumeRequired || 0,
+      orderValue: order.orderValue || 0,
+      unitsRequired: order.unitsRequired || 1, // Default 1 unit per order
+      promisedDate: order.promisedDate,
+      serviceTime: serviceTimeSeconds,
+    }));
+
+  // Log warning for orders with invalid coordinates
+  if (ordersWithInvalidCoords.length > 0) {
+    console.warn(
+      `[Optimization] ${ordersWithInvalidCoords.length} orders excluded due to missing/invalid coordinates: ${ordersWithInvalidCoords.map((o) => o.trackingId).join(", ")}`,
+    );
+  }
 
   // Create lookup map for order details (used when populating unassigned orders)
   const orderDetailsMap = new Map(
@@ -558,6 +576,18 @@ export async function runOptimization(
     address?: string;
   }> = [];
 
+  // Add orders with invalid coordinates to unassigned
+  for (const order of ordersWithInvalidCoords) {
+    unassignedOrders.push({
+      orderId: order.id,
+      trackingId: order.trackingId,
+      reason: "Coordenadas faltantes o inválidas",
+      latitude: order.latitude ?? undefined,
+      longitude: order.longitude ?? undefined,
+      address: order.address,
+    });
+  }
+
   // Track vehicles that have been assigned routes (for oneRoutePerVehicle)
   const oneRoutePerVehicle = preset?.oneRoutePerVehicle ?? true;
   const vehiclesWithRoutes = new Set<string>();
@@ -648,6 +678,8 @@ export async function runOptimization(
           longitude: parseFloat(String(order.longitude)),
           weightRequired: order.weightRequired,
           volumeRequired: order.volumeRequired,
+          orderValue: (order as typeof ordersWithLocation[number]).orderValue ?? 0,
+          unitsRequired: (order as typeof ordersWithLocation[number]).unitsRequired ?? 1,
           timeWindowStart: order.promisedDate
             ? new Date(order.promisedDate).toTimeString().slice(0, 5)
             : undefined,
@@ -670,6 +702,8 @@ export async function runOptimization(
           plate: vehicle.plate,
           maxWeight: vehicle.weightCapacity || 10000,
           maxVolume: vehicle.volumeCapacity || 100,
+          maxValueCapacity: vehicle.maxValueCapacity ?? undefined,
+          maxUnitsCapacity: vehicle.maxUnitsCapacity ?? undefined,
           maxOrders: vehicle.maxOrders || 30,
           originLatitude: vehicle.originLatitude
             ? parseFloat(vehicle.originLatitude)

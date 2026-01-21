@@ -28,6 +28,11 @@ const batchOrderSchema = z.object({
         weightRequired: z.number().int().positive().optional(),
         volumeRequired: z.number().int().positive().optional(),
         timeWindowPresetId: z.string().uuid().optional(),
+        // New fields for multi-company support
+        orderValue: z.number().int().nonnegative().optional(),
+        unitsRequired: z.number().int().positive().optional(),
+        orderType: z.enum(["NEW", "RESCHEDULED", "URGENT"]).optional(),
+        priority: z.number().int().min(0).max(100).optional(),
       }),
     )
     .min(1)
@@ -125,6 +130,11 @@ export async function POST(request: NextRequest) {
       weightRequired: order.weightRequired || null,
       volumeRequired: order.volumeRequired || null,
       timeWindowPresetId: order.timeWindowPresetId || null,
+      // New fields for multi-company support
+      orderValue: order.orderValue || null,
+      unitsRequired: order.unitsRequired || null,
+      orderType: order.orderType || null,
+      priority: order.priority || null,
       status: "PENDING" as const,
       active: true,
     }));

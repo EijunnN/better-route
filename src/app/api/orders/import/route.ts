@@ -700,6 +700,11 @@ export async function POST(request: NextRequest) {
       finalMapping = suggestions.suggestedMapping;
     }
 
+    // Debug: Log the column mapping
+    console.log("[CSV Import] CSV Headers:", csvHeaders);
+    console.log("[CSV Import] Final Mapping:", JSON.stringify(finalMapping, null, 2));
+    console.log("[CSV Import] orderValue mapped from:", Object.entries(finalMapping).find(([_, v]) => v === "orderValue")?.[0] || "NOT MAPPED");
+
     // Check for required headers after mapping
     const normalizedHeaders = Object.keys(rows[0]).map((h) =>
       h.toLowerCase().trim(),
@@ -873,6 +878,17 @@ export async function POST(request: NextRequest) {
     const importErrors: CSVValidationError[] = [];
 
     if (validRecords.length > 0 && criticalErrors.length === 0) {
+      // Debug: Log first order data to see if orderValue is mapped
+      if (orderDataList.length > 0) {
+        const firstOrder = orderDataList[0];
+        console.log("[CSV Import] First order data:", {
+          trackingId: firstOrder.trackingId,
+          orderValue: firstOrder.orderValue,
+          unitsRequired: firstOrder.unitsRequired,
+          weightRequired: firstOrder.weightRequired,
+        });
+      }
+
       // Use optimized batch insert for large datasets (Story 17.1)
       try {
         const batchResult = await batchInsertOrders(
