@@ -256,6 +256,8 @@ function PlanificacionPageContent() {
       unidades?: string;
       tipo_pedido?: string;
       prioridad?: string;
+      ventana_horaria_inicio?: string;
+      ventana_horaria_fin?: string;
     }>
   >([]);
 
@@ -564,6 +566,13 @@ function PlanificacionPageContent() {
       unidades: getIndex("unidades"),
       tipo_pedido: getIndex("tipo_pedido"),
       prioridad: getIndex("prioridad"),
+      // Time windows
+      ventana_horaria_inicio: getIndex("ventana_horaria_inicio") !== -1
+        ? getIndex("ventana_horaria_inicio")
+        : getIndex("ventana horaria inicio"),
+      ventana_horaria_fin: getIndex("ventana_horaria_fin") !== -1
+        ? getIndex("ventana_horaria_fin")
+        : getIndex("ventana horaria fin"),
     };
 
     // Parse data rows
@@ -588,6 +597,8 @@ function PlanificacionPageContent() {
           unidades?: string;
           tipo_pedido?: string;
           prioridad?: string;
+          ventana_horaria_inicio?: string;
+          ventana_horaria_fin?: string;
         } = {
           trackcode: values[indexes.trackcode] || "",
           nombre_cliente: values[indexes.nombre_cliente] || "",
@@ -619,6 +630,12 @@ function PlanificacionPageContent() {
         }
         if (indexes.prioridad !== -1 && values[indexes.prioridad]) {
           row.prioridad = values[indexes.prioridad];
+        }
+        if (indexes.ventana_horaria_inicio !== -1 && values[indexes.ventana_horaria_inicio]) {
+          row.ventana_horaria_inicio = values[indexes.ventana_horaria_inicio];
+        }
+        if (indexes.ventana_horaria_fin !== -1 && values[indexes.ventana_horaria_fin]) {
+          row.ventana_horaria_fin = values[indexes.ventana_horaria_fin];
         }
 
         data.push(row);
@@ -709,6 +726,8 @@ function PlanificacionPageContent() {
         unitsRequired?: number;
         orderType?: "NEW" | "RESCHEDULED" | "URGENT";
         priority?: number;
+        timeWindowStart?: string;
+        timeWindowEnd?: string;
       }> = [];
       const skippedRows: string[] = [];
 
@@ -762,6 +781,8 @@ function PlanificacionPageContent() {
           unitsRequired?: number;
           orderType?: "NEW" | "RESCHEDULED" | "URGENT";
           priority?: number;
+          timeWindowStart?: string;
+          timeWindowEnd?: string;
         } = {
           trackingId: String(row.trackcode).trim().slice(0, 50),
           address: fullAddress.slice(0, 500),
@@ -826,6 +847,21 @@ function PlanificacionPageContent() {
           const val = parseInt(row.prioridad.trim(), 10);
           if (!isNaN(val) && val >= 0 && val <= 100) {
             orderData.priority = val;
+          }
+        }
+        // Time windows (format: HH:mm)
+        if (row.ventana_horaria_inicio?.trim()) {
+          const timeStr = row.ventana_horaria_inicio.trim();
+          // Validate HH:mm format
+          if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
+            orderData.timeWindowStart = timeStr;
+          }
+        }
+        if (row.ventana_horaria_fin?.trim()) {
+          const timeStr = row.ventana_horaria_fin.trim();
+          // Validate HH:mm format
+          if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
+            orderData.timeWindowEnd = timeStr;
           }
         }
 

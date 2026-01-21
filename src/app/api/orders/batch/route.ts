@@ -33,6 +33,9 @@ const batchOrderSchema = z.object({
         unitsRequired: z.number().int().positive().optional(),
         orderType: z.enum(["NEW", "RESCHEDULED", "URGENT"]).optional(),
         priority: z.number().int().min(0).max(100).optional(),
+        // Time windows (format: HH:mm)
+        timeWindowStart: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+        timeWindowEnd: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
       }),
     )
     .min(1)
@@ -135,6 +138,9 @@ export async function POST(request: NextRequest) {
       unitsRequired: order.unitsRequired || null,
       orderType: order.orderType || null,
       priority: order.priority || null,
+      // Time windows
+      timeWindowStart: order.timeWindowStart || null,
+      timeWindowEnd: order.timeWindowEnd || null,
       status: "PENDING" as const,
       active: true,
     }));

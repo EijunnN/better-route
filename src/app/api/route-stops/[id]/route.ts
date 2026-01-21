@@ -6,6 +6,8 @@ import {
   routeStopHistory,
   routeStops,
   STOP_STATUS_TRANSITIONS,
+  DELIVERY_FAILURE_REASONS,
+  DELIVERY_FAILURE_LABELS,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
@@ -85,11 +87,43 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { status, notes } = body;
+    const { status, notes, failureReason, evidenceUrls } = body;
 
     if (!status) {
       return NextResponse.json(
         { error: "Status is required" },
+        { status: 400 },
+      );
+    }
+
+    // Validate failureReason is required when status is FAILED
+    if (status === "FAILED") {
+      if (!failureReason) {
+        return NextResponse.json(
+          {
+            error: "failureReason is required when status is FAILED",
+            validReasons: Object.keys(DELIVERY_FAILURE_REASONS),
+          },
+          { status: 400 },
+        );
+      }
+      if (
+        !Object.keys(DELIVERY_FAILURE_REASONS).includes(failureReason)
+      ) {
+        return NextResponse.json(
+          {
+            error: `Invalid failureReason: ${failureReason}`,
+            validReasons: Object.keys(DELIVERY_FAILURE_REASONS),
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Validate evidenceUrls if provided
+    if (evidenceUrls && !Array.isArray(evidenceUrls)) {
+      return NextResponse.json(
+        { error: "evidenceUrls must be an array of URLs" },
         { status: 400 },
       );
     }
@@ -147,6 +181,19 @@ export async function PATCH(
       updateData.completedAt = null;
     }
 
+    // Set failure reason and evidence when FAILED
+    if (status === "FAILED") {
+      updateData.failureReason = failureReason;
+      updateData.evidenceUrls = evidenceUrls || null;
+      updateData.completedAt = now; // Mark as completed (with failure)
+    }
+
+    // Clear failure data if moving away from FAILED
+    if (status !== "FAILED" && currentStop.status === "FAILED") {
+      updateData.failureReason = null;
+      updateData.evidenceUrls = null;
+    }
+
     // Update stop
     const updatedStop = await db
       .update(routeStops)
@@ -162,6 +209,10 @@ export async function PATCH(
       newStatus: status,
       userId: tenantCtx.userId || null,
       notes: notes || null,
+      metadata:
+        status === "FAILED"
+          ? { failureReason, evidenceUrls: evidenceUrls || [] }
+          : null,
     });
 
     // If stop was failed or skipped, create an alert
@@ -169,6 +220,14 @@ export async function PATCH(
       // Import alerts dynamically to avoid circular dependency
       const { createAlert } = await import("@/lib/alerts/engine");
       const alertType = status === "FAILED" ? "STOP_FAILED" : "STOP_SKIPPED";
+
+      // Get failure reason label for alert description
+      const failureLabel =
+        status === "FAILED" && failureReason
+          ? DELIVERY_FAILURE_LABELS[
+              failureReason as keyof typeof DELIVERY_FAILURE_LABELS
+            ]
+          : null;
 
       await createAlert(
         { companyId: tenantCtx.companyId, userId: tenantCtx.userId },
@@ -178,13 +237,17 @@ export async function PATCH(
           entityType: "STOP",
           entityId: stopId,
           title: `Stop #${currentStop.sequence} ${status.toLowerCase()}: ${currentStop.address}`,
-          description: `The stop at ${currentStop.address} was marked as ${status.toLowerCase()}.`,
+          description: failureLabel
+            ? `No entregado: ${failureLabel}. ${notes || ""}`
+            : `The stop at ${currentStop.address} was marked as ${status.toLowerCase()}.`,
           metadata: {
             userId: currentStop.userId,
             vehicleId: currentStop.vehicleId,
             orderId: currentStop.orderId,
             routeId: currentStop.routeId,
             sequence: currentStop.sequence,
+            failureReason: failureReason || null,
+            evidenceUrls: evidenceUrls || [],
           },
         },
       );

@@ -437,8 +437,13 @@ export async function runOptimization(
       volumeRequired: order.volumeRequired || 0,
       orderValue: order.orderValue || 0,
       unitsRequired: order.unitsRequired || 1, // Default 1 unit per order
+      orderType: order.orderType as "NEW" | "RESCHEDULED" | "URGENT" | undefined,
+      priority: order.priority ?? undefined,
       promisedDate: order.promisedDate,
       serviceTime: serviceTimeSeconds,
+      // Time windows from CSV import (format: "HH:mm" string or null)
+      timeWindowStart: order.timeWindowStart ?? undefined,
+      timeWindowEnd: order.timeWindowEnd ?? undefined,
     }));
 
   // Log warning for orders with invalid coordinates
@@ -670,29 +675,42 @@ export async function runOptimization(
 
       // Convert batch orders to VROOM format
       const batchOrdersForVroom: OrderForOptimization[] = ordersToProcess.map(
-        (order) => ({
-          id: order.id,
-          trackingId: order.trackingId,
-          address: order.address,
-          latitude: parseFloat(String(order.latitude)),
-          longitude: parseFloat(String(order.longitude)),
-          weightRequired: order.weightRequired,
-          volumeRequired: order.volumeRequired,
-          orderValue: (order as typeof ordersWithLocation[number]).orderValue ?? 0,
-          unitsRequired: (order as typeof ordersWithLocation[number]).unitsRequired ?? 1,
-          timeWindowStart: order.promisedDate
-            ? new Date(order.promisedDate).toTimeString().slice(0, 5)
-            : undefined,
-          timeWindowEnd: order.promisedDate
-            ? new Date(
-                new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000,
-              )
-                .toTimeString()
-                .slice(0, 5)
-            : undefined,
-          serviceTime: order.serviceTime,
-          zoneId: batch.zoneId === "unzoned" ? undefined : batch.zoneId,
-        }),
+        (order) => {
+          const typedOrder = order as typeof ordersWithLocation[number];
+          // Use direct time window fields first, fallback to promisedDate
+          const timeWindowStart = typedOrder.timeWindowStart
+            ? String(typedOrder.timeWindowStart)
+            : order.promisedDate
+              ? new Date(order.promisedDate).toTimeString().slice(0, 5)
+              : undefined;
+          const timeWindowEnd = typedOrder.timeWindowEnd
+            ? String(typedOrder.timeWindowEnd)
+            : order.promisedDate
+              ? new Date(
+                  new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000,
+                )
+                  .toTimeString()
+                  .slice(0, 5)
+              : undefined;
+
+          return {
+            id: order.id,
+            trackingId: order.trackingId,
+            address: order.address,
+            latitude: parseFloat(String(order.latitude)),
+            longitude: parseFloat(String(order.longitude)),
+            weightRequired: order.weightRequired,
+            volumeRequired: order.volumeRequired,
+            orderValue: typedOrder.orderValue ?? 0,
+            unitsRequired: typedOrder.unitsRequired ?? 1,
+            orderType: typedOrder.orderType,
+            priority: typedOrder.priority,
+            timeWindowStart,
+            timeWindowEnd,
+            serviceTime: order.serviceTime,
+            zoneId: batch.zoneId === "unzoned" ? undefined : batch.zoneId,
+          };
+        },
       );
 
       // Convert batch vehicles to VROOM format (using filtered available vehicles)
@@ -860,28 +878,40 @@ export async function runOptimization(
     }
 
     const ordersForVroom: OrderForOptimization[] = ordersToProcess.map(
-      (order) => ({
-        id: order.id,
-        trackingId: order.trackingId,
-        address: order.address,
-        latitude: parseFloat(String(order.latitude)),
-        longitude: parseFloat(String(order.longitude)),
-        weightRequired: order.weightRequired,
-        volumeRequired: order.volumeRequired,
-        orderValue: order.orderValue,
-        unitsRequired: order.unitsRequired,
-        timeWindowStart: order.promisedDate
-          ? new Date(order.promisedDate).toTimeString().slice(0, 5)
-          : undefined,
-        timeWindowEnd: order.promisedDate
-          ? new Date(
-              new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000,
-            )
-              .toTimeString()
-              .slice(0, 5)
-          : undefined,
-        serviceTime: order.serviceTime,
-      }),
+      (order) => {
+        // Use direct time window fields first, fallback to promisedDate
+        const timeWindowStart = order.timeWindowStart
+          ? String(order.timeWindowStart)
+          : order.promisedDate
+            ? new Date(order.promisedDate).toTimeString().slice(0, 5)
+            : undefined;
+        const timeWindowEnd = order.timeWindowEnd
+          ? String(order.timeWindowEnd)
+          : order.promisedDate
+            ? new Date(
+                new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000,
+              )
+                .toTimeString()
+                .slice(0, 5)
+            : undefined;
+
+        return {
+          id: order.id,
+          trackingId: order.trackingId,
+          address: order.address,
+          latitude: parseFloat(String(order.latitude)),
+          longitude: parseFloat(String(order.longitude)),
+          weightRequired: order.weightRequired,
+          volumeRequired: order.volumeRequired,
+          orderValue: order.orderValue,
+          unitsRequired: order.unitsRequired,
+          orderType: order.orderType,
+          priority: order.priority,
+          timeWindowStart,
+          timeWindowEnd,
+          serviceTime: order.serviceTime,
+        };
+      },
     );
 
     const vehiclesForVroom: VehicleForOptimization[] = vehiclesWithZones.map(

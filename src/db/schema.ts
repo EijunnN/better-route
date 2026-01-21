@@ -1069,6 +1069,31 @@ export const STOP_STATUS_TRANSITIONS: Record<
   SKIPPED: [], // Terminal state - no transitions allowed
 };
 
+// Delivery failure reasons - required when marking a stop as FAILED
+export const DELIVERY_FAILURE_REASONS = {
+  CUSTOMER_ABSENT: "CUSTOMER_ABSENT", // Cliente ausente
+  CUSTOMER_REFUSED: "CUSTOMER_REFUSED", // Cliente rechazó la entrega
+  ADDRESS_NOT_FOUND: "ADDRESS_NOT_FOUND", // Dirección incorrecta o no encontrada
+  PACKAGE_DAMAGED: "PACKAGE_DAMAGED", // Paquete dañado
+  RESCHEDULE_REQUESTED: "RESCHEDULE_REQUESTED", // Cliente solicitó reprogramación
+  UNSAFE_AREA: "UNSAFE_AREA", // Zona insegura o de difícil acceso
+  OTHER: "OTHER", // Otro motivo (especificar en notas)
+} as const;
+
+// Spanish labels for failure reasons (for UI display)
+export const DELIVERY_FAILURE_LABELS: Record<
+  keyof typeof DELIVERY_FAILURE_REASONS,
+  string
+> = {
+  CUSTOMER_ABSENT: "Cliente ausente",
+  CUSTOMER_REFUSED: "Cliente rechazó la entrega",
+  ADDRESS_NOT_FOUND: "Dirección incorrecta o no encontrada",
+  PACKAGE_DAMAGED: "Paquete dañado",
+  RESCHEDULE_REQUESTED: "Cliente solicitó reprogramación",
+  UNSAFE_AREA: "Zona insegura o de difícil acceso",
+  OTHER: "Otro motivo",
+};
+
 // Route stops - individual stops within optimized routes
 export const routeStops = pgTable("route_stops", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -1107,6 +1132,12 @@ export const routeStops = pgTable("route_stops", {
   completedAt: timestamp("completed_at"),
   // Optional notes for status changes
   notes: text("notes"),
+  // Failure tracking (required when status = FAILED)
+  failureReason: varchar("failure_reason", { length: 50 }).$type<
+    keyof typeof DELIVERY_FAILURE_REASONS
+  >(),
+  // Evidence URLs for failed deliveries (photos from driver app)
+  evidenceUrls: jsonb("evidence_urls").$type<string[]>(),
   // Metadata
   metadata: jsonb("metadata"), // Flexible data for stop-specific info
   createdAt: timestamp("created_at").notNull().defaultNow(),
