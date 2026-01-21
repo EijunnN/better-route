@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { fleets, userFleetPermissions, users } from "@/db/schema";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
 import {
@@ -158,8 +158,46 @@ export async function GET(request: NextRequest) {
         .where(whereClause),
     ]);
 
+    // Get fleet permissions for all returned users
+    const userIds = data.map((u) => u.id);
+    const fleetPermissionsData =
+      userIds.length > 0
+        ? await db
+            .select({
+              userId: userFleetPermissions.userId,
+              fleetId: userFleetPermissions.fleetId,
+              fleetName: fleets.name,
+            })
+            .from(userFleetPermissions)
+            .innerJoin(fleets, eq(userFleetPermissions.fleetId, fleets.id))
+            .where(
+              and(
+                eq(userFleetPermissions.companyId, tenantCtx.companyId),
+                eq(userFleetPermissions.active, true),
+                inArray(userFleetPermissions.userId, userIds),
+              ),
+            )
+        : [];
+
+    // Group fleet permissions by userId
+    const fleetPermissionsByUser = new Map<
+      string,
+      Array<{ id: string; name: string }>
+    >();
+    for (const fp of fleetPermissionsData) {
+      const existing = fleetPermissionsByUser.get(fp.userId) || [];
+      existing.push({ id: fp.fleetId, name: fp.fleetName });
+      fleetPermissionsByUser.set(fp.userId, existing);
+    }
+
+    // Add fleetPermissions to each user
+    const dataWithFleets = data.map((user) => ({
+      ...user,
+      fleetPermissions: fleetPermissionsByUser.get(user.id) || [],
+    }));
+
     return NextResponse.json({
-      data,
+      data: dataWithFleets,
       meta: {
         total: Number(totalResult[0]?.count ?? 0),
         limit: query.limit,

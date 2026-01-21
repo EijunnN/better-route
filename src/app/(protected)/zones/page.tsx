@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { ProtectedPage } from "@/components/auth/protected-page";
-import dynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertDialog,
@@ -30,16 +30,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ZoneForm } from "@/components/zones/zone-form";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { CompanySelector } from "@/components/company-selector";
@@ -47,7 +40,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ZONE_TYPE_LABELS, type ZoneInput } from "@/lib/validations/zone";
 
 // Dynamic map components (bundle-dynamic-imports rule)
-const ZoneMapEditor = dynamic(
+const ZoneMapEditor = dynamicImport(
   () =>
     import("@/components/zones/zone-map-editor").then(
       (mod) => mod.ZoneMapEditor,
@@ -62,7 +55,7 @@ const ZoneMapEditor = dynamic(
   },
 );
 
-const ZonePreviewMap = dynamic(
+const ZonePreviewMap = dynamicImport(
   () =>
     import("@/components/zones/zone-preview-map").then(
       (mod) => mod.ZonePreviewMap,
@@ -73,7 +66,7 @@ const ZonePreviewMap = dynamic(
   },
 );
 
-const ZoneFormPreview = dynamic(
+const ZoneFormPreview = dynamicImport(
   () =>
     import("@/components/zones/zone-form-preview").then(
       (mod) => mod.ZoneFormPreview,

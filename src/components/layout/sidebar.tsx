@@ -73,7 +73,6 @@ const navSections: NavSection[] = [
       { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2 },
       { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock },
       { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award },
-      { title: "Habilidades Conductores", href: "/driver-skills", icon: Award },
     ],
   },
 ];

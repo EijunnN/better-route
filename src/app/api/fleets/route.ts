@@ -145,13 +145,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Combine data
-    const data = fleetsData.map((fleet) => ({
-      ...fleet,
-      vehicles: fleetVehicles[fleet.id] || [],
-      users: fleetUsers[fleet.id] || [],
-      vehicleCount: (fleetVehicles[fleet.id] || []).length,
-      userCount: (fleetUsers[fleet.id] || []).length,
-    }));
+    const data = fleetsData.map((fleet) => {
+      const vehicles = fleetVehicles[fleet.id] || [];
+      const users = fleetUsers[fleet.id] || [];
+      return {
+        ...fleet,
+        vehicles,
+        users,
+        vehicleIds: vehicles.map((v) => v.id),
+        userIds: users.map((u) => u.id),
+        vehicleCount: vehicles.length,
+        userCount: users.length,
+      };
+    });
 
     return NextResponse.json({
       data,

@@ -269,7 +269,7 @@ function FleetsPageContent() {
   if (showForm || editingFleet) {
     return (
       <div className="min-h-screen bg-background p-8">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-6xl">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-foreground">
               {editingFleet ? "Editar Flota" : "Nueva Flota"}
