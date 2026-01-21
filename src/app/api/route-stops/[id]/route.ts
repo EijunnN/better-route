@@ -188,10 +188,18 @@ export async function PATCH(
       updateData.completedAt = now; // Mark as completed (with failure)
     }
 
-    // Clear failure data if moving away from FAILED
+    // Set evidence when COMPLETED (proof of delivery)
+    if (status === "COMPLETED" && evidenceUrls) {
+      updateData.evidenceUrls = evidenceUrls;
+    }
+
+    // Clear failure data if moving away from FAILED (but keep evidence if moving to COMPLETED)
     if (status !== "FAILED" && currentStop.status === "FAILED") {
       updateData.failureReason = null;
-      updateData.evidenceUrls = null;
+      // Only clear evidence if not completing with new evidence
+      if (status !== "COMPLETED" || !evidenceUrls) {
+        updateData.evidenceUrls = null;
+      }
     }
 
     // Update stop
@@ -201,7 +209,14 @@ export async function PATCH(
       .where(eq(routeStops.id, stopId))
       .returning();
 
-    // Create history entry
+    // Create history entry with evidence metadata
+    const historyMetadata =
+      status === "FAILED"
+        ? { failureReason, evidenceUrls: evidenceUrls || [] }
+        : status === "COMPLETED" && evidenceUrls
+          ? { evidenceUrls }
+          : null;
+
     await db.insert(routeStopHistory).values({
       companyId: tenantCtx.companyId,
       routeStopId: stopId,
@@ -209,10 +224,7 @@ export async function PATCH(
       newStatus: status,
       userId: tenantCtx.userId || null,
       notes: notes || null,
-      metadata:
-        status === "FAILED"
-          ? { failureReason, evidenceUrls: evidenceUrls || [] }
-          : null,
+      metadata: historyMetadata,
     });
 
     // If stop was failed or skipped, create an alert
