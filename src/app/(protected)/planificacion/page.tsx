@@ -224,6 +224,8 @@ function PlanificacionPageContent() {
     enableOrderValue: boolean;
     enableWeight: boolean;
     enableVolume: boolean;
+    enableUnits: boolean;
+    enableOrderType: boolean;
   } | null>(null);
 
   // Submission state
@@ -247,6 +249,13 @@ function PlanificacionPageContent() {
       latitud: string;
       longitud: string;
       telefono: string;
+      // Optional capacity fields based on company profile
+      valorizado?: string;
+      peso?: string;
+      volumen?: string;
+      unidades?: string;
+      tipo_pedido?: string;
+      prioridad?: string;
     }>
   >([]);
 
@@ -438,12 +447,16 @@ function PlanificacionPageContent() {
             enableOrderValue: data.data.profile.enableOrderValue ?? false,
             enableWeight: data.data.profile.enableWeight ?? false,
             enableVolume: data.data.profile.enableVolume ?? false,
+            enableUnits: data.data.profile.enableUnits ?? false,
+            enableOrderType: data.data.profile.enableOrderType ?? false,
           });
         } else {
           setCompanyProfile({
             enableOrderValue: false,
             enableWeight: false,
             enableVolume: false,
+            enableUnits: false,
+            enableOrderType: false,
           });
         }
       }
@@ -453,6 +466,8 @@ function PlanificacionPageContent() {
         enableOrderValue: false,
         enableWeight: false,
         enableVolume: false,
+        enableUnits: false,
+        enableOrderType: false,
       });
     }
   }, [companyId]);
@@ -505,6 +520,12 @@ function PlanificacionPageContent() {
       "latitud",
       "longitud",
       "telefono",
+      // Dynamic fields based on company profile
+      ...(companyProfile?.enableOrderValue ? ["valorizado"] : []),
+      ...(companyProfile?.enableWeight ? ["peso"] : []),
+      ...(companyProfile?.enableVolume ? ["volumen"] : []),
+      ...(companyProfile?.enableUnits ? ["unidades"] : []),
+      ...(companyProfile?.enableOrderType ? ["tipo_pedido"] : []),
     ];
 
     // Check for missing headers (check both normalized and original)
@@ -536,6 +557,13 @@ function PlanificacionPageContent() {
       latitud: getIndex("latitud"),
       longitud: getIndex("longitud"),
       telefono: getIndex("telefono"),
+      // Optional capacity fields
+      valorizado: getIndex("valorizado"),
+      peso: getIndex("peso"),
+      volumen: getIndex("volumen"),
+      unidades: getIndex("unidades"),
+      tipo_pedido: getIndex("tipo_pedido"),
+      prioridad: getIndex("prioridad"),
     };
 
     // Parse data rows
@@ -543,7 +571,24 @@ function PlanificacionPageContent() {
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(delimiter).map((v) => v.trim());
       if (values.length >= requiredHeaders.length) {
-        data.push({
+        const row: {
+          trackcode: string;
+          nombre_cliente: string;
+          direccion: string;
+          referencia: string;
+          departamento: string;
+          provincia: string;
+          distrito: string;
+          latitud: string;
+          longitud: string;
+          telefono: string;
+          valorizado?: string;
+          peso?: string;
+          volumen?: string;
+          unidades?: string;
+          tipo_pedido?: string;
+          prioridad?: string;
+        } = {
           trackcode: values[indexes.trackcode] || "",
           nombre_cliente: values[indexes.nombre_cliente] || "",
           direccion: values[indexes.direccion] || "",
@@ -554,12 +599,34 @@ function PlanificacionPageContent() {
           latitud: values[indexes.latitud] || "",
           longitud: values[indexes.longitud] || "",
           telefono: values[indexes.telefono] || "",
-        });
+        };
+
+        // Add optional fields if present in CSV
+        if (indexes.valorizado !== -1 && values[indexes.valorizado]) {
+          row.valorizado = values[indexes.valorizado];
+        }
+        if (indexes.peso !== -1 && values[indexes.peso]) {
+          row.peso = values[indexes.peso];
+        }
+        if (indexes.volumen !== -1 && values[indexes.volumen]) {
+          row.volumen = values[indexes.volumen];
+        }
+        if (indexes.unidades !== -1 && values[indexes.unidades]) {
+          row.unidades = values[indexes.unidades];
+        }
+        if (indexes.tipo_pedido !== -1 && values[indexes.tipo_pedido]) {
+          row.tipo_pedido = values[indexes.tipo_pedido];
+        }
+        if (indexes.prioridad !== -1 && values[indexes.prioridad]) {
+          row.prioridad = values[indexes.prioridad];
+        }
+
+        data.push(row);
       }
     }
 
     return data;
-  }, []);
+  }, [companyProfile]);
 
   // Handle CSV file selection with proper encoding detection
   const handleCsvFileChange = useCallback(
@@ -634,6 +701,14 @@ function PlanificacionPageContent() {
         latitude: string;
         longitude: string;
         notes?: string;
+        customerName?: string;
+        customerPhone?: string;
+        orderValue?: number;
+        weightRequired?: number;
+        volumeRequired?: number;
+        unitsRequired?: number;
+        orderType?: "NEW" | "RESCHEDULED" | "URGENT";
+        priority?: number;
       }> = [];
       const skippedRows: string[] = [];
 
@@ -681,6 +756,12 @@ function PlanificacionPageContent() {
           notes?: string;
           customerName?: string;
           customerPhone?: string;
+          orderValue?: number;
+          weightRequired?: number;
+          volumeRequired?: number;
+          unitsRequired?: number;
+          orderType?: "NEW" | "RESCHEDULED" | "URGENT";
+          priority?: number;
         } = {
           trackingId: String(row.trackcode).trim().slice(0, 50),
           address: fullAddress.slice(0, 500),
@@ -703,6 +784,49 @@ function PlanificacionPageContent() {
         }
         if (notesParts.length > 0) {
           orderData.notes = notesParts.join(" | ").slice(0, 500);
+        }
+
+        // Extract capacity fields based on company profile
+        if (row.valorizado?.trim()) {
+          const val = parseInt(row.valorizado.trim(), 10);
+          if (!isNaN(val) && val >= 0) {
+            orderData.orderValue = val;
+          }
+        }
+        if (row.peso?.trim()) {
+          const val = parseInt(row.peso.trim(), 10);
+          if (!isNaN(val) && val > 0) {
+            orderData.weightRequired = val;
+          }
+        }
+        if (row.volumen?.trim()) {
+          const val = parseInt(row.volumen.trim(), 10);
+          if (!isNaN(val) && val > 0) {
+            orderData.volumeRequired = val;
+          }
+        }
+        if (row.unidades?.trim()) {
+          const val = parseInt(row.unidades.trim(), 10);
+          if (!isNaN(val) && val > 0) {
+            orderData.unitsRequired = val;
+          }
+        }
+        if (row.tipo_pedido?.trim()) {
+          const type = row.tipo_pedido.trim().toUpperCase();
+          // Accept both English and Spanish values
+          if (type === "NEW" || type === "NUEVO") {
+            orderData.orderType = "NEW";
+          } else if (type === "RESCHEDULED" || type === "REPROGRAMADO") {
+            orderData.orderType = "RESCHEDULED";
+          } else if (type === "URGENT" || type === "URGENTE") {
+            orderData.orderType = "URGENT";
+          }
+        }
+        if (row.prioridad?.trim()) {
+          const val = parseInt(row.prioridad.trim(), 10);
+          if (!isNaN(val) && val >= 0 && val <= 100) {
+            orderData.priority = val;
+          }
         }
 
         validOrders.push(orderData);
@@ -1783,10 +1907,13 @@ function PlanificacionPageContent() {
                   {companyProfile?.enableOrderValue && ", valorizado"}
                   {companyProfile?.enableWeight && ", peso"}
                   {companyProfile?.enableVolume && ", volumen"}
+                  {companyProfile?.enableUnits && ", unidades"}
+                  {companyProfile?.enableOrderType && ", tipo_pedido"}
                 </span>
               </span>
               <span className="block text-muted-foreground text-xs">
                 * referencia y telefono: header requerido, datos opcionales
+                {companyProfile?.enableOrderType && ". prioridad: opcional (0-100)"}
               </span>
             </DialogDescription>
           </DialogHeader>
