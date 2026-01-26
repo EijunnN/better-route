@@ -253,14 +253,9 @@ export async function POST(
       .where(eq(optimizationConfigurations.id, job.configurationId))
       .returning();
 
-    // Also update the job status to CONFIRMED so mobile app can find it
-    await db
-      .update(optimizationJobs)
-      .set({
-        status: "CONFIRMED",
-        updatedAt: now,
-      })
-      .where(eq(optimizationJobs.id, job.id));
+    // Job stays as COMPLETED (optimization finished successfully)
+    // The configuration is what gets marked as CONFIRMED
+    // Mobile app finds routes via route_stops table, not job status
 
     // Update orders status to ASSIGNED for all orders in routes
     // Extract all order IDs from routes (including grouped orders)
