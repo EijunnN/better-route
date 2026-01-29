@@ -5,10 +5,12 @@ import {
   use,
   useCallback,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
+import { usePermissions } from "@/hooks/use-permissions";
 
 // Types
 export interface NavItem {
@@ -17,6 +19,8 @@ export interface NavItem {
   icon: React.ElementType;
   badge?: number;
   children?: NavItem[];
+  /** Permission required to see this item (format: "entity:action") */
+  requiredPermission?: string;
 }
 
 export interface NavSection {
@@ -41,7 +45,12 @@ export interface SidebarActions {
 
 // Meta
 export interface SidebarMeta {
+  /** Filtered navigation sections based on user permissions */
   navSections: NavSection[];
+  /** Original unfiltered sections */
+  allNavSections: NavSection[];
+  /** Whether permissions are still loading */
+  isLoadingPermissions: boolean;
 }
 
 interface SidebarContextValue {
@@ -58,14 +67,67 @@ export interface SidebarProviderProps {
   defaultCollapsed?: boolean;
 }
 
+/**
+ * Filters navigation items based on user permissions
+ */
+function filterNavItemsByPermissions(
+  sections: NavSection[],
+  checkPermission: (permission: string) => boolean
+): NavSection[] {
+  return sections
+    .map((section) => {
+      const filteredItems = section.items
+        .filter((item) => {
+          // If no permission required, show the item
+          if (!item.requiredPermission) return true;
+          // Check if user has the required permission
+          const [entity, action] = item.requiredPermission.split(":");
+          return checkPermission(`${entity}:${action}`);
+        })
+        .map((item) => {
+          // Also filter children if they exist
+          if (item.children) {
+            const filteredChildren = item.children.filter((child) => {
+              if (!child.requiredPermission) return true;
+              const [entity, action] = child.requiredPermission.split(":");
+              return checkPermission(`${entity}:${action}`);
+            });
+            return { ...item, children: filteredChildren };
+          }
+          return item;
+        });
+
+      return { ...section, items: filteredItems };
+    })
+    // Remove empty sections
+    .filter((section) => section.items.length > 0);
+}
+
 export function SidebarProvider({
   children,
   navSections,
   defaultCollapsed = false,
 }: SidebarProviderProps) {
   const pathname = usePathname();
+  const { hasPermission, isLoading: isLoadingPermissions, permissions } = usePermissions();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  // Check permission including wildcard for admins
+  const checkPermission = useCallback(
+    (permission: string): boolean => {
+      if (permissions.includes("*")) return true;
+      const [entity, action] = permission.split(":");
+      return hasPermission(entity, action);
+    },
+    [hasPermission, permissions]
+  );
+
+  // Filter navigation sections based on permissions
+  const filteredNavSections = useMemo(() => {
+    if (isLoadingPermissions) return [];
+    return filterNavItemsByPermissions(navSections, checkPermission);
+  }, [navSections, checkPermission, isLoadingPermissions]);
 
   const toggleCollapse = useCallback(() => {
     setCollapsed((prev) => !prev);
@@ -98,14 +160,14 @@ export function SidebarProvider({
 
   // Auto-expand items that have active children
   useEffect(() => {
-    navSections.forEach((section) => {
+    filteredNavSections.forEach((section) => {
       section.items.forEach((item) => {
         if (item.children && pathname.startsWith(item.href)) {
           setExpandedItems((prev) => new Set([...prev, item.href]));
         }
       });
     });
-  }, [pathname, navSections]);
+  }, [pathname, filteredNavSections]);
 
   const state: SidebarState = {
     collapsed,
@@ -121,7 +183,9 @@ export function SidebarProvider({
   };
 
   const meta: SidebarMeta = {
-    navSections,
+    navSections: filteredNavSections,
+    allNavSections: navSections,
+    isLoadingPermissions,
   };
 
   return (

@@ -35,48 +35,49 @@ import {
   type NavSection,
 } from "./sidebar-context";
 
-// Default navigation sections
+// Default navigation sections with permission requirements
 const defaultNavSections: NavSection[] = [
   {
     title: "Operaciones",
     items: [
       { title: "Dashboard", href: "/dashboard", icon: BarChart3 },
-      { title: "Pedidos", href: "/orders", icon: Package },
+      { title: "Pedidos", href: "/orders", icon: Package, requiredPermission: "orders:VIEW" },
       {
         title: "Planificación",
         href: "/planificacion",
         icon: Route,
+        requiredPermission: "planificacion:VIEW",
         children: [
-          { title: "Nueva Planificación", href: "/planificacion", icon: PlusCircle },
-          { title: "Historial", href: "/planificacion/historial", icon: History },
+          { title: "Nueva Planificación", href: "/planificacion", icon: PlusCircle, requiredPermission: "planificacion:VIEW" },
+          { title: "Historial", href: "/planificacion/historial", icon: History, requiredPermission: "planificacion:VIEW" },
         ],
       },
-      { title: "Monitoreo", href: "/monitoring", icon: MapIcon },
+      { title: "Monitoreo", href: "/monitoring", icon: MapIcon, requiredPermission: "monitoring:VIEW" },
     ],
   },
   {
     title: "Recursos",
     items: [
-      { title: "Vehículos", href: "/vehicles", icon: Truck },
-      { title: "Flotas", href: "/fleets", icon: Warehouse },
-      { title: "Zonas", href: "/zones", icon: MapPin },
+      { title: "Vehículos", href: "/vehicles", icon: Truck, requiredPermission: "vehicles:VIEW" },
+      { title: "Flotas", href: "/fleets", icon: Warehouse, requiredPermission: "fleets:VIEW" },
+      { title: "Zonas", href: "/zones", icon: MapPin, requiredPermission: "zones:VIEW" },
     ],
   },
   {
     title: "Administración",
     items: [
-      { title: "Usuarios", href: "/users", icon: Users },
-      { title: "Roles", href: "/roles", icon: Shield },
-      { title: "Empresas", href: "/companies", icon: Building2 },
+      { title: "Usuarios", href: "/users", icon: Users, requiredPermission: "users:VIEW" },
+      { title: "Roles", href: "/roles", icon: Shield, requiredPermission: "roles:VIEW" },
+      { title: "Empresas", href: "/companies", icon: Building2, requiredPermission: "companies:VIEW" },
     ],
   },
   {
     title: "Configuración",
     items: [
-      { title: "Perfil Empresa", href: "/configuracion", icon: Settings },
-      { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2 },
-      { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock },
-      { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award },
+      { title: "Perfil Empresa", href: "/configuracion", icon: Settings, requiredPermission: "optimization_presets:VIEW" },
+      { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2, requiredPermission: "optimization_presets:VIEW" },
+      { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock, requiredPermission: "time_window_presets:VIEW" },
+      { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award, requiredPermission: "vehicle_skills:VIEW" },
     ],
   },
 ];
@@ -142,7 +143,31 @@ function SidebarHeader({ children }: { children: React.ReactNode }) {
 }
 
 function SidebarNavigation({ children }: { children?: React.ReactNode }) {
-  const { meta } = useSidebar();
+  const { state, meta } = useSidebar();
+
+  // Show skeleton while permissions are loading
+  if (meta.isLoadingPermissions) {
+    return (
+      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="space-y-2 pt-4">
+            {!state.collapsed && (
+              <div className="h-3 w-20 bg-sidebar-accent/50 rounded mx-3 animate-pulse" />
+            )}
+            {[1, 2].map((j) => (
+              <div
+                key={j}
+                className={cn(
+                  "h-9 bg-sidebar-accent/30 rounded-lg mx-1 animate-pulse",
+                  state.collapsed ? "w-12" : "w-full"
+                )}
+              />
+            ))}
+          </div>
+        ))}
+      </nav>
+    );
+  }
 
   return (
     <nav className="flex-1 space-y-1 overflow-y-auto p-2">
