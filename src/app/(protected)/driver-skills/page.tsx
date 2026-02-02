@@ -23,7 +23,7 @@ function DriverSkillsPageContent() {
 
 export default function DriverSkillsPage() {
   return (
-    <ProtectedPage requiredPermission="driver_skills:VIEW">
+    <ProtectedPage requiredPermission="driver_skill:read">
       <DriverSkillsProvider>
         <DriverSkillsPageContent />
       </DriverSkillsProvider>

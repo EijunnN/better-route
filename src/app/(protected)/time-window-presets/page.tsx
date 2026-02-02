@@ -19,7 +19,7 @@ function TimeWindowPresetsPageContent() {
 
 export default function TimeWindowPresetsPage() {
   return (
-    <ProtectedPage requiredPermission="time_window_presets:VIEW">
+    <ProtectedPage requiredPermission="time_window_preset:read">
       <TimeWindowPresetsProvider>
         <TimeWindowPresetsPageContent />
       </TimeWindowPresetsProvider>

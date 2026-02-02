@@ -5,7 +5,7 @@ import { MonitoringProvider, MonitoringDashboardView } from "@/components/monito
 
 export default function MonitoringPage() {
   return (
-    <ProtectedPage requiredPermission="monitoring:VIEW">
+    <ProtectedPage requiredPermission="vehicle:read">
       <MonitoringProvider>
         <MonitoringDashboardView />
       </MonitoringProvider>

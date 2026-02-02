@@ -23,7 +23,7 @@ function RolesPageContent() {
 
 export default function RolesPage() {
   return (
-    <ProtectedPage requiredPermission="roles:VIEW">
+    <ProtectedPage requiredPermission="role:read">
       <RolesProvider>
         <RolesPageContent />
       </RolesProvider>

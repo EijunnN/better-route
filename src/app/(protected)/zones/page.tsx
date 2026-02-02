@@ -50,7 +50,7 @@ function ZonesContent() {
  */
 export default function ZonesPage() {
   return (
-    <ProtectedPage requiredPermission="zones:VIEW">
+    <ProtectedPage requiredPermission="route:read">
       <ZonesProvider>
         <ZonesContent />
       </ZonesProvider>

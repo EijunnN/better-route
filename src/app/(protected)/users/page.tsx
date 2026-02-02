@@ -39,7 +39,7 @@ function UsersContent() {
  */
 export default function UsersPage() {
   return (
-    <ProtectedPage requiredPermission="users:VIEW">
+    <ProtectedPage requiredPermission="user:read">
       <UsersProvider>
         <UsersContent />
       </UsersProvider>

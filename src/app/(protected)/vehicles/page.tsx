@@ -23,7 +23,7 @@ function VehiclesPageContent() {
 
 export default function VehiclesPage() {
   return (
-    <ProtectedPage requiredPermission="vehicles:VIEW">
+    <ProtectedPage requiredPermission="vehicle:read">
       <VehiclesProvider>
         <VehiclesPageContent />
       </VehiclesProvider>

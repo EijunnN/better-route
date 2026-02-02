@@ -36,48 +36,49 @@ import {
 } from "./sidebar-context";
 
 // Default navigation sections with permission requirements
+// Permissions use format "entity:action" matching authorization.ts EntityType and Action enums
 const defaultNavSections: NavSection[] = [
   {
     title: "Operaciones",
     items: [
-      { title: "Dashboard", href: "/dashboard", icon: BarChart3 },
-      { title: "Pedidos", href: "/orders", icon: Package, requiredPermission: "orders:VIEW" },
+      { title: "Dashboard", href: "/dashboard", icon: BarChart3, requiredPermission: "metrics:read" },
+      { title: "Pedidos", href: "/orders", icon: Package, requiredPermission: "order:read" },
       {
         title: "Planificación",
         href: "/planificacion",
         icon: Route,
-        requiredPermission: "planificacion:VIEW",
+        requiredPermission: "plan:read",
         children: [
-          { title: "Nueva Planificación", href: "/planificacion", icon: PlusCircle, requiredPermission: "planificacion:VIEW" },
-          { title: "Historial", href: "/planificacion/historial", icon: History, requiredPermission: "planificacion:VIEW" },
+          { title: "Nueva Planificación", href: "/planificacion", icon: PlusCircle, requiredPermission: "plan:read" },
+          { title: "Historial", href: "/planificacion/historial", icon: History, requiredPermission: "plan:read" },
         ],
       },
-      { title: "Monitoreo", href: "/monitoring", icon: MapIcon, requiredPermission: "monitoring:VIEW" },
+      { title: "Monitoreo", href: "/monitoring", icon: MapIcon, requiredPermission: "vehicle:read" },
     ],
   },
   {
     title: "Recursos",
     items: [
-      { title: "Vehículos", href: "/vehicles", icon: Truck, requiredPermission: "vehicles:VIEW" },
-      { title: "Flotas", href: "/fleets", icon: Warehouse, requiredPermission: "fleets:VIEW" },
-      { title: "Zonas", href: "/zones", icon: MapPin, requiredPermission: "zones:VIEW" },
+      { title: "Vehículos", href: "/vehicles", icon: Truck, requiredPermission: "vehicle:read" },
+      { title: "Flotas", href: "/fleets", icon: Warehouse, requiredPermission: "fleet:read" },
+      { title: "Zonas", href: "/zones", icon: MapPin, requiredPermission: "route:read" },
     ],
   },
   {
     title: "Administración",
     items: [
-      { title: "Usuarios", href: "/users", icon: Users, requiredPermission: "users:VIEW" },
-      { title: "Roles", href: "/roles", icon: Shield, requiredPermission: "roles:VIEW" },
-      { title: "Empresas", href: "/companies", icon: Building2, requiredPermission: "companies:VIEW" },
+      { title: "Usuarios", href: "/users", icon: Users, requiredPermission: "user:read" },
+      { title: "Roles", href: "/roles", icon: Shield, requiredPermission: "role:read" },
+      { title: "Empresas", href: "/companies", icon: Building2, requiredPermission: "company:read" },
     ],
   },
   {
     title: "Configuración",
     items: [
-      { title: "Perfil Empresa", href: "/configuracion", icon: Settings, requiredPermission: "optimization_presets:VIEW" },
-      { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2, requiredPermission: "optimization_presets:VIEW" },
-      { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock, requiredPermission: "time_window_presets:VIEW" },
-      { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award, requiredPermission: "vehicle_skills:VIEW" },
+      { title: "Perfil Empresa", href: "/configuracion", icon: Settings, requiredPermission: "optimization_preset:read" },
+      { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2, requiredPermission: "optimization_preset:read" },
+      { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock, requiredPermission: "time_window_preset:read" },
+      { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award, requiredPermission: "vehicle_skill:read" },
     ],
   },
 ];

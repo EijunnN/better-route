@@ -15,7 +15,7 @@ function CompaniesPageContent() {
 
 export default function CompaniesPage() {
   return (
-    <ProtectedPage requiredPermission="companies:VIEW">
+    <ProtectedPage requiredPermission="company:read">
       <CompaniesProvider>
         <CompaniesPageContent />
       </CompaniesProvider>

@@ -485,7 +485,7 @@ function ResultsPageContent() {
 
 export default function PlanificacionResultsPage() {
   return (
-    <ProtectedPage requiredPermission="planificacion:VIEW">
+    <ProtectedPage requiredPermission="plan:read">
       <Suspense
         fallback={
           <div className="flex items-center justify-center min-h-screen">

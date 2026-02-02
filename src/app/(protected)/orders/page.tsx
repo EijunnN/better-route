@@ -5,7 +5,7 @@ import { OrdersProvider, OrdersListView } from "@/components/orders";
 
 export default function OrdersPage() {
   return (
-    <ProtectedPage requiredPermission="orders:VIEW">
+    <ProtectedPage requiredPermission="order:read">
       <OrdersProvider>
         <OrdersListView />
       </OrdersProvider>

@@ -76,7 +76,7 @@ function PlanificacionContent() {
  */
 export default function PlanificacionPage() {
   return (
-    <ProtectedPage requiredPermission="planificacion:VIEW">
+    <ProtectedPage requiredPermission="plan:read">
       <PlanificacionProvider>
         <PlanificacionContent />
       </PlanificacionProvider>

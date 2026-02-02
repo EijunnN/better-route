@@ -23,7 +23,7 @@ function FleetsPageContent() {
 
 export default function FleetsPage() {
   return (
-    <ProtectedPage requiredPermission="fleets:VIEW">
+    <ProtectedPage requiredPermission="fleet:read">
       <FleetsProvider>
         <FleetsPageContent />
       </FleetsProvider>

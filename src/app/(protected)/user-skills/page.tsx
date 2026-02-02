@@ -23,7 +23,7 @@ function UserSkillsPageContent() {
 
 export default function UserSkillsPage() {
   return (
-    <ProtectedPage requiredPermission="user_skills:VIEW">
+    <ProtectedPage requiredPermission="driver_skill:read">
       <UserSkillsProvider>
         <UserSkillsPageContent />
       </UserSkillsProvider>

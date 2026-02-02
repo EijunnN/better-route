@@ -43,7 +43,7 @@ function PlanificacionHistorialPageContent() {
  */
 export default function PlanificacionHistorialPage() {
   return (
-    <ProtectedPage requiredPermission="planificacion:VIEW">
+    <ProtectedPage requiredPermission="plan:read">
       <HistorialProvider>
         <PlanificacionHistorialPageContent />
       </HistorialProvider>

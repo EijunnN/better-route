@@ -5,7 +5,7 @@ import { ConfiguracionProvider, ConfiguracionView } from "@/components/configura
 
 export default function ConfiguracionPage() {
   return (
-    <ProtectedPage requiredPermission="optimization_presets:VIEW">
+    <ProtectedPage requiredPermission="optimization_preset:read">
       <ConfiguracionProvider>
         <ConfiguracionView />
       </ConfiguracionProvider>

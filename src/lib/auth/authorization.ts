@@ -299,6 +299,67 @@ import {
   users,
 } from "@/db/schema";
 
+// ============================================
+// PERMISSION NORMALIZATION
+// ============================================
+
+/**
+ * Maps plural entity names (from DB) to singular (used in code)
+ */
+const ENTITY_NORMALIZATION: Record<string, string> = {
+  orders: "order",
+  vehicles: "vehicle",
+  drivers: "driver",
+  fleets: "fleet",
+  routes: "route",
+  plans: "plan",
+  alerts: "alert",
+  users: "user",
+  roles: "role",
+  companies: "company",
+  zones: "route", // zones map to route entity
+  // Skills
+  vehicle_skills: "vehicle_skill",
+  driver_skills: "driver_skill",
+  user_skills: "driver_skill", // user_skills map to driver_skill
+  // Presets
+  optimization_presets: "optimization_preset",
+  time_window_presets: "time_window_preset",
+  // Other
+  metrics: "metrics",
+  monitoring: "vehicle", // monitoring maps to vehicle
+  planificacion: "plan", // Spanish alias
+};
+
+/**
+ * Maps action names from DB format to code format
+ */
+const ACTION_NORMALIZATION: Record<string, string> = {
+  VIEW: "read",
+  CREATE: "create",
+  EDIT: "update",
+  DELETE: "delete",
+  IMPORT: "import",
+  EXPORT: "export",
+  ASSIGN: "assign",
+  MANAGE: "update",
+  EXECUTE: "execute",
+  CONFIRM: "confirm",
+  CANCEL: "cancel",
+  ACKNOWLEDGE: "acknowledge",
+  DISMISS: "dismiss",
+};
+
+/**
+ * Normalizes a permission from DB format to code format
+ * Example: "orders:VIEW" -> "order:read"
+ */
+function normalizePermission(entity: string, action: string): string {
+  const normalizedEntity = ENTITY_NORMALIZATION[entity.toLowerCase()] || entity.toLowerCase();
+  const normalizedAction = ACTION_NORMALIZATION[action.toUpperCase()] || action.toLowerCase();
+  return `${normalizedEntity}:${normalizedAction}`;
+}
+
 /**
  * Cache for user permissions to avoid repeated DB queries
  * Key: `${userId}:${entity}:${action}`
@@ -509,7 +570,8 @@ export async function getUserPermissionsFromDB(
         );
 
       for (const perm of perms) {
-        enabledPermissionsSet.add(`${perm.entity}:${perm.action}`);
+        // Normalize DB permissions to match code format (e.g., "orders:VIEW" -> "order:read")
+        enabledPermissionsSet.add(normalizePermission(perm.entity, perm.action));
       }
     }
 

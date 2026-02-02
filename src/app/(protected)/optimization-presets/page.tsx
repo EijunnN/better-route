@@ -28,7 +28,7 @@ function OptimizationPresetsPageContent() {
 
 export default function OptimizationPresetsPage() {
   return (
-    <ProtectedPage requiredPermission="optimization_presets:VIEW">
+    <ProtectedPage requiredPermission="optimization_preset:read">
       <PresetsProvider>
         <OptimizationPresetsPageContent />
       </PresetsProvider>
