@@ -1,7 +1,8 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  driverLocations,
   optimizationJobs,
   routeStops,
   USER_ROLES,
@@ -63,24 +64,76 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // If no confirmed job, return drivers without route info
+    // If no confirmed job, return drivers without route info but with location
     if (!confirmedJob) {
-      const driversData = allDrivers.map((driver) => ({
-        id: driver.id,
-        name: driver.name,
-        status: driver.driverStatus || "AVAILABLE",
-        fleetId: driver.primaryFleetId || "",
-        fleetName: driver.primaryFleet?.name || "Sin flota",
-        hasRoute: false,
-        routeId: null,
-        vehiclePlate: null,
-        progress: {
-          completedStops: 0,
-          totalStops: 0,
-          percentage: 0,
-        },
-        alerts: [],
-      }));
+      // Get latest locations even without route
+      const driverIds = allDrivers.map((d) => d.id);
+      const latestLocs = driverIds.length > 0
+        ? await db
+            .select({
+              driverId: driverLocations.driverId,
+              latitude: driverLocations.latitude,
+              longitude: driverLocations.longitude,
+              accuracy: driverLocations.accuracy,
+              speed: driverLocations.speed,
+              heading: driverLocations.heading,
+              isMoving: driverLocations.isMoving,
+              batteryLevel: driverLocations.batteryLevel,
+              recordedAt: driverLocations.recordedAt,
+            })
+            .from(driverLocations)
+            .where(
+              and(
+                eq(driverLocations.companyId, tenantCtx.companyId),
+                inArray(driverLocations.driverId, driverIds),
+              )
+            )
+            .orderBy(desc(driverLocations.recordedAt))
+        : [];
+
+      const locMap = new Map<string, typeof latestLocs[0]>();
+      for (const loc of latestLocs) {
+        if (!locMap.has(loc.driverId)) {
+          locMap.set(loc.driverId, loc);
+        }
+      }
+
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+      const driversData = allDrivers.map((driver) => {
+        const location = locMap.get(driver.id);
+        const isLocationRecent = location && location.recordedAt > fiveMinAgo;
+
+        return {
+          id: driver.id,
+          name: driver.name,
+          status: driver.driverStatus || "AVAILABLE",
+          fleetId: driver.primaryFleetId || "",
+          fleetName: driver.primaryFleet?.name || "Sin flota",
+          hasRoute: false,
+          routeId: null,
+          vehiclePlate: null,
+          progress: {
+            completedStops: 0,
+            totalStops: 0,
+            percentage: 0,
+          },
+          alerts: [],
+          currentLocation: location
+            ? {
+                latitude: parseFloat(location.latitude),
+                longitude: parseFloat(location.longitude),
+                accuracy: location.accuracy,
+                speed: location.speed,
+                heading: location.heading,
+                isMoving: location.isMoving,
+                batteryLevel: location.batteryLevel,
+                recordedAt: location.recordedAt.toISOString(),
+                isRecent: isLocationRecent,
+              }
+            : null,
+        };
+      });
 
       return NextResponse.json({ data: driversData });
     }
@@ -119,16 +172,57 @@ export async function GET(request: NextRequest) {
 
     const vehicleMap = new Map(vehiclesData.map((v) => [v.id, v]));
 
+    // Get latest location for each driver (last 5 minutes to be considered "active")
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const driverIds = allDrivers.map((d) => d.id);
+
+    // Get most recent location for each driver using a subquery
+    const latestLocations = driverIds.length > 0
+      ? await db
+          .select({
+            driverId: driverLocations.driverId,
+            latitude: driverLocations.latitude,
+            longitude: driverLocations.longitude,
+            accuracy: driverLocations.accuracy,
+            speed: driverLocations.speed,
+            heading: driverLocations.heading,
+            isMoving: driverLocations.isMoving,
+            batteryLevel: driverLocations.batteryLevel,
+            recordedAt: driverLocations.recordedAt,
+          })
+          .from(driverLocations)
+          .where(
+            and(
+              eq(driverLocations.companyId, tenantCtx.companyId),
+              inArray(driverLocations.driverId, driverIds),
+            )
+          )
+          .orderBy(desc(driverLocations.recordedAt))
+      : [];
+
+    // Create a map of driver ID to their most recent location
+    const locationMap = new Map<string, typeof latestLocations[0]>();
+    for (const loc of latestLocations) {
+      // Only keep the first (most recent) location for each driver
+      if (!locationMap.has(loc.driverId)) {
+        locationMap.set(loc.driverId, loc);
+      }
+    }
+
     // Build driver data with route info
     const driverStopsMap = new Map(driverStops.map((ds) => [ds.userId, ds]));
 
     const driversData = allDrivers.map((driver) => {
       const stopData = driverStopsMap.get(driver.id);
       const vehicle = stopData ? vehicleMap.get(stopData.vehicleId) : null;
+      const location = locationMap.get(driver.id);
       const hasRoute = !!stopData;
       const totalStops = Number(stopData?.totalStops || 0);
       const completedStops = Number(stopData?.completedStops || 0);
       const failedStops = Number(stopData?.failedStops || 0);
+
+      // Check if location is recent (within last 5 minutes)
+      const isLocationRecent = location && location.recordedAt > fiveMinutesAgo;
 
       // Generate alerts based on status
       const alerts: string[] = [];
@@ -143,6 +237,10 @@ export async function GET(request: NextRequest) {
       }
       if (driver.driverStatus === "UNAVAILABLE") {
         alerts.push("Conductor no disponible");
+      }
+      // Alert if driver has route but no recent location
+      if (hasRoute && !isLocationRecent) {
+        alerts.push("Sin señal GPS reciente");
       }
 
       return {
@@ -163,6 +261,20 @@ export async function GET(request: NextRequest) {
               : 0,
         },
         alerts,
+        // New: current location data
+        currentLocation: location
+          ? {
+              latitude: parseFloat(location.latitude),
+              longitude: parseFloat(location.longitude),
+              accuracy: location.accuracy,
+              speed: location.speed,
+              heading: location.heading,
+              isMoving: location.isMoving,
+              batteryLevel: location.batteryLevel,
+              recordedAt: location.recordedAt.toISOString(),
+              isRecent: isLocationRecent,
+            }
+          : null,
       };
     });
 

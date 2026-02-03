@@ -1,7 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, routeStops } from "@/db/schema";
+import { driverLocations, optimizationJobs, routeStops } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
@@ -216,6 +216,85 @@ export async function GET(request: NextRequest) {
         }
       },
     );
+
+    // Get current driver locations (last 10 minutes)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const driverIds = [...routeDriverMap.values()].map((d) => d.id);
+
+    if (driverIds.length > 0) {
+      const latestLocations = await db
+        .select({
+          driverId: driverLocations.driverId,
+          latitude: driverLocations.latitude,
+          longitude: driverLocations.longitude,
+          accuracy: driverLocations.accuracy,
+          speed: driverLocations.speed,
+          heading: driverLocations.heading,
+          isMoving: driverLocations.isMoving,
+          recordedAt: driverLocations.recordedAt,
+        })
+        .from(driverLocations)
+        .where(
+          and(
+            eq(driverLocations.companyId, tenantCtx.companyId),
+            inArray(driverLocations.driverId, driverIds),
+          )
+        )
+        .orderBy(desc(driverLocations.recordedAt));
+
+      // Create a map of driver ID to their most recent location
+      const locationMap = new Map<string, typeof latestLocations[0]>();
+      for (const loc of latestLocations) {
+        if (!locationMap.has(loc.driverId)) {
+          locationMap.set(loc.driverId, loc);
+        }
+      }
+
+      // Find route info for each driver
+      const driverRouteMap = new Map<string, { routeId: string; vehiclePlate: string; color: string }>();
+      parsedResult.routes.forEach((route, routeIndex) => {
+        const driverInfo = routeDriverMap.get(route.routeId);
+        if (driverInfo) {
+          driverRouteMap.set(driverInfo.id, {
+            routeId: route.routeId,
+            vehiclePlate: route.vehiclePlate,
+            color: colors[routeIndex % colors.length],
+          });
+        }
+      });
+
+      // Add driver location features
+      locationMap.forEach((location, driverId) => {
+        const driverInfo = [...routeDriverMap.values()].find((d) => d.id === driverId);
+        const routeInfo = driverRouteMap.get(driverId);
+        const isRecent = location.recordedAt > tenMinutesAgo;
+
+        features.push({
+          type: "Feature",
+          properties: {
+            type: "driver_location",
+            driverId,
+            driverName: driverInfo?.name || "Desconocido",
+            routeId: routeInfo?.routeId || null,
+            vehiclePlate: routeInfo?.vehiclePlate || null,
+            color: routeInfo?.color || "#6b7280", // gray if no route
+            speed: location.speed,
+            heading: location.heading,
+            isMoving: location.isMoving,
+            accuracy: location.accuracy,
+            recordedAt: location.recordedAt.toISOString(),
+            isRecent,
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [
+              parseFloat(location.longitude),
+              parseFloat(location.latitude),
+            ],
+          },
+        });
+      });
+    }
 
     return NextResponse.json({
       data: {

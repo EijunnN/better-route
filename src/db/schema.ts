@@ -1740,3 +1740,82 @@ export const companyOptimizationProfilesRelations = relations(
     }),
   }),
 );
+
+// ============================================
+// DRIVER LOCATION TRACKING
+// ============================================
+
+/**
+ * Source of location data
+ */
+export const LOCATION_SOURCE = {
+  GPS: "GPS", // From device GPS
+  MANUAL: "MANUAL", // Manually entered
+  GEOFENCE: "GEOFENCE", // Triggered by geofence
+  NETWORK: "NETWORK", // From network/cell tower
+} as const;
+
+/**
+ * Driver locations - stores GPS tracking history
+ * Used for real-time monitoring and route auditing
+ */
+export const driverLocations = pgTable("driver_locations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  driverId: uuid("driver_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  vehicleId: uuid("vehicle_id").references(() => vehicles.id, {
+    onDelete: "set null",
+  }),
+  // Route context (nullable - driver may not be on a route)
+  jobId: uuid("job_id").references(() => optimizationJobs.id, {
+    onDelete: "set null",
+  }),
+  routeId: varchar("route_id", { length: 100 }),
+  stopSequence: integer("stop_sequence"), // Current stop being approached
+
+  // GPS coordinates
+  latitude: varchar("latitude", { length: 20 }).notNull(),
+  longitude: varchar("longitude", { length: 20 }).notNull(),
+  accuracy: integer("accuracy"), // Meters
+  altitude: integer("altitude"), // Meters (optional)
+  speed: integer("speed"), // km/h
+  heading: integer("heading"), // Degrees 0-360
+
+  // Metadata
+  source: varchar("source", { length: 20 })
+    .notNull()
+    .$type<keyof typeof LOCATION_SOURCE>()
+    .default("GPS"),
+  batteryLevel: integer("battery_level"), // Percentage 0-100
+  isMoving: boolean("is_moving").default(true),
+
+  // Timestamps
+  recordedAt: timestamp("recorded_at").notNull(), // When GPS was captured on device
+  createdAt: timestamp("created_at").notNull().defaultNow(), // When saved to DB
+});
+
+export const driverLocationsRelations = relations(
+  driverLocations,
+  ({ one }) => ({
+    company: one(companies, {
+      fields: [driverLocations.companyId],
+      references: [companies.id],
+    }),
+    driver: one(users, {
+      fields: [driverLocations.driverId],
+      references: [users.id],
+    }),
+    vehicle: one(vehicles, {
+      fields: [driverLocations.vehicleId],
+      references: [vehicles.id],
+    }),
+    job: one(optimizationJobs, {
+      fields: [driverLocations.jobId],
+      references: [optimizationJobs.id],
+    }),
+  }),
+);

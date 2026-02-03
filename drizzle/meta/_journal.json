@@ -43,6 +43,13 @@
       "when": 1769406203947,
       "tag": "0005_add-vehicle-skill-assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1770085307086,
+      "tag": "0006_add_driver_locations",
+      "breakpoints": true
     }
   ]
 }
