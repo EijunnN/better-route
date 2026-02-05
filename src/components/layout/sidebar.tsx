@@ -107,10 +107,10 @@ function SidebarLogo() {
 
   return (
     <Link href="/dashboard" className="flex items-center gap-2">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-        <Route className="h-5 w-5 text-primary-foreground" />
+      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
+        <Route className="h-4 w-4 text-primary-foreground" />
       </div>
-      <span className="font-semibold text-sidebar-foreground">BetterRoute</span>
+      <span className="text-sm font-semibold text-sidebar-foreground">BetterRoute</span>
     </Link>
   );
 }
@@ -123,13 +123,13 @@ function SidebarCollapseButton() {
       variant="ghost"
       size="icon"
       onClick={actions.toggleCollapse}
-      className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
-      aria-label={state.collapsed ? "Expandir menú" : "Colapsar menú"}
+      className="h-7 w-7 text-sidebar-foreground hover:bg-sidebar-accent"
+      aria-label={state.collapsed ? "Expandir menu" : "Colapsar menu"}
     >
       {state.collapsed ? (
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className="h-3.5 w-3.5" />
       ) : (
-        <ChevronLeft className="h-4 w-4" />
+        <ChevronLeft className="h-3.5 w-3.5" />
       )}
     </Button>
   );
@@ -137,7 +137,7 @@ function SidebarCollapseButton() {
 
 function SidebarHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+    <div className="flex h-12 items-center justify-between border-b border-sidebar-border px-3">
       {children}
     </div>
   );
@@ -149,17 +149,17 @@ function SidebarNavigation({ children }: { children?: React.ReactNode }) {
   // Show skeleton while permissions are loading
   if (meta.isLoadingPermissions) {
     return (
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-1.5">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="space-y-2 pt-4">
+          <div key={i} className="space-y-1 pt-3">
             {!state.collapsed && (
-              <div className="h-3 w-20 bg-sidebar-accent/50 rounded mx-3 animate-pulse" />
+              <div className="h-3 w-20 bg-sidebar-accent/50 rounded mx-2 animate-pulse" />
             )}
             {[1, 2].map((j) => (
               <div
                 key={j}
                 className={cn(
-                  "h-9 bg-sidebar-accent/30 rounded-lg mx-1 animate-pulse",
+                  "h-8 bg-sidebar-accent/30 rounded-lg mx-1 animate-pulse",
                   state.collapsed ? "w-12" : "w-full"
                 )}
               />
@@ -171,7 +171,7 @@ function SidebarNavigation({ children }: { children?: React.ReactNode }) {
   }
 
   return (
-    <nav className="flex-1 space-y-1 overflow-y-auto p-2">
+    <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-1.5">
       {children ||
         meta.navSections.map((section, sectionIndex) => (
           <SidebarSection key={section.title} section={section} isFirst={sectionIndex === 0} />
@@ -190,9 +190,9 @@ function SidebarSection({
   const { state } = useSidebar();
 
   return (
-    <div className={cn("space-y-1", !isFirst && "pt-4")}>
+    <div className={cn("space-y-0.5", !isFirst && "pt-3")}>
       {!state.collapsed && (
-        <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+        <p className="px-2 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
           {section.title}
         </p>
       )}
@@ -211,11 +211,11 @@ function SidebarNavItem({ item }: { item: NavItem }) {
 
   if (hasChildren) {
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         <button
           onClick={() => actions.toggleExpanded(item.href)}
           className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+            "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
             isItemActive
               ? "bg-sidebar-accent text-sidebar-accent-foreground"
               : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -223,13 +223,13 @@ function SidebarNavItem({ item }: { item: NavItem }) {
           )}
           title={state.collapsed ? item.title : undefined}
         >
-          <item.icon className="h-5 w-5 shrink-0" />
+          <item.icon className="h-4 w-4 shrink-0" />
           {!state.collapsed && (
             <>
               <span className="flex-1 text-left">{item.title}</span>
               <ChevronDown
                 className={cn(
-                  "h-4 w-4 shrink-0 transition-transform",
+                  "h-3.5 w-3.5 shrink-0 transition-transform",
                   isExpanded && "rotate-180"
                 )}
               />
@@ -237,7 +237,7 @@ function SidebarNavItem({ item }: { item: NavItem }) {
           )}
         </button>
         {!state.collapsed && isExpanded && (
-          <div className="ml-4 space-y-1 border-l border-sidebar-border pl-3">
+          <div className="ml-3.5 space-y-0.5 border-l border-sidebar-border pl-2.5">
             {item.children!.map((child) => (
               <SidebarNavLink key={child.href} item={child} isChild />
             ))}
@@ -264,7 +264,7 @@ function SidebarNavLink({
     <Link
       href={item.href}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
         isItemActive
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
           : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -272,10 +272,10 @@ function SidebarNavLink({
       )}
       title={state.collapsed ? item.title : undefined}
     >
-      <item.icon className={cn("shrink-0", isChild ? "h-4 w-4" : "h-5 w-5")} />
+      <item.icon className={cn("shrink-0", isChild ? "h-3.5 w-3.5" : "h-4 w-4")} />
       {!state.collapsed && <span>{item.title}</span>}
       {!state.collapsed && item.badge && (
-        <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+        <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[11px] text-primary-foreground">
           {item.badge}
         </span>
       )}
@@ -284,7 +284,7 @@ function SidebarNavLink({
 }
 
 function SidebarFooter({ children }: { children: React.ReactNode }) {
-  return <div className="border-t border-sidebar-border p-2 space-y-1">{children}</div>;
+  return <div className="border-t border-sidebar-border px-2 py-1.5 space-y-0.5">{children}</div>;
 }
 
 function SidebarThemeToggle() {
@@ -294,17 +294,18 @@ function SidebarThemeToggle() {
   return (
     <Button
       variant="ghost"
+      size="sm"
       className={cn(
-        "w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "w-full justify-start gap-2.5 text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         state.collapsed && "justify-center px-2"
       )}
       onClick={toggleTheme}
       title={state.collapsed ? (isDark ? "Modo claro" : "Modo oscuro") : undefined}
     >
       {isDark ? (
-        <Sun className="h-5 w-5 shrink-0" />
+        <Sun className="h-4 w-4 shrink-0" />
       ) : (
-        <Moon className="h-5 w-5 shrink-0" />
+        <Moon className="h-4 w-4 shrink-0" />
       )}
       {!state.collapsed && <span>{isDark ? "Modo Claro" : "Modo Oscuro"}</span>}
     </Button>
@@ -317,16 +318,17 @@ function SidebarLogoutButton() {
   return (
     <Button
       variant="ghost"
+      size="sm"
       className={cn(
-        "w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "w-full justify-start gap-2.5 text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         state.collapsed && "justify-center px-2"
       )}
       onClick={() => {
         window.location.href = "/login";
       }}
     >
-      <LogOut className="h-5 w-5 shrink-0" />
-      {!state.collapsed && <span>Cerrar Sesión</span>}
+      <LogOut className="h-4 w-4 shrink-0" />
+      {!state.collapsed && <span>Cerrar Sesion</span>}
     </Button>
   );
 }
