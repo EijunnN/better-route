@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +22,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { db } from "@/db";
-import { orders, USER_ROLES, users, vehicles } from "@/db/schema";
+import { companies, orders, USER_ROLES, users, vehicles } from "@/db/schema";
+import { getCurrentUser } from "@/lib/auth/auth";
 import { getCompanyId } from "@/lib/infra/server-cache";
 
 interface MetricCardProps {
@@ -186,6 +188,19 @@ function ActiveDriverItem({
 
 export default async function DashboardPage() {
   const companyId = await getCompanyId();
+
+  // Redirect ADMIN_SISTEMA to onboarding if no companies exist
+  if (!companyId) {
+    const currentUser = await getCurrentUser();
+    if (currentUser?.role === USER_ROLES.ADMIN_SISTEMA) {
+      const [companyCount] = await db
+        .select({ count: count() })
+        .from(companies);
+      if (companyCount.count === 0) {
+        redirect("/onboarding");
+      }
+    }
+  }
 
   // Datos por defecto si no hay sesión
   let metrics = {
