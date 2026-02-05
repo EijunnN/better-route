@@ -53,8 +53,8 @@ export const users = pgTable("users", {
   }),
   // Basic user fields
   name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 255 }).notNull(),
-  username: varchar("username", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  username: varchar("username", { length: 100 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
   role: varchar("role", { length: 50 })
     .notNull()
@@ -714,7 +714,7 @@ export const orders = pgTable("orders", {
   companyId: uuid("company_id")
     .notNull()
     .references(() => companies.id, { onDelete: "restrict" }),
-  trackingId: varchar("tracking_id", { length: 50 }).notNull(),
+  trackingId: varchar("tracking_id", { length: 50 }).notNull().unique(),
   customerName: varchar("customer_name", { length: 255 }),
   customerPhone: varchar("customer_phone", { length: 50 }),
   customerEmail: varchar("customer_email", { length: 255 }),

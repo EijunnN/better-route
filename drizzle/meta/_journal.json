@@ -50,6 +50,13 @@
       "when": 1770085307086,
       "tag": "0006_add_driver_locations",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1770251644610,
+      "tag": "0007_add-unique-constraints",
+      "breakpoints": true
     }
   ]
 }
