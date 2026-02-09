@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
 import type {
   ORDER_STATUS,
   TIME_WINDOW_STRICTNESS,
@@ -153,10 +153,10 @@ export function OrderFormProvider({
   children,
   onSubmit,
   initialData,
-  submitLabel = "Create Order",
+  submitLabel = "Crear Pedido",
   onCancel,
 }: OrderFormProviderProps) {
-  const { companyId } = useAuth();
+  const { effectiveCompanyId: companyId } = useCompanyContext();
   const [formData, setFormData] = useState<OrderFormData>(defaultFormData);
   const [timeWindowPresets, setTimeWindowPresets] = useState<TimeWindowPreset[]>(
     [],
@@ -168,8 +168,8 @@ export function OrderFormProvider({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingPresets, setIsLoadingPresets] = useState(true);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
-    enableWeight: true,
-    enableVolume: true,
+    enableWeight: false,
+    enableVolume: false,
     enableOrderValue: false,
     enableUnits: false,
     enableOrderType: false,
@@ -177,7 +177,10 @@ export function OrderFormProvider({
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!companyId) return;
+      if (!companyId) {
+        setIsLoadingPresets(false);
+        return;
+      }
       try {
         const presetsResponse = await fetch("/api/time-window-presets", {
           headers: { "x-company-id": companyId ?? "" },

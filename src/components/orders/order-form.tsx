@@ -34,7 +34,7 @@ function OrderFormContent() {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-8">
       <div className="bg-background rounded-lg shadow-lg max-w-2xl w-full p-6 my-auto">
         <h2 className="text-xl font-semibold mb-4">
-          {isEditing ? "Edit Order" : "Create Order"}
+          {isEditing ? "Editar Pedido" : "Crear Pedido"}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -75,7 +75,7 @@ function OrderFormContent() {
 export function OrderForm({
   onSubmit,
   initialData,
-  submitLabel = "Create Order",
+  submitLabel = "Crear Pedido",
   onCancel,
 }: OrderFormProps) {
   return (

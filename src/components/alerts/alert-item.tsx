@@ -79,10 +79,10 @@ const SEVERITY_CONFIG = {
 };
 
 const STATUS_CONFIG = {
-  ACTIVE: { label: "Active", color: "text-red-600" },
-  ACKNOWLEDGED: { label: "Acknowledged", color: "text-amber-600" },
-  RESOLVED: { label: "Resolved", color: "text-emerald-600" },
-  DISMISSED: { label: "Dismissed", color: "text-gray-600" },
+  ACTIVE: { label: "Active", color: "text-red-600 dark:text-red-400" },
+  ACKNOWLEDGED: { label: "Acknowledged", color: "text-amber-600 dark:text-amber-400" },
+  RESOLVED: { label: "Resolved", color: "text-emerald-600 dark:text-emerald-400" },
+  DISMISSED: { label: "Dismissed", color: "text-gray-600 dark:text-gray-400" },
 };
 
 export function AlertItem({

@@ -50,7 +50,17 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:pyvrp.org)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\vicen\\\\Desktop\\\\Projects\\\\Bun\\\\test-mobile\\\\aea\\\\lib\" -Recurse -Filter *.dart)",
+      "Bash(Select-Object FullName)",
+      "Bash(flutter pub get:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git reset:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git stash:*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)",
+      "Bash(git remote set-url:*)"
     ]
   }
 }

@@ -12,16 +12,16 @@ export function OrderFormBasicInfo() {
 
   return (
     <div className="border-b pb-4">
-      <h3 className="font-medium mb-3">Basic Information</h3>
+      <h3 className="font-medium mb-3">Información del Pedido</h3>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="trackingId">Tracking ID *</Label>
+          <Label htmlFor="trackingId">ID de Seguimiento *</Label>
           <Input
             id="trackingId"
             value={formData.trackingId}
             onChange={(e) => handleChange("trackingId", e.target.value)}
-            placeholder="e.g., ORD-001"
+            placeholder="Ej: ORD-001"
           />
           {errors.trackingId && (
             <p className="text-sm text-destructive mt-1">{errors.trackingId}</p>
@@ -36,34 +36,34 @@ export function OrderFormBasicInfo() {
             onChange={(e) => handleChange("status", e.target.value)}
             className="w-full px-3 py-2 border rounded-md bg-background"
           >
-            <option value="PENDING">Pending</option>
-            <option value="ASSIGNED">Assigned</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="FAILED">Failed</option>
-            <option value="CANCELLED">Cancelled</option>
+            <option value="PENDING">Pendiente</option>
+            <option value="ASSIGNED">Asignado</option>
+            <option value="IN_PROGRESS">En Progreso</option>
+            <option value="COMPLETED">Completado</option>
+            <option value="FAILED">Fallido</option>
+            <option value="CANCELLED">Cancelado</option>
           </select>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mt-3">
         <div>
-          <Label htmlFor="customerName">Customer Name</Label>
+          <Label htmlFor="customerName">Nombre del Cliente</Label>
           <Input
             id="customerName"
             value={formData.customerName}
             onChange={(e) => handleChange("customerName", e.target.value)}
-            placeholder="John Doe"
+            placeholder="Juan Pérez"
           />
         </div>
 
         <div>
-          <Label htmlFor="customerPhone">Phone</Label>
+          <Label htmlFor="customerPhone">Teléfono</Label>
           <Input
             id="customerPhone"
             value={formData.customerPhone}
             onChange={(e) => handleChange("customerPhone", e.target.value)}
-            placeholder="+1 234 567 8900"
+            placeholder="+51 999 999 999"
           />
         </div>
       </div>
@@ -93,15 +93,15 @@ export function OrderFormLocation() {
 
   return (
     <div className="border-b pb-4">
-      <h3 className="font-medium mb-3">Location</h3>
+      <h3 className="font-medium mb-3">Ubicación</h3>
 
       <div>
-        <Label htmlFor="address">Address *</Label>
+        <Label htmlFor="address">Dirección *</Label>
         <Input
           id="address"
           value={formData.address}
           onChange={(e) => handleChange("address", e.target.value)}
-          placeholder="123 Main St, City, Country"
+          placeholder="Av. Principal 123, Lima, Perú"
         />
         {errors.address && (
           <p className="text-sm text-destructive mt-1">{errors.address}</p>
@@ -110,12 +110,12 @@ export function OrderFormLocation() {
 
       <div className="grid grid-cols-2 gap-4 mt-3">
         <div>
-          <Label htmlFor="latitude">Latitude *</Label>
+          <Label htmlFor="latitude">Latitud *</Label>
           <Input
             id="latitude"
             value={formData.latitude}
             onChange={(e) => handleChange("latitude", e.target.value)}
-            placeholder="e.g., 40.7128"
+            placeholder="Ej: -12.0464"
             step="any"
           />
           {errors.latitude && (
@@ -124,12 +124,12 @@ export function OrderFormLocation() {
         </div>
 
         <div>
-          <Label htmlFor="longitude">Longitude *</Label>
+          <Label htmlFor="longitude">Longitud *</Label>
           <Input
             id="longitude"
             value={formData.longitude}
             onChange={(e) => handleChange("longitude", e.target.value)}
-            placeholder="e.g., -74.0060"
+            placeholder="Ej: -77.0428"
             step="any"
           />
           {errors.longitude && (
@@ -149,12 +149,12 @@ export function OrderFormTimeWindow() {
 
   return (
     <div className="border-b pb-4">
-      <h3 className="font-medium mb-3">Time Window Configuration</h3>
+      <h3 className="font-medium mb-3">Configuración de Ventana de Tiempo</h3>
 
       <div>
-        <Label htmlFor="timeWindowPresetId">Time Window Preset</Label>
+        <Label htmlFor="timeWindowPresetId">Preset de Ventana de Tiempo</Label>
         {isLoadingPresets ? (
-          <p className="text-sm text-muted-foreground">Loading presets...</p>
+          <p className="text-sm text-muted-foreground">Cargando presets...</p>
         ) : (
           <select
             id="timeWindowPresetId"
@@ -162,7 +162,7 @@ export function OrderFormTimeWindow() {
             onChange={(e) => handlePresetChange(e.target.value)}
             className="w-full px-3 py-2 border rounded-md bg-background"
           >
-            <option value="">No preset</option>
+            <option value="">Sin preset</option>
             {timeWindowPresets.map((preset) => (
               <option key={preset.id} value={preset.id}>
                 {preset.name} ({preset.type}, {preset.strictness})
@@ -174,15 +174,15 @@ export function OrderFormTimeWindow() {
 
       {selectedPreset && (
         <div className="mt-3 p-3 bg-muted/50 rounded-md">
-          <p className="text-sm font-medium">Preset Details:</p>
+          <p className="text-sm font-medium">Detalles del Preset:</p>
           <p className="text-sm text-muted-foreground">
-            Type: {selectedPreset.type}
+            Tipo: {selectedPreset.type}
             {selectedPreset.type === "EXACT"
               ? ` - ${selectedPreset.exactTime} ±${selectedPreset.toleranceMinutes}min`
               : ` - ${selectedPreset.startTime} - ${selectedPreset.endTime}`}
           </p>
           <p className="text-sm text-muted-foreground">
-            Preset Strictness:{" "}
+            Exigencia del Preset:{" "}
             <span
               className={`px-2 py-0.5 rounded text-xs font-medium ${
                 selectedPreset.strictness === "HARD"
@@ -197,7 +197,7 @@ export function OrderFormTimeWindow() {
       )}
 
       <div className="mt-3">
-        <Label htmlFor="strictness">Strictness</Label>
+        <Label htmlFor="strictness">Nivel de Exigencia</Label>
         <select
           id="strictness"
           value={formData.strictness || "INHERIT"}
@@ -207,23 +207,23 @@ export function OrderFormTimeWindow() {
         >
           <option value="INHERIT">
             {selectedPreset
-              ? `Inherit from preset (${selectedPreset.strictness})`
-              : "Select a preset first"}
+              ? `Heredar del preset (${selectedPreset.strictness})`
+              : "Seleccione un preset primero"}
           </option>
-          <option value="HARD">Hard (reject violations)</option>
-          <option value="SOFT">Soft (minimize delays)</option>
+          <option value="HARD">Estricto (rechazar violaciones)</option>
+          <option value="SOFT">Flexible (minimizar retrasos)</option>
         </select>
         {isOverridden && selectedPreset && (
           <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
-            <span className="font-medium">Override:</span> This order will use{" "}
-            <span className="font-medium">{effectiveStrictness}</span> strictness
-            instead of the preset's {selectedPreset.strictness}
+            <span className="font-medium">Sobreescrito:</span> Este pedido usará{" "}
+            <span className="font-medium">{effectiveStrictness === "HARD" ? "Estricto" : "Flexible"}</span> en
+            vez del preset ({selectedPreset.strictness})
           </p>
         )}
       </div>
 
       <div className="mt-3">
-        <Label htmlFor="promisedDate">Promised Date</Label>
+        <Label htmlFor="promisedDate">Fecha Prometida</Label>
         <Input
           id="promisedDate"
           type="date"
@@ -367,12 +367,12 @@ export function OrderFormNotes() {
   return (
     <>
       <div>
-        <Label htmlFor="notes">Notes</Label>
+        <Label htmlFor="notes">Notas</Label>
         <textarea
           id="notes"
           value={formData.notes}
           onChange={(e) => handleChange("notes", e.target.value)}
-          placeholder="Additional delivery instructions..."
+          placeholder="Instrucciones adicionales de entrega..."
           rows={3}
           className="w-full px-3 py-2 border rounded-md bg-background resize-none"
         />
@@ -387,7 +387,7 @@ export function OrderFormNotes() {
             onChange={(e) => handleChange("active", e.target.checked)}
           />
           <Label htmlFor="active" className="cursor-pointer">
-            Active
+            Activo
           </Label>
         </div>
       )}
@@ -409,11 +409,11 @@ export function OrderFormActions() {
       <div className="flex justify-end gap-2 pt-2">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
         )}
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : submitLabel}
+          {isSubmitting ? "Guardando..." : submitLabel}
         </Button>
       </div>
     </>

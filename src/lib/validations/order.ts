@@ -54,6 +54,10 @@ const baseOrderSchema = {
     .int()
     .positive("Volume must be positive")
     .optional(),
+  orderValue: z.number().int().nonnegative("El valorizado no puede ser negativo").optional(),
+  unitsRequired: z.number().int().positive("Las unidades deben ser positivas").optional(),
+  orderType: z.enum(["NEW", "RESCHEDULED", "URGENT"] as const).optional(),
+  priority: z.number().int().min(0, "Prioridad mínima es 0").max(100, "Prioridad máxima es 100").optional(),
   requiredSkills: z.string().optional(),
   notes: z.string().optional(),
   status: z
@@ -132,6 +136,10 @@ export const updateOrderSchema = z.object({
   promisedDate: z.coerce.date().optional(),
   weightRequired: z.number().int().positive().optional(),
   volumeRequired: z.number().int().positive().optional(),
+  orderValue: z.number().int().nonnegative().optional(),
+  unitsRequired: z.number().int().positive().optional(),
+  orderType: z.enum(["NEW", "RESCHEDULED", "URGENT"] as const).optional(),
+  priority: z.number().int().min(0).max(100).optional(),
   requiredSkills: z.string().optional(),
   notes: z.string().optional(),
   status: z.enum(ORDER_STATUS).optional(),

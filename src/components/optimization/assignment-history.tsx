@@ -275,7 +275,7 @@ function HistoryEntry({ entry, showConnector }: HistoryEntryProps) {
 
           {/* Override Warning */}
           {entry.changes.overrideWarnings && (
-            <div className="mt-2 flex items-center gap-2 text-xs text-yellow-700 bg-yellow-50 px-2 py-1 rounded">
+            <div className="mt-2 flex items-center gap-2 text-xs text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 rounded">
               <AlertTriangle className="h-3 w-3" />
               <span>Manual override - warnings were present</span>
             </div>
@@ -293,18 +293,18 @@ function HistoryEntry({ entry, showConnector }: HistoryEntryProps) {
             <div className="mt-2 space-y-1">
               {entry.changes.validation.warnings.length > 0 && (
                 <div className="text-xs">
-                  <span className="font-medium text-yellow-700">
+                  <span className="font-medium text-yellow-700 dark:text-yellow-400">
                     Warnings:{" "}
                   </span>
-                  <span className="text-yellow-600">
+                  <span className="text-yellow-600 dark:text-yellow-500">
                     {entry.changes.validation.warnings.join(", ")}
                   </span>
                 </div>
               )}
               {entry.changes.validation.errors.length > 0 && (
                 <div className="text-xs">
-                  <span className="font-medium text-red-700">Errors: </span>
-                  <span className="text-red-600">
+                  <span className="font-medium text-red-700 dark:text-red-400">Errors: </span>
+                  <span className="text-red-600 dark:text-red-500">
                     {entry.changes.validation.errors.join(", ")}
                   </span>
                 </div>

@@ -261,9 +261,9 @@ export function StopStatusUpdateDialog({
 
             {/* Warning for terminal states */}
             {(selectedStatus === "FAILED" || selectedStatus === "SKIPPED") && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-amber-700">
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 dark:bg-amber-900/20 dark:border-amber-700/50">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-amber-700 dark:text-amber-300">
                   <p className="font-medium">Important Note</p>
                   <p className="mt-1">
                     {selectedStatus === "FAILED"

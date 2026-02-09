@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 interface MonitoringMapProps {
@@ -11,19 +11,34 @@ interface MonitoringMapProps {
   onDriverSelect?: (driverId: string) => void;
 }
 
+export interface MonitoringMapRef {
+  flyTo: (lat: number, lng: number, zoom?: number) => void;
+}
+
 const REFRESH_INTERVAL = 15000; // 15 seconds
 
-export function MonitoringMap({
+export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(function MonitoringMap({
   jobId: _jobId,
   companyId,
   selectedDriverId,
   onDriverSelect,
-}: MonitoringMapProps) {
+}, ref) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
+
+  // Expose flyTo method to parent via ref
+  useImperativeHandle(ref, () => ({
+    flyTo: (lat: number, lng: number, zoom = 16) => {
+      map.current?.flyTo({
+        center: [lng, lat],
+        zoom,
+        duration: 1500,
+      });
+    },
+  }), []);
 
   const loadMapData = useCallback(async (fitBounds = false) => {
     if (!map.current || !companyId) return;
@@ -36,6 +51,9 @@ export function MonitoringMap({
       if (!response.ok) throw new Error("Failed to load map data");
 
       const geojson = await response.json();
+
+      // Check again after async operation - map might have been unmounted
+      if (!map.current) return;
 
       // Update existing source if it exists, otherwise create new
       const source = map.current.getSource("monitoring-data") as maplibregl.GeoJSONSource;
@@ -248,7 +266,8 @@ export function MonitoringMap({
           }
         });
 
-        if (!bounds.isEmpty()) {
+        // Check again after async import - map might have been unmounted
+        if (!bounds.isEmpty() && map.current) {
           map.current.fitBounds(bounds, {
             padding: { top: 100, bottom: 50, left: 350, right: 50 },
             maxZoom: 15,
@@ -379,4 +398,4 @@ export function MonitoringMap({
       )}
     </div>
   );
-}
+});

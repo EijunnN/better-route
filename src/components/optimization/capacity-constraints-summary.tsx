@@ -111,10 +111,10 @@ export function CapacityConstraintsSummary({
   }
 
   const skillCategoryColors: Record<string, string> = {
-    EQUIPMENT: "bg-blue-100 text-blue-800 hover:bg-blue-200",
-    TEMPERATURE: "bg-cyan-100 text-cyan-800 hover:bg-cyan-200",
-    CERTIFICATIONS: "bg-purple-100 text-purple-800 hover:bg-purple-200",
-    SPECIAL: "bg-orange-100 text-orange-800 hover:bg-orange-200",
+    EQUIPMENT: "bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50",
+    TEMPERATURE: "bg-cyan-100 text-cyan-800 hover:bg-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-400 dark:hover:bg-cyan-900/50",
+    CERTIFICATIONS: "bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50",
+    SPECIAL: "bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50",
   };
 
   return (

@@ -144,22 +144,16 @@ export async function GET(request: NextRequest) {
       limit: 1,
     });
 
-    // Si no hay paradas de hoy, buscar las mas recientes
+    // Only show today's route - don't fall back to old routes from previous days
     const hasStopsToday = todayStops.length > 0;
 
-    // Obtener el jobId de las paradas (de hoy o las mas recientes)
+    // Only use today's job, don't fall back to old routes
     let activeJobId: string | null = null;
 
     if (hasStopsToday) {
       activeJobId = todayStops[0].jobId;
-    } else {
-      // Buscar la parada mas reciente para este vehiculo
-      const recentStop = await db.query.routeStops.findFirst({
-        where: eq(routeStops.vehicleId, assignedVehicle.id),
-        orderBy: [desc(routeStops.createdAt)],
-      });
-      activeJobId = recentStop?.jobId || null;
     }
+    // If no stops today, don't fall back to old routes - return empty route
 
     // Si no hay job activo, devolver conductor con vehiculo pero sin ruta
     if (!activeJobId) {
