@@ -4,6 +4,8 @@ import {
   createContext,
   use,
   useCallback,
+  useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -43,7 +45,7 @@ export interface ZoneFormActions {
 export interface ZoneFormMeta {
   vehicles: VehicleOption[];
   submitLabel: string;
-  onGeometryEdit?: () => void;
+  onGeometryEdit?: (snapshot: { formData: ZoneInput; vehicleIds: string[] }) => void;
 }
 
 export interface ZoneFormDerived {
@@ -74,7 +76,8 @@ export interface ZoneFormProviderProps {
   vehicles: VehicleOption[];
   initialVehicleIds?: string[];
   submitLabel?: string;
-  onGeometryEdit?: () => void;
+  onGeometryEdit?: (snapshot: { formData: ZoneInput; vehicleIds: string[] }) => void;
+  onFormDataChange?: (data: ZoneInput) => void;
 }
 
 export function ZoneFormProvider({
@@ -85,6 +88,7 @@ export function ZoneFormProvider({
   initialVehicleIds = [],
   submitLabel = "Guardar",
   onGeometryEdit,
+  onFormDataChange,
 }: ZoneFormProviderProps) {
   const defaultData: ZoneInput = {
     name: initialData?.name ?? "",
@@ -202,6 +206,20 @@ export function ZoneFormProvider({
     },
     [formData, selectedDays, selectedVehicleIds, onSubmit],
   );
+
+  // Sync form data changes to parent (for preview map and state persistence)
+  const onFormDataChangeRef = useRef(onFormDataChange);
+  onFormDataChangeRef.current = onFormDataChange;
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    // Skip initial mount to avoid overwriting parent state with defaults
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    onFormDataChangeRef.current?.(formData);
+  }, [formData]);
 
   const hasValidGeometry = (() => {
     if (!formData.geometry) return false;

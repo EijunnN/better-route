@@ -1,43 +1,16 @@
 "use client";
 
-import maplibregl, {
-  type Map as MapLibreMap,
-  type StyleSpecification,
-} from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
+import { useEffect, useRef, useState, useCallback } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Crosshair, Layers, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-// CartoDB Dark Matter style (matches planning-map)
-const DARK_STYLE: StyleSpecification = {
-  version: 8 as const,
-  sources: {
-    carto: {
-      type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-      ],
-      tileSize: 256,
-      attribution: "&copy; CartoDB &copy; OpenStreetMap",
-    },
-  },
-  layers: [
-    {
-      id: "carto",
-      type: "raster",
-      source: "carto",
-      minzoom: 0,
-      maxzoom: 20,
-    },
-  ],
-};
-
-// Default center (Lima, Peru)
-const DEFAULT_CENTER: [number, number] = [-77.0428, -12.0464];
-const DEFAULT_ZOOM = 11;
+import { useTheme } from "@/components/layout/theme-context";
+import {
+  getMapStyle,
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+} from "@/lib/map-styles";
 
 interface Zone {
   id: string;
@@ -66,6 +39,84 @@ export function ZonePreviewMap({
   const map = useRef<MapLibreMap | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  const { isDark } = useTheme();
+  const themeInitRef = useRef(false);
+  const addZoneLayersRef = useRef((_m: MapLibreMap) => {});
+
+  // Helper to add all zone sources and layers to the map
+  const addZoneLayers = useCallback(
+    (mapInstance: MapLibreMap) => {
+      const bounds = new maplibregl.LngLatBounds();
+      let hasValidZone = false;
+
+      zones.forEach((zone) => {
+        let geometry = zone.parsedGeometry;
+        if (!geometry && zone.geometry) {
+          try {
+            geometry = JSON.parse(zone.geometry);
+          } catch {
+            return;
+          }
+        }
+        if (!geometry?.coordinates?.[0]) return;
+
+        const isSelected = zone.id === selectedZoneId;
+        hasValidZone = true;
+
+        geometry.coordinates[0].forEach((coord: number[]) => {
+          bounds.extend([coord[0], coord[1]]);
+        });
+
+        mapInstance.addSource(`zone-${zone.id}`, {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: { id: zone.id, name: zone.name },
+            geometry: geometry,
+          },
+        });
+
+        mapInstance.addLayer({
+          id: `zone-fill-${zone.id}`,
+          type: "fill",
+          source: `zone-${zone.id}`,
+          paint: {
+            "fill-color": zone.color,
+            "fill-opacity": isSelected ? 0.4 : zone.active ? 0.2 : 0.1,
+          },
+        });
+
+        mapInstance.addLayer({
+          id: `zone-outline-${zone.id}`,
+          type: "line",
+          source: `zone-${zone.id}`,
+          paint: {
+            "line-color": zone.color,
+            "line-width": isSelected ? 3 : 1.5,
+            "line-opacity": isSelected ? 1 : zone.active ? 0.8 : 0.4,
+          },
+        });
+
+        mapInstance.on("click", `zone-fill-${zone.id}`, () => {
+          onZoneSelect(zone.id);
+        });
+
+        mapInstance.on("mouseenter", `zone-fill-${zone.id}`, () => {
+          mapInstance.getCanvas().style.cursor = "pointer";
+        });
+
+        mapInstance.on("mouseleave", `zone-fill-${zone.id}`, () => {
+          mapInstance.getCanvas().style.cursor = "";
+        });
+      });
+
+      if (hasValidZone && !bounds.isEmpty()) {
+        mapInstance.fitBounds(bounds, { padding: 50, maxZoom: 14 });
+      }
+    },
+    [zones, selectedZoneId, onZoneSelect],
+  );
+  addZoneLayersRef.current = addZoneLayers;
 
   // Initialize map
   useEffect(() => {
@@ -74,9 +125,9 @@ export function ZonePreviewMap({
     try {
       const mapInstance = new maplibregl.Map({
         container: mapContainer.current,
-        style: DARK_STYLE,
-        center: DEFAULT_CENTER,
-        zoom: DEFAULT_ZOOM,
+        style: getMapStyle(isDark),
+        center: DEFAULT_MAP_CENTER,
+        zoom: DEFAULT_MAP_ZOOM,
         attributionControl: false,
       });
 
@@ -121,85 +172,28 @@ export function ZonePreviewMap({
       }
     });
 
-    // Add zone sources and layers
-    const bounds = new maplibregl.LngLatBounds();
-    let hasValidZone = false;
+    addZoneLayers(mapInstance);
+  }, [zones, selectedZoneId, mapReady, addZoneLayers]);
 
-    zones.forEach((zone) => {
-      let geometry = zone.parsedGeometry;
+  // Handle runtime theme changes (skip first run - layers added in "load")
+  // In MapLibre v5 diff mode, style.load fires synchronously during setStyle(),
+  // so the listener MUST be registered BEFORE calling setStyle().
+  useEffect(() => {
+    if (!map.current) return;
 
-      // Try to parse geometry if parsedGeometry is not available
-      if (!geometry && zone.geometry) {
-        try {
-          geometry = JSON.parse(zone.geometry);
-        } catch {
-          return;
-        }
-      }
-
-      if (!geometry?.coordinates?.[0]) return;
-
-      const isSelected = zone.id === selectedZoneId;
-      hasValidZone = true;
-
-      // Extend bounds
-      geometry.coordinates[0].forEach((coord) => {
-        bounds.extend([coord[0], coord[1]]);
-      });
-
-      // Add source
-      mapInstance.addSource(`zone-${zone.id}`, {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          properties: { id: zone.id, name: zone.name },
-          geometry: geometry,
-        },
-      });
-
-      // Add fill layer
-      mapInstance.addLayer({
-        id: `zone-fill-${zone.id}`,
-        type: "fill",
-        source: `zone-${zone.id}`,
-        paint: {
-          "fill-color": zone.color,
-          "fill-opacity": isSelected ? 0.4 : zone.active ? 0.2 : 0.1,
-        },
-      });
-
-      // Add outline layer
-      mapInstance.addLayer({
-        id: `zone-outline-${zone.id}`,
-        type: "line",
-        source: `zone-${zone.id}`,
-        paint: {
-          "line-color": zone.color,
-          "line-width": isSelected ? 3 : 1.5,
-          "line-opacity": isSelected ? 1 : zone.active ? 0.8 : 0.4,
-        },
-      });
-
-      // Add click handler
-      mapInstance.on("click", `zone-fill-${zone.id}`, () => {
-        onZoneSelect(zone.id);
-      });
-
-      // Change cursor on hover
-      mapInstance.on("mouseenter", `zone-fill-${zone.id}`, () => {
-        mapInstance.getCanvas().style.cursor = "pointer";
-      });
-
-      mapInstance.on("mouseleave", `zone-fill-${zone.id}`, () => {
-        mapInstance.getCanvas().style.cursor = "";
-      });
-    });
-
-    // Fit bounds if there are valid zones
-    if (hasValidZone && !bounds.isEmpty()) {
-      mapInstance.fitBounds(bounds, { padding: 50, maxZoom: 14 });
+    if (!themeInitRef.current) {
+      themeInitRef.current = true;
+      return;
     }
-  }, [zones, selectedZoneId, mapReady, onZoneSelect]);
+
+    const mapInstance = map.current;
+
+    // Register BEFORE setStyle — style.load may fire synchronously in diff mode
+    mapInstance.once("style.load", () => {
+      addZoneLayersRef.current(mapInstance);
+    });
+    mapInstance.setStyle(getMapStyle(isDark));
+  }, [isDark]);
 
   // Fly to selected zone
   useEffect(() => {

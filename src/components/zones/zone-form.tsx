@@ -30,7 +30,8 @@ interface ZoneFormProps {
   vehicles: VehicleOption[];
   initialVehicleIds?: string[];
   submitLabel?: string;
-  onGeometryEdit?: () => void;
+  onGeometryEdit?: (snapshot: { formData: ZoneInput; vehicleIds: string[] }) => void;
+  onFormDataChange?: (data: ZoneInput) => void;
 }
 
 function ZoneFormContent() {
@@ -87,6 +88,7 @@ export function ZoneForm({
   initialVehicleIds = [],
   submitLabel = "Guardar",
   onGeometryEdit,
+  onFormDataChange,
 }: ZoneFormProps) {
   return (
     <ZoneFormProvider
@@ -96,6 +98,7 @@ export function ZoneForm({
       initialVehicleIds={initialVehicleIds}
       submitLabel={submitLabel}
       onGeometryEdit={onGeometryEdit}
+      onFormDataChange={onFormDataChange}
     >
       <ZoneFormContent />
     </ZoneFormProvider>

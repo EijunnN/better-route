@@ -414,7 +414,12 @@ export function ZonesFormView() {
               vehicles={state.vehicles}
               initialVehicleIds={state.editingZoneVehicleIds}
               submitLabel={state.editingZone ? "Guardar cambios" : "Crear zona"}
-              onGeometryEdit={() => actions.setViewMode("map-editor")}
+              onGeometryEdit={(snapshot) => {
+                actions.setPendingFormData(snapshot.formData);
+                actions.setEditingZoneVehicleIds(snapshot.vehicleIds);
+                actions.setViewMode("map-editor");
+              }}
+              onFormDataChange={(data) => actions.setPendingFormData(data)}
             />
           </div>
         </div>

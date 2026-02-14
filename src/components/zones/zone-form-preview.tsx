@@ -1,43 +1,16 @@
 "use client";
 
-import maplibregl, {
-  type Map as MapLibreMap,
-  type StyleSpecification,
-} from "maplibre-gl";
+import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Map, PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-// CartoDB Dark Matter style
-const DARK_STYLE: StyleSpecification = {
-  version: 8 as const,
-  sources: {
-    carto: {
-      type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-      ],
-      tileSize: 256,
-      attribution: "&copy; CartoDB &copy; OpenStreetMap",
-    },
-  },
-  layers: [
-    {
-      id: "carto",
-      type: "raster",
-      source: "carto",
-      minzoom: 0,
-      maxzoom: 20,
-    },
-  ],
-};
-
-// Default center (Lima, Peru)
-const DEFAULT_CENTER: [number, number] = [-77.0428, -12.0464];
-const DEFAULT_ZOOM = 11;
+import { useTheme } from "@/components/layout/theme-context";
+import {
+  getMapStyle,
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+} from "@/lib/map-styles";
 
 interface ZoneFormPreviewProps {
   geometry?: string;
@@ -54,6 +27,8 @@ export function ZoneFormPreview({
   const map = useRef<MapLibreMap | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasGeometry, setHasGeometry] = useState(false);
+  const { isDark } = useTheme();
+  const themeInitRef = useRef(false);
 
   // Parse geometry
   const parsedGeometry = (() => {
@@ -69,13 +44,49 @@ export function ZoneFormPreview({
     }
   })();
 
+  // Helper to add zone source/layer
+  const addZoneLayer = (mapInstance: MapLibreMap) => {
+    if (!parsedGeometry?.coordinates?.[0]) return;
+
+    setHasGeometry(true);
+
+    mapInstance.addSource("zone", {
+      type: "geojson",
+      data: {
+        type: "Feature",
+        properties: {},
+        geometry: parsedGeometry,
+      },
+    });
+
+    mapInstance.addLayer({
+      id: "zone-fill",
+      type: "fill",
+      source: "zone",
+      paint: {
+        "fill-color": color,
+        "fill-opacity": 0.3,
+      },
+    });
+
+    mapInstance.addLayer({
+      id: "zone-outline",
+      type: "line",
+      source: "zone",
+      paint: {
+        "line-color": color,
+        "line-width": 2,
+      },
+    });
+  };
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
     try {
-      let center = DEFAULT_CENTER;
-      let zoom = DEFAULT_ZOOM;
+      let center: [number, number] = DEFAULT_MAP_CENTER;
+      let zoom = DEFAULT_MAP_ZOOM;
 
       if (parsedGeometry?.coordinates?.[0]?.length) {
         const coords = parsedGeometry.coordinates[0];
@@ -90,7 +101,7 @@ export function ZoneFormPreview({
 
       const mapInstance = new maplibregl.Map({
         container: mapContainer.current,
-        style: DARK_STYLE,
+        style: getMapStyle(isDark),
         center,
         zoom,
         attributionControl: false,
@@ -102,40 +113,10 @@ export function ZoneFormPreview({
       mapInstance.on("load", () => {
         setIsLoading(false);
 
-        // Add zone layer if geometry exists
+        addZoneLayer(mapInstance);
+
+        // Fit to bounds
         if (parsedGeometry?.coordinates?.[0]) {
-          setHasGeometry(true);
-
-          mapInstance.addSource("zone", {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              properties: {},
-              geometry: parsedGeometry,
-            },
-          });
-
-          mapInstance.addLayer({
-            id: "zone-fill",
-            type: "fill",
-            source: "zone",
-            paint: {
-              "fill-color": color,
-              "fill-opacity": 0.3,
-            },
-          });
-
-          mapInstance.addLayer({
-            id: "zone-outline",
-            type: "line",
-            source: "zone",
-            paint: {
-              "line-color": color,
-              "line-width": 2,
-            },
-          });
-
-          // Fit to bounds
           const bounds = new maplibregl.LngLatBounds();
           parsedGeometry.coordinates[0].forEach((coord: number[]) => {
             bounds.extend([coord[0], coord[1]]);
@@ -153,6 +134,26 @@ export function ZoneFormPreview({
       setIsLoading(false);
     }
   }, []);
+
+  // Handle runtime theme changes (skip first run - layers added in "load")
+  // In MapLibre v5 diff mode, style.load fires synchronously during setStyle(),
+  // so the listener MUST be registered BEFORE calling setStyle().
+  useEffect(() => {
+    if (!map.current || isLoading) return;
+
+    if (!themeInitRef.current) {
+      themeInitRef.current = true;
+      return;
+    }
+
+    const mapInstance = map.current;
+
+    // Register BEFORE setStyle — style.load may fire synchronously in diff mode
+    mapInstance.once("style.load", () => {
+      addZoneLayer(mapInstance);
+    });
+    mapInstance.setStyle(getMapStyle(isDark));
+  }, [isDark]);
 
   // Update zone color
   useEffect(() => {

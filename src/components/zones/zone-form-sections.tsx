@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Search, Truck } from "lucide-react";
+import { Check, Loader2, Search, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,9 +85,13 @@ export function ZoneFormBasicInfo() {
 
 export function ZoneFormGeometry() {
   const { state, meta, derived } = useZoneForm();
-  const { errors, isSubmitting } = state;
+  const { formData, errors, isSubmitting, selectedVehicleIds } = state;
   const { onGeometryEdit } = meta;
   const { hasValidGeometry } = derived;
+
+  const handleGeometryEdit = () => {
+    onGeometryEdit?.({ formData, vehicleIds: selectedVehicleIds });
+  };
 
   return (
     <div className="space-y-4">
@@ -105,7 +109,7 @@ export function ZoneFormGeometry() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={onGeometryEdit}
+                onClick={handleGeometryEdit}
                 disabled={isSubmitting}
               >
                 Editar en Mapa
@@ -126,7 +130,7 @@ export function ZoneFormGeometry() {
               <Button
                 type="button"
                 variant="default"
-                onClick={onGeometryEdit}
+                onClick={handleGeometryEdit}
                 disabled={isSubmitting}
               >
                 Dibujar en Mapa
@@ -415,7 +419,12 @@ export function ZoneFormActions() {
   return (
     <div className="flex justify-end gap-4 pt-4">
       <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Guardando..." : submitLabel}
+        {isSubmitting ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Guardando
+          </>
+        ) : submitLabel}
       </Button>
     </div>
   );

@@ -78,6 +78,7 @@ export interface ZonesActions {
   setSelectedZoneId: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
   setPendingFormData: (data: Partial<ZoneInput> | null) => void;
+  setEditingZoneVehicleIds: (ids: string[]) => void;
   cancelForm: () => void;
 }
 
@@ -402,6 +403,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     setSelectedZoneId,
     setSearchQuery,
     setPendingFormData,
+    setEditingZoneVehicleIds,
     cancelForm,
   };
 

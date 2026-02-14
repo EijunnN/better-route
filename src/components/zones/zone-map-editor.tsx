@@ -2,9 +2,9 @@
 
 import maplibregl, {
   type Map as MapLibreMap,
-  type StyleSpecification,
+  type GeoJSONSource,
 } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
   Eraser,
@@ -15,36 +15,12 @@ import {
   Undo,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-// CartoDB Dark Matter style for consistency
-const DARK_STYLE: StyleSpecification = {
-  version: 8 as const,
-  sources: {
-    carto: {
-      type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-      ],
-      tileSize: 256,
-      attribution: "&copy; CartoDB &copy; OpenStreetMap",
-    },
-  },
-  layers: [
-    {
-      id: "carto",
-      type: "raster",
-      source: "carto",
-      minzoom: 0,
-      maxzoom: 20,
-    },
-  ],
-};
-
-// Default center (Lima, Peru)
-const DEFAULT_CENTER: [number, number] = [-77.0428, -12.0464];
-const DEFAULT_ZOOM = 11;
+import { useTheme } from "@/components/layout/theme-context";
+import {
+  getMapStyle,
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+} from "@/lib/map-styles";
 
 interface ZoneMapEditorProps {
   initialGeometry?: {
@@ -89,12 +65,10 @@ function findClosedPolygon(
 ): [number, number][] | null {
   if (path.length < 4) return null;
 
-  // Check if the newest segment crosses any previous segment (except adjacent ones)
   const lastIdx = path.length - 1;
   const newSegmentStart = path[lastIdx - 1];
   const newSegmentEnd = path[lastIdx];
 
-  // Check against all segments except the last two (to avoid false positives with adjacent segments)
   for (let i = 0; i < lastIdx - 2; i++) {
     const intersection = lineIntersection(
       path[i],
@@ -104,8 +78,6 @@ function findClosedPolygon(
     );
 
     if (intersection) {
-      // Found intersection! Extract the closed polygon
-      // The polygon is from index i+1 to lastIdx-1, plus the intersection point
       const polygon: [number, number][] = [intersection];
       for (let j = i + 1; j < lastIdx; j++) {
         polygon.push(path[j]);
@@ -142,6 +114,25 @@ function simplifyPath(
   return result;
 }
 
+// Calculate midpoints between consecutive vertices (including last->first for closed polygons)
+function calculateMidpoints(
+  pts: [number, number][],
+): { coord: [number, number]; insertIndex: number }[] {
+  if (pts.length < 2) return [];
+  const mids: { coord: [number, number]; insertIndex: number }[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const next = (i + 1) % pts.length;
+    mids.push({
+      coord: [
+        (pts[i][0] + pts[next][0]) / 2,
+        (pts[i][1] + pts[next][1]) / 2,
+      ],
+      insertIndex: i + 1,
+    });
+  }
+  return mids;
+}
+
 export function ZoneMapEditor({
   initialGeometry,
   zoneColor = "#3B82F6",
@@ -152,6 +143,7 @@ export function ZoneMapEditor({
 }: ZoneMapEditorProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [drawMode, setDrawMode] = useState<DrawMode>("draw");
   const [points, setPoints] = useState<[number, number][]>([]);
@@ -161,25 +153,23 @@ export function ZoneMapEditor({
   );
   const [isDrawingFreehand, setIsDrawingFreehand] = useState(false);
   const [freehandPath, setFreehandPath] = useState<[number, number][]>([]);
+  const [isMapReady, setIsMapReady] = useState(false);
 
-  // Initialize points from initial geometry
-  useEffect(() => {
-    if (initialGeometry?.coordinates?.[0]) {
-      const coords = initialGeometry.coordinates[0].slice(0, -1) as [
-        number,
-        number,
-      ][];
-      setPoints(coords);
-      setIsPolygonClosed(coords.length >= 3);
-      setDrawMode("select");
-    }
-  }, [initialGeometry]);
+  // Skip first run of theme effect (layers are already added in "load" callback)
+  const themeInitRef = useRef(false);
+  const addLayersRef = useRef((_m: MapLibreMap) => {});
 
-  // Initialize map
-  useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+  // Refs for vertex dragging (use refs for smooth performance during mousemove)
+  const draggingVertexRef = useRef<number | null>(null);
+  const draggingMidpointRef = useRef<number | null>(null);
+  const pointsRef = useRef(points);
+  if (draggingVertexRef.current === null) {
+    pointsRef.current = points;
+  }
 
-    const addLayers = (mapInstance: MapLibreMap) => {
+  // Stable function to add all custom layers to the map
+  const addLayers = useCallback(
+    (mapInstance: MapLibreMap) => {
       // Polygon fill
       mapInstance.addSource("polygon", {
         type: "geojson",
@@ -194,6 +184,12 @@ export function ZoneMapEditor({
 
       // Vertices
       mapInstance.addSource("vertices", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      // Midpoints
+      mapInstance.addSource("midpoints", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
@@ -238,7 +234,7 @@ export function ZoneMapEditor({
         type: "line",
         source: "freehand-path",
         paint: {
-          "line-color": "#f59e0b", // Orange while drawing
+          "line-color": "#f59e0b",
           "line-width": 3,
           "line-opacity": 0.9,
         },
@@ -254,6 +250,21 @@ export function ZoneMapEditor({
           "line-width": 2,
           "line-dasharray": [3, 3],
           "line-opacity": 0.7,
+        },
+      });
+
+      // Midpoints layer (smaller circles, more muted)
+      mapInstance.addLayer({
+        id: "midpoints",
+        type: "circle",
+        source: "midpoints",
+        paint: {
+          "circle-radius": 5,
+          "circle-color": zoneColor,
+          "circle-opacity": 0.5,
+          "circle-stroke-width": 1.5,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-opacity": 0.7,
         },
       });
 
@@ -284,11 +295,31 @@ export function ZoneMapEditor({
           "circle-opacity": 0.8,
         },
       });
-    };
+    },
+    [zoneColor],
+  );
+  addLayersRef.current = addLayers;
+
+  // Initialize points from initial geometry
+  useEffect(() => {
+    if (initialGeometry?.coordinates?.[0]) {
+      const coords = initialGeometry.coordinates[0].slice(0, -1) as [
+        number,
+        number,
+      ][];
+      setPoints(coords);
+      setIsPolygonClosed(coords.length >= 3);
+      setDrawMode("select");
+    }
+  }, [initialGeometry]);
+
+  // Initialize map
+  useEffect(() => {
+    if (!mapContainer.current || map.current) return;
 
     try {
-      let center = DEFAULT_CENTER;
-      let zoom = DEFAULT_ZOOM;
+      let center: [number, number] = DEFAULT_MAP_CENTER;
+      let zoom = DEFAULT_MAP_ZOOM;
 
       if (initialGeometry?.coordinates?.[0]?.length) {
         const coords = initialGeometry.coordinates[0];
@@ -303,7 +334,7 @@ export function ZoneMapEditor({
 
       const mapInstance = new maplibregl.Map({
         container: mapContainer.current,
-        style: DARK_STYLE,
+        style: getMapStyle(isDark),
         center,
         zoom,
         attributionControl: false,
@@ -320,6 +351,7 @@ export function ZoneMapEditor({
       mapInstance.on("load", () => {
         setIsLoading(false);
         addLayers(mapInstance);
+        setIsMapReady(true);
 
         if (initialGeometry?.coordinates?.[0]?.length) {
           const bounds = new maplibregl.LngLatBounds();
@@ -333,6 +365,7 @@ export function ZoneMapEditor({
       return () => {
         mapInstance.remove();
         map.current = null;
+        setIsMapReady(false);
       };
     } catch (error) {
       console.error("Failed to initialize map:", error);
@@ -340,20 +373,39 @@ export function ZoneMapEditor({
     }
   }, []);
 
-  // Update polygon layers when points change
+  // React to theme changes at runtime (skip first run - layers added in "load")
+  // In MapLibre v5 diff mode, style.load fires synchronously during setStyle(),
+  // so the listener MUST be registered BEFORE calling setStyle().
   useEffect(() => {
     if (!map.current) return;
 
+    if (!themeInitRef.current) {
+      themeInitRef.current = true;
+      return;
+    }
+
     const mapInstance = map.current;
-    const polygonSource = mapInstance.getSource(
-      "polygon",
-    ) as maplibregl.GeoJSONSource;
+    setIsMapReady(false);
+
+    // Register BEFORE setStyle — style.load may fire synchronously in diff mode
+    mapInstance.once("style.load", () => {
+      addLayersRef.current(mapInstance);
+      setIsMapReady(true);
+    });
+    mapInstance.setStyle(getMapStyle(isDark));
+  }, [isDark]);
+
+  // Update polygon layers when points change
+  useEffect(() => {
+    if (!map.current || !isMapReady) return;
+
+    const mapInstance = map.current;
+    const polygonSource = mapInstance.getSource("polygon") as GeoJSONSource;
     const outlineSource = mapInstance.getSource(
       "polygon-outline",
-    ) as maplibregl.GeoJSONSource;
-    const verticesSource = mapInstance.getSource(
-      "vertices",
-    ) as maplibregl.GeoJSONSource;
+    ) as GeoJSONSource;
+    const verticesSource = mapInstance.getSource("vertices") as GeoJSONSource;
+    const midpointsSource = mapInstance.getSource("midpoints") as GeoJSONSource;
 
     if (!polygonSource || !outlineSource || !verticesSource) return;
 
@@ -366,6 +418,23 @@ export function ZoneMapEditor({
         geometry: { type: "Point" as const, coordinates: point },
       })),
     });
+
+    // Update midpoints (only when polygon is closed)
+    if (midpointsSource) {
+      if (isPolygonClosed && points.length >= 3) {
+        const mids = calculateMidpoints(points);
+        midpointsSource.setData({
+          type: "FeatureCollection",
+          features: mids.map((m) => ({
+            type: "Feature" as const,
+            properties: { insertIndex: m.insertIndex },
+            geometry: { type: "Point" as const, coordinates: m.coord },
+          })),
+        });
+      } else {
+        midpointsSource.setData({ type: "FeatureCollection", features: [] });
+      }
+    }
 
     // Update outline
     if (points.length >= 2) {
@@ -406,7 +475,7 @@ export function ZoneMapEditor({
     } else {
       polygonSource.setData({ type: "FeatureCollection", features: [] });
     }
-  }, [points, isPolygonClosed]);
+  }, [points, isPolygonClosed, isMapReady]);
 
   // Update freehand path visualization while drawing
   useEffect(() => {
@@ -414,7 +483,7 @@ export function ZoneMapEditor({
 
     const freehandSource = map.current.getSource(
       "freehand-path",
-    ) as maplibregl.GeoJSONSource;
+    ) as GeoJSONSource;
     if (!freehandSource) return;
 
     if (isDrawingFreehand && freehandPath.length >= 2) {
@@ -439,10 +508,9 @@ export function ZoneMapEditor({
 
     const previewSource = map.current.getSource(
       "preview-line",
-    ) as maplibregl.GeoJSONSource;
+    ) as GeoJSONSource;
     if (!previewSource) return;
 
-    // Show preview line only in draw mode (not freehand), with points, not closed
     if (
       drawMode === "draw" &&
       points.length > 0 &&
@@ -462,7 +530,6 @@ export function ZoneMapEditor({
         },
       ];
 
-      // If we have 3+ points, also show line to first point (to visualize closing)
       if (points.length >= 3) {
         features.push({
           type: "Feature",
@@ -483,32 +550,104 @@ export function ZoneMapEditor({
     }
   }, [mousePosition, points, drawMode, isPolygonClosed]);
 
-  // Handle mouse move
+  // Handle mouse move - freehand drawing + vertex dragging
   useEffect(() => {
     if (!map.current) return;
     const mapInstance = map.current;
 
     const handleMouseMove = (e: maplibregl.MapMouseEvent) => {
-      setMousePosition([e.lngLat.lng, e.lngLat.lat]);
+      const lngLat: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+      setMousePosition(lngLat);
+
+      // Vertex or midpoint dragging (select mode)
+      if (draggingVertexRef.current !== null) {
+        const idx = draggingVertexRef.current;
+        const newPoints = [...pointsRef.current];
+        newPoints[idx] = lngLat;
+        pointsRef.current = newPoints;
+
+        // Update the map sources directly for smooth visuals (no setState per frame)
+        const verticesSource = mapInstance.getSource("vertices") as GeoJSONSource;
+        const outlineSource = mapInstance.getSource("polygon-outline") as GeoJSONSource;
+        const polygonSource = mapInstance.getSource("polygon") as GeoJSONSource;
+        const midpointsSource = mapInstance.getSource("midpoints") as GeoJSONSource;
+
+        if (verticesSource) {
+          verticesSource.setData({
+            type: "FeatureCollection",
+            features: newPoints.map((pt, i) => ({
+              type: "Feature" as const,
+              properties: { index: i },
+              geometry: { type: "Point" as const, coordinates: pt },
+            })),
+          });
+        }
+        if (outlineSource && newPoints.length >= 2) {
+          const coords = [...newPoints];
+          if (newPoints.length >= 3) coords.push(newPoints[0]);
+          outlineSource.setData({
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              properties: {},
+              geometry: { type: "LineString", coordinates: coords },
+            }],
+          });
+        }
+        if (polygonSource && newPoints.length >= 3) {
+          polygonSource.setData({
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              properties: {},
+              geometry: { type: "Polygon", coordinates: [[...newPoints, newPoints[0]]] },
+            }],
+          });
+        }
+        if (midpointsSource && newPoints.length >= 3) {
+          const mids = calculateMidpoints(newPoints);
+          midpointsSource.setData({
+            type: "FeatureCollection",
+            features: mids.map((m) => ({
+              type: "Feature" as const,
+              properties: { insertIndex: m.insertIndex },
+              geometry: { type: "Point" as const, coordinates: m.coord },
+            })),
+          });
+        }
+        return;
+      }
+
+      // Hover cursor for vertices/midpoints in select mode
+      if (drawMode === "select" && draggingVertexRef.current === null) {
+        if (!mapInstance.getLayer("vertices")) return;
+        const vertexFeatures = mapInstance.queryRenderedFeatures(e.point, {
+          layers: ["vertices", "first-vertex"],
+        });
+        const midpointFeatures = mapInstance.getLayer("midpoints")
+          ? mapInstance.queryRenderedFeatures(e.point, { layers: ["midpoints"] })
+          : [];
+        if (vertexFeatures.length > 0 || midpointFeatures.length > 0) {
+          mapInstance.getCanvas().style.cursor = "grab";
+        } else {
+          mapInstance.getCanvas().style.cursor = "";
+        }
+      }
 
       // If freehand drawing is active, add points and check for self-intersection
       if (isDrawingFreehand && drawMode === "freehand") {
-        const newPoint: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+        const newPoint: [number, number] = lngLat;
 
         setFreehandPath((prev) => {
           const newPath = [...prev, newPoint];
 
-          // Check if the path crossed itself (Snake.io style!)
           const closedPolygon = findClosedPolygon(newPath);
           if (closedPolygon && closedPolygon.length >= 3) {
-            // Found a closed area! Use it as the polygon
-            // Calculate tolerance based on zoom level
             const zoom = mapInstance.getZoom();
             const tolerance = 0.00005 * Math.pow(2, 15 - zoom);
             const simplified = simplifyPath(closedPolygon, tolerance);
 
             if (simplified.length >= 3) {
-              // Set the polygon and stop drawing
               setTimeout(() => {
                 setPoints(simplified);
                 setIsPolygonClosed(true);
@@ -530,6 +669,126 @@ export function ZoneMapEditor({
       mapInstance.off("mousemove", handleMouseMove);
     };
   }, [isDrawingFreehand, drawMode]);
+
+  // Handle vertex/midpoint dragging (mousedown/mouseup) in select mode
+  useEffect(() => {
+    if (!map.current || drawMode !== "select") return;
+    const mapInstance = map.current;
+
+    const handleMouseDown = (e: maplibregl.MapMouseEvent) => {
+      // Guard: layers may not exist during theme transition
+      if (!mapInstance.getLayer("vertices")) return;
+
+      // Check if clicking on a vertex
+      const vertexFeatures = mapInstance.queryRenderedFeatures(e.point, {
+        layers: ["vertices", "first-vertex"],
+      });
+      if (vertexFeatures.length > 0) {
+        const idx = vertexFeatures[0].properties?.index;
+        if (typeof idx === "number") {
+          e.preventDefault();
+          draggingVertexRef.current = idx;
+          draggingMidpointRef.current = null;
+          mapInstance.dragPan.disable();
+          mapInstance.getCanvas().style.cursor = "grabbing";
+          return;
+        }
+      }
+
+      // Check if clicking on a midpoint
+      if (!mapInstance.getLayer("midpoints")) return;
+      const midpointFeatures = mapInstance.queryRenderedFeatures(e.point, {
+        layers: ["midpoints"],
+      });
+      if (midpointFeatures.length > 0) {
+        const insertIndex = midpointFeatures[0].properties?.insertIndex;
+        if (typeof insertIndex === "number") {
+          e.preventDefault();
+          // Insert a new vertex at this position (ref only - no setState to avoid
+          // the render effect overwriting drag visuals)
+          const lngLat: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+          const newPoints = [...pointsRef.current];
+          newPoints.splice(insertIndex, 0, lngLat);
+          pointsRef.current = newPoints;
+
+          // Update sources directly so the new vertex appears immediately
+          const verticesSource = mapInstance.getSource("vertices") as GeoJSONSource;
+          const outlineSource = mapInstance.getSource("polygon-outline") as GeoJSONSource;
+          const polygonSource = mapInstance.getSource("polygon") as GeoJSONSource;
+          const midpointsSource = mapInstance.getSource("midpoints") as GeoJSONSource;
+          if (verticesSource) {
+            verticesSource.setData({
+              type: "FeatureCollection",
+              features: newPoints.map((pt, i) => ({
+                type: "Feature" as const,
+                properties: { index: i },
+                geometry: { type: "Point" as const, coordinates: pt },
+              })),
+            });
+          }
+          if (outlineSource) {
+            const coords = [...newPoints];
+            if (newPoints.length >= 3) coords.push(newPoints[0]);
+            outlineSource.setData({
+              type: "FeatureCollection",
+              features: [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } }],
+            });
+          }
+          if (polygonSource && newPoints.length >= 3) {
+            polygonSource.setData({
+              type: "FeatureCollection",
+              features: [{ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[...newPoints, newPoints[0]]] } }],
+            });
+          }
+          if (midpointsSource) {
+            const mids = calculateMidpoints(newPoints);
+            midpointsSource.setData({
+              type: "FeatureCollection",
+              features: mids.map((m) => ({
+                type: "Feature" as const,
+                properties: { insertIndex: m.insertIndex },
+                geometry: { type: "Point" as const, coordinates: m.coord },
+              })),
+            });
+          }
+
+          // Start dragging the newly inserted vertex (commit on mouseup)
+          draggingVertexRef.current = insertIndex;
+          draggingMidpointRef.current = null;
+          mapInstance.dragPan.disable();
+          mapInstance.getCanvas().style.cursor = "grabbing";
+          return;
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (draggingVertexRef.current !== null) {
+        // Commit the final position
+        setPoints([...pointsRef.current]);
+        draggingVertexRef.current = null;
+        draggingMidpointRef.current = null;
+        mapInstance.dragPan.enable();
+        mapInstance.getCanvas().style.cursor = "";
+      }
+    };
+
+    mapInstance.on("mousedown", handleMouseDown);
+    mapInstance.on("mouseup", handleMouseUp);
+    // Also stop drag if mouse leaves the map
+    mapInstance.on("mouseout", handleMouseUp);
+
+    return () => {
+      mapInstance.off("mousedown", handleMouseDown);
+      mapInstance.off("mouseup", handleMouseUp);
+      mapInstance.off("mouseout", handleMouseUp);
+      // Ensure dragPan is re-enabled on cleanup
+      if (draggingVertexRef.current !== null) {
+        mapInstance.dragPan.enable();
+        draggingVertexRef.current = null;
+      }
+    };
+  }, [drawMode]);
 
   // Handle map clicks for point mode
   useEffect(() => {
@@ -591,11 +850,9 @@ export function ZoneMapEditor({
     const handleMouseDown = (e: maplibregl.MapMouseEvent) => {
       if (isPolygonClosed) return;
 
-      // Clear any existing polygon when starting new freehand
       setPoints([]);
       setIsPolygonClosed(false);
 
-      // Disable map dragging during freehand
       mapInstance.dragPan.disable();
       setIsDrawingFreehand(true);
       setFreehandPath([[e.lngLat.lng, e.lngLat.lat]]);
@@ -606,9 +863,6 @@ export function ZoneMapEditor({
 
       mapInstance.dragPan.enable();
       setIsDrawingFreehand(false);
-
-      // If we haven't closed a polygon yet, just clear the path
-      // (the polygon would have been set in the mousemove handler if it closed)
       setFreehandPath([]);
     };
 
@@ -632,7 +886,7 @@ export function ZoneMapEditor({
     if (drawMode === "draw") {
       canvas.style.cursor = "crosshair";
     } else if (drawMode === "freehand") {
-      canvas.style.cursor = isDrawingFreehand ? "crosshair" : "crosshair";
+      canvas.style.cursor = "crosshair";
     } else if (drawMode === "delete") {
       canvas.style.cursor = "pointer";
     } else {
@@ -705,7 +959,7 @@ export function ZoneMapEditor({
           variant={drawMode === "freehand" ? "default" : "ghost"}
           size="sm"
           onClick={() => switchMode("freehand")}
-          title="Dibujo libre (lápiz)"
+          title="Dibujo libre (lapiz)"
           className="h-9 w-9 p-0"
         >
           <Pencil className="h-4 w-4" />
@@ -757,8 +1011,8 @@ export function ZoneMapEditor({
         )}
         {drawMode === "freehand" && !isPolygonClosed && !isDrawingFreehand && (
           <span>
-            <strong>Modo Lápiz:</strong> Mantén presionado y dibuja. Cuando
-            cruces tu trazo, se cerrará la zona automáticamente.
+            <strong>Modo Lapiz:</strong> Manten presionado y dibuja. Cuando
+            cruces tu trazo, se cerrara la zona automaticamente.
           </span>
         )}
         {drawMode === "freehand" && isDrawingFreehand && (
@@ -774,7 +1028,7 @@ export function ZoneMapEditor({
         {drawMode === "select" && (
           <span>
             {isPolygonClosed
-              ? "✓ Polígono cerrado. Puedes guardar o seguir editando."
+              ? "Arrastra los puntos para ajustar la forma. Los puntos pequenos agregan nuevos vertices."
               : "Selecciona una herramienta para empezar a dibujar."}
           </span>
         )}
