@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useOrderForm } from "./order-form-context";
@@ -235,11 +236,19 @@ export function OrderFormTimeWindow() {
 
       <div className="mt-3">
         <Label htmlFor="promisedDate">Fecha Prometida</Label>
-        <Input
+        <DatePicker
           id="promisedDate"
-          type="date"
-          value={formData.promisedDate}
-          onChange={(e) => handleChange("promisedDate", e.target.value)}
+          value={(() => {
+            if (!formData.promisedDate) return null;
+            const d = new Date(formData.promisedDate);
+            return isNaN(d.getTime()) ? null : d;
+          })()}
+          onChange={(date) =>
+            handleChange(
+              "promisedDate",
+              date ? date.toISOString().split("T")[0] : "",
+            )
+          }
         />
       </div>
     </div>
