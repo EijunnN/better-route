@@ -8,6 +8,7 @@ Una alternativa open-source a SimpliRoute, OptimoRoute y LogiNext — sin costos
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
 ![VROOM](https://img.shields.io/badge/VROOM-1.14-green)
+![License](https://img.shields.io/badge/License-MIT-yellow?logo=opensourceinitiative)
 
 ---
 
@@ -26,6 +27,8 @@ Una alternativa open-source a SimpliRoute, OptimoRoute y LogiNext — sin costos
 - [App Movil](#app-movil)
 - [Changelog](#changelog)
 - [Roadmap](#roadmap)
+- [Contribuir](#contribuir)
+- [Licencia](#licencia)
 
 ---
 
@@ -596,6 +599,18 @@ flutter build apk --release
 - [Drizzle ORM](https://orm.drizzle.team/) — ORM TypeScript
 - [shadcn/ui](https://ui.shadcn.com/) — Componentes UI
 - [MapLibre](https://maplibre.org/) — Mapas open-source
+
+---
+
+## Contribuir
+
+Las contribuciones son bienvenidas. Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para conocer las convenciones del proyecto y como enviar tu primer Pull Request.
+
+---
+
+## Licencia
+
+Este proyecto esta licenciado bajo la [Licencia MIT](LICENSE).
 
 ---
 
