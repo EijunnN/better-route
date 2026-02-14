@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { CreateUserInput } from "@/lib/validations/user";
 
@@ -47,13 +47,6 @@ export interface CustomRole {
   isSystem: boolean;
 }
 
-export interface Company {
-  id: string;
-  legalName: string;
-  commercialName: string;
-  active: boolean;
-}
-
 export const ROLE_TABS = [
   { key: "all", label: "Todos" },
   { key: "ADMIN_SISTEMA", label: "Admin Sistema" },
@@ -78,14 +71,12 @@ export interface UsersState {
   users: User[];
   fleets: Fleet[];
   roles: CustomRole[];
-  companies: Company[];
   isLoading: boolean;
   showForm: boolean;
   showImportDialog: boolean;
   editingUser: User | null;
   editingUserRoleIds: string[];
   activeTab: string;
-  selectedCompanyId: string | null;
   deletingId: string | null;
 }
 
@@ -99,7 +90,6 @@ export interface UsersActions {
   setShowForm: (show: boolean) => void;
   setShowImportDialog: (show: boolean) => void;
   setActiveTab: (tab: string) => void;
-  setSelectedCompanyId: (id: string | null) => void;
   cancelForm: () => void;
 }
 
@@ -128,25 +118,23 @@ interface UsersContextValue {
 const UsersContext = createContext<UsersContextValue | undefined>(undefined);
 
 export function UsersProvider({ children }: { children: ReactNode }) {
-  const { user: authUser, companyId: authCompanyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId,
+    isSystemAdmin,
+    isReady,
+  } = useCompanyContext();
   const { toast } = useToast();
 
   const [users, setUsers] = useState<User[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [roles, setRoles] = useState<CustomRole[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingUserRoleIds, setEditingUserRoleIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("all");
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const isSystemAdmin = authUser?.role === "ADMIN_SISTEMA";
-  const effectiveCompanyId =
-    isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;
 
   const fetchUsers = useCallback(async () => {
     if (!effectiveCompanyId) return;
@@ -190,19 +178,6 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     }
   }, [effectiveCompanyId]);
 
-  const fetchCompanies = useCallback(async () => {
-    if (!isSystemAdmin) return;
-    try {
-      const response = await fetch("/api/companies?active=true", {
-        credentials: "include",
-      });
-      const data = await response.json();
-      setCompanies(data.data || []);
-    } catch (error) {
-      console.error("Error fetching companies:", error);
-    }
-  }, [isSystemAdmin]);
-
   const fetchUserRoles = useCallback(
     async (userId: string) => {
       if (!effectiveCompanyId) return [];
@@ -219,20 +194,6 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     },
     [effectiveCompanyId]
   );
-
-  // Fetch companies for system admins
-  useEffect(() => {
-    if (isSystemAdmin) {
-      fetchCompanies();
-    }
-  }, [isSystemAdmin, fetchCompanies]);
-
-  // Auto-select first company for system admins
-  useEffect(() => {
-    if (isSystemAdmin && !authCompanyId && !selectedCompanyId && companies.length > 0) {
-      setSelectedCompanyId(companies[0].id);
-    }
-  }, [isSystemAdmin, authCompanyId, selectedCompanyId, companies]);
 
   // Fetch fleets and roles when company changes
   useEffect(() => {
@@ -432,14 +393,12 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     users,
     fleets,
     roles,
-    companies,
     isLoading,
     showForm,
     showImportDialog,
     editingUser,
     editingUserRoleIds,
     activeTab,
-    selectedCompanyId,
     deletingId,
   };
 
@@ -452,14 +411,13 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     setShowForm,
     setShowImportDialog,
     setActiveTab,
-    setSelectedCompanyId,
     cancelForm,
   };
 
   const meta: UsersMeta = {
-    authUser,
-    authCompanyId,
-    isAuthLoading,
+    authUser: null,
+    authCompanyId: null,
+    isAuthLoading: !isReady,
     isSystemAdmin,
     effectiveCompanyId,
   };

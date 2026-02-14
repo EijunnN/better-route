@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Role {
@@ -35,13 +35,6 @@ export interface RolePermissionsResponse {
   permissions: GroupedPermissions;
 }
 
-export interface Company {
-  id: string;
-  legalName: string;
-  commercialName: string;
-  active: boolean;
-}
-
 export const CATEGORY_LABELS: Record<string, string> = {
   ORDERS: "Pedidos",
   VEHICLES: "Vehículos",
@@ -57,8 +50,6 @@ export const CATEGORY_LABELS: Record<string, string> = {
 
 export interface RolesState {
   roles: Role[];
-  companies: Company[];
-  selectedCompanyId: string | null;
   isLoading: boolean;
   showForm: boolean;
   selectedRole: Role | null;
@@ -76,7 +67,6 @@ export interface RolesActions {
   handleDeleteRole: (id: string) => Promise<void>;
   handleTogglePermission: (permissionId: string, enabled: boolean) => Promise<void>;
   handleToggleAllInCategory: (category: string, enable: boolean) => Promise<void>;
-  setSelectedCompanyId: (id: string | null) => void;
   setShowForm: (show: boolean) => void;
   setSelectedRole: (role: Role | null) => void;
   setFormData: (data: { name: string; description: string }) => void;
@@ -100,12 +90,14 @@ interface RolesContextValue {
 const RolesContext = createContext<RolesContextValue | undefined>(undefined);
 
 export function RolesProvider({ children }: { children: ReactNode }) {
-  const { user: authUser, companyId: authCompanyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    effectiveCompanyId,
+    isSystemAdmin,
+    isReady,
+  } = useCompanyContext();
   const { toast } = useToast();
 
   const [roles, setRoles] = useState<Role[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -115,20 +107,6 @@ export function RolesProvider({ children }: { children: ReactNode }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: "", description: "" });
   const [formError, setFormError] = useState("");
-
-  const isSystemAdmin = authUser?.role === "ADMIN_SISTEMA";
-  const effectiveCompanyId = isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;
-
-  const fetchCompanies = useCallback(async () => {
-    if (!isSystemAdmin) return;
-    try {
-      const response = await fetch("/api/companies?active=true", { credentials: "include" });
-      const data = await response.json();
-      setCompanies(data.data || []);
-    } catch (error) {
-      console.error("Error fetching companies:", error);
-    }
-  }, [isSystemAdmin]);
 
   const fetchRoles = useCallback(async () => {
     if (!effectiveCompanyId) return;
@@ -163,16 +141,6 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     },
     [effectiveCompanyId]
   );
-
-  useEffect(() => {
-    if (isSystemAdmin) fetchCompanies();
-  }, [isSystemAdmin, fetchCompanies]);
-
-  useEffect(() => {
-    if (isSystemAdmin && !authCompanyId && !selectedCompanyId && companies.length > 0) {
-      setSelectedCompanyId(companies[0].id);
-    }
-  }, [isSystemAdmin, authCompanyId, selectedCompanyId, companies]);
 
   useEffect(() => {
     if (effectiveCompanyId) {
@@ -358,8 +326,6 @@ export function RolesProvider({ children }: { children: ReactNode }) {
 
   const state: RolesState = {
     roles,
-    companies,
-    selectedCompanyId,
     isLoading,
     showForm,
     selectedRole,
@@ -377,14 +343,13 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     handleDeleteRole,
     handleTogglePermission,
     handleToggleAllInCategory,
-    setSelectedCompanyId,
     setShowForm,
     setSelectedRole,
     setFormData,
     resetForm,
   };
 
-  const meta: RolesMeta = { authUser, authCompanyId, isAuthLoading, isSystemAdmin, effectiveCompanyId };
+  const meta: RolesMeta = { authUser: null, authCompanyId: null, isAuthLoading: !isReady, isSystemAdmin, effectiveCompanyId };
 
   return <RolesContext value={{ state, actions, meta }}>{children}</RolesContext>;
 }

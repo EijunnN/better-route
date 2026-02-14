@@ -4,7 +4,6 @@ export type {
   User,
   Fleet,
   CustomRole,
-  Company,
   UsersState,
   UsersActions,
   UsersMeta,

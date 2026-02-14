@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Loader2, Trash2, Upload } from "lucide-react";
+import { Loader2, Trash2, Upload } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,16 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserForm } from "@/components/users/user-form";
 import { UserImportDialog } from "@/components/users/user-import-dialog";
@@ -78,48 +69,6 @@ export function UsersListView() {
           </Button>
         </div>
       </div>
-
-      {/* Loading companies message for system admins */}
-      {meta.isSystemAdmin && state.companies.length === 0 && (
-        <Card>
-          <CardContent className="flex items-center gap-4 py-3">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
-            <span className="text-sm text-muted-foreground">Cargando empresas...</span>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Company selector for system admins */}
-      {meta.isSystemAdmin && state.companies.length > 0 && (
-        <Card>
-          <CardContent className="flex items-center gap-4 py-3">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Building2 className="h-4 w-4" />
-              <span className="text-sm font-medium">Empresa:</span>
-            </div>
-            <Select
-              value={state.selectedCompanyId || meta.authCompanyId || ""}
-              onValueChange={(value) => actions.setSelectedCompanyId(value || null)}
-            >
-              <SelectTrigger className="w-[300px]">
-                <SelectValue placeholder="Seleccionar empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                {state.companies.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.commercialName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {state.selectedCompanyId && state.selectedCompanyId !== meta.authCompanyId && (
-              <Badge variant="secondary" className="text-xs">
-                Viendo otra empresa
-              </Badge>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Role Tabs */}
       <Tabs value={state.activeTab} onValueChange={actions.setActiveTab}>

@@ -4,7 +4,6 @@ export type {
   Permission,
   GroupedPermissions,
   RolePermissionsResponse,
-  Company,
   RolesState,
   RolesActions,
   RolesMeta,
