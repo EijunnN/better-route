@@ -25,7 +25,6 @@ Una alternativa open-source a SimpliRoute, OptimoRoute y LogiNext — sin costos
 - [Base de Datos](#base-de-datos)
 - [API Reference](#api-reference)
 - [App Movil](#app-movil)
-- [Changelog](#changelog)
 - [Roadmap](#roadmap)
 - [Contribuir](#contribuir)
 - [Licencia](#licencia)
@@ -436,7 +435,7 @@ X-Company-Id: <uuid>  # Para endpoints multi-tenant
 
 ## App Movil
 
-La app movil esta en un repositorio separado (Flutter).
+La app movil esta en un repositorio separado: [better-route-mobile](https://github.com/EijunnN/better-route-mobile) (Flutter).
 
 ### Caracteristicas
 - Lista de paradas del dia
@@ -473,101 +472,19 @@ flutter build apk --release
 
 ---
 
-## Changelog
-
-### [0.1.0] - 2025-02-02
-
-#### Agregado
-- Sistema de permisos RBAC completo con normalizacion
-- Filtrado de sidebar segun permisos del usuario
-- Tabla `driver_locations` para tracking GPS
-- Endpoint `POST /api/mobile/driver/location`
-- GeoJSON con ubicacion de conductores en monitoreo
-- Tracking service en app Flutter con cola offline
-
-#### Cambiado
-- Refactor de todas las paginas con patron de composicion Vercel
-- Navegacion del sidebar con submenues colapsables
-- Reorganizacion de src/lib siguiendo Clean Architecture
-
-#### Corregido
-- Permisos para roles MONITOR y otros roles no-admin
-- Headers CSV dinamicos segun perfil de empresa
-- Restricciones de valorizado pasadas correctamente a VROOM
-
-### [0.0.9] - 2025-01-26
-
-#### Agregado
-- Asignacion de habilidades a vehiculos
-- SDK de S3 para Cloudflare R2
-
-### [0.0.8] - 2025-01-21
-
-#### Agregado
-- APIs mobile para app Flutter
-- Confirmacion de plan con creacion de route_stops
-
-### [0.0.7] - 2025-01-19
-
-#### Agregado
-- Evidencia fotografica en entregas
-- Sistema de motivos de no entrega
-- Ventanas horarias en importacion CSV
-
-### [0.0.6] - 2025-01-16
-
-#### Agregado
-- Sistema multi-empresa con perfiles de optimizacion
-- Modal de edicion de plan con selector de conductores
-- Exportacion a Excel
-
-### [0.0.5] - 2025-01-14
-
-#### Agregado
-- Dashboard con metricas
-- Monitoreo en mapa con MapLibre
-- Gestion de flotas y conductores
-
-### [0.0.1] - 2025-01-01
-
-#### Agregado
-- Proyecto inicial con Next.js 16
-- Integracion VROOM/OSRM
-- Importacion de pedidos CSV
-- Optimizacion basica de rutas
-
----
-
 ## Roadmap
 
-### Q1 2025
-- [x] Sistema base de optimizacion
-- [x] Gestion de flotas y conductores
-- [x] App movil basica
-- [x] Sistema de permisos RBAC
-- [x] Tracking GPS basico
-- [ ] Tracking GPS en tiempo real (SSE)
-- [ ] Rediseno de pagina de monitoreo
+### Integracion PyVRP
+Migrar el motor de optimizacion de VROOM a [PyVRP](https://github.com/PyVRP/PyVRP) para obtener mayor control sobre los algoritmos de ruteo, soporte nativo de restricciones avanzadas y mejor rendimiento en instancias grandes.
 
-### Q2 2025
-- [ ] Alertas y notificaciones push
-- [ ] Reportes avanzados y analytics
-- [ ] Integracion con ERPs (SAP, Odoo)
-- [ ] API publica documentada (OpenAPI)
-- [ ] Webhooks para integraciones
+### Sistema mas custom
+Hacer la plataforma mas configurable y adaptable a distintos tipos de operacion logistica. *(Detalles por definir)*
 
-### Q3 2025
-- [ ] Optimizacion multi-dia
-- [ ] Rutas recurrentes/plantillas
-- [ ] App para clientes (tracking de pedido)
-- [ ] Firma digital de recepcion
-- [ ] Soporte multi-idioma
+### Personalizacion de pedidos
+Permitir a cada empresa definir campos personalizados en sus pedidos, reglas de validacion propias y flujos de importacion adaptados a su operacion.
 
-### Q4 2025
-- [ ] Machine Learning para ETAs
-- [ ] Prediccion de demanda
-- [ ] Optimizacion dinamica (re-routing)
-- [ ] Marketplace de integraciones
+### App Movil — [better-route-mobile](https://github.com/EijunnN/better-route-mobile)
+Evolucionar la app Flutter con nuevas funcionalidades: tracking GPS en tiempo real (SSE), firma digital de recepcion, modo offline mejorado y notificaciones push.
 
 ---
 
