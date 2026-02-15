@@ -8,7 +8,7 @@ import {
   Loader2,
   Upload,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -107,13 +108,28 @@ interface PlanConfirmationDialogProps {
 function formatDateInput(dateStr?: string): string {
   if (!dateStr) {
     const now = new Date();
-    return now.toISOString().split("T")[0];
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
   }
-  try {
-    return new Date(dateStr).toISOString().split("T")[0];
-  } catch {
-    return new Date().toISOString().split("T")[0];
-  }
+  // Handle both "2026-02-15" and "2026-02-15T00:00:00.000Z"
+  return dateStr.slice(0, 10);
+}
+
+function parseDateString(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+function dateToString(date: Date | null): string {
+  if (!date) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function formatDuration(seconds: number): string {
@@ -234,9 +250,12 @@ export function PlanConfirmationDialog({
     }));
   };
 
-  const handleConfirm = async () => {
-    if (!validationResult?.canConfirm) return;
+  const confirmingRef = useRef(false);
 
+  const handleConfirm = async () => {
+    if (!validationResult?.canConfirm || confirmingRef.current) return;
+
+    confirmingRef.current = true;
     setIsConfirming(true);
     setError(null);
 
@@ -260,13 +279,17 @@ export function PlanConfirmationDialog({
 
       if (!response.ok) {
         const data = await response.json();
+        // 409 "already confirmed" means the plan IS confirmed — treat as success
+        if (response.status === 409 && data.error?.includes("already")) {
+          onOpenChange(false);
+          onConfirmed?.();
+          return;
+        }
         throw new Error(data.error || "Error al confirmar el plan");
       }
 
       onOpenChange(false);
-      if (onConfirmed) {
-        onConfirmed();
-      }
+      onConfirmed?.();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Error al confirmar el plan"
@@ -274,6 +297,7 @@ export function PlanConfirmationDialog({
       await validatePlan();
     } finally {
       setIsConfirming(false);
+      confirmingRef.current = false;
     }
   };
 
@@ -377,33 +401,29 @@ export function PlanConfirmationDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label
-                    htmlFor="start-date"
                     className="text-xs text-muted-foreground uppercase"
                   >
                     Fecha de inicio
                   </Label>
-                  <div className="relative mt-1">
-                    <Input
-                      id="start-date"
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
+                  <div className="mt-1">
+                    <DatePicker
+                      value={parseDateString(startDate)}
+                      onChange={(date) => setStartDate(dateToString(date))}
+                      placeholder="Seleccionar fecha"
                     />
                   </div>
                 </div>
                 <div>
                   <Label
-                    htmlFor="end-date"
                     className="text-xs text-muted-foreground uppercase"
                   >
                     Fecha de término
                   </Label>
-                  <div className="relative mt-1">
-                    <Input
-                      id="end-date"
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
+                  <div className="mt-1">
+                    <DatePicker
+                      value={parseDateString(endDate)}
+                      onChange={(date) => setEndDate(dateToString(date))}
+                      placeholder="Seleccionar fecha"
                     />
                   </div>
                 </div>

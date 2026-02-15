@@ -1,10 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationConfigurations } from "@/db/schema";
+import { optimizationConfigurations, optimizationJobs, orders } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
+import type { OptimizationResult } from "@/lib/optimization/optimization-runner";
 import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-config";
 
 function extractTenantContext(request: NextRequest) {
@@ -187,6 +188,59 @@ export async function DELETE(
       );
     }
 
+    // If plan was CONFIRMED, revert assigned orders back to PENDING
+    let ordersReverted = 0;
+    if (existing.status === "CONFIRMED") {
+      // Find the completed job to get the result with order IDs
+      const [job] = await db
+        .select({ id: optimizationJobs.id, result: optimizationJobs.result })
+        .from(optimizationJobs)
+        .where(
+          and(
+            eq(optimizationJobs.configurationId, id),
+            eq(optimizationJobs.status, "COMPLETED"),
+          ),
+        )
+        .limit(1);
+
+      if (job?.result) {
+        try {
+          const result = JSON.parse(job.result) as OptimizationResult;
+          const assignedOrderIds: string[] = [];
+
+          for (const route of result.routes || []) {
+            for (const stop of route.stops) {
+              if (stop.groupedOrderIds && stop.groupedOrderIds.length > 0) {
+                assignedOrderIds.push(...stop.groupedOrderIds);
+              } else {
+                assignedOrderIds.push(stop.orderId);
+              }
+            }
+          }
+
+          if (assignedOrderIds.length > 0) {
+            const updateResult = await db
+              .update(orders)
+              .set({ status: "PENDING", updatedAt: new Date() })
+              .where(
+                and(
+                  inArray(orders.id, assignedOrderIds),
+                  eq(orders.companyId, tenantCtx.companyId),
+                  eq(orders.status, "ASSIGNED"),
+                ),
+              );
+            ordersReverted = assignedOrderIds.length;
+            console.log(
+              `[Delete Plan] Reverted ${ordersReverted} orders from ASSIGNED to PENDING`,
+            );
+          }
+        } catch {
+          console.error("[Delete Plan] Failed to parse job result for order reversion");
+        }
+      }
+    }
+
+    // Delete configuration (cascades to jobs → route_stops → history, plan_metrics, etc.)
     await db
       .delete(optimizationConfigurations)
       .where(eq(optimizationConfigurations.id, id));
@@ -194,9 +248,10 @@ export async function DELETE(
     // Log deletion
     await logDelete("optimization_configuration", id, {
       name: existing.name,
+      ordersReverted,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, ordersReverted });
   } catch (error) {
     console.error("Error deleting optimization configuration:", error);
     return NextResponse.json(

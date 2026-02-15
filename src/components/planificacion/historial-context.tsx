@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useCompanyContext } from "@/hooks/use-company-context";
+import { useToast } from "@/hooks/use-toast";
 
 // Types
 export interface OptimizationJob {
@@ -86,6 +87,7 @@ export interface HistorialActions {
   toggleJobSelection: (jobId: string) => void;
   clearSelection: () => void;
   handleReoptimize: (job: OptimizationJob) => void;
+  handleDelete: (job: OptimizationJob) => Promise<void>;
   navigateToResults: (job: OptimizationJob) => void;
 }
 
@@ -129,6 +131,7 @@ export interface HistorialProviderProps {
 
 export function HistorialProvider({ children }: HistorialProviderProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const {
     effectiveCompanyId: companyId,
     isReady,
@@ -227,6 +230,37 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     [router]
   );
 
+  const handleDelete = useCallback(
+    async (job: OptimizationJob) => {
+      if (!companyId || !job.configurationId) return;
+      try {
+        const response = await fetch(
+          `/api/optimization/configure/${job.configurationId}`,
+          {
+            method: "DELETE",
+            headers: { "x-company-id": companyId },
+          }
+        );
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Error al eliminar el plan");
+        }
+        toast({
+          title: "Plan eliminado",
+          description: "El plan ha sido eliminado exitosamente.",
+        });
+        await loadJobs();
+      } catch (err) {
+        toast({
+          title: "Error al eliminar",
+          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+          variant: "destructive",
+        });
+      }
+    },
+    [companyId, loadJobs, toast]
+  );
+
   const navigateToResults = useCallback(
     (job: OptimizationJob) => {
       router.push(`/planificacion/${job.configurationId}/results?jobId=${job.id}`);
@@ -272,6 +306,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     toggleJobSelection,
     clearSelection,
     handleReoptimize,
+    handleDelete,
     navigateToResults,
   };
 

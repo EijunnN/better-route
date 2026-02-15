@@ -267,63 +267,24 @@ function ResultsPageContent() {
     router.push(`/planificacion/${configId}/results?reoptimize=true`);
   };
 
-  const [isConfirming, setIsConfirming] = useState(false);
   const [showPostConfirmDialog, setShowPostConfirmDialog] = useState(false);
-  const [confirmationData, setConfirmationData] = useState<{
-    ordersAssigned: number;
-  } | null>(null);
   const { toast } = useToast();
 
-  const handleConfirm = async () => {
-    if (!jobId || !companyId) return;
-
-    setIsConfirming(true);
-    try {
-      const response = await fetch(`/api/optimization/jobs/${jobId}/confirm`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify({ overrideWarnings: true }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast({
-          title: "Error al confirmar",
-          description: data.error || "No se pudo confirmar el plan",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Show success toast and post-confirm dialog
-      toast({
-        title: "Plan confirmado",
-        description: `${data.ordersAssigned} pedidos asignados exitosamente`,
-      });
-
-      setConfirmationData({ ordersAssigned: data.ordersAssigned });
-      setShowPostConfirmDialog(true);
-    } catch (error) {
-      console.error("Error confirming plan:", error);
-      toast({
-        title: "Error",
-        description: "Error al confirmar el plan. Intente nuevamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsConfirming(false);
-    }
+  // Called by PlanConfirmationDialog's onConfirmed callback AFTER the dialog
+  // already confirmed the plan via the API. This only handles post-confirm UI.
+  const handleConfirm = () => {
+    toast({
+      title: "Plan confirmado",
+      description: "Pedidos asignados exitosamente",
+    });
+    setShowPostConfirmDialog(true);
   };
 
   const handlePostConfirmAction = (action: "monitor" | "new" | "history") => {
     setShowPostConfirmDialog(false);
     switch (action) {
       case "monitor":
-        router.push("/monitoreo");
+        router.push("/monitoring");
         break;
       case "new":
         router.push("/planificacion");
@@ -448,7 +409,7 @@ function ResultsPageContent() {
                 Plan confirmado exitosamente
               </DialogTitle>
               <DialogDescription>
-                Se asignaron {confirmationData?.ordersAssigned || 0} pedidos a las rutas.
+                Los pedidos han sido asignados a las rutas.
                 ¿Qué deseas hacer ahora?
               </DialogDescription>
             </DialogHeader>

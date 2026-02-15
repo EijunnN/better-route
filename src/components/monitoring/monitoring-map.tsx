@@ -316,6 +316,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
           },
           center: [-77.03, -12.04], // Lima, Peru
           zoom: 12,
+          attributionControl: false,
         });
 
         map.current.on("load", () => {

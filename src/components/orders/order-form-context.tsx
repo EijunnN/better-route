@@ -73,6 +73,10 @@ export interface Order {
   promisedDate: string | null;
   weightRequired: number | null;
   volumeRequired: number | null;
+  orderValue: number | null;
+  unitsRequired: number | null;
+  orderType: string | null;
+  priority: number | null;
   requiredSkills: string | null;
   notes: string | null;
   status: (typeof ORDER_STATUS)[number];
@@ -218,9 +222,15 @@ export function OrderFormProvider({
         longitude: initialData.longitude,
         timeWindowPresetId: initialData.timeWindowPresetId || "",
         strictness: initialData.strictness || null,
-        promisedDate: initialData.promisedDate || "",
+        promisedDate: initialData.promisedDate
+          ? initialData.promisedDate.slice(0, 10)
+          : "",
         weightRequired: initialData.weightRequired || undefined,
         volumeRequired: initialData.volumeRequired || undefined,
+        orderValue: initialData.orderValue || undefined,
+        unitsRequired: initialData.unitsRequired || undefined,
+        orderType: (initialData.orderType as OrderFormData["orderType"]) || undefined,
+        priority: initialData.priority || undefined,
         requiredSkills: initialData.requiredSkills || "",
         notes: initialData.notes || "",
         status: initialData.status,

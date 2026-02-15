@@ -240,15 +240,17 @@ export function OrderFormTimeWindow() {
           id="promisedDate"
           value={(() => {
             if (!formData.promisedDate) return null;
-            const d = new Date(formData.promisedDate);
-            return isNaN(d.getTime()) ? null : d;
+            const [y, m, d] = formData.promisedDate.split("-").map(Number);
+            if (!y || !m || !d) return null;
+            return new Date(y, m - 1, d);
           })()}
-          onChange={(date) =>
-            handleChange(
-              "promisedDate",
-              date ? date.toISOString().split("T")[0] : "",
-            )
-          }
+          onChange={(date) => {
+            if (!date) return handleChange("promisedDate", "");
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, "0");
+            const d = String(date.getDate()).padStart(2, "0");
+            handleChange("promisedDate", `${y}-${m}-${d}`);
+          }}
         />
       </div>
     </div>

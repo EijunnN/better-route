@@ -6,6 +6,8 @@ export interface Vehicle {
   type: string | null;
   weightCapacity: number | null;
   volumeCapacity: number | null;
+  maxValueCapacity: number | null;
+  maxUnitsCapacity: number | null;
   maxOrders: number;
   status: string;
   originAddress: string | null;

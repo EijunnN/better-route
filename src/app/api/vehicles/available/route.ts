@@ -116,6 +116,8 @@ export async function GET(request: NextRequest) {
       status: vehicle.status,
       weightCapacity: vehicle.weightCapacity,
       volumeCapacity: vehicle.volumeCapacity,
+      maxValueCapacity: vehicle.maxValueCapacity,
+      maxUnitsCapacity: vehicle.maxUnitsCapacity,
       maxOrders: vehicle.maxOrders,
       loadType: vehicle.loadType,
       refrigerated: vehicle.refrigerated,

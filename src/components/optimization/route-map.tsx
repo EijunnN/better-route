@@ -313,6 +313,7 @@ export function RouteMap({
           },
           center: [centerLng, centerLat],
           zoom: 12,
+          attributionControl: false,
         });
 
         // Custom navigation control styling

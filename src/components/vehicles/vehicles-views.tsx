@@ -54,7 +54,7 @@ export function VehiclesListView() {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Placa</TableHead>
-                <TableHead>Tipo Carga</TableHead>
+                <TableHead>Conductor</TableHead>
                 <TableHead>Max Pedidos</TableHead>
                 <TableHead>Flotas</TableHead>
                 <TableHead>Estado</TableHead>
@@ -98,7 +98,7 @@ function VehicleRow({ vehicle }: { vehicle: Vehicle }) {
     <TableRow className={state.deletingId === vehicle.id ? "opacity-50" : ""}>
       <TableCell className="font-medium">{vehicle.name}</TableCell>
       <TableCell className="text-muted-foreground">{vehicle.plate || "-"}</TableCell>
-      <TableCell className="text-muted-foreground">{vehicle.loadType || "-"}</TableCell>
+      <TableCell className="text-muted-foreground">{vehicle.assignedDriver?.name || "-"}</TableCell>
       <TableCell className="text-muted-foreground">{vehicle.maxOrders}</TableCell>
       <TableCell className="text-muted-foreground max-w-[200px] truncate">{getFleetNames()}</TableCell>
       <TableCell>

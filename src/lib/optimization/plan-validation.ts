@@ -203,11 +203,11 @@ export async function validatePlanForConfirmation(
 
   // Check 4: Time window compliance
   const timeWindowCompliance = result.metrics?.timeWindowComplianceRate || 0;
-  if (timeWindowCompliance < config.requireMinimumTimeWindowCompliance * 100) {
+  if (timeWindowCompliance < config.requireMinimumTimeWindowCompliance) {
     issues.push({
       severity: ValidationSeverity.WARNING,
       category: "time_window_compliance",
-      message: `Time window compliance is ${timeWindowCompliance.toFixed(1)}%, below recommended ${config.requireMinimumTimeWindowCompliance * 100}%`,
+      message: `Time window compliance is ${timeWindowCompliance.toFixed(1)}%, below recommended ${config.requireMinimumTimeWindowCompliance}%`,
       resolution: "Consider adjusting time window settings or penalty factor",
     });
   }

@@ -223,9 +223,11 @@ export function VehicleStep() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                      {vehicle.weightCapacity && <span>{vehicle.weightCapacity}kg</span>}
-                      {vehicle.volumeCapacity && <span>{vehicle.volumeCapacity}L</span>}
-                      {vehicle.maxOrders && <span>Max {vehicle.maxOrders}</span>}
+                      {state.companyProfile?.enableWeight && vehicle.weightCapacity && <span>{vehicle.weightCapacity}kg</span>}
+                      {state.companyProfile?.enableVolume && vehicle.volumeCapacity && <span>{vehicle.volumeCapacity}L</span>}
+                      {state.companyProfile?.enableUnits && vehicle.maxUnitsCapacity && <span>{vehicle.maxUnitsCapacity} uds</span>}
+                      {state.companyProfile?.enableOrderValue && vehicle.maxValueCapacity && <span>S/{vehicle.maxValueCapacity}</span>}
+                      {vehicle.maxOrders && <span>Max {vehicle.maxOrders} ped.</span>}
                       {vehicle.originAddress && (
                         <span className="truncate flex items-center gap-1">
                           <MapPin className="w-3 h-3 shrink-0" />
@@ -603,7 +605,16 @@ export function ConfigStep() {
               <Label htmlFor="capacity-enabled" className="cursor-pointer">
                 <span className="text-sm">Respetar capacidad de vehículos</span>
                 <p className="text-xs text-muted-foreground">
-                  Considera peso y volumen máximo
+                  Considera{" "}
+                  {[
+                    state.companyProfile?.enableWeight && "peso",
+                    state.companyProfile?.enableVolume && "volumen",
+                    state.companyProfile?.enableUnits && "unidades",
+                    state.companyProfile?.enableOrderValue && "valorizado",
+                  ]
+                    .filter(Boolean)
+                    .join(", ") || "capacidad máxima"}
+                  {" "}de los vehículos
                 </p>
               </Label>
             </div>

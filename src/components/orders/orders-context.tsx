@@ -22,6 +22,10 @@ export interface Order {
   promisedDate: string | null;
   weightRequired: number | null;
   volumeRequired: number | null;
+  orderValue: number | null;
+  unitsRequired: number | null;
+  orderType: string | null;
+  priority: number | null;
   requiredSkills: string | null;
   notes: string | null;
   status: (typeof ORDER_STATUS)[number];

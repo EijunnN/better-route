@@ -17,6 +17,7 @@ export interface Vehicle {
   originLatitude: string | null;
   originLongitude: string | null;
   assignedDriverId: string | null;
+  assignedDriver: { id: string; name: string } | null;
   workdayStart: string | null;
   workdayEnd: string | null;
   hasBreakTime: boolean;

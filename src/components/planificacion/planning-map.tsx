@@ -194,6 +194,7 @@ export function PlanningMap({
       style: MAP_STYLE,
       center: [-77.0428, -12.0464], // Lima, Peru default
       zoom: 11,
+      attributionControl: false,
     });
 
     // Custom navigation control styling
