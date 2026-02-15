@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -9,6 +10,7 @@ import {
   Eye,
   Loader2,
   RotateCcw,
+  Search,
   Trash2,
   XCircle,
 } from "lucide-react";
@@ -27,6 +29,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useDebounce } from "@/hooks/use-debounce";
 import { useHistorial, type OptimizationJob, type JobStatus } from "./historial-context";
 
 // Status Configuration
@@ -105,6 +109,28 @@ function StatusIcon({ name, className }: { name: string; className?: string }) {
 
 // Compound Components
 
+function HistorialSearch() {
+  const { actions } = useHistorial();
+  const [localValue, setLocalValue] = useState("");
+  const debouncedValue = useDebounce(localValue, 300);
+
+  useEffect(() => {
+    actions.setSearchTerm(debouncedValue);
+  }, [debouncedValue, actions]);
+
+  return (
+    <div className="relative">
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+      <Input
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        placeholder="Buscar por nombre..."
+        className="pl-8 h-8 w-48 text-xs"
+      />
+    </div>
+  );
+}
+
 export function HistorialHeader() {
   return (
     <div className="flex items-center justify-between mb-3">
@@ -116,6 +142,7 @@ export function HistorialHeader() {
         </Link>
         <h1 className="text-lg font-semibold">Historial</h1>
         <HistorialFilters />
+        <HistorialSearch />
       </div>
       <Link href="/planificacion">
         <Button size="sm">

@@ -73,6 +73,7 @@ export interface HistorialState {
   isLoading: boolean;
   error: string | null;
   statusFilter: JobStatus;
+  searchTerm: string;
   currentPage: number;
   totalCount: number;
   pageSize: number;
@@ -82,6 +83,7 @@ export interface HistorialState {
 export interface HistorialActions {
   loadJobs: () => Promise<void>;
   setStatusFilter: (status: JobStatus) => void;
+  setSearchTerm: (term: string) => void;
   setPage: (page: number) => void;
   handleReoptimize: (job: OptimizationJob) => void;
   handleDelete: (job: OptimizationJob) => Promise<void>;
@@ -141,6 +143,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<JobStatus>("all");
+  const [searchTerm, setSearchTermState] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 10;
@@ -154,6 +157,9 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
       const params = new URLSearchParams();
       if (statusFilter !== "all") {
         params.append("status", statusFilter);
+      }
+      if (searchTerm) {
+        params.append("search", searchTerm);
       }
       params.append("limit", String(pageSize));
       params.append("offset", String((currentPage - 1) * pageSize));
@@ -175,8 +181,8 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
         return true;
       });
 
-      const jobsWithDetails = await Promise.all(
-        uniqueJobs.map(async (job: OptimizationJob & { result?: string }) => {
+      const jobsWithDetails = uniqueJobs.map(
+        (job: OptimizationJob & { result?: string; configurationName?: string }) => {
           // Parse result JSON string from API
           let parsedResult = undefined;
           if (job.result) {
@@ -189,23 +195,13 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
             }
           }
 
-          let config = null;
-          if (job.configurationId) {
-            try {
-              const configResponse = await fetch(
-                `/api/optimization/configure/${job.configurationId}`,
-                { headers: { "x-company-id": companyId } }
-              );
-              if (configResponse.ok) {
-                const configData = await configResponse.json();
-                config = configData.data;
-              }
-            } catch {
-              // Ignore config fetch errors
-            }
-          }
-          return { ...job, result: parsedResult, configuration: config };
-        })
+          // Use configurationName from API JOIN instead of N+1 fetches
+          const configuration = job.configurationName
+            ? { name: job.configurationName, objective: "" }
+            : undefined;
+
+          return { ...job, result: parsedResult, configuration };
+        }
       );
 
       setJobs(jobsWithDetails);
@@ -215,7 +211,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [companyId, statusFilter, currentPage, pageSize]);
+  }, [companyId, statusFilter, searchTerm, currentPage, pageSize]);
 
   useEffect(() => {
     if (companyId) {
@@ -281,6 +277,11 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     setCurrentPage(1);
   }, []);
 
+  const setSearchTerm = useCallback((term: string) => {
+    setSearchTermState(term);
+    setCurrentPage(1);
+  }, []);
+
   // Derived values
   const filteredJobs = jobs;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -290,6 +291,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     isLoading,
     error,
     statusFilter,
+    searchTerm,
     currentPage,
     totalCount,
     pageSize,
@@ -298,6 +300,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
   const actions: HistorialActions = {
     loadJobs,
     setStatusFilter: handleSetStatusFilter,
+    setSearchTerm,
     setPage,
     handleReoptimize,
     handleDelete,

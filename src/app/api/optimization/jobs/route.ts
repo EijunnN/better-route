@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, sql } from "drizzle-orm";
 import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
@@ -45,12 +45,25 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(optimizationJobs.status, query.status));
     }
 
+    if (query.search) {
+      conditions.push(
+        ilike(optimizationConfigurations.name, `%${query.search}%`),
+      );
+    }
+
+    // Always JOIN with configurations to get name and support search
+    const joinClause = eq(
+      optimizationJobs.configurationId,
+      optimizationConfigurations.id,
+    );
+
     // Execute paginated query and count in parallel
     const [jobs, [{ count }]] = await Promise.all([
       db
         .select({
           id: optimizationJobs.id,
           configurationId: optimizationJobs.configurationId,
+          configurationName: optimizationConfigurations.name,
           status: optimizationJobs.status,
           progress: optimizationJobs.progress,
           result: optimizationJobs.result,
@@ -63,6 +76,7 @@ export async function GET(request: NextRequest) {
           updatedAt: optimizationJobs.updatedAt,
         })
         .from(optimizationJobs)
+        .leftJoin(optimizationConfigurations, joinClause)
         .where(and(...conditions))
         .orderBy(desc(optimizationJobs.createdAt))
         .limit(query.limit)
@@ -70,6 +84,7 @@ export async function GET(request: NextRequest) {
       db
         .select({ count: sql<number>`count(*)::int` })
         .from(optimizationJobs)
+        .leftJoin(optimizationConfigurations, joinClause)
         .where(and(...conditions)),
     ]);
 
