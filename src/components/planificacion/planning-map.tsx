@@ -177,9 +177,8 @@ export function PlanningMap({
       attributionControl: false,
     });
 
-    // Custom navigation control styling
     const nav = new maplibregl.NavigationControl({ showCompass: false });
-    map.current.addControl(nav, "top-right");
+    map.current.addControl(nav, "bottom-right");
 
     map.current.on("load", () => {
       setIsLoaded(true);
