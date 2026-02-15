@@ -2,18 +2,14 @@
 
 import {
   ArrowLeft,
-  ArrowUpDown,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
   Eye,
   Loader2,
-  Minus,
   RotateCcw,
   Trash2,
-  TrendingDown,
-  TrendingUp,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,13 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useHistorial, type OptimizationJob, type JobStatus } from "./historial-context";
 
 // Status Configuration
@@ -93,15 +83,6 @@ export function formatDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleString();
 }
 
-export function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ${minutes % 60}m`;
-}
-
 export function formatDistance(meters: number): string {
   if (meters < 1000) return `${meters}m`;
   return `${(meters / 1000).toFixed(1)}km`;
@@ -109,7 +90,7 @@ export function formatDistance(meters: number): string {
 
 // Helper Components
 
-export function StatusIcon({ name, className }: { name: string; className?: string }) {
+function StatusIcon({ name, className }: { name: string; className?: string }) {
   switch (name) {
     case "check-circle":
       return <CheckCircle2 className={className} />;
@@ -122,67 +103,22 @@ export function StatusIcon({ name, className }: { name: string; className?: stri
   }
 }
 
-export function CompareValue({
-  value,
-  compareValue,
-  format,
-  higherIsBetter = false,
-}: {
-  value: number;
-  compareValue?: number;
-  format: (v: number) => string;
-  higherIsBetter?: boolean;
-}) {
-  if (compareValue === undefined) {
-    return <span>{format(value)}</span>;
-  }
-
-  const diff = value - compareValue;
-  const percent = compareValue !== 0 ? (diff / compareValue) * 100 : 0;
-
-  if (Math.abs(diff) < 0.01) {
-    return (
-      <span className="flex items-center gap-1">
-        <span>{format(value)}</span>
-        <Minus className="w-3 h-3 text-muted-foreground" />
-      </span>
-    );
-  }
-
-  const isGood = higherIsBetter ? diff > 0 : diff < 0;
-  const Icon = isGood ? TrendingDown : TrendingUp;
-  const colorClass = isGood ? "text-green-600" : "text-red-600";
-
-  return (
-    <span className={`flex items-center gap-1 ${colorClass}`}>
-      <span>{format(value)}</span>
-      <Icon className="w-3 h-3" />
-      <span className="text-xs">{Math.abs(percent).toFixed(1)}%</span>
-    </span>
-  );
-}
-
 // Compound Components
 
 export function HistorialHeader() {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-4">
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-3">
         <Link href="/planificacion">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <ArrowLeft className="w-4 h-4" />
           </Button>
         </Link>
-        <div>
-          <h1 className="text-3xl font-bold">Historial de Planificaciones</h1>
-          <p className="text-muted-foreground mt-1">
-            Revisa y compara optimizaciones anteriores
-          </p>
-        </div>
+        <h1 className="text-lg font-semibold">Historial</h1>
+        <HistorialFilters />
       </div>
       <Link href="/planificacion">
-        <Button>
+        <Button size="sm">
           <RotateCcw className="w-4 h-4 mr-2" />
           Nueva Planificación
         </Button>
@@ -191,19 +127,18 @@ export function HistorialHeader() {
   );
 }
 
-
 export function HistorialFilters() {
   const { state, actions } = useHistorial();
   const statuses: JobStatus[] = ["all", "COMPLETED", "CANCELLED", "FAILED", "RUNNING", "PENDING"];
 
   return (
-    <div className="flex gap-2 flex-wrap">
+    <div className="flex gap-1 flex-wrap">
       {statuses.map((status) => (
         <button
           type="button"
           key={status}
           onClick={() => actions.setStatusFilter(status)}
-          className={`px-4 py-2 rounded-lg transition-colors ${
+          className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
             state.statusFilter === status
               ? "bg-primary text-primary-foreground"
               : "bg-muted hover:bg-muted/80"
@@ -222,7 +157,7 @@ export function HistorialError() {
   if (!state.error) return null;
 
   return (
-    <div className="mb-6 p-4 bg-destructive/10 text-destructive rounded-lg">
+    <div className="mb-3 p-3 text-sm bg-destructive/10 text-destructive rounded-lg">
       {state.error}
     </div>
   );
@@ -230,8 +165,8 @@ export function HistorialError() {
 
 export function HistorialLoading() {
   return (
-    <div className="flex justify-center py-12">
-      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+    <div className="flex justify-center py-8">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
     </div>
   );
 }
@@ -239,7 +174,7 @@ export function HistorialLoading() {
 export function HistorialEmpty() {
   return (
     <Card>
-      <CardContent className="py-12 text-center">
+      <CardContent className="py-8 text-center">
         <p className="text-muted-foreground">
           No se encontraron planificaciones.{" "}
           <Link href="/planificacion" className="text-primary hover:underline">
@@ -251,263 +186,49 @@ export function HistorialEmpty() {
   );
 }
 
-function JobMetricsColumn({ job }: { job: OptimizationJob }) {
-  const result = job.result;
-  if (!result) return null;
-
-  return (
-    <div className="space-y-2 text-sm">
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Rutas:</span>
-        <span className="font-medium">{result.metrics.totalRoutes}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Paradas:</span>
-        <span className="font-medium">{result.metrics.totalStops}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Distancia:</span>
-        <span className="font-medium">{formatDistance(result.metrics.totalDistance)}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Duración:</span>
-        <span className="font-medium">{formatDuration(result.metrics.totalDuration * 1000)}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Utilización:</span>
-        <span className="font-medium">{result.metrics.utilizationRate}%</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Cumplimiento:</span>
-        <span className="font-medium">{result.metrics.timeWindowComplianceRate}%</span>
-      </div>
-      {result.unassignedOrders.length > 0 && (
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Sin asignar:</span>
-          <span className="font-medium text-orange-600 dark:text-orange-400">{result.unassignedOrders.length}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function JobCompareColumn({
-  job,
-  compareJob,
-}: {
-  job: OptimizationJob;
-  compareJob: OptimizationJob;
-}) {
-  const result = job.result;
-  const compareResult = compareJob.result;
-
-  if (!result || !compareResult) return null;
-
-  return (
-    <div className="space-y-2 text-sm">
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Rutas:</span>
-        <CompareValue
-          value={result.metrics.totalRoutes}
-          compareValue={compareResult.metrics.totalRoutes}
-          format={(v) => v.toString()}
-        />
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Paradas:</span>
-        <CompareValue
-          value={result.metrics.totalStops}
-          compareValue={compareResult.metrics.totalStops}
-          format={(v) => v.toString()}
-        />
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Distancia:</span>
-        <CompareValue
-          value={result.metrics.totalDistance}
-          compareValue={compareResult.metrics.totalDistance}
-          format={formatDistance}
-        />
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Duración:</span>
-        <CompareValue
-          value={result.metrics.totalDuration * 1000}
-          compareValue={compareResult.metrics.totalDuration * 1000}
-          format={formatDuration}
-        />
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Utilización:</span>
-        <CompareValue
-          value={result.metrics.utilizationRate}
-          compareValue={compareResult.metrics.utilizationRate}
-          format={(v) => `${v}%`}
-          higherIsBetter
-        />
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Cumplimiento:</span>
-        <CompareValue
-          value={result.metrics.timeWindowComplianceRate}
-          compareValue={compareResult.metrics.timeWindowComplianceRate}
-          format={(v) => `${v}%`}
-          higherIsBetter
-        />
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Sin asignar:</span>
-        <CompareValue
-          value={result.unassignedOrders.length}
-          compareValue={compareResult.unassignedOrders.length}
-          format={(v) => v.toString()}
-        />
-      </div>
-    </div>
-  );
-}
-
-function JobHeader({ job }: { job: OptimizationJob }) {
-  const statusConfig = getStatusConfig(job.status);
-
-  return (
-    <>
-      <div className="flex items-center gap-2">
-        <Badge className={statusConfig.color}>
-          <StatusIcon name={statusConfig.icon} className="w-3 h-3 mr-1" />
-          {statusConfig.label}
-        </Badge>
-        {job.result?.isPartial && <Badge variant="outline">Parcial</Badge>}
-      </div>
-      <p className="text-sm text-muted-foreground">
-        {formatDate(job.completedAt || job.cancelledAt || job.createdAt)}
-      </p>
-      {job.configuration && <p className="text-sm font-medium">{job.configuration.name}</p>}
-    </>
-  );
-}
-
-export function HistorialComparisonCard() {
-  const { state, actions, derived } = useHistorial();
-
-  if (!derived.canCompare) return null;
-
-  const [job1, job2] = derived.selectedJobs;
-  if (!job1 || !job2) return null;
-
-  return (
-    <Card className="border-primary/50">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <ArrowUpDown className="w-5 h-5" />
-              Comparación
-            </CardTitle>
-            <CardDescription>Comparando resultados entre dos planificaciones</CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" onClick={actions.clearSelection}>
-            Limpiar
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <JobHeader job={job1} />
-            <JobMetricsColumn job={job1} />
-          </div>
-          <div className="space-y-4">
-            <JobHeader job={job2} />
-            <JobCompareColumn job={job2} compareJob={job1} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function HistorialJobCard({ job }: { job: OptimizationJob }) {
-  const { state, actions } = useHistorial();
+  const { actions } = useHistorial();
   const statusConfig = getStatusConfig(job.status);
-  const isSelected = state.selectedJobIds.includes(job.id);
-  const hasResult = job.result && (job.status === "COMPLETED" || job.status === "CANCELLED");
 
   return (
     <Card
-      className={`transition-shadow cursor-pointer hover:shadow-md ${
-        isSelected ? "ring-2 ring-primary" : ""
-      } ${job.status === "CANCELLED" ? "border-orange-500/50" : ""}`}
-      onClick={() => hasResult && actions.toggleJobSelection(job.id)}
+      className={`transition-shadow hover:shadow-md ${
+        job.status === "CANCELLED" ? "border-orange-500/50" : ""
+      }`}
     >
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
-            {hasResult && (
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  actions.toggleJobSelection(job.id);
-                }}
-                className="w-4 h-4"
-              />
-            )}
+      <CardContent className="px-3 py-2">
+        <div className="flex items-center gap-3">
+          <Badge className={`${statusConfig.color} text-xs py-0 shrink-0`}>
+            <StatusIcon name={statusConfig.icon} className="w-3 h-3 mr-1" />
+            {statusConfig.label}
+          </Badge>
 
-            <Badge className={statusConfig.color}>
-              <StatusIcon name={statusConfig.icon} className="w-3 h-3 mr-1" />
-              {statusConfig.label}
+          {job.result?.isPartial && (
+            <Badge variant="outline" className="text-xs py-0 shrink-0 text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-500">
+              Parcial
             </Badge>
+          )}
 
-            {job.result?.isPartial && (
-              <Badge variant="outline" className="text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-500">
-                Parcial
-              </Badge>
-            )}
-
-            <div className="flex-1">
-              {job.configuration ? (
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {job.configuration?.name || `Config ${job.configurationId?.slice(0, 8)}...`}
+            </p>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span>{formatDate(job.completedAt || job.cancelledAt || job.createdAt)}</span>
+              {job.result && (
                 <>
-                  <p className="font-medium">{job.configuration.name}</p>
-                  <p className="text-sm text-muted-foreground">{job.configuration.objective}</p>
+                  <span><span className="font-medium text-foreground">{job.result.metrics.totalRoutes}</span> rutas</span>
+                  <span><span className="font-medium text-foreground">{job.result.metrics.totalStops}</span> paradas</span>
+                  <span>{formatDistance(job.result.metrics.totalDistance)}</span>
+                  {job.result.unassignedOrders.length > 0 && (
+                    <span className="text-orange-600 dark:text-orange-400">
+                      {job.result.unassignedOrders.length} sin asignar
+                    </span>
+                  )}
                 </>
-              ) : (
-                <p className="text-muted-foreground">
-                  Configuración {job.configurationId?.slice(0, 8)}...
-                </p>
               )}
-            </div>
-
-            {job.result && (
-              <div className="flex items-center gap-6 text-sm">
-                <div className="text-center">
-                  <p className="text-muted-foreground">Rutas</p>
-                  <p className="font-medium">{job.result.metrics.totalRoutes}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-muted-foreground">Paradas</p>
-                  <p className="font-medium">{job.result.metrics.totalStops}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-muted-foreground">Distancia</p>
-                  <p className="font-medium">{formatDistance(job.result.metrics.totalDistance)}</p>
-                </div>
-                {job.result.unassignedOrders.length > 0 && (
-                  <div className="text-center">
-                    <p className="text-muted-foreground">Sin asignar</p>
-                    <p className="font-medium text-orange-600 dark:text-orange-400">
-                      {job.result.unassignedOrders.length}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="text-sm text-muted-foreground w-40 text-right">
-              <p>{formatDate(job.completedAt || job.cancelledAt || job.createdAt)}</p>
               {job.status === "RUNNING" && job.progress > 0 && (
-                <p className="text-xs">{job.progress}%</p>
+                <span>{job.progress}%</span>
               )}
             </div>
           </div>
@@ -524,14 +245,11 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
 
   if (job.status === "COMPLETED" || job.status === "CANCELLED") {
     return (
-      <div className="flex items-center gap-2 ml-4">
+      <div className="flex items-center gap-1 ml-2">
         <Button
           variant="ghost"
           size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            actions.navigateToResults(job);
-          }}
+          onClick={() => actions.navigateToResults(job)}
         >
           <Eye className="w-4 h-4" />
         </Button>
@@ -539,10 +257,7 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              actions.handleReoptimize(job);
-            }}
+            onClick={() => actions.handleReoptimize(job)}
           >
             <RotateCcw className="w-4 h-4" />
           </Button>
@@ -553,7 +268,6 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
               variant="ghost"
               size="sm"
               className="text-destructive hover:text-destructive"
-              onClick={(e) => e.stopPropagation()}
             >
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -582,14 +296,11 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
 
   if (job.status === "RUNNING") {
     return (
-      <div className="flex items-center gap-2 ml-4">
+      <div className="flex items-center gap-1 ml-2">
         <Button
           variant="ghost"
           size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            actions.navigateToResults(job);
-          }}
+          onClick={() => actions.navigateToResults(job)}
         >
           <Eye className="w-4 h-4 mr-1" />
           Ver progreso
@@ -600,14 +311,13 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
 
   // PENDING and FAILED can also be deleted
   return (
-    <div className="flex items-center gap-2 ml-4">
+    <div className="flex items-center gap-1 ml-2">
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
             className="text-destructive hover:text-destructive"
-            onClick={(e) => e.stopPropagation()}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -638,24 +348,10 @@ export function HistorialJobList() {
   const { derived } = useHistorial();
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {derived.filteredJobs.map((job) => (
         <HistorialJobCard key={job.id} job={job} />
       ))}
-    </div>
-  );
-}
-
-export function HistorialSelectionHint() {
-  const { state } = useHistorial();
-
-  if (state.selectedJobIds.length === 0 || state.selectedJobIds.length >= 2) {
-    return null;
-  }
-
-  return (
-    <div className="text-center text-sm text-muted-foreground">
-      Selecciona otro trabajo para comparar resultados
     </div>
   );
 }
@@ -671,8 +367,8 @@ export function HistorialPagination() {
   const end = Math.min(currentPage * pageSize, totalCount);
 
   return (
-    <div className="flex items-center justify-between pt-4">
-      <p className="text-sm text-muted-foreground">
+    <div className="flex items-center justify-between pt-2">
+      <p className="text-xs text-muted-foreground">
         Mostrando {start}-{end} de {totalCount}
       </p>
       <div className="flex items-center gap-2">
@@ -748,10 +444,8 @@ export function HistorialContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <HistorialComparisonCard />
+    <div className="space-y-3">
       <HistorialJobList />
-      <HistorialSelectionHint />
       <HistorialPagination />
     </div>
   );

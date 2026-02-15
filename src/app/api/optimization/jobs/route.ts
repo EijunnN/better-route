@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
           configurationId: optimizationJobs.configurationId,
           status: optimizationJobs.status,
           progress: optimizationJobs.progress,
+          result: optimizationJobs.result,
           error: optimizationJobs.error,
           startedAt: optimizationJobs.startedAt,
           completedAt: optimizationJobs.completedAt,

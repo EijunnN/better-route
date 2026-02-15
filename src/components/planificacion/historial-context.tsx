@@ -73,7 +73,6 @@ export interface HistorialState {
   isLoading: boolean;
   error: string | null;
   statusFilter: JobStatus;
-  selectedJobIds: string[];
   currentPage: number;
   totalCount: number;
   pageSize: number;
@@ -84,8 +83,6 @@ export interface HistorialActions {
   loadJobs: () => Promise<void>;
   setStatusFilter: (status: JobStatus) => void;
   setPage: (page: number) => void;
-  toggleJobSelection: (jobId: string) => void;
-  clearSelection: () => void;
   handleReoptimize: (job: OptimizationJob) => void;
   handleDelete: (job: OptimizationJob) => Promise<void>;
   navigateToResults: (job: OptimizationJob) => void;
@@ -111,8 +108,6 @@ export interface HistorialMeta {
 // Derived
 export interface HistorialDerived {
   filteredJobs: OptimizationJob[];
-  selectedJobs: OptimizationJob[];
-  canCompare: boolean;
   totalPages: number;
 }
 
@@ -146,7 +141,6 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<JobStatus>("all");
-  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 10;
@@ -171,8 +165,30 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
       if (!response.ok) throw new Error("Failed to load jobs");
 
       const data = await response.json();
+
+      // Deduplicate: keep only the latest job per configurationId
+      const seenConfigs = new Set<string>();
+      const uniqueJobs = (data.data || []).filter((job: { configurationId: string }) => {
+        if (!job.configurationId) return true;
+        if (seenConfigs.has(job.configurationId)) return false;
+        seenConfigs.add(job.configurationId);
+        return true;
+      });
+
       const jobsWithDetails = await Promise.all(
-        (data.data || []).map(async (job: OptimizationJob) => {
+        uniqueJobs.map(async (job: OptimizationJob & { result?: string }) => {
+          // Parse result JSON string from API
+          let parsedResult = undefined;
+          if (job.result) {
+            try {
+              parsedResult = typeof job.result === "string"
+                ? JSON.parse(job.result)
+                : job.result;
+            } catch {
+              // Ignore parse errors
+            }
+          }
+
           let config = null;
           if (job.configurationId) {
             try {
@@ -188,12 +204,12 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
               // Ignore config fetch errors
             }
           }
-          return { ...job, configuration: config };
+          return { ...job, result: parsedResult, configuration: config };
         })
       );
 
       setJobs(jobsWithDetails);
-      setTotalCount(data.meta?.total ?? jobsWithDetails.length);
+      setTotalCount(uniqueJobs.length);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar trabajos");
     } finally {
@@ -206,18 +222,6 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
       loadJobs();
     }
   }, [companyId, loadJobs]);
-
-  const toggleJobSelection = useCallback((jobId: string) => {
-    setSelectedJobIds((prev) =>
-      prev.includes(jobId)
-        ? prev.filter((id) => id !== jobId)
-        : [...prev, jobId].slice(0, 2)
-    );
-  }, []);
-
-  const clearSelection = useCallback(() => {
-    setSelectedJobIds([]);
-  }, []);
 
   const handleReoptimize = useCallback(
     (job: OptimizationJob) => {
@@ -270,22 +274,15 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
 
   const setPage = useCallback((page: number) => {
     setCurrentPage(page);
-    setSelectedJobIds([]);
   }, []);
 
   const handleSetStatusFilter = useCallback((status: JobStatus) => {
     setStatusFilter(status);
     setCurrentPage(1);
-    setSelectedJobIds([]);
   }, []);
 
   // Derived values
-  // Filtering is done server-side, so filteredJobs = jobs
   const filteredJobs = jobs;
-
-  const selectedJobs = jobs.filter((j) => selectedJobIds.includes(j.id));
-  const canCompare = selectedJobIds.length >= 2;
-
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const state: HistorialState = {
@@ -293,7 +290,6 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     isLoading,
     error,
     statusFilter,
-    selectedJobIds,
     currentPage,
     totalCount,
     pageSize,
@@ -303,8 +299,6 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     loadJobs,
     setStatusFilter: handleSetStatusFilter,
     setPage,
-    toggleJobSelection,
-    clearSelection,
     handleReoptimize,
     handleDelete,
     navigateToResults,
@@ -322,8 +316,6 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
 
   const derived: HistorialDerived = {
     filteredJobs,
-    selectedJobs,
-    canCompare,
     totalPages,
   };
 

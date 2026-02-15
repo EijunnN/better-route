@@ -8,6 +8,7 @@ export const planConfirmationSchema = z.object({
   jobId: z.string().uuid(),
   overrideWarnings: z.boolean().default(false),
   confirmationNote: z.string().optional(),
+  planName: z.string().min(1).max(255).optional(),
 });
 
 export type PlanConfirmationSchema = z.infer<typeof planConfirmationSchema>;

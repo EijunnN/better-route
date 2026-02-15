@@ -89,8 +89,6 @@ export function PlanificacionHeader() {
             );
           })}
         </div>
-
-        <div className="flex items-center gap-3" />
       </div>
     </div>
   );
@@ -444,6 +442,17 @@ export function ConfigStep() {
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Plan Name */}
+        <div className="space-y-1.5">
+          <Label htmlFor="plan-name" className="text-sm font-medium">Nombre del plan</Label>
+          <Input
+            id="plan-name"
+            placeholder={`Plan ${state.planDate} ${state.planTime}`}
+            value={state.planName}
+            onChange={(e) => actions.setPlanName(e.target.value)}
+          />
+        </div>
+
         {/* Summary */}
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="py-4">

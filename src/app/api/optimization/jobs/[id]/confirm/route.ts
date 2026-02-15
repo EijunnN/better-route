@@ -240,16 +240,20 @@ export async function POST(
       );
     }
 
-    // Confirm the plan - update configuration status AND job status
+    // Confirm the plan - update configuration status AND name if provided
     const now = new Date();
+    const updateData: Record<string, unknown> = {
+      status: "CONFIRMED",
+      confirmedAt: now,
+      confirmedBy: auditContext.userId || null,
+      updatedAt: now,
+    };
+    if (data.planName) {
+      updateData.name = data.planName;
+    }
     const [updatedConfiguration] = await db
       .update(optimizationConfigurations)
-      .set({
-        status: "CONFIRMED",
-        confirmedAt: now,
-        confirmedBy: auditContext.userId || null,
-        updatedAt: now,
-      })
+      .set(updateData)
       .where(eq(optimizationConfigurations.id, job.configurationId))
       .returning();
 

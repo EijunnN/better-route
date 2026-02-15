@@ -2,7 +2,7 @@
 
 import { AlertCircle, ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import {
   JobProgress,
@@ -126,6 +126,9 @@ function ResultsPageContent() {
     return existingJobId ? "existing" : "new";
   });
 
+  // Guard against React Strict Mode double-mounting creating duplicate jobs
+  const jobStartedRef = useRef(false);
+
   // Start optimization job when component mounts and companyId is available
   useEffect(() => {
     if (!companyId) return;
@@ -175,6 +178,9 @@ function ResultsPageContent() {
     }
 
     // Otherwise, start a new optimization job
+    if (jobStartedRef.current) return;
+    jobStartedRef.current = true;
+
     const startOptimization = async () => {
       setIsStartingJob(true);
       setStartError(null);
@@ -262,6 +268,7 @@ function ResultsPageContent() {
     setJobData(null);
     setStartError(null);
     setViewMode("new");
+    jobStartedRef.current = false;
 
     // Force re-run of the effect by navigating to the same URL without jobId
     router.push(`/planificacion/${configId}/results?reoptimize=true`);

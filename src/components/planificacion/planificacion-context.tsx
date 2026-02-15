@@ -42,6 +42,7 @@ export interface PlanificacionState {
   ordersLoading: boolean;
   deletingOrderId: string | null;
   // Configuration
+  planName: string;
   planDate: string;
   planTime: string;
   objective: string;
@@ -89,6 +90,7 @@ export interface PlanificacionActions {
   selectAllOrders: () => void;
   deleteOrder: (id: string) => Promise<void>;
   // Configuration
+  setPlanName: (name: string) => void;
   setPlanDate: (date: string) => void;
   setPlanTime: (time: string) => void;
   setObjective: (objective: string) => void;
@@ -179,6 +181,8 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
   // Configuration state
+  const [planName, setPlanName] = useState("");
+
   const [planDate, setPlanDate] = useState(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -562,6 +566,8 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
         .map((v) => v.assignedDriver?.id)
         .filter((id): id is string => id !== undefined);
 
+      const finalName = planName.trim() || `Plan ${planDate} ${planTime}`;
+
       const configResponse = await fetch("/api/optimization/configure", {
         method: "POST",
         headers: {
@@ -569,7 +575,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
           "x-company-id": companyId ?? "",
         },
         body: JSON.stringify({
-          name: `Plan ${planDate} ${planTime}`,
+          name: finalName,
           depotLatitude: selectedVehicles[0]?.originLatitude || "-12.0464",
           depotLongitude: selectedVehicles[0]?.originLongitude || "-77.0428",
           depotAddress: selectedVehicles[0]?.originAddress || "Depot",
@@ -604,6 +610,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     selectedOrderIds,
     selectedVehicles,
     companyId,
+    planName,
     planDate,
     planTime,
     objective,
@@ -1061,6 +1068,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     orderTab,
     ordersLoading,
     deletingOrderId,
+    planName,
     planDate,
     planTime,
     objective,
@@ -1098,6 +1106,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     toggleOrder,
     selectAllOrders,
     deleteOrder,
+    setPlanName,
     setPlanDate,
     setPlanTime,
     setObjective,

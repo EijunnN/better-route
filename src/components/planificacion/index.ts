@@ -15,18 +15,13 @@ export {
   HistorialFilters,
   HistorialError,
   HistorialContent,
-  HistorialComparisonCard,
   HistorialJobList,
   HistorialJobCard,
   HistorialLoading,
   HistorialEmpty,
-  HistorialSelectionHint,
   formatDate,
-  formatDuration,
   formatDistance,
   getStatusConfig,
-  StatusIcon,
-  CompareValue,
 } from "./historial-components";
 
 // Planificacion exports
