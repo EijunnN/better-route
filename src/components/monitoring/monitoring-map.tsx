@@ -47,7 +47,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
   }), []);
 
   const loadMapData = useCallback(async (fitBounds = false) => {
-    if (!map.current || !companyId) return;
+    if (!map.current || !companyId || !map.current.isStyleLoaded()) return;
 
     try {
       const response = await fetch("/api/monitoring/geojson", {
@@ -288,7 +288,11 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
     }
   }, [companyId, selectedDriverId, onDriverSelect]);
 
-  // Initialize map
+  // Stable ref to always call latest loadMapData without triggering effect re-runs
+  const loadMapDataRef = useRef(loadMapData);
+  loadMapDataRef.current = loadMapData;
+
+  // Initialize map - runs ONCE, not on every loadMapData change
   useEffect(() => {
     if (!mapContainer.current) return;
 
@@ -309,7 +313,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
 
         map.current.on("load", () => {
           setIsLoading(false);
-          loadMapData(true); // Fit bounds on first load
+          loadMapDataRef.current(true); // Fit bounds on first load
         });
 
         map.current.on("error", (e) => {
@@ -331,17 +335,17 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
         clearInterval(refreshInterval.current);
       }
       map.current?.remove();
+      map.current = null;
     };
-  }, [loadMapData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-refresh data
   useEffect(() => {
     if (!map.current || isLoading) return;
 
-    // Initial load without fitting bounds (already done in map.on('load'))
-    // Start refresh interval
     refreshInterval.current = setInterval(() => {
-      loadMapData(false); // Don't fit bounds on refresh
+      loadMapDataRef.current(false);
     }, REFRESH_INTERVAL);
 
     return () => {
@@ -349,7 +353,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
         clearInterval(refreshInterval.current);
       }
     };
-  }, [isLoading, loadMapData]);
+  }, [isLoading]);
 
   // Update data when selectedDriverId changes
   useEffect(() => {
@@ -364,10 +368,10 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
     if (mapThemeRef.current === isDark) return; // Already correct style
     mapThemeRef.current = isDark;
     map.current.once("style.load", () => {
-      loadMapData(false);
+      loadMapDataRef.current(false);
     });
     map.current.setStyle(getMapStyle(isDark));
-  }, [isDark, isLoading, loadMapData]);
+  }, [isDark, isLoading]);
 
   return (
     <div className="h-full w-full relative">

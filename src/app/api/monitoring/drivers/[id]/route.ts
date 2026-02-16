@@ -1,7 +1,7 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, orders, routeStops, users } from "@/db/schema";
+import { optimizationJobs, orders, routeStops, userSecondaryFleets, users, vehicleFleets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
@@ -62,6 +62,28 @@ export async function GET(
       );
     }
 
+    // Get secondary fleets for this driver
+    const secondaryFleetsData = await db.query.userSecondaryFleets.findMany({
+      where: and(
+        eq(userSecondaryFleets.userId, driverId),
+        eq(userSecondaryFleets.active, true),
+      ),
+      with: {
+        fleet: {
+          columns: { id: true, name: true, type: true },
+        },
+      },
+    });
+
+    // Build combined fleets array
+    const primaryFleet = driver.primaryFleet
+      ? { id: driver.primaryFleet.id, name: driver.primaryFleet.name, type: driver.primaryFleet.type, isPrimary: true as const }
+      : null;
+    const secFleets = secondaryFleetsData
+      .filter((sf) => sf.fleet)
+      .map((sf) => ({ id: sf.fleet.id, name: sf.fleet.name, type: sf.fleet.type, isPrimary: false as const }));
+    const allFleets = primaryFleet ? [primaryFleet, ...secFleets] : secFleets;
+
     // Get the most recent confirmed optimization job
     const confirmedJob = await db.query.optimizationJobs.findFirst({
       where: and(
@@ -79,11 +101,8 @@ export async function GET(
       identification: driver.identification || "",
       email: driver.email,
       phone: driver.phone,
-      fleet: {
-        id: driver.primaryFleet?.id || "",
-        name: driver.primaryFleet?.name || "Sin flota",
-        type: driver.primaryFleet?.type || "LIGHT_LOAD",
-      },
+      fleet: allFleets[0] || { id: "", name: "Sin flota", type: "LIGHT_LOAD" },
+      fleets: allFleets,
     };
 
     // If no confirmed job, return driver without route
@@ -134,6 +153,31 @@ export async function GET(
 
     // Get vehicle info from the first stop
     const vehicle = stops[0].vehicle;
+
+    // Get the vehicle's fleet (plan context fleet)
+    const vehicleFleetData = vehicle ? await db.query.vehicleFleets.findFirst({
+      where: and(
+        eq(vehicleFleets.companyId, tenantCtx.companyId),
+        eq(vehicleFleets.active, true),
+        eq(vehicleFleets.vehicleId, vehicle.id),
+      ),
+      with: {
+        fleet: { columns: { id: true, name: true, type: true } },
+      },
+    }) : null;
+
+    // If we have a plan fleet from the vehicle, use it as the primary fleet
+    const planFleet = vehicleFleetData?.fleet
+      ? { id: vehicleFleetData.fleet.id, name: vehicleFleetData.fleet.name, type: vehicleFleetData.fleet.type, isPrimary: true as const }
+      : null;
+
+    const effectiveFleets = planFleet
+      ? [planFleet, ...allFleets.filter(f => f.id !== planFleet.id)]
+      : allFleets;
+
+    // Update driver response with plan-derived fleet
+    driverResponse.fleet = effectiveFleets[0] || { id: "", name: "Sin flota", type: "LIGHT_LOAD" };
+    driverResponse.fleets = effectiveFleets;
 
     // Calculate route metrics
     let totalDistance = 0;

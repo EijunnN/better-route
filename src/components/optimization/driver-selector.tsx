@@ -79,19 +79,33 @@ export function DriverSelector({
         const params = new URLSearchParams();
         params.append("limit", "100");
         params.append("active", "true");
-        params.append("status", "AVAILABLE");
+        params.append("role", "CONDUCTOR");
+        params.append("driverStatus", "AVAILABLE");
 
         if (fleetFilter !== "ALL") {
-          params.append("fleetId", fleetFilter);
+          params.append("primaryFleetId", fleetFilter);
         }
 
-        const response = await fetch(`/api/drivers?${params}`, {
+        const response = await fetch(`/api/users?${params}`, {
           headers: { "x-company-id": companyId },
         });
 
         if (response.ok) {
           const data = await response.json();
-          setDrivers(data.data || []);
+          const mappedDrivers = (data.data || []).map((u: Record<string, unknown>) => ({
+            id: u.id as string,
+            name: u.name as string,
+            identification: (u.identification as string) || "",
+            licenseNumber: (u.licenseNumber as string) || "",
+            licenseExpiry: (u.licenseExpiry as string) || "",
+            status: (u.driverStatus as string) || "AVAILABLE",
+            fleet: u.primaryFleetId
+              ? ((u.fleetPermissions as Array<{ id: string; name: string }>) || []).find(
+                  (fp) => fp.id === u.primaryFleetId,
+                ) || { id: u.primaryFleetId as string, name: "Flota" }
+              : null,
+          }));
+          setDrivers(mappedDrivers);
         }
       } catch (error) {
         console.error("Failed to fetch drivers:", error);

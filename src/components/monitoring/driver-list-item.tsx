@@ -24,6 +24,7 @@ interface DriverListItemProps {
   name: string;
   status: string;
   fleetName: string;
+  fleetNames?: string[];
   hasRoute: boolean;
   vehiclePlate: string | null;
   progress: DriverProgress;
@@ -57,6 +58,7 @@ export const DriverListItem = memo(function DriverListItem({
   name,
   status,
   fleetName,
+  fleetNames,
   hasRoute,
   vehiclePlate,
   progress,
@@ -150,9 +152,11 @@ export const DriverListItem = memo(function DriverListItem({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-medium truncate">{name}</h3>
-                <Badge variant="outline" className="text-xs">
-                  {fleetName}
-                </Badge>
+                {(fleetNames && fleetNames.length > 0 ? fleetNames : [fleetName]).map((fn) => (
+                  <Badge key={fn} variant="outline" className="text-xs">
+                    {fn}
+                  </Badge>
+                ))}
               </div>
 
               <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">

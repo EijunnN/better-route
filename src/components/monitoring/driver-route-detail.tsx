@@ -67,6 +67,12 @@ interface DriverInfo {
     name: string;
     type: string;
   };
+  fleets?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    isPrimary: boolean;
+  }>;
 }
 
 interface RouteData {
@@ -274,10 +280,17 @@ export function DriverRouteDetail({
                 )}
               </div>
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Flota:</span>
-                  <Badge variant="outline">{driver.fleet.name}</Badge>
-                  <Badge variant="secondary">{driver.fleet.type}</Badge>
+                <div className="flex items-center gap-2 text-sm flex-wrap">
+                  <span className="text-muted-foreground">Flotas:</span>
+                  {driver.fleets && driver.fleets.length > 0 ? (
+                    driver.fleets.map((f) => (
+                      <Badge key={f.id} variant={f.isPrimary ? "default" : "outline"}>
+                        {f.name}
+                      </Badge>
+                    ))
+                  ) : (
+                    <Badge variant="outline">{driver.fleet.name}</Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">Estado:</span>

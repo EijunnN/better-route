@@ -6,7 +6,9 @@ import {
   optimizationJobs,
   routeStops,
   USER_ROLES,
+  userSecondaryFleets,
   users,
+  vehicleFleets,
   vehicles,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
@@ -64,6 +66,28 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Get secondary fleets for all drivers
+    const allDriverIds = allDrivers.map((d) => d.id);
+    const allSecondaryFleets = allDriverIds.length > 0
+      ? await db.query.userSecondaryFleets.findMany({
+          where: and(
+            eq(userSecondaryFleets.companyId, tenantCtx.companyId),
+            eq(userSecondaryFleets.active, true),
+            inArray(userSecondaryFleets.userId, allDriverIds),
+          ),
+          with: {
+            fleet: { columns: { id: true, name: true } },
+          },
+        })
+      : [];
+
+    const secFleetsByDriver = new Map<string, string[]>();
+    for (const sf of allSecondaryFleets) {
+      const list = secFleetsByDriver.get(sf.userId) || [];
+      if (sf.fleet) list.push(sf.fleet.name);
+      secFleetsByDriver.set(sf.userId, list);
+    }
+
     // If no confirmed job, return drivers without route info but with location
     if (!confirmedJob) {
       // Get latest locations even without route
@@ -109,7 +133,11 @@ export async function GET(request: NextRequest) {
           name: driver.name,
           status: driver.driverStatus || "AVAILABLE",
           fleetId: driver.primaryFleetId || "",
-          fleetName: driver.primaryFleet?.name || "Sin flota",
+          fleetName: driver.primaryFleet?.name || (secFleetsByDriver.get(driver.id)?.[0]) || "Sin flota",
+          fleetNames: [
+            ...(driver.primaryFleet ? [driver.primaryFleet.name] : []),
+            ...(secFleetsByDriver.get(driver.id) || []),
+          ],
           hasRoute: false,
           routeId: null,
           vehiclePlate: null,
@@ -172,6 +200,28 @@ export async function GET(request: NextRequest) {
 
     const vehicleMap = new Map(vehiclesData.map((v) => [v.id, v]));
 
+    // Get fleet info for vehicles in the plan
+    const vehicleFleetsData = vehicleIds.length > 0
+      ? await db.query.vehicleFleets.findMany({
+          where: and(
+            eq(vehicleFleets.companyId, tenantCtx.companyId),
+            eq(vehicleFleets.active, true),
+            inArray(vehicleFleets.vehicleId, vehicleIds),
+          ),
+          with: {
+            fleet: { columns: { id: true, name: true } },
+          },
+        })
+      : [];
+
+    // Create a map: vehicleId -> fleet name
+    const vehicleFleetMap = new Map<string, string>();
+    for (const vf of vehicleFleetsData) {
+      if (vf.fleet && !vehicleFleetMap.has(vf.vehicleId)) {
+        vehicleFleetMap.set(vf.vehicleId, vf.fleet.name);
+      }
+    }
+
     // Get latest location for each driver (last 5 minutes to be considered "active")
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const driverIds = allDrivers.map((d) => d.id);
@@ -226,7 +276,7 @@ export async function GET(request: NextRequest) {
 
       // Generate alerts based on status
       const alerts: string[] = [];
-      if (!driver.primaryFleetId) {
+      if (!driver.primaryFleetId && !(secFleetsByDriver.get(driver.id)?.length)) {
         alerts.push("Sin flota asignada");
       }
       if (failedStops > 0) {
@@ -243,12 +293,23 @@ export async function GET(request: NextRequest) {
         alerts.push("Sin señal GPS reciente");
       }
 
+      // Prefer the fleet derived from the vehicle in the plan
+      const planFleetName = stopData ? vehicleFleetMap.get(stopData.vehicleId) : undefined;
+      const baseFleetNames = [
+        ...(driver.primaryFleet ? [driver.primaryFleet.name] : []),
+        ...(secFleetsByDriver.get(driver.id) || []),
+      ];
+      const fleetNames = planFleetName && !baseFleetNames.includes(planFleetName)
+        ? [planFleetName, ...baseFleetNames]
+        : baseFleetNames;
+
       return {
         id: driver.id,
         name: driver.name,
         status: driver.driverStatus || "AVAILABLE",
         fleetId: driver.primaryFleetId || "",
-        fleetName: driver.primaryFleet?.name || "Sin flota",
+        fleetName: planFleetName || driver.primaryFleet?.name || (secFleetsByDriver.get(driver.id)?.[0]) || "Sin flota",
+        fleetNames,
         hasRoute,
         routeId: stopData?.routeId || null,
         vehiclePlate: vehicle?.plate || vehicle?.name || null,

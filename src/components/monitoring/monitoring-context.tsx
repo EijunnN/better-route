@@ -39,6 +39,7 @@ export interface DriverMonitoringData {
   status: string;
   fleetId: string;
   fleetName: string;
+  fleetNames: string[];
   hasRoute: boolean;
   routeId: string | null;
   vehiclePlate: string | null;
@@ -55,6 +56,7 @@ export interface DriverDetailData {
     email: string;
     phone?: string;
     fleet: { id: string; name: string; type: string };
+    fleets?: Array<{ id: string; name: string; type: string; isPrimary: boolean }>;
   };
   route: {
     routeId: string;

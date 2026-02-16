@@ -291,6 +291,7 @@ export function MonitoringDashboardView() {
                         name={driver.name}
                         status={driver.status}
                         fleetName={driver.fleetName}
+                        fleetNames={driver.fleetNames}
                         hasRoute={driver.hasRoute}
                         vehiclePlate={driver.vehiclePlate}
                         progress={driver.progress}
