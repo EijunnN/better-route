@@ -83,34 +83,6 @@ export function MonitoringDashboardView() {
     );
   }
 
-  // Detail view
-  if (state.view === "detail") {
-    return (
-      <div className="h-screen overflow-auto bg-background">
-        <div className="container mx-auto py-6 px-4">
-          {state.isLoadingDetail ? (
-            <div className="flex items-center justify-center min-h-[400px]">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : state.driverDetail ? (
-            <DriverRouteDetail
-              driver={state.driverDetail.driver}
-              route={state.driverDetail.route}
-              onClose={actions.handleBackToOverview}
-              onRefresh={actions.handleDetailRefresh}
-            />
-          ) : (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                Error al cargar los detalles del conductor
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   // Overview - Fullscreen map with floating sidebar
   return (
     <div className="h-screen w-full relative overflow-hidden">
@@ -298,6 +270,7 @@ export function MonitoringDashboardView() {
                         alerts={driver.alerts}
                         isSelected={state.selectedDriverId === driver.id}
                         onClick={() => actions.handleDriverClick(driver.id)}
+                        currentLocation={driver.currentLocation}
                         compact
                       />
                     ))
@@ -325,8 +298,36 @@ export function MonitoringDashboardView() {
         </Card>
       </div>
 
-      {/* Right Panel - Events or Alerts */}
-      {(showEvents || state.showAlerts) && meta.companyId && (
+      {/* Right Panel - Detail, Events, or Alerts */}
+      {state.view === "detail" ? (
+        <div className="absolute top-20 bottom-4 right-4 w-[450px] z-10">
+          <Card className="h-full bg-background/95 backdrop-blur-sm shadow-lg overflow-hidden flex flex-col">
+            {state.isLoadingDetail ? (
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : state.driverDetail ? (
+              <ScrollArea className="flex-1">
+                <div className="p-4">
+                  <DriverRouteDetail
+                    driver={state.driverDetail.driver}
+                    route={state.driverDetail.route}
+                    onClose={actions.handleBackToOverview}
+                    onRefresh={actions.handleDetailRefresh}
+                    locationData={state.driversData.find(d => d.id === state.selectedDriverId)?.currentLocation}
+                  />
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  Error al cargar los detalles del conductor
+                </CardContent>
+              </div>
+            )}
+          </Card>
+        </div>
+      ) : (showEvents || state.showAlerts) && meta.companyId ? (
         <div className="absolute top-20 bottom-4 right-4 w-80 z-10">
           <Card className="h-full bg-background/95 backdrop-blur-sm shadow-lg overflow-hidden">
             {showEvents ? (
@@ -339,7 +340,7 @@ export function MonitoringDashboardView() {
             )}
           </Card>
         </div>
-      )}
+      ) : null}
 
       {/* Map - Full screen background */}
       <div className="absolute inset-0">

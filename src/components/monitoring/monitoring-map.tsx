@@ -34,6 +34,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
   const [error, setError] = useState<string | null>(null);
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
   const mapThemeRef = useRef<boolean | null>(null);
+  const popupRef = useRef<maplibregl.Popup | null>(null);
 
   // Expose flyTo method to parent via ref
   useImperativeHandle(ref, () => ({
@@ -177,17 +178,38 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
           },
         });
 
-        // Add driver icon/label
+        // Add driver icon/label with heading direction
         map.current.addLayer({
           id: "driver-labels",
           type: "symbol",
           source: "monitoring-data",
           filter: ["==", ["get", "type"], "driver_location"],
           layout: {
-            "text-field": "🚗",
+            "text-field": [
+              "case",
+              ["==", ["get", "isMoving"], true], "▲",
+              "●"
+            ],
             "text-size": 16,
             "text-anchor": "center",
+            "text-rotate": [
+              "case",
+              ["==", ["get", "isMoving"], true], ["get", "heading"],
+              0
+            ],
+            "text-allow-overlap": true,
           },
+          paint: {
+            "text-color": "#ffffff",
+          },
+        });
+
+        // Initialize popup
+        const maplibreglModule = await import("maplibre-gl");
+        popupRef.current = new maplibreglModule.Popup({
+          closeButton: true,
+          closeOnClick: true,
+          maxWidth: "260px",
         });
 
         // Add click handlers
@@ -197,8 +219,44 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
           });
 
           if (features && features.length > 0) {
-            const props = features[0].properties as { driverId?: string } | null;
-            if (props?.driverId) onDriverSelect?.(props.driverId);
+            const feature = features[0];
+            const props = feature.properties as Record<string, unknown> | null;
+            if (props?.driverId) onDriverSelect?.(props.driverId as string);
+
+            // Show popup
+            if (map.current && popupRef.current && feature.geometry.type === "Point") {
+              const coords = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
+              const status = (props?.status as string) || "PENDING";
+              const statusColors: Record<string, string> = {
+                COMPLETED: "#22c55e",
+                FAILED: "#ef4444",
+                IN_PROGRESS: "#3b82f6",
+                PENDING: "#6b7280",
+              };
+              const statusLabels: Record<string, string> = {
+                COMPLETED: "Completada",
+                FAILED: "Fallida",
+                IN_PROGRESS: "En progreso",
+                PENDING: "Pendiente",
+              };
+              const statusColor = statusColors[status] || "#6b7280";
+              const statusLabel = statusLabels[status] || status;
+              const sequence = props?.sequence ?? "";
+              const trackingId = props?.trackingId ?? "";
+              const address = props?.address ?? "";
+
+              const html = `<div style="font-family: system-ui; font-size: 13px; line-height: 1.4; min-width: 180px;">
+  <div style="font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${statusColor};"></span>
+    Parada #${sequence}
+  </div>
+  <div style="color: #888; font-size: 12px;">${trackingId}</div>
+  <div style="margin-top: 6px; font-size: 12px;">${address}</div>
+  <div style="margin-top: 4px; font-size: 11px; color: #888;">Estado: ${statusLabel}</div>
+</div>`;
+
+              popupRef.current.setLngLat(coords).setHTML(html).addTo(map.current);
+            }
           }
         });
 
@@ -208,8 +266,60 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
           });
 
           if (features && features.length > 0) {
-            const props = features[0].properties as { driverId?: string } | null;
-            if (props?.driverId) onDriverSelect?.(props.driverId);
+            const feature = features[0];
+            const props = feature.properties as Record<string, unknown> | null;
+            if (props?.driverId) onDriverSelect?.(props.driverId as string);
+
+            // Show popup
+            if (map.current && popupRef.current && feature.geometry.type === "Point") {
+              const coords = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
+              const driverName = (props?.driverName as string) || "Desconocido";
+              const isRecent = props?.isRecent === true || props?.isRecent === "true";
+              const isMoving = props?.isMoving === true || props?.isMoving === "true";
+              const speed = props?.speed != null ? Number(props.speed) : null;
+              const batteryLevel = props?.batteryLevel != null ? Number(props.batteryLevel) : null;
+              const recordedAt = props?.recordedAt as string | undefined;
+
+              // Format time ago
+              let timeAgoText = "";
+              if (recordedAt) {
+                const diffMs = Date.now() - new Date(recordedAt).getTime();
+                const diffMin = Math.floor(diffMs / 60000);
+                if (diffMin < 1) timeAgoText = "Hace menos de 1 min";
+                else if (diffMin < 60) timeAgoText = `Hace ${diffMin} min`;
+                else if (diffMin < 1440) timeAgoText = `Hace ${Math.floor(diffMin / 60)}h`;
+                else timeAgoText = `Hace ${Math.floor(diffMin / 1440)}d`;
+              }
+
+              let statusHtml: string;
+              if (!isRecent) {
+                // Stale data - don't show movement/speed, warn the user
+                statusHtml = `<div style="font-size: 12px; color: #f59e0b;">⚠ Sin señal reciente</div>`;
+                if (timeAgoText) {
+                  statusHtml += `<div style="font-size: 11px; color: #888; margin-top: 2px;">Última señal: ${timeAgoText}</div>`;
+                }
+              } else {
+                const movementText = isMoving
+                  ? `En movimiento${speed ? ` · ${Math.round(speed)} km/h` : ""}`
+                  : "Detenido";
+                statusHtml = `<div style="font-size: 12px; color: #888;">${movementText}</div>`;
+                if (timeAgoText) {
+                  statusHtml += `<div style="font-size: 11px; color: #888; margin-top: 2px;">${timeAgoText}</div>`;
+                }
+              }
+
+              const batteryHtml = batteryLevel !== null && isRecent
+                ? `<div style="font-size: 12px; margin-top: 4px;">\u{1F50B} ${batteryLevel}%</div>`
+                : "";
+
+              const html = `<div style="font-family: system-ui; font-size: 13px; line-height: 1.4; min-width: 180px;">
+  <div style="font-weight: 600; margin-bottom: 4px;">${driverName}</div>
+  ${statusHtml}
+  ${batteryHtml}
+</div>`;
+
+              popupRef.current.setLngLat(coords).setHTML(html).addTo(map.current);
+            }
           }
         });
 
@@ -334,6 +444,8 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
       if (refreshInterval.current) {
         clearInterval(refreshInterval.current);
       }
+      popupRef.current?.remove();
+      popupRef.current = null;
       map.current?.remove();
       map.current = null;
     };

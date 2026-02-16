@@ -231,6 +231,7 @@ export async function GET(request: NextRequest) {
           speed: driverLocations.speed,
           heading: driverLocations.heading,
           isMoving: driverLocations.isMoving,
+          batteryLevel: driverLocations.batteryLevel,
           recordedAt: driverLocations.recordedAt,
         })
         .from(driverLocations)
@@ -281,6 +282,7 @@ export async function GET(request: NextRequest) {
             speed: location.speed,
             heading: location.heading,
             isMoving: location.isMoving,
+            batteryLevel: location.batteryLevel,
             accuracy: location.accuracy,
             recordedAt: location.recordedAt.toISOString(),
             isRecent,

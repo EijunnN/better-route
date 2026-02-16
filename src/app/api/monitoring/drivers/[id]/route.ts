@@ -1,7 +1,7 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, orders, routeStops, userSecondaryFleets, users, vehicleFleets } from "@/db/schema";
+import { driverLocations, optimizationJobs, orders, routeStops, userSecondaryFleets, users, vehicleFleets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
@@ -75,6 +75,30 @@ export async function GET(
       },
     });
 
+    // Get latest location for this driver
+    const latestLocation = await db.query.driverLocations.findFirst({
+      where: and(
+        eq(driverLocations.companyId, tenantCtx.companyId),
+        eq(driverLocations.driverId, driverId),
+      ),
+      orderBy: [desc(driverLocations.recordedAt)],
+    });
+
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const currentLocation = latestLocation
+      ? {
+          latitude: parseFloat(latestLocation.latitude),
+          longitude: parseFloat(latestLocation.longitude),
+          accuracy: latestLocation.accuracy,
+          speed: latestLocation.speed,
+          heading: latestLocation.heading,
+          isMoving: latestLocation.isMoving,
+          batteryLevel: latestLocation.batteryLevel,
+          recordedAt: latestLocation.recordedAt.toISOString(),
+          isRecent: latestLocation.recordedAt > fiveMinAgo,
+        }
+      : null;
+
     // Build combined fleets array
     const primaryFleet = driver.primaryFleet
       ? { id: driver.primaryFleet.id, name: driver.primaryFleet.name, type: driver.primaryFleet.type, isPrimary: true as const }
@@ -111,6 +135,7 @@ export async function GET(
         data: {
           driver: driverResponse,
           route: null,
+          currentLocation,
         },
       });
     }
@@ -147,6 +172,7 @@ export async function GET(
         data: {
           driver: driverResponse,
           route: null,
+          currentLocation,
         },
       });
     }
@@ -286,6 +312,7 @@ export async function GET(
           },
           stops: stopsData,
         },
+        currentLocation,
       },
     });
   } catch (error) {

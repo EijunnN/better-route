@@ -32,6 +32,12 @@ interface DriverListItemProps {
   onClick: () => void;
   isSelected?: boolean;
   compact?: boolean;
+  currentLocation?: {
+    batteryLevel: number | null;
+    isMoving: boolean | null;
+    speed: number | null;
+    isRecent: boolean;
+  } | null;
 }
 
 const STATUS_CONFIG = {
@@ -66,6 +72,7 @@ export const DriverListItem = memo(function DriverListItem({
   onClick,
   isSelected = false,
   compact = false,
+  currentLocation,
 }: DriverListItemProps) {
   const statusConfig =
     STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ||
@@ -91,11 +98,22 @@ export const DriverListItem = memo(function DriverListItem({
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium text-sm truncate">{name}</span>
-              {vehiclePlate && (
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {vehiclePlate}
-                </span>
-              )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {currentLocation?.batteryLevel != null && currentLocation.isRecent && (
+                  <span className={cn(
+                    "text-xs shrink-0",
+                    currentLocation.batteryLevel > 50 ? "text-green-500" :
+                    currentLocation.batteryLevel > 20 ? "text-amber-500" : "text-red-500"
+                  )}>
+                    {currentLocation.batteryLevel}%
+                  </span>
+                )}
+                {vehiclePlate && (
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {vehiclePlate}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Progress bar for drivers with routes */}
@@ -165,6 +183,15 @@ export const DriverListItem = memo(function DriverListItem({
                   <span>{statusConfig.label}</span>
                 </div>
                 {hasRoute && vehiclePlate && <span>• {vehiclePlate}</span>}
+                {currentLocation?.batteryLevel != null && currentLocation.isRecent && (
+                  <span className={cn(
+                    "text-xs",
+                    currentLocation.batteryLevel > 50 ? "text-green-500" :
+                    currentLocation.batteryLevel > 20 ? "text-amber-500" : "text-red-500"
+                  )}>
+                    {currentLocation.batteryLevel}%
+                  </span>
+                )}
               </div>
 
               {/* Progress for drivers with routes */}

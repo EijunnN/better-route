@@ -45,6 +45,17 @@ export interface DriverMonitoringData {
   vehiclePlate: string | null;
   progress: { completedStops: number; totalStops: number; percentage: number };
   alerts: string[];
+  currentLocation?: {
+    latitude: number;
+    longitude: number;
+    accuracy: number | null;
+    speed: number | null;
+    heading: number | null;
+    isMoving: boolean | null;
+    batteryLevel: number | null;
+    recordedAt: string;
+    isRecent: boolean;
+  } | null;
 }
 
 export interface DriverDetailData {

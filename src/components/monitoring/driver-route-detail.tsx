@@ -3,16 +3,19 @@
 import {
   AlertTriangle,
   ArrowLeft,
+  Battery,
   CheckCircle2,
   Clock,
   Edit3,
   Loader2,
   MapPin,
+  Signal,
   Truck,
   User,
   XCircle,
 } from "lucide-react";
 import { useCallback, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,11 +91,19 @@ interface RouteData {
   };
 }
 
+interface LocationData {
+  batteryLevel: number | null;
+  isRecent: boolean;
+  isMoving: boolean | null;
+  speed: number | null;
+}
+
 interface DriverRouteDetailProps {
   driver: DriverInfo;
   route: RouteData | null;
   onClose: () => void;
   onRefresh?: () => void;
+  locationData?: LocationData | null;
 }
 
 const STOP_STATUS_CONFIG = {
@@ -138,6 +149,7 @@ export function DriverRouteDetail({
   route,
   onClose,
   onRefresh,
+  locationData,
 }: DriverRouteDetailProps) {
   const [selectedStop, setSelectedStop] = useState<StopInfo | null>(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -257,7 +269,7 @@ export function DriverRouteDetail({
             <CardTitle>Información del conductor</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <User className="w-4 h-4 text-muted-foreground" />
@@ -276,6 +288,32 @@ export function DriverRouteDetail({
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-muted-foreground">Teléfono:</span>
                     <span className="font-medium">{driver.phone}</span>
+                  </div>
+                )}
+                {locationData && (
+                  <div className="space-y-2 pt-2 border-t">
+                    {locationData.batteryLevel != null && locationData.isRecent && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Battery className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Batería:</span>
+                        <span className={cn("font-medium",
+                          locationData.batteryLevel > 50 ? "text-green-500" :
+                          locationData.batteryLevel > 20 ? "text-amber-500" : "text-red-500"
+                        )}>
+                          {locationData.batteryLevel}%
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-sm">
+                      <Signal className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">GPS:</span>
+                      <div className="flex items-center gap-1.5">
+                        <div className={cn("w-2 h-2 rounded-full", locationData.isRecent ? "bg-green-500" : "bg-amber-500")} />
+                        <span className="font-medium text-xs">
+                          {locationData.isRecent ? "Señal activa" : "Sin señal reciente"}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -333,7 +371,7 @@ export function DriverRouteDetail({
                 </div>
 
                 {/* Route Metrics */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm text-muted-foreground">
                       Distancia total
@@ -409,7 +447,7 @@ export function DriverRouteDetail({
                 <CardTitle>Paradas de la ruta</CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[400px]">
+                <ScrollArea className="max-h-[400px]">
                   <div className="space-y-2">
                     {route.stops.map((stop) => {
                       const statusConfig =
