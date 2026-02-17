@@ -1,12 +1,13 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { companyOptimizationProfiles } from "@/db/schema";
+import { companyFieldDefinitions, companyOptimizationProfiles } from "@/db/schema";
 import { parseProfile } from "@/lib/optimization/capacity-mapper";
 import {
   generateCsvTemplate,
   getFieldDocumentation,
   CSV_TEMPLATES,
+  type CsvCustomFieldInfo,
 } from "@/lib/orders/dynamic-csv-fields";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 
@@ -56,6 +57,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Fetch custom field definitions for this company (showInCsv + active)
+    const customFieldDefs = await db
+      .select({
+        code: companyFieldDefinitions.code,
+        label: companyFieldDefinitions.label,
+        fieldType: companyFieldDefinitions.fieldType,
+        required: companyFieldDefinitions.required,
+      })
+      .from(companyFieldDefinitions)
+      .where(
+        and(
+          eq(companyFieldDefinitions.companyId, context.companyId),
+          eq(companyFieldDefinitions.entity, "orders"),
+          eq(companyFieldDefinitions.showInCsv, true),
+          eq(companyFieldDefinitions.active, true),
+        ),
+      )
+      .orderBy(asc(companyFieldDefinitions.position));
+
+    const customFields: CsvCustomFieldInfo[] = customFieldDefs;
+
     // Generate template based on format
     if (format === "json") {
       // Return field documentation for UI
@@ -69,6 +91,7 @@ export async function GET(request: NextRequest) {
         data: {
           fields,
           templates,
+          customFields,
           profile: profile
             ? {
                 activeDimensions: profile.activeDimensions,
@@ -80,7 +103,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate CSV content
-    const csvContent = generateCsvTemplate(profile, locale);
+    const csvContent = generateCsvTemplate(profile, locale, customFields);
 
     // Return as downloadable CSV file
     const filename = templateType

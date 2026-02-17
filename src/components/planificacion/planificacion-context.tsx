@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useCompanyContext } from "@/hooks/use-company-context";
+import { parseCSVLine } from "@/lib/csv/parse-csv-line";
 import type {
   Vehicle,
   Fleet,
@@ -111,6 +112,7 @@ export interface PlanificacionActions {
   handleCsvFileChange: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleCsvUpload: () => Promise<void>;
   resetCsvState: () => void;
+  downloadCsvTemplate: () => Promise<void>;
   // Order edit
   openEditOrder: (order: Order) => void;
   setEditOrderData: (data: { address: string; latitude: string; longitude: string }) => void;
@@ -671,9 +673,10 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
           .replace(/[^a-z0-9_]/g, "_");
       };
 
-      const headers = firstLine.split(delimiter).map((h) => normalizeHeader(h));
-      const originalHeaders = firstLine.split(delimiter).map((h) => h.trim().toLowerCase());
-      const rawHeaders = firstLine.split(delimiter).map((h) => h.trim());
+      const headerFields = parseCSVLine(firstLine, delimiter);
+      const headers = headerFields.map((h) => normalizeHeader(h));
+      const originalHeaders = headerFields.map((h) => h.trim().toLowerCase());
+      const rawHeaders = headerFields.map((h) => h.trim());
 
       const requiredHeaders = [
         "trackcode", "nombre_cliente", "direccion", "referencia",
@@ -752,9 +755,21 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
         customFieldMappings.map(({ csvHeader, code, label }) => ({ csvHeader, code, label }))
       );
 
+      // Validate that all required custom fields with showInCsv have a column in the CSV
+      if (fieldDefinitions.length > 0) {
+        const mappedCodes = new Set(customFieldMappings.map((m) => m.code));
+        const missingRequiredCustomFields = fieldDefinitions.filter(
+          (fd) => fd.showInCsv && fd.required && !mappedCodes.has(fd.code)
+        );
+        if (missingRequiredCustomFields.length > 0) {
+          const names = missingRequiredCustomFields.map((fd) => fd.label).join(", ");
+          throw new Error(`Faltan columnas de campos personalizados requeridos: ${names}`);
+        }
+      }
+
       const data: CsvRow[] = [];
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(delimiter).map((v) => v.trim());
+        const values = parseCSVLine(lines[i], delimiter).map((v) => v.trim());
         if (values.length >= requiredHeaders.length) {
           const row: CsvRow = {
             trackcode: values[indexes.trackcode] || "",
@@ -1003,6 +1018,22 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
           orderData.customFields = row.customFields;
         }
 
+        // Validate required custom fields have values
+        if (fieldDefinitions.length > 0) {
+          const requiredCsvFields = fieldDefinitions.filter(
+            (fd) => fd.showInCsv && fd.required
+          );
+          const missingFields = requiredCsvFields.filter((fd) => {
+            const val = row.customFields?.[fd.code];
+            return val === undefined || val === null || val === "";
+          });
+          if (missingFields.length > 0) {
+            const names = missingFields.map((fd) => fd.label).join(", ");
+            skippedRows.push(`${row.trackcode}: Campos requeridos vacíos: ${names}`);
+            continue;
+          }
+        }
+
         validOrders.push(orderData);
       }
 
@@ -1067,7 +1098,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     } finally {
       setCsvUploading(false);
     }
-  }, [companyId, csvPreview, loadOrders]);
+  }, [companyId, csvPreview, loadOrders, fieldDefinitions]);
 
   const resetCsvState = useCallback(() => {
     setShowCsvUpload(false);
@@ -1076,6 +1107,27 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     setCsvError(null);
     setCsvCustomFieldMappings([]);
   }, []);
+
+  const downloadCsvTemplate = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const response = await fetch("/api/orders/csv-template?format=csv&locale=es", {
+        headers: { "x-company-id": companyId },
+      });
+      if (!response.ok) throw new Error("Error al descargar la plantilla");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ordenes_template.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setCsvError(err instanceof Error ? err.message : "Error al descargar la plantilla");
+    }
+  }, [companyId]);
 
   const openEditOrder = useCallback((order: Order) => {
     setEditingOrder(order);
@@ -1207,6 +1259,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     handleCsvFileChange,
     handleCsvUpload,
     resetCsvState,
+    downloadCsvTemplate,
     openEditOrder,
     setEditOrderData,
     saveOrderChanges,

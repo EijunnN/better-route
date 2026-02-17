@@ -2,7 +2,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
-import { orders } from "@/db/schema";
+import { companyFieldDefinitions, orders } from "@/db/schema";
+import {
+  type FieldDefinition,
+  validateCustomFields,
+  applyDefaults,
+} from "@/lib/custom-fields/validation";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 
 function extractTenantContext(request: NextRequest) {
@@ -119,6 +124,77 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 },
       );
+    }
+
+    // Validate custom fields if any order has them
+    const hasCustomFields = validOrders.some(
+      (o) => o.customFields && Object.keys(o.customFields).length > 0,
+    );
+
+    let fieldDefs: FieldDefinition[] = [];
+    if (hasCustomFields) {
+      const defs = await db
+        .select({
+          id: companyFieldDefinitions.id,
+          code: companyFieldDefinitions.code,
+          label: companyFieldDefinitions.label,
+          fieldType: companyFieldDefinitions.fieldType,
+          required: companyFieldDefinitions.required,
+          options: companyFieldDefinitions.options,
+          defaultValue: companyFieldDefinitions.defaultValue,
+          validationRules: companyFieldDefinitions.validationRules,
+        })
+        .from(companyFieldDefinitions)
+        .where(
+          and(
+            eq(companyFieldDefinitions.companyId, context.companyId),
+            eq(companyFieldDefinitions.entity, "orders"),
+            eq(companyFieldDefinitions.active, true),
+          ),
+        );
+
+      fieldDefs = defs.map((d) => ({
+        ...d,
+        options: d.options as string[] | null,
+        validationRules: d.validationRules as FieldDefinition["validationRules"],
+      }));
+    }
+
+    // Apply defaults and validate custom fields
+    if (fieldDefs.length > 0) {
+      const customFieldErrors: Array<{ trackingId: string; errors: string[] }> = [];
+
+      for (const order of validOrders) {
+        if (order.customFields) {
+          order.customFields = applyDefaults(
+            fieldDefs,
+            order.customFields as Record<string, unknown>,
+          ) as Record<string, unknown>;
+        }
+
+        const errors = validateCustomFields(
+          fieldDefs,
+          (order.customFields || {}) as Record<string, unknown>,
+        );
+
+        if (errors.length > 0) {
+          customFieldErrors.push({
+            trackingId: order.trackingId,
+            errors: errors.map((e) => `${e.label}: ${e.message}`),
+          });
+        }
+      }
+
+      if (customFieldErrors.length > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Custom field validation failed",
+            details: customFieldErrors.slice(0, 10),
+          },
+          { status: 400 },
+        );
+      }
     }
 
     // Batch insert all orders

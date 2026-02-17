@@ -1,9 +1,8 @@
-import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   optimizationJobs,
-  orders,
   routeStops,
   users,
   vehicles,
@@ -110,7 +109,21 @@ export async function GET(request: NextRequest) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Primero, buscar el vehiculo asignado al conductor
+    // Buscar el route_stop mas reciente del conductor para hoy.
+    // Se ordena por createdAt DESC para obtener la parada del job MAS NUEVO,
+    // evitando tomar paradas de un job anterior fallido del mismo dia.
+    const todayStops = await db.query.routeStops.findMany({
+      where: and(
+        eq(routeStops.companyId, tenantCtx.companyId),
+        eq(routeStops.userId, driverId),
+        gte(routeStops.createdAt, today),
+        lt(routeStops.createdAt, tomorrow),
+      ),
+      orderBy: [desc(routeStops.createdAt)],
+      limit: 1,
+    });
+
+    // Buscar vehiculo asignado (para info complementaria)
     const assignedVehicle = await db.query.vehicles.findFirst({
       where: and(
         withTenantFilter(vehicles, [], tenantCtx.companyId),
@@ -119,73 +132,42 @@ export async function GET(request: NextRequest) {
       ),
     });
 
-    // Si el conductor no tiene vehiculo asignado
-    if (!assignedVehicle) {
-      return NextResponse.json({
-        data: {
-          driver: driverResponse,
-          vehicle: null,
-          route: null,
-          metrics: null,
-          message: "No tienes un vehículo asignado",
-        },
-      });
-    }
-
-    // Buscar route_stops para este vehiculo en un job confirmado de hoy
-    // Primero buscamos si hay paradas para hoy
-    const todayStops = await db.query.routeStops.findMany({
-      where: and(
-        eq(routeStops.vehicleId, assignedVehicle.id),
-        gte(routeStops.createdAt, today),
-        lt(routeStops.createdAt, tomorrow),
-      ),
-      orderBy: [asc(routeStops.sequence)],
-      limit: 1,
-    });
-
-    // Only show today's route - don't fall back to old routes from previous days
     const hasStopsToday = todayStops.length > 0;
+    const activeJobId = hasStopsToday ? todayStops[0].jobId : null;
+    const routeVehicleId = hasStopsToday ? todayStops[0].vehicleId : null;
 
-    // Only use today's job, don't fall back to old routes
-    let activeJobId: string | null = null;
-
-    if (hasStopsToday) {
-      activeJobId = todayStops[0].jobId;
-    }
-    // If no stops today, don't fall back to old routes - return empty route
-
-    // Si no hay job activo, devolver conductor con vehiculo pero sin ruta
+    // Si no hay ruta para hoy, devolver conductor con vehiculo pero sin ruta
     if (!activeJobId) {
       return NextResponse.json({
         data: {
           driver: driverResponse,
-          vehicle: {
-            id: assignedVehicle.id,
-            name: assignedVehicle.name,
-            plate: assignedVehicle.plate,
-            brand: assignedVehicle.brand,
-            model: assignedVehicle.model,
-            maxOrders: assignedVehicle.maxOrders,
-            origin: {
-              address: assignedVehicle.originAddress,
-              latitude: assignedVehicle.originLatitude,
-              longitude: assignedVehicle.originLongitude,
-            },
-          },
+          vehicle: assignedVehicle
+            ? {
+                id: assignedVehicle.id,
+                name: assignedVehicle.name,
+                plate: assignedVehicle.plate,
+                brand: assignedVehicle.brand,
+                model: assignedVehicle.model,
+                maxOrders: assignedVehicle.maxOrders,
+                origin: {
+                  address: assignedVehicle.originAddress,
+                  latitude: assignedVehicle.originLatitude,
+                  longitude: assignedVehicle.originLongitude,
+                },
+              }
+            : null,
           route: null,
           metrics: null,
-          message: "No tienes rutas asignadas",
+          message: "No tienes rutas asignadas para hoy",
         },
       });
     }
 
-    // Obtener el job para tener los datos de la ruta
+    // Obtener el job
     const activeJob = await db.query.optimizationJobs.findFirst({
       where: eq(optimizationJobs.id, activeJobId),
     });
 
-    // Si no hay job activo, devolver conductor sin ruta
     if (!activeJob) {
       return NextResponse.json({
         data: {
@@ -197,11 +179,21 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Obtener las paradas del vehiculo para este job
+    // Obtener el vehiculo de la ruta (puede ser distinto al asignado permanentemente)
+    const routeVehicle = routeVehicleId
+      ? await db.query.vehicles.findFirst({
+          where: and(
+            withTenantFilter(vehicles, [], tenantCtx.companyId),
+            eq(vehicles.id, routeVehicleId),
+          ),
+        })
+      : assignedVehicle;
+
+    // Obtener todas las paradas del conductor para este job
     const stops = await db.query.routeStops.findMany({
       where: and(
         eq(routeStops.jobId, activeJob.id),
-        eq(routeStops.vehicleId, assignedVehicle.id),
+        eq(routeStops.userId, driverId),
       ),
       orderBy: [asc(routeStops.sequence)],
       with: {
@@ -223,45 +215,49 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Si el vehiculo no tiene paradas en este job
+    // Si no hay paradas
     if (stops.length === 0) {
       return NextResponse.json({
         data: {
           driver: driverResponse,
-          vehicle: {
-            id: assignedVehicle.id,
-            name: assignedVehicle.name,
-            plate: assignedVehicle.plate,
-            brand: assignedVehicle.brand,
-            model: assignedVehicle.model,
-            maxOrders: assignedVehicle.maxOrders,
-            origin: {
-              address: assignedVehicle.originAddress,
-              latitude: assignedVehicle.originLatitude,
-              longitude: assignedVehicle.originLongitude,
-            },
-          },
+          vehicle: routeVehicle
+            ? {
+                id: routeVehicle.id,
+                name: routeVehicle.name,
+                plate: routeVehicle.plate,
+                brand: routeVehicle.brand,
+                model: routeVehicle.model,
+                maxOrders: routeVehicle.maxOrders,
+                origin: {
+                  address: routeVehicle.originAddress,
+                  latitude: routeVehicle.originLatitude,
+                  longitude: routeVehicle.originLongitude,
+                },
+              }
+            : null,
           route: null,
           metrics: null,
-          message: "No hay paradas asignadas para este vehículo",
+          message: "No hay paradas asignadas",
         },
       });
     }
 
     // Respuesta del vehiculo
-    const vehicleResponse = {
-      id: assignedVehicle.id,
-      name: assignedVehicle.name,
-      plate: assignedVehicle.plate,
-      brand: assignedVehicle.brand,
-      model: assignedVehicle.model,
-      maxOrders: assignedVehicle.maxOrders,
-      origin: {
-        address: assignedVehicle.originAddress,
-        latitude: assignedVehicle.originLatitude,
-        longitude: assignedVehicle.originLongitude,
-      },
-    };
+    const vehicleResponse = routeVehicle
+      ? {
+          id: routeVehicle.id,
+          name: routeVehicle.name,
+          plate: routeVehicle.plate,
+          brand: routeVehicle.brand,
+          model: routeVehicle.model,
+          maxOrders: routeVehicle.maxOrders,
+          origin: {
+            address: routeVehicle.originAddress,
+            latitude: routeVehicle.originLatitude,
+            longitude: routeVehicle.originLongitude,
+          },
+        }
+      : null;
 
     // Calcular metricas de la ruta
     const completedStops = stops.filter((s) => s.status === "COMPLETED").length;
@@ -276,12 +272,11 @@ export async function GET(request: NextRequest) {
     let totalDistance = 0;
     let totalDuration = 0;
 
-    if (activeJob.result) {
+    if (activeJob.result && routeVehicle) {
       try {
         const parsedResult = JSON.parse(activeJob.result);
-        // Buscar la ruta por vehicleId
         const vehicleRoute = parsedResult.routes?.find(
-          (r: { vehicleId?: string }) => r.vehicleId === assignedVehicle.id,
+          (r: { vehicleId?: string }) => r.vehicleId === routeVehicle.id,
         );
         if (vehicleRoute) {
           totalDistance = vehicleRoute.totalDistance || 0;

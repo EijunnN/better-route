@@ -335,6 +335,14 @@ export function getRequiredFieldsForProfile(
 // BOM UTF-8 para que Excel detecte correctamente la codificación
 const UTF8_BOM = "\uFEFF";
 
+// Custom field info for CSV template generation
+export interface CsvCustomFieldInfo {
+  code: string;
+  label: string;
+  fieldType: string;
+  required: boolean;
+}
+
 /**
  * Generate CSV header row based on profile
  */
@@ -342,9 +350,15 @@ export function generateCsvHeader(
   profile?: CompanyOptimizationProfile | null,
   locale: "en" | "es" = "es",
   separator: string = ";",
+  customFields?: CsvCustomFieldInfo[],
 ): string {
   const fields = getCsvFieldsForProfile(profile);
   const headers = fields.map((f) => (locale === "es" ? f.labelEs : f.label));
+  if (customFields && customFields.length > 0) {
+    for (const cf of customFields) {
+      headers.push(cf.code);
+    }
+  }
   return headers.join(separator);
 }
 
@@ -356,6 +370,7 @@ export function generateCsvHeader(
 export function generateCsvTemplate(
   profile?: CompanyOptimizationProfile | null,
   locale: "en" | "es" = "es",
+  customFields?: CsvCustomFieldInfo[],
 ): string {
   const fields = getCsvFieldsForProfile(profile);
   const headers = fields.map((f) => (locale === "es" ? f.labelEs : f.label));
@@ -363,7 +378,34 @@ export function generateCsvTemplate(
   // Use semicolon for Spanish locale (Excel default), comma for English
   const separator = locale === "es" ? ";" : ",";
 
+  // Append custom field columns
+  if (customFields && customFields.length > 0) {
+    for (const cf of customFields) {
+      headers.push(cf.code);
+      examples.push(getCustomFieldExample(cf));
+    }
+  }
+
   return `${UTF8_BOM}${headers.join(separator)}\n${examples.join(separator)}`;
+}
+
+/**
+ * Generate an example value for a custom field based on its type
+ */
+function getCustomFieldExample(cf: CsvCustomFieldInfo): string {
+  switch (cf.fieldType) {
+    case "number":
+    case "currency":
+      return "0";
+    case "boolean":
+      return "true";
+    case "date":
+      return "2025-01-15";
+    case "select":
+      return "";
+    default:
+      return "";
+  }
 }
 
 /**

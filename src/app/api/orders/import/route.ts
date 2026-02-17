@@ -15,6 +15,7 @@ import {
 import { parseProfile, type CompanyOptimizationProfile } from "@/lib/optimization/capacity-mapper";
 import { mapCSVRow, suggestColumnMapping } from "@/lib/orders/csv-column-mapping";
 import { validateCsvRow, getCsvFieldsForProfile } from "@/lib/orders/dynamic-csv-fields";
+import { parseCSVLine } from "@/lib/csv/parse-csv-line";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { orderSchema } from "@/lib/validations/order";
 
@@ -169,40 +170,6 @@ function parseCSV(content: string, delimiter: string): CSVRow[] {
   }
 
   return rows;
-}
-
-/**
- * Parse a single CSV line handling quoted values
- */
-function parseCSVLine(line: string, delimiter: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const nextChar = line[i + 1];
-
-    if (char === '"') {
-      if (inQuotes && nextChar === '"') {
-        // Escaped quote
-        current += '"';
-        i++;
-      } else {
-        // Toggle quote mode
-        inQuotes = !inQuotes;
-      }
-    } else if (char === delimiter && !inQuotes) {
-      // Field separator
-      result.push(current);
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-
-  result.push(current);
-  return result;
 }
 
 /**

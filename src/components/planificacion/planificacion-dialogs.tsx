@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Upload } from "lucide-react";
+import { Download, Loader2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +44,17 @@ export function CsvUploadDialog() {
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
+          {/* Download template */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={actions.downloadCsvTemplate}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Descargar plantilla CSV
+          </Button>
+
           {/* File input */}
           <div className="space-y-2">
             <Label htmlFor="csv-file">Archivo CSV</Label>

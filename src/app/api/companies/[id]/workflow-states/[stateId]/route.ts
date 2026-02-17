@@ -67,8 +67,8 @@ export async function GET(
   }
 }
 
-// PUT - Update state fields
-export async function PUT(
+// PATCH/PUT - Update state fields
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; stateId: string }> },
 ) {
@@ -148,6 +148,8 @@ export async function PUT(
     return handleError(error, "updating workflow state");
   }
 }
+
+export { PATCH as PUT };
 
 // DELETE - Delete state (check no route_stops reference it first)
 export async function DELETE(
