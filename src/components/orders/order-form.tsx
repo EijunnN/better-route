@@ -10,6 +10,7 @@ import {
   OrderFormActions,
   OrderFormBasicInfo,
   OrderFormCapacity,
+  OrderFormCustomFields,
   OrderFormLocation,
   OrderFormNotes,
   OrderFormTimeWindow,
@@ -42,6 +43,7 @@ function OrderFormContent() {
           <OrderFormLocation />
           <OrderFormTimeWindow />
           <OrderFormCapacity />
+          <OrderFormCustomFields />
           <OrderFormNotes />
           <OrderFormActions />
         </form>
@@ -96,6 +98,7 @@ OrderForm.BasicInfo = OrderFormBasicInfo;
 OrderForm.Location = OrderFormLocation;
 OrderForm.TimeWindow = OrderFormTimeWindow;
 OrderForm.Capacity = OrderFormCapacity;
+OrderForm.CustomFields = OrderFormCustomFields;
 OrderForm.Notes = OrderFormNotes;
 OrderForm.Actions = OrderFormActions;
 

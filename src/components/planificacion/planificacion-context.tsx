@@ -20,6 +20,7 @@ import type {
   CompanyProfile,
   CsvRow,
   StepId,
+  FieldDefinition,
 } from "./planificacion-types";
 
 // State
@@ -70,6 +71,10 @@ export interface PlanificacionState {
   editOrderData: { address: string; latitude: string; longitude: string };
   isUpdatingOrder: boolean;
   updateOrderError: string | null;
+  // Custom field definitions
+  fieldDefinitions: FieldDefinition[];
+  // CSV custom field column mappings (CSV header -> field definition code)
+  csvCustomFieldMappings: Array<{ csvHeader: string; code: string; label: string }>;
 }
 
 // Actions
@@ -213,6 +218,12 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState<string | null>(null);
   const [csvPreview, setCsvPreview] = useState<CsvRow[]>([]);
+
+  // Custom field definitions
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
+  const [csvCustomFieldMappings, setCsvCustomFieldMappings] = useState<
+    Array<{ csvHeader: string; code: string; label: string }>
+  >([]);
 
   // Order edit modal state
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -407,6 +418,21 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     }
   }, [companyId]);
 
+  const loadFieldDefinitions = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const response = await fetch(`/api/companies/${companyId}/field-definitions?entity=orders`, {
+        headers: { "x-company-id": companyId },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setFieldDefinitions((data.data || []).filter((d: FieldDefinition) => d.active));
+      }
+    } catch (err) {
+      console.error("Failed to fetch field definitions:", err);
+    }
+  }, [companyId]);
+
   // Initial data load
   useEffect(() => {
     if (companyId) {
@@ -417,9 +443,10 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
         loadZones(),
         loadOptimizers(),
         loadCompanyProfile(),
+        loadFieldDefinitions(),
       ]);
     }
-  }, [companyId, loadFleets, loadVehicles, loadOrders, loadZones, loadOptimizers, loadCompanyProfile]);
+  }, [companyId, loadFleets, loadVehicles, loadOrders, loadZones, loadOptimizers, loadCompanyProfile, loadFieldDefinitions]);
 
   // Derived values
   const selectedVehicleIdsSet = useMemo(() => new Set(selectedVehicleIds), [selectedVehicleIds]);
@@ -646,6 +673,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
 
       const headers = firstLine.split(delimiter).map((h) => normalizeHeader(h));
       const originalHeaders = firstLine.split(delimiter).map((h) => h.trim().toLowerCase());
+      const rawHeaders = firstLine.split(delimiter).map((h) => h.trim());
 
       const requiredHeaders = [
         "trackcode", "nombre_cliente", "direccion", "referencia",
@@ -698,6 +726,32 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
             : getIndex("ventana horaria fin"),
       };
 
+      // Detect custom field columns: columns not mapped to any standard field
+      const standardIndexes = new Set(Object.values(indexes).filter((i) => i !== -1));
+      const customFieldMappings: Array<{ csvHeader: string; code: string; label: string; index: number }> = [];
+
+      if (fieldDefinitions.length > 0) {
+        for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+          if (standardIndexes.has(colIdx)) continue;
+          const normalizedCol = headers[colIdx];
+          const matchedDef = fieldDefinitions.find(
+            (fd) => fd.showInCsv && normalizeHeader(fd.code) === normalizedCol
+          );
+          if (matchedDef) {
+            customFieldMappings.push({
+              csvHeader: rawHeaders[colIdx],
+              code: matchedDef.code,
+              label: matchedDef.label,
+              index: colIdx,
+            });
+          }
+        }
+      }
+
+      setCsvCustomFieldMappings(
+        customFieldMappings.map(({ csvHeader, code, label }) => ({ csvHeader, code, label }))
+      );
+
       const data: CsvRow[] = [];
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(delimiter).map((v) => v.trim());
@@ -740,13 +794,27 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
             row.ventana_horaria_fin = values[indexes.ventana_horaria_fin];
           }
 
+          // Map custom field columns
+          if (customFieldMappings.length > 0) {
+            const cf: Record<string, string> = {};
+            for (const mapping of customFieldMappings) {
+              const val = values[mapping.index];
+              if (val) {
+                cf[mapping.code] = val;
+              }
+            }
+            if (Object.keys(cf).length > 0) {
+              row.customFields = cf;
+            }
+          }
+
           data.push(row);
         }
       }
 
       return data;
     },
-    [companyProfile]
+    [companyProfile, fieldDefinitions]
   );
 
   const handleCsvFileChange = useCallback(
@@ -812,6 +880,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
         priority?: number;
         timeWindowStart?: string;
         timeWindowEnd?: string;
+        customFields?: Record<string, string>;
       }> = [];
       const skippedRows: string[] = [];
 
@@ -859,6 +928,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
           priority?: number;
           timeWindowStart?: string;
           timeWindowEnd?: string;
+          customFields?: Record<string, string>;
         } = {
           trackingId: String(row.trackcode).trim().slice(0, 50),
           address: fullAddress.slice(0, 500),
@@ -917,6 +987,10 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
           if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
             orderData.timeWindowEnd = timeStr;
           }
+        }
+
+        if (row.customFields && Object.keys(row.customFields).length > 0) {
+          orderData.customFields = row.customFields;
         }
 
         validOrders.push(orderData);
@@ -990,6 +1064,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     setCsvFile(null);
     setCsvPreview([]);
     setCsvError(null);
+    setCsvCustomFieldMappings([]);
   }, []);
 
   const openEditOrder = useCallback((order: Order) => {
@@ -1091,6 +1166,8 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     editOrderData,
     isUpdatingOrder,
     updateOrderError,
+    fieldDefinitions,
+    csvCustomFieldMappings,
   };
 
   const actions: PlanificacionActions = {

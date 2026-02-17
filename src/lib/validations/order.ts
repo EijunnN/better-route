@@ -60,6 +60,7 @@ const baseOrderSchema = {
   priority: z.number().int().min(0, "Prioridad mínima es 0").max(100, "Prioridad máxima es 100").optional(),
   requiredSkills: z.string().optional(),
   notes: z.string().optional(),
+  customFields: z.record(z.string(), z.unknown()).optional(),
   status: z
     .enum(ORDER_STATUS, {
       message: "Invalid order status",
@@ -142,6 +143,7 @@ export const updateOrderSchema = z.object({
   priority: z.number().int().min(0).max(100).optional(),
   requiredSkills: z.string().optional(),
   notes: z.string().optional(),
+  customFields: z.record(z.string(), z.unknown()).optional(),
   status: z.enum(ORDER_STATUS).optional(),
   active: z.boolean().optional(),
 });

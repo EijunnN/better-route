@@ -100,6 +100,21 @@ export interface CsvRow {
   prioridad?: string;
   ventana_horaria_inicio?: string;
   ventana_horaria_fin?: string;
+  customFields?: Record<string, string>;
+}
+
+export interface FieldDefinition {
+  id: string;
+  code: string;
+  label: string;
+  fieldType: string;
+  required: boolean;
+  showInList: boolean;
+  showInMobile: boolean;
+  showInCsv: boolean;
+  options: string[] | null;
+  defaultValue: string | null;
+  active: boolean;
 }
 
 export type StepId = "vehiculos" | "visitas" | "configuracion";

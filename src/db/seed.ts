@@ -7,6 +7,7 @@ import {
   alerts,
   auditLogs,
   companies,
+  companyFieldDefinitions,
   companyOptimizationProfiles,
   companyWorkflowStates,
   companyWorkflowTransitions,
@@ -44,6 +45,7 @@ import {
   zones,
 } from "@/db/schema";
 import { seedDefaultWorkflowStates } from "@/lib/workflow/seed-defaults";
+import { seedDefaultFieldDefinitions } from "@/lib/custom-fields/seed-defaults";
 
 async function seed() {
   console.log("🌱 Starting database seed...");
@@ -59,6 +61,7 @@ async function seed() {
       await db.delete(planMetrics);
       await db.delete(outputHistory);
       await db.delete(reassignmentsHistory);
+      await db.delete(companyFieldDefinitions);
       await db.delete(companyWorkflowTransitions);
       await db.delete(companyWorkflowStates);
       await db.delete(routeStops);
@@ -190,6 +193,8 @@ async function seed() {
         { entity: "zones", action: "MANAGE", name: "Gestionar zonas", description: "Crear y editar zonas", category: "SETTINGS", displayOrder: 4 },
         { entity: "presets", action: "VIEW", name: "Ver presets", description: "Ver presets de optimización", category: "SETTINGS", displayOrder: 5 },
         { entity: "presets", action: "MANAGE", name: "Gestionar presets", description: "Crear y editar presets", category: "SETTINGS", displayOrder: 6 },
+        { entity: "custom_fields", action: "VIEW", name: "Ver campos personalizados", description: "Ver definiciones de campos personalizados", category: "SETTINGS", displayOrder: 7 },
+        { entity: "custom_fields", action: "MANAGE", name: "Gestionar campos personalizados", description: "Crear, editar y eliminar campos personalizados", category: "SETTINGS", displayOrder: 8 },
         // REPORTS
         { entity: "reports", action: "VIEW", name: "Ver reportes", description: "Ver reportes y métricas", category: "REPORTS", displayOrder: 1 },
         { entity: "reports", action: "EXPORT", name: "Exportar reportes", description: "Exportar reportes a PDF/CSV", category: "REPORTS", displayOrder: 2 },
@@ -203,7 +208,7 @@ async function seed() {
       console.log("ℹ️  Permissions already exist");
     }
 
-    // Seed workflow states for all companies
+    // Seed workflow states and field definitions for all companies
     const allCompanies = await db
       .select({ id: companies.id, name: companies.commercialName })
       .from(companies);
@@ -216,6 +221,16 @@ async function seed() {
       if (existingStates.length === 0) {
         await seedDefaultWorkflowStates(company.id);
         console.log(`✅ Seeded workflow states for: ${company.name}`);
+      }
+
+      const existingFields = await db
+        .select()
+        .from(companyFieldDefinitions)
+        .where(eq(companyFieldDefinitions.companyId, company.id))
+        .limit(1);
+      if (existingFields.length === 0) {
+        await seedDefaultFieldDefinitions(company.id);
+        console.log(`✅ Seeded field definitions for: ${company.name}`);
       }
     }
 

@@ -14,6 +14,7 @@ import type {
   TIME_WINDOW_STRICTNESS,
 } from "@/lib/validations/order";
 import type { TIME_WINDOW_TYPES } from "@/lib/validations/time-window-preset";
+import type { FieldDefinition } from "@/components/custom-fields";
 
 export interface OrderFormData {
   trackingId: string;
@@ -38,6 +39,7 @@ export interface OrderFormData {
   notes?: string;
   status?: (typeof ORDER_STATUS)[number];
   active?: boolean;
+  customFields?: Record<string, unknown>;
 }
 
 export interface CompanyProfile {
@@ -91,12 +93,13 @@ export interface OrderFormState {
   selectedPreset: TimeWindowPreset | null;
   isLoadingPresets: boolean;
   companyProfile: CompanyProfile;
+  fieldDefinitions: FieldDefinition[];
 }
 
 export interface OrderFormActions {
   handleChange: (
     field: keyof OrderFormData,
-    value: string | number | boolean | null,
+    value: string | number | boolean | Record<string, unknown> | null,
   ) => void;
   handlePresetChange: (presetId: string) => void;
   handleStrictnessChange: (value: string) => void;
@@ -143,6 +146,7 @@ const defaultFormData: OrderFormData = {
   notes: "",
   status: "PENDING",
   active: true,
+  customFields: {},
 };
 
 export interface OrderFormProviderProps {
@@ -178,6 +182,7 @@ export function OrderFormProvider({
     enableUnits: false,
     enableOrderType: false,
   });
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -201,6 +206,17 @@ export function OrderFormProvider({
         } else if (profileResult.data?.defaults) {
           setCompanyProfile(profileResult.data.defaults);
         }
+
+        const fieldsResponse = await fetch(`/api/companies/${companyId}/field-definitions`, {
+          headers: { "x-company-id": companyId },
+        });
+        const fieldsResult = await fieldsResponse.json();
+        const defs = (fieldsResult.data ?? fieldsResult) as FieldDefinition[];
+        setFieldDefinitions(
+          Array.isArray(defs)
+            ? defs.filter((d) => d.entity === "orders" && d.active).sort((a, b) => a.position - b.position)
+            : []
+        );
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -248,7 +264,7 @@ export function OrderFormProvider({
   }, [initialData, timeWindowPresets]);
 
   const handleChange = useCallback(
-    (field: keyof OrderFormData, value: string | number | boolean | null) => {
+    (field: keyof OrderFormData, value: string | number | boolean | Record<string, unknown> | null) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
       setErrors((prev) => {
         if (prev[field]) {
@@ -338,6 +354,7 @@ export function OrderFormProvider({
     selectedPreset,
     isLoadingPresets,
     companyProfile,
+    fieldDefinitions,
   };
 
   const actions: OrderFormActions = {

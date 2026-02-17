@@ -1,8 +1,9 @@
 import { and, desc, eq, like, or } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, timeWindowPresets } from "@/db/schema";
+import { companyFieldDefinitions, orders, timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { type FieldDefinition, validateCustomFields } from "@/lib/custom-fields/validation";
 import { logCreate } from "@/lib/infra/audit";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { orderQuerySchema, orderSchema } from "@/lib/validations/order";
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest) {
         priority: orders.priority,
         requiredSkills: orders.requiredSkills,
         notes: orders.notes,
+        customFields: orders.customFields,
         status: orders.status,
         active: orders.active,
         createdAt: orders.createdAt,
@@ -164,6 +166,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate custom fields against definitions if provided
+    if (validatedData.customFields && Object.keys(validatedData.customFields).length > 0) {
+      const definitions = await db
+        .select()
+        .from(companyFieldDefinitions)
+        .where(
+          and(
+            eq(companyFieldDefinitions.companyId, context.companyId),
+            eq(companyFieldDefinitions.entity, "orders"),
+            eq(companyFieldDefinitions.active, true),
+          ),
+        );
+
+      if (definitions.length > 0) {
+        const errors = validateCustomFields(definitions as FieldDefinition[], validatedData.customFields);
+        if (errors.length > 0) {
+          return NextResponse.json(
+            { error: "Custom field validation failed", details: errors },
+            { status: 400 },
+          );
+        }
+      }
+    }
+
     // Validate time window preset exists if provided
     if (validatedData.timeWindowPresetId) {
       const preset = await db
@@ -195,6 +221,7 @@ export async function POST(request: NextRequest) {
         timeWindowPresetId: validatedData.timeWindowPresetId || null,
         customerEmail: validatedData.customerEmail || null,
         customerPhone: validatedData.customerPhone || null,
+        customFields: validatedData.customFields || {},
       })
       .returning();
 

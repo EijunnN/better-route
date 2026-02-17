@@ -36,6 +36,8 @@ const batchOrderSchema = z.object({
         // Time windows (format: HH:mm)
         timeWindowStart: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
         timeWindowEnd: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+        // Custom fields
+        customFields: z.record(z.string(), z.unknown()).optional(),
       }),
     )
     .min(1)
@@ -141,6 +143,8 @@ export async function POST(request: NextRequest) {
       // Time windows
       timeWindowStart: order.timeWindowStart || null,
       timeWindowEnd: order.timeWindowEnd || null,
+      // Custom fields
+      customFields: order.customFields || {},
       status: "PENDING" as const,
       active: true,
     }));

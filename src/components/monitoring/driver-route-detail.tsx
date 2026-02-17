@@ -49,6 +49,7 @@ interface Stop {
     code: string;
     systemState: string;
   } | null;
+  customFields?: Record<string, unknown> | null;
 }
 
 interface RouteMetrics {
@@ -433,6 +434,17 @@ export function DriverRouteDetail({
                           )}
                         </div>
                         <div className="text-[11px] text-muted-foreground truncate">{stop.address}</div>
+                        {stop.customFields && Object.keys(stop.customFields).length > 0 && (
+                          <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                            {Object.entries(stop.customFields).map(([key, val]) => (
+                              val != null && val !== "" && (
+                                <span key={key} className="text-[10px] text-muted-foreground">
+                                  <span className="font-medium">{key}:</span> {String(val)}
+                                </span>
+                              )
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className="text-[10px] text-muted-foreground">{formatTime(stop.estimatedArrival)}</span>

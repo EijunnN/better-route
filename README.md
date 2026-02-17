@@ -77,6 +77,20 @@ Las empresas de logistica y distribucion enfrentan un problema critico: las solu
 - Historial de mantenimiento
 - Seguimiento GPS en tiempo real
 
+### Campos Personalizados (Custom Fields)
+- Cada empresa define sus propios campos en pedidos sin cambios de codigo
+- Tipos: `text`, `number`, `select`, `date`, `currency`, `phone`, `email`, `boolean`
+- Configurables por visibilidad: tabla, app movil, CSV import
+- Validacion automatica (min/max, required, pattern)
+- Renderizado dinamico en formularios, tablas, CSV import y app movil
+
+### Workflow States Custom
+- Cada empresa define sus propios estados de entrega
+- Transiciones configurables entre estados
+- Requisitos por estado: foto, firma, motivo, notas
+- Colores e iconos personalizables
+- Integrado con app movil Flutter
+
 ### Multi-Empresa (SaaS-ready)
 - Aislamiento completo de datos por empresa
 - Roles y permisos personalizables
@@ -314,21 +328,30 @@ planeamiento/
 │   │   │   ├── vehicles/
 │   │   │   ├── planificacion/
 │   │   │   ├── monitoring/
+│   │   │   ├── custom-fields/ # Admin campos personalizados
+│   │   │   ├── workflow/      # Config workflow states
 │   │   │   └── ...
 │   │   └── api/               # API Routes
 │   │       ├── auth/
 │   │       ├── orders/
+│   │       ├── companies/     # CRUD empresas + field definitions
 │   │       ├── optimization/
-│   │       ├── mobile/
+│   │       ├── mobile/        # APIs para app movil
 │   │       └── monitoring/
 │   ├── components/            # Componentes React
 │   │   ├── ui/               # shadcn/ui components
-│   │   └── layout/
+│   │   ├── layout/           # AppShell, Sidebar, CompanyProvider
+│   │   ├── custom-fields/    # Admin campos personalizados
+│   │   ├── orders/           # Formularios y tablas de ordenes
+│   │   ├── monitoring/       # Vista monitoreo con mapa
+│   │   └── planificacion/    # Planificador de rutas + CSV import
 │   ├── db/                    # Drizzle ORM
 │   │   ├── schema.ts         # Definicion de tablas
 │   │   └── seed.ts           # Datos de ejemplo
 │   └── lib/                   # Logica de negocio
 │       ├── auth/             # Autenticacion y autorizacion
+│       ├── custom-fields/    # Validacion y seed de campos custom
+│       ├── workflow/         # Seed de workflow states
 │       ├── infra/            # Infraestructura (cache, tenant)
 │       └── services/         # Servicios externos (VROOM, S3)
 ├── drizzle/                   # Migraciones SQL
@@ -372,6 +395,9 @@ bun run db:push
 | `optimization_jobs` | Trabajos de optimizacion |
 | `route_stops` | Paradas de ruta confirmadas |
 | `driver_locations` | Historial de ubicaciones GPS |
+| `company_workflow_states` | Estados de workflow custom por empresa |
+| `company_workflow_transitions` | Transiciones entre estados |
+| `company_field_definitions` | Campos personalizados por empresa |
 | `roles` / `permissions` | Sistema RBAC |
 
 ### Historial de Migraciones
@@ -430,6 +456,11 @@ X-Company-Id: <uuid>  # Para endpoints multi-tenant
 | POST | `/api/mobile/driver/location` | Enviar ubicacion GPS |
 | GET | `/api/mobile/driver/my-route` | Ruta del conductor |
 | PATCH | `/api/route-stops/:id` | Actualizar parada |
+| GET | `/api/companies/:id/field-definitions` | Listar campos custom |
+| POST | `/api/companies/:id/field-definitions` | Crear campo custom |
+| PATCH | `/api/companies/:id/field-definitions/:fieldId` | Editar campo |
+| GET | `/api/mobile/driver/workflow-states` | Estados de workflow |
+| GET | `/api/mobile/driver/field-definitions` | Campos custom (movil) |
 
 ---
 
@@ -439,12 +470,14 @@ La app movil esta en un repositorio separado: [better-route-mobile](https://gith
 
 ### Caracteristicas
 - Lista de paradas del dia
-- Navegacion a cada parada
+- Navegacion a cada parada (Google Maps / Waze)
 - Marcar entregas como completadas
 - Capturar foto de evidencia
 - Registrar motivo de no entrega
 - Envio automatico de ubicacion GPS cada 20 segundos
 - Cola offline para envios fallidos
+- **Workflow states dinamicos** — Botones de accion generados segun la configuracion de la empresa
+- **Campos personalizados** — Muestra campos custom definidos por la empresa en el detalle de cada parada
 
 ### Configuracion
 
@@ -480,8 +513,8 @@ Migrar el motor de optimizacion de VROOM a [PyVRP](https://github.com/PyVRP/PyVR
 ### Sistema mas custom
 Hacer la plataforma mas configurable y adaptable a distintos tipos de operacion logistica. *(Detalles por definir)*
 
-### Personalizacion de pedidos
-Permitir a cada empresa definir campos personalizados en sus pedidos, reglas de validacion propias y flujos de importacion adaptados a su operacion.
+### ~~Personalizacion de pedidos~~ ✅ Completado
+Cada empresa puede definir campos personalizados en sus pedidos desde la UI de admin. Los campos se renderizan dinamicamente en formularios, tablas, CSV import y la app movil.
 
 ### App Movil — [better-route-mobile](https://github.com/EijunnN/better-route-mobile)
 Evolucionar la app Flutter con nuevas funcionalidades: tracking GPS en tiempo real (SSE), firma digital de recepcion, modo offline mejorado y notificaciones push.

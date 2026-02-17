@@ -2,8 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, timeWindowPresets } from "@/db/schema";
+import { companyFieldDefinitions, orders, timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { type FieldDefinition, validateCustomFields } from "@/lib/custom-fields/validation";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { updateOrderSchema } from "@/lib/validations/order";
@@ -50,6 +51,7 @@ export async function GET(
         volumeRequired: orders.volumeRequired,
         requiredSkills: orders.requiredSkills,
         notes: orders.notes,
+        customFields: orders.customFields,
         status: orders.status,
         active: orders.active,
         createdAt: orders.createdAt,
@@ -178,6 +180,30 @@ export async function PATCH(
           { error: "Time window preset not found or inactive" },
           { status: 404 },
         );
+      }
+    }
+
+    // Validate custom fields against definitions if provided
+    if (validatedData.customFields && Object.keys(validatedData.customFields).length > 0) {
+      const definitions = await db
+        .select()
+        .from(companyFieldDefinitions)
+        .where(
+          and(
+            eq(companyFieldDefinitions.companyId, context.companyId),
+            eq(companyFieldDefinitions.entity, "orders"),
+            eq(companyFieldDefinitions.active, true),
+          ),
+        );
+
+      if (definitions.length > 0) {
+        const errors = validateCustomFields(definitions as FieldDefinition[], validatedData.customFields);
+        if (errors.length > 0) {
+          return NextResponse.json(
+            { error: "Custom field validation failed", details: errors },
+            { status: 400 },
+          );
+        }
       }
     }
 

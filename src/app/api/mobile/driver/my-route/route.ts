@@ -217,6 +217,7 @@ export async function GET(request: NextRequest) {
             volumeRequired: true,
             orderValue: true,
             unitsRequired: true,
+            customFields: true,
           },
         },
       },
@@ -342,6 +343,7 @@ export async function GET(request: NextRequest) {
             volume: stop.order.volumeRequired,
             value: stop.order.orderValue,
             units: stop.order.unitsRequired,
+            customFields: stop.order.customFields,
           }
         : null,
     }));

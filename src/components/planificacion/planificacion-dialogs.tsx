@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Upload } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -58,6 +59,20 @@ export function CsvUploadDialog() {
           {state.csvError && (
             <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm whitespace-pre-wrap">
               {state.csvError}
+            </div>
+          )}
+
+          {/* Custom field mappings indicator */}
+          {state.csvCustomFieldMappings.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Campos personalizados detectados</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {state.csvCustomFieldMappings.map((m) => (
+                  <Badge key={m.code} variant="secondary" className="text-xs">
+                    {m.csvHeader} → {m.label}
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
 

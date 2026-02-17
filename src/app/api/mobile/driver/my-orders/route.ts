@@ -241,6 +241,8 @@ export async function GET(request: NextRequest) {
           : [],
         // Notas
         notes: order.notes,
+        // Campos personalizados
+        customFields: order.customFields,
         // Informacion de la parada (si existe)
         stop: stopInfo
           ? {

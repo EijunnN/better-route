@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DynamicFieldRenderer } from "@/components/custom-fields";
 import { useOrderForm } from "./order-form-context";
 
 export function OrderFormBasicInfo() {
@@ -414,6 +415,34 @@ export function OrderFormNotes() {
         </div>
       )}
     </>
+  );
+}
+
+export function OrderFormCustomFields() {
+  const { state, actions } = useOrderForm();
+  const { formData, fieldDefinitions } = state;
+  const customFields = formData.customFields ?? {};
+
+  if (fieldDefinitions.length === 0) return null;
+
+  const handleFieldChange = (code: string, value: unknown) => {
+    actions.handleChange("customFields", { ...customFields, [code]: value });
+  };
+
+  return (
+    <div className="border-b pb-4">
+      <h3 className="font-medium mb-3">Campos Personalizados</h3>
+      <div className="grid grid-cols-2 gap-4">
+        {fieldDefinitions.map((def) => (
+          <DynamicFieldRenderer
+            key={def.id}
+            definition={def}
+            value={customFields[def.code] ?? def.defaultValue ?? null}
+            onChange={(v) => handleFieldChange(def.code, v)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 

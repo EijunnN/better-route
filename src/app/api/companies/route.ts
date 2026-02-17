@@ -151,7 +151,19 @@ export async function POST(request: NextRequest) {
         "Warning: Failed to seed workflow states for new company:",
         error,
       );
-      // Don't fail company creation if workflow seed fails
+    }
+
+    // Seed default field definitions for the new company
+    try {
+      const { seedDefaultFieldDefinitions } = await import(
+        "@/lib/custom-fields/seed-defaults"
+      );
+      await seedDefaultFieldDefinitions(newCompany.id);
+    } catch (error) {
+      console.error(
+        "Warning: Failed to seed field definitions for new company:",
+        error,
+      );
     }
 
     return NextResponse.json(newCompany, { status: 201 });

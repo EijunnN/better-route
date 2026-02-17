@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, ChevronLeft, ChevronRight, List, Loader2, Map as MapIcon, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
@@ -17,6 +18,41 @@ import { Button } from "@/components/ui/button";
 import { OrderForm } from "./order-form";
 import { useOrders, type Order } from "./orders-context";
 
+interface ListFieldDefinition {
+  id: string;
+  code: string;
+  label: string;
+  fieldType: string;
+}
+
+function useListFieldDefinitions(companyId: string | null) {
+  const [fields, setFields] = useState<ListFieldDefinition[]>([]);
+
+  const load = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const res = await fetch(
+        `/api/companies/${companyId}/field-definitions?entity=orders`,
+        { headers: { "x-company-id": companyId } },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setFields(
+          (data.data || []).filter(
+            (d: { active: boolean; showInList: boolean }) => d.active && d.showInList,
+          ),
+        );
+      }
+    } catch {
+      // silent
+    }
+  }, [companyId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return fields;
+}
+
 const OrderMap = dynamic(() => import("./order-map").then((mod) => mod.OrderMap), {
   ssr: false,
   loading: () => (
@@ -28,6 +64,7 @@ const OrderMap = dynamic(() => import("./order-map").then((mod) => mod.OrderMap)
 
 export function OrdersListView() {
   const { state, actions, meta } = useOrders();
+  const customFieldDefs = useListFieldDefinitions(meta.companyId);
 
   return (
     <div className="space-y-6">
@@ -143,7 +180,7 @@ export function OrdersListView() {
           height="600px"
         />
       ) : (
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border rounded-lg overflow-hidden overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted">
               <tr>
@@ -153,12 +190,17 @@ export function OrdersListView() {
                 <th className="text-left p-4 font-medium">Ventana Tiempo</th>
                 <th className="text-left p-4 font-medium">Strictness</th>
                 <th className="text-left p-4 font-medium">Estado</th>
+                {customFieldDefs.map((fd) => (
+                  <th key={fd.id} className="text-left p-4 font-medium text-sm">
+                    {fd.label}
+                  </th>
+                ))}
                 <th className="text-right p-4 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {state.filteredOrders.map((order) => (
-                <OrderRow key={order.id} order={order} />
+                <OrderRow key={order.id} order={order} customFieldDefs={customFieldDefs} />
               ))}
             </tbody>
           </table>
@@ -179,7 +221,7 @@ export function OrdersListView() {
   );
 }
 
-function OrderRow({ order }: { order: Order }) {
+function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: ListFieldDefinition[] }) {
   const { state, actions } = useOrders();
 
   return (
@@ -210,6 +252,15 @@ function OrderRow({ order }: { order: Order }) {
       <td className="p-4">
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${actions.getStatusColor(order.status)}`}>{order.status}</span>
       </td>
+      {customFieldDefs.map((fd) => {
+        const cf = order.customFields as Record<string, unknown> | null;
+        const val = cf?.[fd.code];
+        return (
+          <td key={fd.id} className="p-4 text-sm">
+            {val != null && val !== "" ? String(val) : <span className="text-muted-foreground">-</span>}
+          </td>
+        );
+      })}
       <td className="p-4 text-right">
         <Button variant="ghost" size="sm" onClick={() => actions.handleEdit(order)} disabled={state.deletingId === order.id}>
           Editar

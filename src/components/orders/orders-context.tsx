@@ -36,6 +36,7 @@ export interface Order {
   presetStrictness: (typeof TIME_WINDOW_STRICTNESS)[number] | null;
   effectiveStrictness: (typeof TIME_WINDOW_STRICTNESS)[number];
   isStrictnessOverridden: boolean;
+  customFields: Record<string, unknown> | null;
 }
 
 export interface OrdersState {
