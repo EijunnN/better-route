@@ -50,6 +50,83 @@ export interface WorkflowStateInput {
   requiresNotes: boolean;
 }
 
+export type TemplateType = "delivery" | "paqueteria" | "b2b";
+
+interface TemplateStateConfig {
+  code: string;
+  label: string;
+  systemState: SystemState;
+  color: string;
+  position: number;
+  isDefault?: boolean;
+  isTerminal?: boolean;
+  requiresPhoto?: boolean;
+  requiresSignature?: boolean;
+  requiresNotes?: boolean;
+  requiresReason?: boolean;
+  reasonOptions?: string[];
+}
+
+interface TemplateConfig {
+  name: string;
+  description: string;
+  states: TemplateStateConfig[];
+  transitions: [string, string][];
+}
+
+export const WORKFLOW_TEMPLATES: Record<TemplateType, TemplateConfig> = {
+  delivery: {
+    name: "Delivery de ultima milla",
+    description: "Entregas directas al cliente final",
+    states: [
+      { code: "PENDING", label: "Pendiente", systemState: "PENDING", color: "#6B7280", position: 0, isDefault: true },
+      { code: "EN_CAMINO", label: "En camino", systemState: "IN_PROGRESS", color: "#3B82F6", position: 1 },
+      { code: "ENTREGADO", label: "Entregado", systemState: "COMPLETED", color: "#16A34A", position: 2, isTerminal: true, requiresPhoto: true },
+      { code: "NO_ENTREGADO", label: "No entregado", systemState: "FAILED", color: "#DC4840", position: 3, isTerminal: true, requiresReason: true, requiresPhoto: true, reasonOptions: ["Cliente ausente", "Direccion incorrecta", "Paquete danado", "Cliente rechazo", "Zona insegura", "Reprogramado", "Otro"] },
+      { code: "OMITIDO", label: "Omitido", systemState: "CANCELLED", color: "#9CA3AF", position: 4, isTerminal: true },
+    ],
+    transitions: [
+      ["PENDING", "EN_CAMINO"], ["PENDING", "NO_ENTREGADO"], ["PENDING", "OMITIDO"],
+      ["EN_CAMINO", "ENTREGADO"], ["EN_CAMINO", "NO_ENTREGADO"], ["EN_CAMINO", "OMITIDO"], ["EN_CAMINO", "PENDING"],
+      ["NO_ENTREGADO", "PENDING"], ["NO_ENTREGADO", "OMITIDO"],
+    ],
+  },
+  paqueteria: {
+    name: "Paqueteria",
+    description: "Envios y paquetes con seguimiento",
+    states: [
+      { code: "PENDING", label: "Pendiente", systemState: "PENDING", color: "#6B7280", position: 0, isDefault: true },
+      { code: "EN_TRANSITO", label: "En transito", systemState: "IN_PROGRESS", color: "#3B82F6", position: 1 },
+      { code: "ENTREGA_PARCIAL", label: "Entrega parcial", systemState: "IN_PROGRESS", color: "#F59E0B", position: 2, requiresNotes: true },
+      { code: "ENTREGADO", label: "Entregado", systemState: "COMPLETED", color: "#16A34A", position: 3, isTerminal: true, requiresPhoto: true, requiresSignature: true },
+      { code: "DEVUELTO", label: "Devuelto", systemState: "FAILED", color: "#DC4840", position: 4, isTerminal: true, requiresReason: true, reasonOptions: ["Cliente ausente", "Direccion incorrecta", "Rechazado", "Danado", "Otro"] },
+      { code: "CANCELADO", label: "Cancelado", systemState: "CANCELLED", color: "#9CA3AF", position: 5, isTerminal: true },
+    ],
+    transitions: [
+      ["PENDING", "EN_TRANSITO"], ["PENDING", "CANCELADO"],
+      ["EN_TRANSITO", "ENTREGADO"], ["EN_TRANSITO", "ENTREGA_PARCIAL"], ["EN_TRANSITO", "DEVUELTO"], ["EN_TRANSITO", "PENDING"],
+      ["ENTREGA_PARCIAL", "ENTREGADO"], ["ENTREGA_PARCIAL", "DEVUELTO"],
+      ["DEVUELTO", "PENDING"],
+    ],
+  },
+  b2b: {
+    name: "Distribucion B2B",
+    description: "Entregas a negocios y empresas",
+    states: [
+      { code: "PENDING", label: "Pendiente", systemState: "PENDING", color: "#6B7280", position: 0, isDefault: true },
+      { code: "DESCARGANDO", label: "Descargando", systemState: "IN_PROGRESS", color: "#3B82F6", position: 1 },
+      { code: "FACTURA_FIRMADA", label: "Factura firmada", systemState: "COMPLETED", color: "#16A34A", position: 2, isTerminal: true, requiresPhoto: true },
+      { code: "RECHAZO", label: "Rechazo", systemState: "FAILED", color: "#DC4840", position: 3, isTerminal: true, requiresReason: true, requiresNotes: true, reasonOptions: ["Producto incorrecto", "Cantidad incorrecta", "Danado", "Sin orden de compra", "Otro"] },
+      { code: "SIN_ACCESO", label: "Sin acceso", systemState: "FAILED", color: "#F97316", position: 4, isTerminal: true, requiresReason: true, reasonOptions: ["Local cerrado", "Direccion incorrecta", "Zona restringida", "Otro"] },
+    ],
+    transitions: [
+      ["PENDING", "DESCARGANDO"], ["PENDING", "SIN_ACCESO"],
+      ["DESCARGANDO", "FACTURA_FIRMADA"], ["DESCARGANDO", "RECHAZO"], ["DESCARGANDO", "PENDING"],
+      ["SIN_ACCESO", "PENDING"],
+    ],
+  },
+};
+
 interface WorkflowContextState {
   states: WorkflowState[];
   transitions: WorkflowTransition[];
@@ -63,6 +140,7 @@ interface WorkflowActions {
   deleteState: (id: string) => Promise<void>;
   createTransition: (fromStateId: string, toStateId: string) => Promise<void>;
   deleteTransition: (id: string) => Promise<void>;
+  createFromTemplate: (template: TemplateType) => Promise<void>;
   refreshStates: () => void;
   refreshTransitions: () => void;
 }
@@ -185,6 +263,68 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     [companyId, mutateTransitions]
   );
 
+  const createFromTemplate = useCallback(
+    async (templateType: TemplateType) => {
+      if (!companyId) return;
+      const template = WORKFLOW_TEMPLATES[templateType];
+
+      // Delete all existing states (which cascades transitions via soft-delete)
+      const currentStates = Array.isArray(states) ? states : [];
+      for (const s of currentStates) {
+        await fetch(`/api/companies/${companyId}/workflow-states/${s.id}`, {
+          method: "DELETE",
+          headers: { "x-company-id": companyId },
+        });
+      }
+
+      // Create all template states
+      const codeToId: Record<string, string> = {};
+      for (const stateConfig of template.states) {
+        const response = await fetch(`/api/companies/${companyId}/workflow-states`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-company-id": companyId },
+          body: JSON.stringify({
+            code: stateConfig.code,
+            label: stateConfig.label,
+            systemState: stateConfig.systemState,
+            color: stateConfig.color,
+            position: stateConfig.position,
+            isDefault: stateConfig.isDefault ?? false,
+            isTerminal: stateConfig.isTerminal ?? false,
+            requiresPhoto: stateConfig.requiresPhoto ?? false,
+            requiresSignature: stateConfig.requiresSignature ?? false,
+            requiresNotes: stateConfig.requiresNotes ?? false,
+            requiresReason: stateConfig.requiresReason ?? false,
+            reasonOptions: stateConfig.reasonOptions ?? [],
+          }),
+        });
+        if (!response.ok) {
+          throw new Error(`Error al crear estado ${stateConfig.label}`);
+        }
+        const result = await response.json();
+        const created = result.data;
+        codeToId[stateConfig.code] = created.id;
+      }
+
+      // Create all transitions
+      for (const [fromCode, toCode] of template.transitions) {
+        const fromId = codeToId[fromCode];
+        const toId = codeToId[toCode];
+        if (fromId && toId) {
+          await fetch(`/api/companies/${companyId}/workflow-transitions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-company-id": companyId },
+            body: JSON.stringify({ fromStateId: fromId, toStateId: toId }),
+          });
+        }
+      }
+
+      await Promise.all([mutateStates(), mutateTransitions()]);
+      toast({ title: "Plantilla aplicada", description: `Se configuro el flujo "${template.name}" con ${template.states.length} estados.` });
+    },
+    [companyId, states, mutateStates, mutateTransitions, toast]
+  );
+
   const refreshStates = useCallback(() => {
     mutateStates();
   }, [mutateStates]);
@@ -206,6 +346,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     deleteState,
     createTransition,
     deleteTransition,
+    createFromTemplate,
     refreshStates,
     refreshTransitions,
   };
