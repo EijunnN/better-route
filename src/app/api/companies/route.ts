@@ -140,6 +140,20 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    // Seed default workflow states for the new company
+    try {
+      const { seedDefaultWorkflowStates } = await import(
+        "@/lib/workflow/seed-defaults"
+      );
+      await seedDefaultWorkflowStates(newCompany.id);
+    } catch (error) {
+      console.error(
+        "Warning: Failed to seed workflow states for new company:",
+        error,
+      );
+      // Don't fail company creation if workflow seed fails
+    }
+
     return NextResponse.json(newCompany, { status: 201 });
   } catch (error) {
     return handleError(error, "creating company");

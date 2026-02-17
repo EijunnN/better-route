@@ -8,6 +8,8 @@ import {
   auditLogs,
   companies,
   companyOptimizationProfiles,
+  companyWorkflowStates,
+  companyWorkflowTransitions,
   csvColumnMappingTemplates,
   driverLocations,
   fleets,
@@ -41,6 +43,7 @@ import {
   zoneVehicles,
   zones,
 } from "@/db/schema";
+import { seedDefaultWorkflowStates } from "@/lib/workflow/seed-defaults";
 
 async function seed() {
   console.log("🌱 Starting database seed...");
@@ -56,6 +59,8 @@ async function seed() {
       await db.delete(planMetrics);
       await db.delete(outputHistory);
       await db.delete(reassignmentsHistory);
+      await db.delete(companyWorkflowTransitions);
+      await db.delete(companyWorkflowStates);
       await db.delete(routeStops);
       await db.delete(alerts);
       await db.delete(alertRules);
@@ -196,6 +201,22 @@ async function seed() {
       console.log(`✅ Created ${systemPermissions.length} system permissions`);
     } else {
       console.log("ℹ️  Permissions already exist");
+    }
+
+    // Seed workflow states for all companies
+    const allCompanies = await db
+      .select({ id: companies.id, name: companies.commercialName })
+      .from(companies);
+    for (const company of allCompanies) {
+      const existingStates = await db
+        .select()
+        .from(companyWorkflowStates)
+        .where(eq(companyWorkflowStates.companyId, company.id))
+        .limit(1);
+      if (existingStates.length === 0) {
+        await seedDefaultWorkflowStates(company.id);
+        console.log(`✅ Seeded workflow states for: ${company.name}`);
+      }
     }
 
     console.log("\n🎉 Seed completed successfully!");
