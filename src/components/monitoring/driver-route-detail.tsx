@@ -9,6 +9,7 @@ import {
   Edit3,
   Loader2,
   MapPin,
+  RefreshCw,
   Signal,
   Truck,
   User,
@@ -24,6 +25,7 @@ import {
   type StopInfo,
   StopStatusUpdateDialog,
 } from "./stop-status-update-dialog";
+import type { WorkflowState } from "./monitoring-context";
 
 interface Stop {
   id?: string;
@@ -40,6 +42,13 @@ interface Stop {
   notes?: string | null;
   timeWindowStart?: string | null;
   timeWindowEnd?: string | null;
+  workflowState?: {
+    id: string;
+    label: string;
+    color: string;
+    code: string;
+    systemState: string;
+  } | null;
 }
 
 interface RouteMetrics {
@@ -104,6 +113,7 @@ interface DriverRouteDetailProps {
   onClose: () => void;
   onRefresh?: () => void;
   locationData?: LocationData | null;
+  workflowStates?: WorkflowState[];
 }
 
 const STOP_STATUS_CONFIG = {
@@ -150,10 +160,23 @@ export function DriverRouteDetail({
   onClose,
   onRefresh,
   locationData,
+  workflowStates = [],
 }: DriverRouteDetailProps) {
   const [selectedStop, setSelectedStop] = useState<StopInfo | null>(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    if (!onRefresh) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      // Small delay so the user sees the spinner
+      setTimeout(() => setIsRefreshing(false), 600);
+    }
+  }, [onRefresh]);
 
   const formatDistance = (meters: number) => {
     if (meters < 1000) return `${meters}m`;
@@ -176,9 +199,12 @@ export function DriverRouteDetail({
   };
 
   const handleStatusUpdate = useCallback(
-    async (stopId: string, status: string, notes?: string) => {
+    async (stopId: string, status: string, notes?: string, workflowStateId?: string) => {
       setUpdatingStatus(true);
       try {
+        const body: Record<string, string | undefined> = { status, notes };
+        if (workflowStateId) body.workflowStateId = workflowStateId;
+
         const response = await fetch(`/api/route-stops/${stopId}`, {
           method: "PATCH",
           headers: {
@@ -187,7 +213,7 @@ export function DriverRouteDetail({
             "x-company-id": localStorage.getItem("companyId") || "",
             "x-user-id": localStorage.getItem("userId") || "",
           },
-          body: JSON.stringify({ status, notes }),
+          body: JSON.stringify(body),
         });
 
         if (!response.ok) {
@@ -233,6 +259,21 @@ export function DriverRouteDetail({
     setStatusDialogOpen(true);
   };
 
+  const getStopStatusDisplay = (stop: Stop) => {
+    // 1. If the stop has an embedded workflowState from the API, use it
+    if (stop.workflowState) {
+      return { label: stop.workflowState.label, color: stop.workflowState.color };
+    }
+    // 2. Try to find a matching workflow state from context
+    if (workflowStates.length > 0) {
+      const wf = workflowStates.find(s => s.systemState === stop.status);
+      if (wf) return { label: wf.label, color: wf.color };
+    }
+    // 3. Fallback to hardcoded config
+    const cfg = STOP_STATUS_CONFIG[stop.status as keyof typeof STOP_STATUS_CONFIG];
+    return cfg ? { label: cfg.label, color: undefined } : { label: stop.status, color: undefined };
+  };
+
   const completedStops =
     route?.stops.filter((s) => s.status === "COMPLETED").length || 0;
   const totalStops = route?.stops.length || 0;
@@ -241,294 +282,181 @@ export function DriverRouteDetail({
 
   return (
     <>
-      <div className="space-y-6">
-        {/* Header with back button */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver al resumen
+      <div className="space-y-3">
+        {/* Compact header: back + name + status + refresh */}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
+            <ArrowLeft className="w-4 h-4" />
           </Button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold truncate">{driver.name}</span>
+              <Badge variant="secondary" className="text-[10px] shrink-0">{driver.status}</Badge>
+            </div>
+          </div>
           {onRefresh && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRefresh}
-              disabled={updatingStatus}
-            >
-              {updatingStatus ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : null}
-              Actualizar
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")} />
             </Button>
           )}
         </div>
 
-        {/* Driver Info Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Información del conductor</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Nombre:</span>
-                  <span className="font-medium">{driver.name}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Identificación:</span>
-                  <span className="font-medium">{driver.identification}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Correo:</span>
-                  <span className="font-medium">{driver.email}</span>
-                </div>
-                {driver.phone && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Teléfono:</span>
-                    <span className="font-medium">{driver.phone}</span>
-                  </div>
-                )}
-                {locationData && (
-                  <div className="space-y-2 pt-2 border-t">
-                    {locationData.batteryLevel != null && locationData.isRecent && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Battery className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">Batería:</span>
-                        <span className={cn("font-medium",
-                          locationData.batteryLevel > 50 ? "text-green-500" :
-                          locationData.batteryLevel > 20 ? "text-amber-500" : "text-red-500"
-                        )}>
-                          {locationData.batteryLevel}%
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 text-sm">
-                      <Signal className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">GPS:</span>
-                      <div className="flex items-center gap-1.5">
-                        <div className={cn("w-2 h-2 rounded-full", locationData.isRecent ? "bg-green-500" : "bg-amber-500")} />
-                        <span className="font-medium text-xs">
-                          {locationData.isRecent ? "Señal activa" : "Sin señal reciente"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm flex-wrap">
-                  <span className="text-muted-foreground">Flotas:</span>
-                  {driver.fleets && driver.fleets.length > 0 ? (
-                    driver.fleets.map((f) => (
-                      <Badge key={f.id} variant={f.isPrimary ? "default" : "outline"}>
-                        {f.name}
-                      </Badge>
-                    ))
-                  ) : (
-                    <Badge variant="outline">{driver.fleet.name}</Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Estado:</span>
-                  <Badge>{driver.status}</Badge>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Driver info: fleet + contact */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          {driver.fleets && driver.fleets.length > 0 ? (
+            driver.fleets.map((f) => (
+              <Badge key={f.id} variant={f.isPrimary ? "default" : "outline"} className="text-[10px]">{f.name}</Badge>
+            ))
+          ) : (
+            <Badge variant="outline" className="text-[10px]">{driver.fleet.name}</Badge>
+          )}
+          <span className="mx-0.5">·</span>
+          <span>{driver.identification}</span>
+          {driver.phone && <><span className="mx-0.5">·</span><span>{driver.phone}</span></>}
+        </div>
 
-        {/* Route Info Card */}
+        {/* Device status row */}
+        {locationData && (
+          <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-1.5">
+              <Signal className="w-3 h-3 text-muted-foreground" />
+              <div className={cn("w-1.5 h-1.5 rounded-full", locationData.isRecent ? "bg-green-500" : "bg-amber-500")} />
+              <span className={locationData.isRecent ? "text-green-600" : "text-amber-600"}>
+                {locationData.isRecent ? "GPS activo" : "Sin señal"}
+              </span>
+            </div>
+            {locationData.batteryLevel != null && locationData.isRecent && (
+              <div className="flex items-center gap-1.5">
+                <Battery className={cn("w-3 h-3",
+                  locationData.batteryLevel > 50 ? "text-green-500" :
+                  locationData.batteryLevel > 20 ? "text-amber-500" : "text-red-500"
+                )} />
+                <span className={cn(
+                  locationData.batteryLevel > 50 ? "text-green-600" :
+                  locationData.batteryLevel > 20 ? "text-amber-600" : "text-red-600"
+                )}>
+                  {locationData.batteryLevel}%
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Route info compact */}
         {route ? (
           <>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Información de la ruta</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-sm">
-                      {completedStops} / {totalStops} paradas
-                    </Badge>
-                    <Badge className="text-sm">
-                      {progressPercentage}% completado
-                    </Badge>
-                  </div>
+            {/* Vehicle + progress row */}
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+              <Truck className="w-4 h-4 text-primary shrink-0" />
+              <span className="text-sm font-medium">{route.vehicle.plate}</span>
+              <span className="text-xs text-muted-foreground">{route.vehicle.brand} {route.vehicle.model}</span>
+              <div className="ml-auto flex items-center gap-1.5">
+                <span className="text-xs font-medium">{completedStops}/{totalStops}</span>
+                <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progressPercentage}%` }} />
                 </div>
-              </CardHeader>
-              <CardContent>
-                {/* Vehicle Info */}
-                <div className="flex items-center gap-3 mb-4 pb-4 border-b">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Truck className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-medium">{route.vehicle.plate}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {route.vehicle.brand} {route.vehicle.model}
-                    </div>
-                  </div>
-                </div>
+                <span className="text-xs text-muted-foreground">{progressPercentage}%</span>
+              </div>
+            </div>
 
-                {/* Route Metrics */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground">
-                      Distancia total
-                    </div>
-                    <div className="text-lg font-semibold">
-                      {formatDistance(route.metrics.totalDistance)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">
-                      Duración
-                    </div>
-                    <div className="text-lg font-semibold">
-                      {formatDuration(route.metrics.totalDuration)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">
-                      Capacidad usada
-                    </div>
-                    <div className="text-lg font-semibold">
-                      {route.metrics.utilizationPercentage}%
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">
-                      Violaciones de horario
-                    </div>
-                    <div className="text-lg font-semibold">
-                      {route.metrics.timeWindowViolations}
-                    </div>
-                  </div>
-                </div>
+            {/* Metrics row - compact */}
+            <div className="grid grid-cols-4 gap-1 text-center">
+              <div className="p-1.5 rounded-md bg-muted/30">
+                <div className="text-sm font-semibold">{formatDistance(route.metrics.totalDistance)}</div>
+                <div className="text-[10px] text-muted-foreground">Dist.</div>
+              </div>
+              <div className="p-1.5 rounded-md bg-muted/30">
+                <div className="text-sm font-semibold">{formatDuration(route.metrics.totalDuration)}</div>
+                <div className="text-[10px] text-muted-foreground">Duración</div>
+              </div>
+              <div className="p-1.5 rounded-md bg-muted/30">
+                <div className="text-sm font-semibold">{route.metrics.utilizationPercentage}%</div>
+                <div className="text-[10px] text-muted-foreground">Capacidad</div>
+              </div>
+              <div className="p-1.5 rounded-md bg-muted/30">
+                <div className="text-sm font-semibold">{route.metrics.timeWindowViolations}</div>
+                <div className="text-[10px] text-muted-foreground">Violaciones</div>
+              </div>
+            </div>
 
-                {/* Assignment Quality Warnings/Errors */}
-                {route.assignmentQuality && (
-                  <div className="mt-4 pt-4 border-t space-y-2">
-                    {route.assignmentQuality.errors.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {route.assignmentQuality.errors.map((error) => (
-                          <Badge
-                            key={error}
-                            variant="destructive"
-                            className="text-xs"
-                          >
-                            <AlertTriangle className="w-3 h-3 mr-1" />
-                            {error}
-                          </Badge>
-                        ))}
+            {/* Assignment quality badges */}
+            {route.assignmentQuality && (route.assignmentQuality.errors.length > 0 || route.assignmentQuality.warnings.length > 0) && (
+              <div className="flex flex-wrap gap-1">
+                {route.assignmentQuality.errors.map((error) => (
+                  <Badge key={error} variant="destructive" className="text-[10px]">
+                    <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />{error}
+                  </Badge>
+                ))}
+                {route.assignmentQuality.warnings.map((warning) => (
+                  <Badge key={warning} variant="secondary" className="text-[10px]">{warning}</Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Stops list - compact */}
+            <div className="pt-1 border-t">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground">Paradas</span>
+              </div>
+              <div className="space-y-1">
+                {route.stops.map((stop) => {
+                  const statusConfig =
+                    STOP_STATUS_CONFIG[stop.status as keyof typeof STOP_STATUS_CONFIG] || STOP_STATUS_CONFIG.PENDING;
+                  const StatusIcon = statusConfig.icon;
+                  const wfDisplay = getStopStatusDisplay(stop);
+                  const hasCustomColor = !!wfDisplay.color;
+
+                  return (
+                    <div
+                      key={stop.orderId}
+                      className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted/50 group cursor-default"
+                    >
+                      <div
+                        className={cn(
+                          "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
+                          !hasCustomColor && statusConfig.bgColor,
+                          !hasCustomColor && statusConfig.color,
+                        )}
+                        style={hasCustomColor ? { backgroundColor: `${wfDisplay.color}1A`, color: wfDisplay.color } : undefined}
+                      >
+                        {stop.sequence}
                       </div>
-                    )}
-                    {route.assignmentQuality.warnings.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {route.assignmentQuality.warnings.map((warning) => (
-                          <Badge
-                            key={warning}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {warning}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Stops List */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Paradas de la ruta</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="max-h-[400px]">
-                  <div className="space-y-2">
-                    {route.stops.map((stop) => {
-                      const statusConfig =
-                        STOP_STATUS_CONFIG[
-                          stop.status as keyof typeof STOP_STATUS_CONFIG
-                        ] || STOP_STATUS_CONFIG.PENDING;
-                      const StatusIcon = statusConfig.icon;
-
-                      return (
-                        <div
-                          key={stop.orderId}
-                          className={`p-3 rounded-lg border ${statusConfig.borderColor} ${statusConfig.bgColor} group`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className={`mt-0.5 ${statusConfig.color}`}>
-                              <StatusIcon className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge variant="outline" className="text-xs">
-                                  #{stop.sequence}
-                                </Badge>
-                                <span className="font-medium text-sm">
-                                  {stop.trackingId}
-                                </span>
-                                <Badge className="text-xs">
-                                  {statusConfig.label}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                                <MapPin className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">{stop.address}</span>
-                              </div>
-                              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  <span>
-                                    Llegada est.:{" "}
-                                    {formatTime(stop.estimatedArrival)}
-                                  </span>
-                                </div>
-                                {stop.completedAt && (
-                                  <div className="flex items-center gap-1">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    <span>
-                                      Completada: {formatTime(stop.completedAt)}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                              {stop.notes && (
-                                <div className="mt-1 text-xs text-muted-foreground italic">
-                                  Nota: {stop.notes}
-                                </div>
-                              )}
-                            </div>
-                            {stop.id && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => openStatusDialog(stop)}
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium">{stop.trackingId}</span>
+                          <StatusIcon
+                            className={cn("w-3 h-3 shrink-0", !hasCustomColor && statusConfig.color)}
+                            style={hasCustomColor ? { color: wfDisplay.color } : undefined}
+                          />
+                          {hasCustomColor && (
+                            <span className="text-[10px]" style={{ color: wfDisplay.color }}>{wfDisplay.label}</span>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+                        <div className="text-[11px] text-muted-foreground truncate">{stop.address}</div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-[10px] text-muted-foreground">{formatTime(stop.estimatedArrival)}</span>
+                        {stop.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => openStatusDialog(stop)}
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </>
         ) : (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              Este conductor no tiene una ruta asignada activa.
-            </CardContent>
-          </Card>
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            Sin ruta asignada activa.
+          </div>
         )}
       </div>
 
@@ -538,6 +466,7 @@ export function DriverRouteDetail({
         onOpenChange={setStatusDialogOpen}
         stop={selectedStop}
         onUpdate={handleStatusUpdate}
+        workflowStates={workflowStates}
       />
     </>
   );

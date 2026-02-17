@@ -163,6 +163,15 @@ export async function GET(
             maxOrders: true,
           },
         },
+        workflowState: {
+          columns: {
+            id: true,
+            label: true,
+            color: true,
+            code: true,
+            systemState: true,
+          },
+        },
       },
     });
 
@@ -286,6 +295,13 @@ export async function GET(
       notes: stop.notes,
       timeWindowStart: stop.timeWindowStart?.toISOString() || null,
       timeWindowEnd: stop.timeWindowEnd?.toISOString() || null,
+      workflowState: stop.workflowState ? {
+        id: stop.workflowState.id,
+        label: stop.workflowState.label,
+        color: stop.workflowState.color,
+        code: stop.workflowState.code,
+        systemState: stop.workflowState.systemState,
+      } : null,
     }));
 
     const routeId = stops[0].routeId;

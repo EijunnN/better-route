@@ -10,6 +10,8 @@ import {
   DELIVERY_FAILURE_REASONS,
   DELIVERY_FAILURE_LABELS,
   USER_ROLES,
+  companyWorkflowStates,
+  companyWorkflowTransitions,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
@@ -99,17 +101,82 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { status, notes, failureReason, evidenceUrls } = body;
+    const { workflowStateId, notes, failureReason, evidenceUrls } = body;
+    let { status } = body;
+
+    // Get current stop
+    const currentStop = await db.query.routeStops.findFirst({
+      where: and(
+        eq(routeStops.id, stopId),
+        withTenantFilter(routeStops, [], tenantCtx.companyId),
+      ),
+    });
+
+    if (!currentStop) {
+      return NextResponse.json({ error: "Stop not found" }, { status: 404 });
+    }
+
+    // Security validation: Conductors can only modify their own stops
+    const authUser = await getOptionalUser(request);
+    if (authUser && authUser.role === USER_ROLES.CONDUCTOR) {
+      if (currentStop.userId !== authUser.userId) {
+        return NextResponse.json(
+          { error: "No tiene permiso para modificar esta parada. Solo puede modificar paradas asignadas a usted." },
+          { status: 403 },
+        );
+      }
+    }
+
+    // If workflowStateId is provided, use custom workflow logic
+    if (workflowStateId) {
+      // Look up the workflow state
+      const workflowState = await db.query.companyWorkflowStates.findFirst({
+        where: and(
+          eq(companyWorkflowStates.id, workflowStateId),
+          eq(companyWorkflowStates.companyId, tenantCtx.companyId),
+          eq(companyWorkflowStates.active, true),
+        ),
+      });
+
+      if (!workflowState) {
+        return NextResponse.json(
+          { error: "Workflow state not found" },
+          { status: 400 },
+        );
+      }
+
+      // If the stop currently has a workflowStateId, validate the transition is allowed
+      if (currentStop.workflowStateId) {
+        const allowedTransition = await db.query.companyWorkflowTransitions.findFirst({
+          where: and(
+            eq(companyWorkflowTransitions.companyId, tenantCtx.companyId),
+            eq(companyWorkflowTransitions.fromStateId, currentStop.workflowStateId),
+            eq(companyWorkflowTransitions.toStateId, workflowStateId),
+            eq(companyWorkflowTransitions.active, true),
+          ),
+        });
+
+        if (!allowedTransition) {
+          return NextResponse.json(
+            { error: "Workflow transition not allowed" },
+            { status: 400 },
+          );
+        }
+      }
+
+      // Derive status from the workflow state's systemState
+      status = workflowState.systemState;
+    }
 
     if (!status) {
       return NextResponse.json(
-        { error: "Status is required" },
+        { error: "Status or workflowStateId is required" },
         { status: 400 },
       );
     }
 
-    // Validate failureReason is required when status is FAILED
-    if (status === "FAILED") {
+    // Validate failureReason is required when status is FAILED (only for legacy flow without workflow)
+    if (status === "FAILED" && !workflowStateId) {
       if (!failureReason) {
         return NextResponse.json(
           {
@@ -140,47 +207,24 @@ export async function PATCH(
       );
     }
 
-    // Get current stop
-    const currentStop = await db.query.routeStops.findFirst({
-      where: and(
-        eq(routeStops.id, stopId),
-        withTenantFilter(routeStops, [], tenantCtx.companyId),
-      ),
-    });
-
-    if (!currentStop) {
-      return NextResponse.json({ error: "Stop not found" }, { status: 404 });
-    }
-
-    // Security validation: Conductors can only modify their own stops
-    const authUser = await getOptionalUser(request);
-    if (authUser && authUser.role === USER_ROLES.CONDUCTOR) {
-      // CONDUCTOR can only modify stops assigned to them
-      if (currentStop.userId !== authUser.userId) {
+    // Validate status transition (legacy path - skip if using workflow)
+    if (!workflowStateId) {
+      const validTransitions =
+        STOP_STATUS_TRANSITIONS[
+          currentStop.status as keyof typeof STOP_STATUS_TRANSITIONS
+        ] || [];
+      if (
+        status !== currentStop.status &&
+        !(validTransitions as string[]).includes(status)
+      ) {
         return NextResponse.json(
-          { error: "No tiene permiso para modificar esta parada. Solo puede modificar paradas asignadas a usted." },
-          { status: 403 },
+          {
+            error: `Invalid status transition from ${currentStop.status} to ${status}`,
+            validTransitions,
+          },
+          { status: 400 },
         );
       }
-    }
-    // ADMIN_SISTEMA, PLANIFICADOR, ADMIN_FLOTA, and MONITOR can modify any stop (if they have permission)
-
-    // Validate status transition
-    const validTransitions =
-      STOP_STATUS_TRANSITIONS[
-        currentStop.status as keyof typeof STOP_STATUS_TRANSITIONS
-      ] || [];
-    if (
-      status !== currentStop.status &&
-      !(validTransitions as string[]).includes(status)
-    ) {
-      return NextResponse.json(
-        {
-          error: `Invalid status transition from ${currentStop.status} to ${status}`,
-          validTransitions,
-        },
-        { status: 400 },
-      );
     }
 
     // Calculate timestamps based on status
@@ -190,6 +234,11 @@ export async function PATCH(
       notes: notes || null,
       updatedAt: now,
     };
+
+    // Set workflowStateId if provided
+    if (workflowStateId) {
+      updateData.workflowStateId = workflowStateId;
+    }
 
     // Set startedAt when moving to IN_PROGRESS
     if (status === "IN_PROGRESS" && !currentStop.startedAt) {

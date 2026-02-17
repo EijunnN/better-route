@@ -32,6 +32,8 @@ export const companies = pgTable("companies", {
 export const companiesRelations = relations(companies, ({ many }) => ({
   users: many(users),
   fleets: many(fleets),
+  workflowStates: many(companyWorkflowStates),
+  workflowTransitions: many(companyWorkflowTransitions),
 }));
 
 // User roles - Unified with system roles
@@ -1175,6 +1177,8 @@ export const routeStops = pgTable("route_stops", {
   >(),
   // Evidence URLs for failed deliveries (photos from driver app)
   evidenceUrls: jsonb("evidence_urls").$type<string[]>(),
+  // Custom workflow state reference
+  workflowStateId: uuid("workflow_state_id").references(() => companyWorkflowStates.id, { onDelete: "set null" }),
   // Metadata
   metadata: jsonb("metadata"), // Flexible data for stop-specific info
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -1201,6 +1205,10 @@ export const routeStopsRelations = relations(routeStops, ({ one, many }) => ({
   order: one(orders, {
     fields: [routeStops.orderId],
     references: [orders.id],
+  }),
+  workflowState: one(companyWorkflowStates, {
+    fields: [routeStops.workflowStateId],
+    references: [companyWorkflowStates.id],
   }),
   history: many(routeStopHistory),
 }));
@@ -1819,3 +1827,72 @@ export const driverLocationsRelations = relations(
     }),
   }),
 );
+
+// ============================================
+// CUSTOM WORKFLOW STATES - Per-company delivery workflow
+// ============================================
+
+export const SYSTEM_STATES = {
+  PENDING: "PENDING",
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  CANCELLED: "CANCELLED",
+} as const;
+
+export const companyWorkflowStates = pgTable("company_workflow_states", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  code: varchar("code", { length: 50 }).notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  systemState: varchar("system_state", { length: 20 }).notNull(),
+  color: varchar("color", { length: 7 }).notNull().default("#6B7280"),
+  icon: varchar("icon", { length: 50 }),
+  position: integer("position").notNull().default(0),
+  requiresReason: boolean("requires_reason").notNull().default(false),
+  requiresPhoto: boolean("requires_photo").notNull().default(false),
+  requiresSignature: boolean("requires_signature").notNull().default(false),
+  requiresNotes: boolean("requires_notes").notNull().default(false),
+  reasonOptions: jsonb("reason_options"),
+  isTerminal: boolean("is_terminal").notNull().default(false),
+  isDefault: boolean("is_default").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const companyWorkflowTransitions = pgTable("company_workflow_transitions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  fromStateId: uuid("from_state_id").notNull().references(() => companyWorkflowStates.id, { onDelete: "cascade" }),
+  toStateId: uuid("to_state_id").notNull().references(() => companyWorkflowStates.id, { onDelete: "cascade" }),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const companyWorkflowStatesRelations = relations(companyWorkflowStates, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [companyWorkflowStates.companyId],
+    references: [companies.id],
+  }),
+  transitionsFrom: many(companyWorkflowTransitions, { relationName: "fromState" }),
+  transitionsTo: many(companyWorkflowTransitions, { relationName: "toState" }),
+  routeStops: many(routeStops),
+}));
+
+export const companyWorkflowTransitionsRelations = relations(companyWorkflowTransitions, ({ one }) => ({
+  company: one(companies, {
+    fields: [companyWorkflowTransitions.companyId],
+    references: [companies.id],
+  }),
+  fromState: one(companyWorkflowStates, {
+    fields: [companyWorkflowTransitions.fromStateId],
+    references: [companyWorkflowStates.id],
+    relationName: "fromState",
+  }),
+  toState: one(companyWorkflowStates, {
+    fields: [companyWorkflowTransitions.toStateId],
+    references: [companyWorkflowStates.id],
+    relationName: "toState",
+  }),
+}));

@@ -28,6 +28,7 @@ interface RecentEventsPanelProps {
   companyId: string;
   onEventClick?: (event: StopEvent) => void;
   onLocateOnMap?: (lat: number, lng: number) => void;
+  getWorkflowLabel?: (systemState: string) => string;
 }
 
 const EVENT_CONFIG = {
@@ -57,7 +58,7 @@ const EVENT_CONFIG = {
   },
 };
 
-export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap }: RecentEventsPanelProps) {
+export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap, getWorkflowLabel }: RecentEventsPanelProps) {
   const [events, setEvents] = useState<StopEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "FAILED" | "COMPLETED">("all");
@@ -170,6 +171,8 @@ export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap }: Re
               const config = EVENT_CONFIG[event.type];
               const Icon = config.icon;
 
+              const eventLabel = getWorkflowLabel ? getWorkflowLabel(event.type) : config.label;
+
               return (
                 <div
                   key={event.id}
@@ -188,9 +191,14 @@ export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap }: Re
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm truncate">
-                          #{event.trackingId}
-                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-medium text-sm truncate">
+                            #{event.trackingId}
+                          </span>
+                          <Badge variant="outline" className="text-[10px] shrink-0">
+                            {eventLabel}
+                          </Badge>
+                        </div>
                         <span className="text-xs text-muted-foreground shrink-0">
                           {getTimeSince(event.timestamp)}
                         </span>

@@ -35,6 +35,7 @@ export function MonitoringDashboardView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [showEvents, setShowEvents] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const mapRef = useRef<MapRef | null>(null);
 
   // Filter drivers based on search and status
@@ -131,8 +132,18 @@ export function MonitoringDashboardView() {
               {actions.formatLastUpdate(state.lastUpdate)}
             </Badge>
 
-            <Button variant="ghost" size="sm" onClick={actions.handleRefresh} className="h-8">
-              <RefreshCw className="w-4 h-4" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              disabled={isRefreshing}
+              onClick={() => {
+                setIsRefreshing(true);
+                actions.handleRefresh();
+                setTimeout(() => setIsRefreshing(false), 1000);
+              }}
+            >
+              <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
             </Button>
 
             {/* Events toggle */}
@@ -315,6 +326,7 @@ export function MonitoringDashboardView() {
                     onClose={actions.handleBackToOverview}
                     onRefresh={actions.handleDetailRefresh}
                     locationData={state.driversData.find(d => d.id === state.selectedDriverId)?.currentLocation}
+                    workflowStates={state.workflowStates}
                   />
                 </div>
               </ScrollArea>
@@ -334,6 +346,7 @@ export function MonitoringDashboardView() {
               <RecentEventsPanel
                 companyId={meta.companyId}
                 onLocateOnMap={handleLocateOnMap}
+                getWorkflowLabel={actions.getWorkflowLabel}
               />
             ) : (
               <AlertPanel companyId={meta.companyId} />

@@ -13,6 +13,20 @@ const fetcher = async (url: string, companyId: string) => {
   return result.data;
 };
 
+export interface WorkflowState {
+  id: string;
+  code: string;
+  label: string;
+  systemState: string;
+  color: string;
+  icon: string | null;
+  requiresReason: boolean;
+  requiresPhoto: boolean;
+  requiresNotes: boolean;
+  reasonOptions: string[] | null;
+  isTerminal: boolean;
+}
+
 export interface MonitoringData {
   hasActivePlan: boolean;
   jobId: string | null;
@@ -96,6 +110,13 @@ export interface DriverDetailData {
       notes?: string | null;
       timeWindowStart?: string | null;
       timeWindowEnd?: string | null;
+      workflowState?: {
+        id: string;
+        label: string;
+        color: string;
+        code: string;
+        systemState: string;
+      } | null;
     }>;
     assignmentQuality?: { score: number; warnings: string[]; errors: string[] };
   } | null;
@@ -114,6 +135,7 @@ export interface MonitoringState {
   error: string | null;
   alertsCount: number;
   lastUpdate: Date;
+  workflowStates: WorkflowState[];
 }
 
 export interface MonitoringActions {
@@ -123,6 +145,8 @@ export interface MonitoringActions {
   handleDetailRefresh: () => void;
   setShowAlerts: (show: boolean) => void;
   formatLastUpdate: (date: Date) => string;
+  getWorkflowLabel: (systemState: string) => string;
+  getWorkflowColor: (systemState: string) => string;
 }
 
 export interface MonitoringMeta {
@@ -150,6 +174,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [view, setView] = useState<"overview" | "detail">("overview");
   const [showAlerts, setShowAlerts] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   const {
     data: monitoringData,
@@ -159,7 +184,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   } = useSWR<MonitoringData>(
     companyId ? ["/api/monitoring/summary", companyId] : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
-    { refreshInterval: POLLING_INTERVAL, revalidateOnFocus: true, dedupingInterval: 2000 }
+    { refreshInterval: POLLING_INTERVAL, revalidateOnFocus: true, dedupingInterval: 2000, onSuccess: () => setLastUpdate(new Date()) }
   );
 
   const {
@@ -169,7 +194,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   } = useSWR<DriverMonitoringData[]>(
     companyId ? ["/api/monitoring/drivers", companyId] : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
-    { refreshInterval: POLLING_INTERVAL, revalidateOnFocus: true, dedupingInterval: 2000 }
+    { refreshInterval: POLLING_INTERVAL, revalidateOnFocus: true, dedupingInterval: 2000, onSuccess: () => setLastUpdate(new Date()) }
   );
 
   const {
@@ -182,8 +207,13 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     { revalidateOnFocus: false }
   );
 
+  const { data: workflowStates = [] } = useSWR<WorkflowState[]>(
+    companyId ? [`/api/companies/${companyId}/workflow-states`, companyId] : null,
+    ([url, cId]: [string, string]) => fetcher(url, cId),
+    { revalidateOnFocus: false }
+  );
+
   const alertsCount = monitoringData?.metrics?.activeAlerts ?? 0;
-  const lastUpdate = new Date();
   const isLoading = isLoadingMonitoring && !monitoringData;
   const error = monitoringError?.message ?? null;
 
@@ -210,6 +240,16 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
 
   const formatLastUpdate = useCallback((date: Date) => date.toLocaleTimeString(), []);
 
+  const getWorkflowLabel = useCallback((systemState: string) => {
+    const wf = workflowStates.find(s => s.systemState === systemState);
+    return wf?.label || systemState;
+  }, [workflowStates]);
+
+  const getWorkflowColor = useCallback((systemState: string) => {
+    const wf = workflowStates.find(s => s.systemState === systemState);
+    return wf?.color || "#6B7280";
+  }, [workflowStates]);
+
   const state: MonitoringState = {
     monitoringData,
     driversData,
@@ -223,6 +263,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     error,
     alertsCount,
     lastUpdate,
+    workflowStates,
   };
 
   const actions: MonitoringActions = {
@@ -232,6 +273,8 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     handleDetailRefresh,
     setShowAlerts,
     formatLastUpdate,
+    getWorkflowLabel,
+    getWorkflowColor,
   };
 
   const meta: MonitoringMeta = { companyId, isReady, isSystemAdmin, companies, selectedCompanyId, setSelectedCompanyId, authCompanyId };
