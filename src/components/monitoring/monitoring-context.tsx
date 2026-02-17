@@ -22,6 +22,7 @@ export interface WorkflowState {
   icon: string | null;
   requiresReason: boolean;
   requiresPhoto: boolean;
+  requiresSignature: boolean;
   requiresNotes: boolean;
   reasonOptions: string[] | null;
   isTerminal: boolean;
