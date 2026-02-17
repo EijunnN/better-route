@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useState, type ReactNode } from "react";
+import { createContext, use, useCallback, useMemo, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { useCompanyContext } from "@/hooks/use-company-context";
 
@@ -137,6 +137,7 @@ export interface MonitoringState {
   alertsCount: number;
   lastUpdate: Date;
   workflowStates: WorkflowState[];
+  fieldDefinitionLabels: Record<string, string>;
 }
 
 export interface MonitoringActions {
@@ -214,6 +215,20 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     { revalidateOnFocus: false }
   );
 
+  const { data: rawFieldDefs = [] } = useSWR<Array<{ code: string; label: string; active: boolean }>>(
+    companyId ? [`/api/companies/${companyId}/field-definitions?entity=route_stops`, companyId] : null,
+    ([url, cId]: [string, string]) => fetcher(url, cId),
+    { revalidateOnFocus: false }
+  );
+
+  const fieldDefinitionLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const fd of rawFieldDefs) {
+      if (fd.active) map[fd.code] = fd.label;
+    }
+    return map;
+  }, [rawFieldDefs]);
+
   const alertsCount = monitoringData?.metrics?.activeAlerts ?? 0;
   const isLoading = isLoadingMonitoring && !monitoringData;
   const error = monitoringError?.message ?? null;
@@ -265,6 +280,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     alertsCount,
     lastUpdate,
     workflowStates,
+    fieldDefinitionLabels,
   };
 
   const actions: MonitoringActions = {

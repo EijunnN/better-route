@@ -28,7 +28,6 @@ export function DynamicFieldRenderer({ definition, value, onChange, error }: Dyn
         );
 
       case "number":
-      case "currency":
         return (
           <Input
             id={fieldId}
@@ -36,8 +35,24 @@ export function DynamicFieldRenderer({ definition, value, onChange, error }: Dyn
             value={(value as string | number) ?? ""}
             onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
             placeholder={definition.placeholder ?? undefined}
-            step={definition.fieldType === "currency" ? "0.01" : "1"}
+            step="1"
           />
+        );
+
+      case "currency":
+        return (
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <Input
+              id={fieldId}
+              type="number"
+              value={(value as string | number) ?? ""}
+              onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+              placeholder={definition.placeholder ?? "$0.00"}
+              step="0.01"
+              className="pl-7"
+            />
+          </div>
         );
 
       case "select":

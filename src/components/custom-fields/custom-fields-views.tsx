@@ -6,10 +6,17 @@ import {
   Pencil,
   Trash2,
   Loader2,
-  Eye,
-  Smartphone,
-  FileSpreadsheet,
   ListChecks,
+  Type,
+  Hash,
+  List,
+  Calendar,
+  DollarSign,
+  Phone,
+  Mail,
+  ToggleLeft,
+  Package,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,10 +35,32 @@ import {
 import {
   useCustomFields,
   FIELD_TYPE_LABELS,
-  FIELD_ENTITY_LABELS,
   type FieldDefinition,
+  type FieldType,
 } from "./custom-fields-context";
 import { FieldDefinitionDialog } from "./field-definition-dialog";
+
+const FIELD_TYPE_ICON: Record<FieldType, typeof Type> = {
+  text: Type,
+  number: Hash,
+  select: List,
+  date: Calendar,
+  currency: DollarSign,
+  phone: Phone,
+  email: Mail,
+  boolean: ToggleLeft,
+};
+
+const FIELD_TYPE_COLOR: Record<FieldType, string> = {
+  text: "text-slate-600 bg-slate-100 dark:bg-slate-800/50 dark:text-slate-300",
+  number: "text-blue-600 bg-blue-100 dark:bg-blue-800/50 dark:text-blue-300",
+  select: "text-purple-600 bg-purple-100 dark:bg-purple-800/50 dark:text-purple-300",
+  date: "text-amber-600 bg-amber-100 dark:bg-amber-800/50 dark:text-amber-300",
+  currency: "text-green-600 bg-green-100 dark:bg-green-800/50 dark:text-green-300",
+  phone: "text-cyan-600 bg-cyan-100 dark:bg-cyan-800/50 dark:text-cyan-300",
+  email: "text-pink-600 bg-pink-100 dark:bg-pink-800/50 dark:text-pink-300",
+  boolean: "text-orange-600 bg-orange-100 dark:bg-orange-800/50 dark:text-orange-300",
+};
 
 export function CustomFieldsDashboardView() {
   const { state, meta, actions } = useCustomFields();
@@ -102,11 +131,25 @@ function EmptyState() {
         <div>
           <h3 className="font-semibold">Sin campos personalizados</h3>
           <p className="text-sm text-muted-foreground mt-1 max-w-md">
-            Los campos personalizados te permiten agregar informacion adicional a tus pedidos
-            y paradas de ruta, como referencias, tipos de servicio, montos, etc.
+            Agrega campos adicionales a tus pedidos y paradas para capturar informacion
+            especifica de tu operacion: referencias de cliente, montos de cobro, tipos de servicio y mas.
           </p>
         </div>
-        <Button size="sm" onClick={actions.openCreateDialog}>
+        <div className="flex flex-wrap justify-center gap-2 mt-2">
+          <Badge variant="secondary" className="text-[11px]">
+            <DollarSign className="h-3 w-3 mr-1" />Monto de cobro
+          </Badge>
+          <Badge variant="secondary" className="text-[11px]">
+            <Type className="h-3 w-3 mr-1" />Referencia cliente
+          </Badge>
+          <Badge variant="secondary" className="text-[11px]">
+            <List className="h-3 w-3 mr-1" />Tipo de servicio
+          </Badge>
+          <Badge variant="secondary" className="text-[11px]">
+            <Phone className="h-3 w-3 mr-1" />Telefono contacto
+          </Badge>
+        </div>
+        <Button size="sm" onClick={actions.openCreateDialog} className="mt-2">
           <Plus className="h-4 w-4 mr-1.5" />
           Crear primer campo
         </Button>
@@ -124,9 +167,8 @@ function DefinitionsTable({ definitions }: { definitions: FieldDefinition[] }) {
             <tr className="border-b">
               <th className="text-left p-3 font-medium text-muted-foreground">Campo</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Tipo</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Entidad</th>
-              <th className="text-center p-3 font-medium text-muted-foreground">Requerido</th>
-              <th className="text-center p-3 font-medium text-muted-foreground">Visibilidad</th>
+              <th className="text-center p-3 font-medium text-muted-foreground">Obligatorio</th>
+              <th className="text-center p-3 font-medium text-muted-foreground">Se muestra en</th>
               <th className="text-right p-3 font-medium text-muted-foreground">Acciones</th>
             </tr>
           </thead>
@@ -156,6 +198,10 @@ function DefinitionRow({ definition }: { definition: FieldDefinition }) {
     }
   };
 
+  const TypeIcon = FIELD_TYPE_ICON[definition.fieldType] || Type;
+  const typeColor = FIELD_TYPE_COLOR[definition.fieldType] || FIELD_TYPE_COLOR.text;
+  const EntityIcon = definition.entity === "route_stops" ? MapPin : Package;
+
   return (
     <tr className="border-b last:border-b-0 hover:bg-muted/30">
       <td className="p-3">
@@ -165,38 +211,34 @@ function DefinitionRow({ definition }: { definition: FieldDefinition }) {
         </div>
       </td>
       <td className="p-3">
-        <Badge variant="secondary" className="text-[11px]">
-          {FIELD_TYPE_LABELS[definition.fieldType]}
-        </Badge>
-      </td>
-      <td className="p-3">
-        <span className="text-xs text-muted-foreground">
-          {FIELD_ENTITY_LABELS[definition.entity]}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="secondary" className={`text-[11px] gap-1 ${typeColor}`}>
+            <TypeIcon className="h-3 w-3" />
+            {FIELD_TYPE_LABELS[definition.fieldType]}
+          </Badge>
+          <Badge variant="outline" className="text-[10px] gap-0.5">
+            <EntityIcon className="h-2.5 w-2.5" />
+            {definition.entity === "route_stops" ? "Entregas" : "Pedidos"}
+          </Badge>
+        </div>
       </td>
       <td className="p-3 text-center">
         {definition.required && (
           <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-600">
-            Requerido
+            Obligatorio
           </Badge>
         )}
       </td>
       <td className="p-3">
-        <div className="flex items-center justify-center gap-1.5">
+        <div className="flex items-center justify-center gap-1">
           {definition.showInList && (
-            <span title="Visible en listado" className="text-muted-foreground">
-              <Eye className="h-3.5 w-3.5" />
-            </span>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Tabla</Badge>
           )}
           {definition.showInMobile && (
-            <span title="Visible en movil" className="text-muted-foreground">
-              <Smartphone className="h-3.5 w-3.5" />
-            </span>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">App</Badge>
           )}
           {definition.showInCsv && (
-            <span title="Incluido en CSV" className="text-muted-foreground">
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-            </span>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Excel</Badge>
           )}
         </div>
       </td>

@@ -53,6 +53,30 @@ function useListFieldDefinitions(companyId: string | null) {
   return fields;
 }
 
+function formatCustomFieldValue(val: unknown, fieldType: string): string {
+  if (val == null || val === "") return "-";
+  switch (fieldType) {
+    case "currency": {
+      const num = typeof val === "number" ? val : parseFloat(String(val));
+      return isNaN(num) ? String(val) : `$${num.toFixed(2)}`;
+    }
+    case "boolean":
+      return val === true || val === "true" || val === "1" ? "Si" : "No";
+    case "date": {
+      const str = String(val);
+      if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" });
+        }
+      }
+      return str;
+    }
+    default:
+      return String(val);
+  }
+}
+
 const OrderMap = dynamic(() => import("./order-map").then((mod) => mod.OrderMap), {
   ssr: false,
   loading: () => (
@@ -257,7 +281,7 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
         const val = cf?.[fd.code];
         return (
           <td key={fd.id} className="p-4 text-sm">
-            {val != null && val !== "" ? String(val) : <span className="text-muted-foreground">-</span>}
+            {val != null && val !== "" ? formatCustomFieldValue(val, fd.fieldType) : <span className="text-muted-foreground">-</span>}
           </td>
         );
       })}

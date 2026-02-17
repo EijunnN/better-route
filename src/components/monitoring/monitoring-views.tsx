@@ -327,6 +327,7 @@ export function MonitoringDashboardView() {
                     onRefresh={actions.handleDetailRefresh}
                     locationData={state.driversData.find(d => d.id === state.selectedDriverId)?.currentLocation}
                     workflowStates={state.workflowStates}
+                    fieldDefinitionLabels={state.fieldDefinitionLabels}
                   />
                 </div>
               </ScrollArea>

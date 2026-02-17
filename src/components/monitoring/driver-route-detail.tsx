@@ -108,6 +108,10 @@ interface LocationData {
   speed: number | null;
 }
 
+interface FieldDefinitionMap {
+  [code: string]: string; // code → label
+}
+
 interface DriverRouteDetailProps {
   driver: DriverInfo;
   route: RouteData | null;
@@ -115,6 +119,7 @@ interface DriverRouteDetailProps {
   onRefresh?: () => void;
   locationData?: LocationData | null;
   workflowStates?: WorkflowState[];
+  fieldDefinitionLabels?: FieldDefinitionMap;
 }
 
 const STOP_STATUS_CONFIG = {
@@ -162,6 +167,7 @@ export function DriverRouteDetail({
   onRefresh,
   locationData,
   workflowStates = [],
+  fieldDefinitionLabels = {},
 }: DriverRouteDetailProps) {
   const [selectedStop, setSelectedStop] = useState<StopInfo | null>(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -439,7 +445,7 @@ export function DriverRouteDetail({
                             {Object.entries(stop.customFields).map(([key, val]) => (
                               val != null && val !== "" && (
                                 <span key={key} className="text-[10px] text-muted-foreground">
-                                  <span className="font-medium">{key}:</span> {String(val)}
+                                  <span className="font-medium">{fieldDefinitionLabels[key] || key}:</span> {String(val)}
                                 </span>
                               )
                             ))}

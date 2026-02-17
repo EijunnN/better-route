@@ -794,17 +794,27 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
             row.ventana_horaria_fin = values[indexes.ventana_horaria_fin];
           }
 
-          // Map custom field columns
+          // Map custom field columns with type conversion
           if (customFieldMappings.length > 0) {
-            const cf: Record<string, string> = {};
+            const cf: Record<string, string | number | boolean> = {};
             for (const mapping of customFieldMappings) {
               const val = values[mapping.index];
               if (val) {
-                cf[mapping.code] = val;
+                const matchedDef = fieldDefinitions.find((fd) => fd.code === mapping.code);
+                const fieldType = matchedDef?.fieldType;
+                if ((fieldType === "number" || fieldType === "currency") && val.trim()) {
+                  const parsed = parseFloat(val.replace(",", "."));
+                  cf[mapping.code] = isNaN(parsed) ? val : parsed;
+                } else if (fieldType === "boolean") {
+                  const lower = val.trim().toLowerCase();
+                  cf[mapping.code] = lower === "true" || lower === "1" || lower === "si" || lower === "yes";
+                } else {
+                  cf[mapping.code] = val;
+                }
               }
             }
             if (Object.keys(cf).length > 0) {
-              row.customFields = cf;
+              row.customFields = cf as Record<string, string>;
             }
           }
 
