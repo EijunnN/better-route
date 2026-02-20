@@ -91,30 +91,82 @@ export async function POST(
       }
     }
 
-    // Perform the status change
-    const [_updatedVehicle] = await db
-      .update(vehicles)
-      .set({
-        status: newStatus,
-        updatedAt: new Date(),
-      })
-      .where(eq(vehicles.id, id))
-      .returning();
+    // Perform the status change inside a transaction with optimistic locking
+    let txResult: { previousStatus: string; newStatus: string };
+    try {
+      txResult = await db.transaction(async (tx) => {
+        // Re-fetch inside transaction for fresh state
+        const [fresh] = await tx
+          .select()
+          .from(vehicles)
+          .where(and(eq(vehicles.id, id), eq(vehicles.companyId, tenantCtx.companyId)))
+          .limit(1);
 
-    // Record status change history
-    await db.insert(vehicleStatusHistory).values({
-      companyId: tenantCtx.companyId,
-      vehicleId: id,
-      previousStatus: currentStatus,
-      newStatus: newStatus,
-      userId: tenantCtx.userId,
-      reason: validatedData.reason || null,
-    });
+        if (!fresh) {
+          throw new Error("NOT_FOUND");
+        }
 
-    // Log the status change
+        // Optimistic lock: ensure status hasn't changed since we validated
+        if (fresh.status !== currentStatus) {
+          throw new Error("CONFLICT");
+        }
+
+        // Update vehicle with optimistic lock in WHERE clause
+        const [updated] = await tx
+          .update(vehicles)
+          .set({
+            status: newStatus,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(vehicles.id, id),
+              eq(vehicles.status, currentStatus),
+            ),
+          )
+          .returning();
+
+        if (!updated) {
+          throw new Error("CONFLICT");
+        }
+
+        // Record status change history
+        await tx.insert(vehicleStatusHistory).values({
+          companyId: tenantCtx.companyId,
+          vehicleId: id,
+          previousStatus: currentStatus,
+          newStatus: newStatus,
+          userId: tenantCtx.userId,
+          reason: validatedData.reason || null,
+        });
+
+        return { previousStatus: currentStatus, newStatus };
+      });
+    } catch (txError) {
+      if (txError instanceof Error) {
+        if (txError.message === "NOT_FOUND") {
+          return NextResponse.json(
+            { error: "Vehicle not found" },
+            { status: 404 },
+          );
+        }
+        if (txError.message === "CONFLICT") {
+          return NextResponse.json(
+            {
+              error:
+                "Record was modified by another operation. Please refresh and try again.",
+            },
+            { status: 409 },
+          );
+        }
+      }
+      throw txError;
+    }
+
+    // Log the status change (non-critical, outside transaction)
     await logUpdate("vehicle_status", id, {
-      before: { status: currentStatus },
-      after: { status: newStatus, reason: validatedData.reason },
+      before: { status: txResult.previousStatus },
+      after: { status: txResult.newStatus, reason: validatedData.reason },
     });
 
     const result: StatusChangeResult = {

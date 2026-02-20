@@ -34,48 +34,95 @@ export async function POST(
     const body = await request.json();
     const { note } = body;
 
-    // First get the alert to verify tenant access
-    const existingAlert = await db.query.alerts.findFirst({
-      where: and(
-        withTenantFilter(alerts, [], tenantCtx.companyId),
-        eq(alerts.id, id),
-      ),
-    });
+    // Wrap read + validate + update in a transaction with optimistic locking
+    let updatedAlert: typeof alerts.$inferSelect;
+    try {
+      updatedAlert = await db.transaction(async (tx) => {
+        // Fetch alert inside transaction for fresh state
+        const [existingAlert] = await tx
+          .select()
+          .from(alerts)
+          .where(
+            and(
+              eq(alerts.id, id),
+              eq(alerts.companyId, tenantCtx.companyId),
+            ),
+          )
+          .limit(1);
 
-    if (!existingAlert) {
-      return NextResponse.json({ error: "Alert not found" }, { status: 404 });
+        if (!existingAlert) {
+          throw new Error("NOT_FOUND");
+        }
+
+        if (existingAlert.status === "ACKNOWLEDGED") {
+          throw new Error("ALREADY_ACKNOWLEDGED");
+        }
+
+        if (existingAlert.status === "DISMISSED") {
+          throw new Error("ALREADY_DISMISSED");
+        }
+
+        // Update with optimistic lock: ensure status is still ACTIVE
+        const now = new Date();
+        const [updated] = await tx
+          .update(alerts)
+          .set({
+            status: "ACKNOWLEDGED",
+            acknowledgedBy: tenantCtx.userId,
+            acknowledgedAt: now,
+            updatedAt: now,
+            // Merge metadata inside transaction using freshly-read data
+            metadata: {
+              ...((existingAlert.metadata as Record<string, unknown>) || {}),
+              acknowledgmentNote: note,
+            },
+          })
+          .where(
+            and(
+              eq(alerts.id, id),
+              eq(alerts.status, existingAlert.status),
+            ),
+          )
+          .returning();
+
+        if (!updated) {
+          throw new Error("CONFLICT");
+        }
+
+        return updated;
+      });
+    } catch (txError) {
+      if (txError instanceof Error) {
+        if (txError.message === "NOT_FOUND") {
+          return NextResponse.json(
+            { error: "Alert not found" },
+            { status: 404 },
+          );
+        }
+        if (txError.message === "ALREADY_ACKNOWLEDGED") {
+          return NextResponse.json(
+            { error: "Alert already acknowledged" },
+            { status: 400 },
+          );
+        }
+        if (txError.message === "ALREADY_DISMISSED") {
+          return NextResponse.json(
+            { error: "Cannot acknowledge a dismissed alert" },
+            { status: 400 },
+          );
+        }
+        if (txError.message === "CONFLICT") {
+          return NextResponse.json(
+            {
+              error:
+                "Record was modified by another operation. Please refresh and try again.",
+            },
+            { status: 409 },
+          );
+        }
+      }
+      throw txError;
     }
-
-    if (existingAlert.status === "ACKNOWLEDGED") {
-      return NextResponse.json(
-        { error: "Alert already acknowledged" },
-        { status: 400 },
-      );
-    }
-
-    if (existingAlert.status === "DISMISSED") {
-      return NextResponse.json(
-        { error: "Cannot acknowledge a dismissed alert" },
-        { status: 400 },
-      );
-    }
-
-    // Update the alert
-    const [updatedAlert] = await db
-      .update(alerts)
-      .set({
-        status: "ACKNOWLEDGED",
-        acknowledgedBy: tenantCtx.userId,
-        acknowledgedAt: new Date(),
-        updatedAt: new Date(),
-        // Store note in metadata
-        metadata: {
-          ...(existingAlert.metadata || {}),
-          acknowledgmentNote: note,
-        },
-      })
-      .where(eq(alerts.id, id))
-      .returning();
 
     return NextResponse.json({ data: updatedAlert });
   } catch (error) {

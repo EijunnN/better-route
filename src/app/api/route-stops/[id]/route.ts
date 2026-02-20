@@ -271,26 +271,7 @@ export async function PATCH(
       }
     }
 
-    // Update stop
-    const updatedStop = await db
-      .update(routeStops)
-      .set(updateData)
-      .where(eq(routeStops.id, stopId))
-      .returning();
-
-    // Sync order status if the stop has an associated order
-    if (currentStop.orderId && STOP_TO_ORDER_STATUS[status]) {
-      const newOrderStatus = STOP_TO_ORDER_STATUS[status];
-      await db
-        .update(orders)
-        .set({
-          status: newOrderStatus as typeof orders.$inferInsert.status,
-          updatedAt: now,
-        })
-        .where(eq(orders.id, currentStop.orderId));
-    }
-
-    // Create history entry with evidence metadata
+    // Create history entry metadata
     const historyMetadata =
       status === "FAILED"
         ? { failureReason, evidenceUrls: evidenceUrls || [] }
@@ -298,15 +279,87 @@ export async function PATCH(
           ? { evidenceUrls }
           : null;
 
-    await db.insert(routeStopHistory).values({
-      companyId: tenantCtx.companyId,
-      routeStopId: stopId,
-      previousStatus: currentStop.status,
-      newStatus: status,
-      userId: tenantCtx.userId || null,
-      notes: notes || null,
-      metadata: historyMetadata,
-    });
+    // Wrap all writes in a transaction with optimistic locking
+    let updatedStop: (typeof routeStops.$inferSelect)[];
+    try {
+      updatedStop = await db.transaction(async (tx) => {
+        // Re-fetch inside transaction for fresh state
+        const [fresh] = await tx
+          .select()
+          .from(routeStops)
+          .where(eq(routeStops.id, stopId))
+          .limit(1);
+
+        if (!fresh) {
+          throw new Error("NOT_FOUND");
+        }
+
+        // Optimistic lock: ensure status hasn't changed since we read it
+        if (fresh.status !== currentStop.status) {
+          throw new Error("CONFLICT");
+        }
+
+        // Update stop with optimistic lock in WHERE clause
+        const result = await tx
+          .update(routeStops)
+          .set(updateData)
+          .where(
+            and(
+              eq(routeStops.id, stopId),
+              eq(routeStops.status, currentStop.status),
+            ),
+          )
+          .returning();
+
+        if (result.length === 0) {
+          throw new Error("CONFLICT");
+        }
+
+        // Sync order status if the stop has an associated order
+        if (currentStop.orderId && STOP_TO_ORDER_STATUS[status]) {
+          const newOrderStatus = STOP_TO_ORDER_STATUS[status];
+          await tx
+            .update(orders)
+            .set({
+              status: newOrderStatus as typeof orders.$inferInsert.status,
+              updatedAt: now,
+            })
+            .where(eq(orders.id, currentStop.orderId));
+        }
+
+        // Insert history record
+        await tx.insert(routeStopHistory).values({
+          companyId: tenantCtx.companyId,
+          routeStopId: stopId,
+          previousStatus: currentStop.status,
+          newStatus: status,
+          userId: tenantCtx.userId || null,
+          notes: notes || null,
+          metadata: historyMetadata,
+        });
+
+        return result;
+      });
+    } catch (txError) {
+      if (txError instanceof Error) {
+        if (txError.message === "NOT_FOUND") {
+          return NextResponse.json(
+            { error: "Stop not found" },
+            { status: 404 },
+          );
+        }
+        if (txError.message === "CONFLICT") {
+          return NextResponse.json(
+            {
+              error:
+                "Record was modified by another operation. Please refresh and try again.",
+            },
+            { status: 409 },
+          );
+        }
+      }
+      throw txError;
+    }
 
     // If stop was failed or skipped, create an alert
     if (status === "FAILED" || status === "SKIPPED") {
