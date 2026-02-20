@@ -15,6 +15,9 @@ interface JobState {
 const activeJobs = new Map<string, JobState>();
 const MAX_CONCURRENT_JOBS = 3; // Configurable concurrency limit
 
+// Per-company lock to prevent concurrent optimizations using the same PENDING orders
+const companyOptimizationLocks = new Map<string, string>(); // companyId -> jobId
+
 /**
  * Calculate input hash for result caching
  */
@@ -41,6 +44,36 @@ export function canStartJob(): boolean {
     (job) => job.status === "RUNNING",
   ).length;
   return runningCount < MAX_CONCURRENT_JOBS;
+}
+
+/**
+ * Acquire a per-company optimization lock.
+ * Prevents two simultaneous optimizations from using the same PENDING orders.
+ * Returns true if lock acquired, false if another optimization is running for this company.
+ */
+export function acquireCompanyLock(companyId: string, jobId: string): boolean {
+  const existingJobId = companyOptimizationLocks.get(companyId);
+  if (existingJobId) {
+    // Check if the existing job is still active
+    const existingJob = activeJobs.get(existingJobId);
+    if (existingJob && existingJob.status === "RUNNING") {
+      return false; // Another optimization is running for this company
+    }
+    // Stale lock, clean it up
+    companyOptimizationLocks.delete(companyId);
+  }
+  companyOptimizationLocks.set(companyId, jobId);
+  return true;
+}
+
+/**
+ * Release a per-company optimization lock.
+ */
+export function releaseCompanyLock(companyId: string, jobId: string): void {
+  const currentLockHolder = companyOptimizationLocks.get(companyId);
+  if (currentLockHolder === jobId) {
+    companyOptimizationLocks.delete(companyId);
+  }
 }
 
 /**
@@ -247,4 +280,32 @@ export async function getJobStatus(jobId: string) {
 export function isJobAborting(jobId: string): boolean {
   const job = activeJobs.get(jobId);
   return job?.abortController?.signal.aborted ?? false;
+}
+
+/**
+ * Recover stale jobs on server startup.
+ * Marks any RUNNING jobs as FAILED since they were interrupted by a restart.
+ */
+export async function recoverStaleJobs(): Promise<void> {
+  try {
+    const staleJobs = await db
+      .update(optimizationJobs)
+      .set({
+        status: "FAILED",
+        error: "Job interrupted by server restart",
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(optimizationJobs.status, "RUNNING"))
+      .returning({ id: optimizationJobs.id });
+
+    if (staleJobs.length > 0) {
+      console.log(
+        `[Job Recovery] Marked ${staleJobs.length} stale RUNNING jobs as FAILED:`,
+        staleJobs.map((j) => j.id),
+      );
+    }
+  } catch (error) {
+    console.error("[Job Recovery] Failed to recover stale jobs:", error);
+  }
 }

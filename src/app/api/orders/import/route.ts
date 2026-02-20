@@ -624,6 +624,16 @@ export async function POST(request: NextRequest) {
       ...validatedData.columnMapping,
     };
 
+    // Validate CSV size before decoding (10MB decoded limit)
+    const MAX_CSV_SIZE = 10 * 1024 * 1024; // 10MB decoded limit
+    // Base64 is ~33% larger than decoded, so check the base64 length
+    if (validatedData.csvContent.length > MAX_CSV_SIZE * 1.34) {
+      return NextResponse.json(
+        { error: "CSV file is too large. Maximum size is 10MB." },
+        { status: 400 },
+      );
+    }
+
     // Decode base64 content
     let csvContent: string;
     try {
@@ -978,11 +988,9 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+    console.error("[Orders Import] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to import orders",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
