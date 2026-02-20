@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
           driverStatus: true,
           primaryFleetId: true,
         },
+        limit: 1000,
       }),
       // Get active alerts count
       db
@@ -115,6 +116,7 @@ export async function GET(request: NextRequest) {
         completedAt: true,
         timeWindowEnd: true,
       },
+      limit: 5000,
     });
 
     let totalStops = 0;

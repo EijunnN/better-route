@@ -98,6 +98,7 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+      limit: 5000,
     });
 
     // Create maps for quick lookup
@@ -237,7 +238,8 @@ export async function GET(request: NextRequest) {
             inArray(driverLocations.driverId, driverIds),
           )
         )
-        .orderBy(desc(driverLocations.recordedAt));
+        .orderBy(desc(driverLocations.recordedAt))
+        .limit(1000);
 
       // Create a map of driver ID to their most recent location
       const locationMap = new Map<string, typeof latestLocations[0]>();

@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
           where: eq(userAvailability.active, true),
         },
       },
+      limit: 500,
     });
 
     // Filter by status and calculate scores

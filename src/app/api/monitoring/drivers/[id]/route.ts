@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { driverLocations, optimizationJobs, orders, routeStops, userSecondaryFleets, users, vehicleFleets } from "@/db/schema";
@@ -169,6 +169,7 @@ export async function GET(
           },
         },
       },
+      limit: 500,
     });
 
     // If driver has no stops in this job
@@ -217,18 +218,22 @@ export async function GET(
     let totalVolume = 0;
     let timeWindowViolations = 0;
 
-    // Get additional order info for weight/volume
-    const ordersData = await db.query.orders.findMany({
-      where: and(
-        withTenantFilter(orders, [], tenantCtx.companyId),
-        eq(orders.active, true),
-      ),
-      columns: {
-        id: true,
-        weightRequired: true,
-        volumeRequired: true,
-      },
-    });
+    // Get additional order info for weight/volume (only for orders in stops)
+    const stopOrderIds = stops.map((s) => s.orderId);
+    const ordersData = stopOrderIds.length > 0
+      ? await db.query.orders.findMany({
+          where: and(
+            withTenantFilter(orders, [], tenantCtx.companyId),
+            sql`${orders.id} IN ${stopOrderIds}`,
+          ),
+          columns: {
+            id: true,
+            weightRequired: true,
+            volumeRequired: true,
+          },
+          limit: 500,
+        })
+      : [];
     const orderMap = new Map(ordersData.map((o) => [o.id, o]));
 
     stops.forEach((stop) => {

@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+      limit: 1000,
     });
 
     // Get secondary fleets for all drivers
@@ -108,6 +109,7 @@ export async function GET(request: NextRequest) {
               )
             )
             .orderBy(desc(driverLocations.recordedAt))
+            .limit(1000)
         : [];
 
       const locMap = new Map<string, typeof latestLocs[0]>();
@@ -243,6 +245,7 @@ export async function GET(request: NextRequest) {
             )
           )
           .orderBy(desc(driverLocations.recordedAt))
+          .limit(1000)
       : [];
 
     // Create a map of driver ID to their most recent location
