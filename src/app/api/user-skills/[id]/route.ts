@@ -12,19 +12,7 @@ import {
   updateUserSkillSchema,
 } from "@/lib/validations/user-skill";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 export async function GET(
   request: NextRequest,

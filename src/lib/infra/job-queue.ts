@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { type OPTIMIZATION_JOB_STATUS, optimizationJobs } from "@/db/schema";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // Job queue state (in-memory for simplicity, can be migrated to Redis/BullMQ later)
 interface JobState {
   id: string;
@@ -127,7 +128,7 @@ export async function cancelJob(
     status: "CANCELLED";
     cancelledAt: Date;
     updatedAt: Date;
-    result?: string;
+    result?: unknown;
   } = {
     status: "CANCELLED",
     cancelledAt: new Date(),
@@ -136,7 +137,7 @@ export async function cancelJob(
 
   // Save partial results if provided
   if (partialResults) {
-    updateData.result = JSON.stringify(partialResults);
+    updateData.result = partialResults;
   }
 
   await db
@@ -178,7 +179,7 @@ export async function completeJob(
     .set({
       status: "COMPLETED",
       progress: 100,
-      result: JSON.stringify(result),
+      result,
       completedAt: new Date(),
       updatedAt: new Date(),
     })
@@ -222,7 +223,7 @@ export async function getCachedResult(
 
   if (cached?.result) {
     try {
-      return JSON.parse(cached.result);
+      return safeParseJson(cached.result);
     } catch {
       return null;
     }

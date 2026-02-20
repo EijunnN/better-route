@@ -9,13 +9,9 @@ import {
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { columnMappingSuggestionRequestSchema } from "@/lib/validations/csv-column-mapping";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // POST - Suggest column mapping for CSV headers
 export async function POST(request: NextRequest) {
   try {
@@ -48,7 +44,7 @@ export async function POST(request: NextRequest) {
         );
 
       if (template.length > 0) {
-        templateMapping = JSON.parse(template[0].columnMapping);
+        templateMapping = safeParseJson(template[0].columnMapping);
       }
     }
 

@@ -1,12 +1,14 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
   text,
   time,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -75,7 +77,9 @@ export const users = pgTable("users", {
   driverStatus: varchar("driver_status", { length: 50 }).$type<
     keyof typeof DRIVER_STATUS
   >(),
-  primaryFleetId: uuid("primary_fleet_id"),
+  primaryFleetId: uuid("primary_fleet_id").references(() => fleets.id, {
+    onDelete: "set null",
+  }),
 
   // Metadata
   active: boolean("active").notNull().default(true),
@@ -108,14 +112,11 @@ export const auditLogs = pgTable("audit_logs", {
   companyId: uuid("company_id")
     .notNull()
     .references(() => companies.id, { onDelete: "restrict" }),
-  tenantId: uuid("tenant_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "restrict" }),
   userId: uuid("user_id").references(() => users.id),
   entityType: varchar("entity_type", { length: 100 }).notNull(),
   entityId: uuid("entity_id").notNull(),
   action: varchar("action", { length: 50 }).notNull(),
-  changes: text("changes"),
+  changes: jsonb("changes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -262,7 +263,9 @@ export const vehicleFleets = pgTable("vehicle_fleets", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("vehicle_fleets_vehicle_fleet_idx").on(table.vehicleId, table.fleetId),
+]);
 
 export const vehicleFleetsRelations = relations(vehicleFleets, ({ one }) => ({
   company: one(companies, {
@@ -355,7 +358,7 @@ export const vehicleSkills = pgTable("vehicle_skills", {
   companyId: uuid("company_id")
     .notNull()
     .references(() => companies.id, { onDelete: "restrict" }),
-  code: varchar("code", { length: 50 }).notNull().unique(),
+  code: varchar("code", { length: 50 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   category: varchar("category", { length: 50 })
     .notNull()
@@ -364,7 +367,9 @@ export const vehicleSkills = pgTable("vehicle_skills", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("vehicle_skills_company_code_idx").on(table.companyId, table.code),
+]);
 
 export const vehicleSkillsRelations = relations(
   vehicleSkills,
@@ -427,7 +432,9 @@ export const vehicleSkillAssignments = pgTable("vehicle_skill_assignments", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("vehicle_skill_assignments_vehicle_skill_idx").on(table.vehicleId, table.skillId),
+]);
 
 export const vehicleSkillAssignmentsRelations = relations(
   vehicleSkillAssignments,
@@ -589,7 +596,9 @@ export const userSecondaryFleets = pgTable("user_secondary_fleets", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("user_secondary_fleets_user_fleet_idx").on(table.userId, table.fleetId),
+]);
 
 export const userSecondaryFleetsRelations = relations(
   userSecondaryFleets,
@@ -762,7 +771,11 @@ export const orders = pgTable("orders", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("orders_company_id_idx").on(table.companyId),
+  index("orders_status_idx").on(table.status),
+  index("orders_company_status_idx").on(table.companyId, table.status),
+]);
 
 export const ordersRelations = relations(orders, ({ one }) => ({
   company: one(companies, {
@@ -782,13 +795,13 @@ export const csvColumnMappingTemplates = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     companyId: uuid("company_id")
       .notNull()
-      .references(() => companies.id, { onDelete: "cascade" }),
+      .references(() => companies.id, { onDelete: "restrict" }),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
     // Column mapping stored as JSON: { "csv_column": "system_field" }
-    columnMapping: text("column_mapping").notNull(), // JSON string
+    columnMapping: jsonb("column_mapping").notNull(),
     // List of required fields that must be mapped
-    requiredFields: text("required_fields").notNull(), // JSON array string
+    requiredFields: jsonb("required_fields").notNull(),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -826,8 +839,8 @@ export const optimizationConfigurations = pgTable(
     depotLongitude: varchar("depot_longitude", { length: 20 }).notNull(),
     depotAddress: text("depot_address"),
     // Vehicle and driver selection (stored as JSON arrays)
-    selectedVehicleIds: text("selected_vehicle_ids").notNull(), // JSON array of UUIDs
-    selectedDriverIds: text("selected_driver_ids").notNull(), // JSON array of UUIDs
+    selectedVehicleIds: jsonb("selected_vehicle_ids").notNull().$type<string[]>(),
+    selectedDriverIds: jsonb("selected_driver_ids").notNull().$type<string[]>(),
     // Optimization parameters
     objective: varchar("objective", { length: 20 })
       .notNull()
@@ -890,7 +903,7 @@ export const optimizationJobs = pgTable("optimization_jobs", {
     .$type<keyof typeof OPTIMIZATION_JOB_STATUS>()
     .default("PENDING"),
   progress: integer("progress").notNull().default(0), // 0-100
-  result: text("result"), // JSON string containing optimization results
+  result: jsonb("result"), // Optimization results
   error: text("error"), // Error message if failed
   // Timestamps for job lifecycle
   startedAt: timestamp("started_at"),
@@ -1186,7 +1199,13 @@ export const routeStops = pgTable("route_stops", {
   metadata: jsonb("metadata"), // Flexible data for stop-specific info
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("route_stops_company_id_idx").on(table.companyId),
+  index("route_stops_job_id_idx").on(table.jobId),
+  index("route_stops_user_id_idx").on(table.userId),
+  index("route_stops_order_id_idx").on(table.orderId),
+  index("route_stops_status_idx").on(table.status),
+]);
 
 export const routeStopsRelations = relations(routeStops, ({ one, many }) => ({
   company: one(companies, {
@@ -1268,11 +1287,11 @@ export const reassignmentsHistory = pgTable("reassignments_history", {
     .notNull()
     .references(() => users.id, { onDelete: "restrict" }),
   absentUserName: varchar("absent_user_name", { length: 255 }).notNull(),
-  routeIds: text("route_ids").notNull(), // JSON array of route IDs
-  vehicleIds: text("vehicle_ids").notNull(), // JSON array of vehicle IDs
+  routeIds: jsonb("route_ids").notNull().$type<string[]>(),
+  vehicleIds: jsonb("vehicle_ids").notNull().$type<string[]>(),
   // Reassignment details stored as JSON array of reassignments
   // Each entry: { userId, userName, stopIds, stopCount }
-  reassignments: text("reassignments").notNull(),
+  reassignments: jsonb("reassignments").notNull(),
   reason: text("reason"),
   executedBy: uuid("executed_by").references(() => users.id),
   executedAt: timestamp("executed_at").notNull().defaultNow(),
@@ -1450,15 +1469,15 @@ export const zones = pgTable("zones", {
   type: varchar("type", { length: 50 })
     .$type<keyof typeof ZONE_TYPES>()
     .default("DELIVERY"),
-  // GeoJSON polygon coordinates stored as JSON
+  // GeoJSON polygon coordinates
   // Format: { "type": "Polygon", "coordinates": [[[lng, lat], ...]] }
-  geometry: text("geometry").notNull(),
+  geometry: jsonb("geometry").notNull(),
   // Zone color for map visualization
   color: varchar("color", { length: 20 }).default("#3B82F6"),
   // Is this the default zone?
   isDefault: boolean("is_default").notNull().default(false),
-  // Days of week this zone is active (JSON array: ["MONDAY", "TUESDAY", ...])
-  activeDays: text("active_days"),
+  // Days of week this zone is active
+  activeDays: jsonb("active_days").$type<string[]>(),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -1485,8 +1504,7 @@ export const zoneVehicles = pgTable("zone_vehicles", {
     .notNull()
     .references(() => vehicles.id, { onDelete: "cascade" }),
   // Days of week this vehicle is assigned to this zone
-  // JSON array: ["MONDAY", "TUESDAY", ...]
-  assignedDays: text("assigned_days"),
+  assignedDays: jsonb("assigned_days").$type<string[]>(),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -1659,7 +1677,9 @@ export const rolePermissions = pgTable("role_permissions", {
   enabled: boolean("enabled").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("role_permissions_role_permission_idx").on(table.roleId, table.permissionId),
+]);
 
 export const rolePermissionsRelations = relations(
   rolePermissions,
@@ -1689,7 +1709,9 @@ export const userRoles = pgTable("user_roles", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("user_roles_user_role_idx").on(table.userId, table.roleId),
+]);
 
 export const userRolesRelations = relations(userRoles, ({ one }) => ({
   user: one(users, {
@@ -1729,12 +1751,12 @@ export const companyOptimizationProfiles = pgTable(
     enableWeight: boolean("enable_weight").notNull().default(true),
     enableVolume: boolean("enable_volume").notNull().default(true),
     enableUnits: boolean("enable_units").notNull().default(false),
-    // Active capacity dimensions (JSON array: ["WEIGHT", "VOLUME", "VALUE", "UNITS"])
-    activeDimensions: text("active_dimensions").notNull().default('["WEIGHT","VOLUME"]'),
-    // Priority mapping by order type (JSON: { "NEW": 50, "RESCHEDULED": 80, "URGENT": 100 })
-    priorityMapping: text("priority_mapping").notNull().default('{"NEW":50,"RESCHEDULED":80,"URGENT":100}'),
-    // Default time windows (JSON array of presets)
-    defaultTimeWindows: text("default_time_windows"),
+    // Active capacity dimensions
+    activeDimensions: jsonb("active_dimensions").notNull().default(["WEIGHT", "VOLUME"]),
+    // Priority mapping by order type
+    priorityMapping: jsonb("priority_mapping").notNull().default({ NEW: 50, RESCHEDULED: 80, URGENT: 100 }),
+    // Default time windows
+    defaultTimeWindows: jsonb("default_time_windows"),
     // Metadata
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -1774,7 +1796,7 @@ export const driverLocations = pgTable("driver_locations", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyId: uuid("company_id")
     .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
+    .references(() => companies.id, { onDelete: "restrict" }),
   driverId: uuid("driver_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -1807,7 +1829,11 @@ export const driverLocations = pgTable("driver_locations", {
   // Timestamps
   recordedAt: timestamp("recorded_at").notNull(), // When GPS was captured on device
   createdAt: timestamp("created_at").notNull().defaultNow(), // When saved to DB
-});
+}, (table) => [
+  index("driver_locations_company_id_idx").on(table.companyId),
+  index("driver_locations_driver_id_idx").on(table.driverId),
+  index("driver_locations_recorded_at_idx").on(table.recordedAt),
+]);
 
 export const driverLocationsRelations = relations(
   driverLocations,
@@ -1860,9 +1886,11 @@ export const companyWorkflowStates = pgTable("company_workflow_states", {
   isTerminal: boolean("is_terminal").notNull().default(false),
   isDefault: boolean("is_default").notNull().default(false),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("workflow_states_company_id_idx").on(table.companyId),
+]);
 
 export const companyWorkflowTransitions = pgTable("company_workflow_transitions", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -1870,8 +1898,10 @@ export const companyWorkflowTransitions = pgTable("company_workflow_transitions"
   fromStateId: uuid("from_state_id").notNull().references(() => companyWorkflowStates.id, { onDelete: "cascade" }),
   toStateId: uuid("to_state_id").notNull().references(() => companyWorkflowStates.id, { onDelete: "cascade" }),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("workflow_transitions_company_id_idx").on(table.companyId),
+]);
 
 // ============================================
 // CUSTOM FIELD DEFINITIONS - Per-company custom fields
@@ -1910,9 +1940,11 @@ export const companyFieldDefinitions = pgTable("company_field_definitions", {
   showInCsv: boolean("show_in_csv").notNull().default(true),
   validationRules: jsonb("validation_rules"),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("field_definitions_company_id_idx").on(table.companyId),
+]);
 
 export const companyFieldDefinitionsRelations = relations(companyFieldDefinitions, ({ one }) => ({
   company: one(companies, {

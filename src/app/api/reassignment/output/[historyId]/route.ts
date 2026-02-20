@@ -10,20 +10,9 @@ import {
 } from "@/db/schema";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
-
+import { safeParseJson } from "@/lib/utils/safe-json";
 /**
  * Reassignment data structure from parsed JSON
  */
@@ -114,14 +103,15 @@ export async function GET(
     }
 
     // Parse reassignments data
-    const reassignmentsData =
+    const reassignmentsData = (
       typeof historyRecord.reassignments === "string"
-        ? JSON.parse(historyRecord.reassignments)
-        : historyRecord.reassignments;
+        ? safeParseJson<ReassignmentData[]>(historyRecord.reassignments)
+        : historyRecord.reassignments
+    ) as ReassignmentData[];
 
     // Collect all unique driver IDs to generate routes for
     const driverIds = [
-      ...new Set(reassignmentsData.map((r: ReassignmentData) => r.driverId)),
+      ...new Set(reassignmentsData.map((r) => r.driverId)),
     ] as string[];
 
     // Generate route output for each replacement driver
@@ -141,8 +131,8 @@ export async function GET(
 
       // Get all stops for this driver that were part of the reassignment
       const reassignedStopIds = reassignmentsData
-        .filter((r: ReassignmentData) => r.driverId === driverId)
-        .flatMap((r: ReassignmentData) => r.stopIds);
+        .filter((r) => r.driverId === driverId)
+        .flatMap((r) => r.stopIds);
 
       const stops = await db.query.routeStops.findMany({
         where: and(
@@ -320,14 +310,15 @@ export async function POST(
     }
 
     // Parse reassignments data
-    const reassignmentsData =
+    const reassignmentsData = (
       typeof historyRecord.reassignments === "string"
-        ? JSON.parse(historyRecord.reassignments)
-        : historyRecord.reassignments;
+        ? safeParseJson<ReassignmentData[]>(historyRecord.reassignments)
+        : historyRecord.reassignments
+    ) as ReassignmentData[];
 
     // Get unique driver IDs
     const driverIds = [
-      ...new Set(reassignmentsData.map((r: ReassignmentData) => r.driverId)),
+      ...new Set(reassignmentsData.map((r) => r.driverId)),
     ] as string[];
 
     // Get driver details for notifications

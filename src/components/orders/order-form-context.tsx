@@ -83,6 +83,7 @@ export interface Order {
   notes: string | null;
   status: (typeof ORDER_STATUS)[number];
   active: boolean;
+  customFields?: Record<string, unknown> | null;
 }
 
 export interface OrderFormState {
@@ -192,13 +193,13 @@ export function OrderFormProvider({
       }
       try {
         const presetsResponse = await fetch("/api/time-window-presets", {
-          headers: { "x-company-id": companyId ?? "" },
+          headers: { "x-company-id": companyId },
         });
         const presetsResult = await presetsResponse.json();
         setTimeWindowPresets(presetsResult.data || []);
 
         const profileResponse = await fetch("/api/company-profiles", {
-          headers: { "x-company-id": companyId ?? "" },
+          headers: { "x-company-id": companyId },
         });
         const profileResult = await profileResponse.json();
         if (profileResult.data?.profile) {
@@ -249,6 +250,7 @@ export function OrderFormProvider({
         priority: initialData.priority || undefined,
         requiredSkills: initialData.requiredSkills || "",
         notes: initialData.notes || "",
+        customFields: (initialData.customFields as Record<string, unknown>) || {},
         status: initialData.status,
         active: initialData.active,
       };

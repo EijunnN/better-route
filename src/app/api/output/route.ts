@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const tenantCtx = getTenantContext();
     if (!tenantCtx) {
       return NextResponse.json(
-        { success: false, error: "Missing tenant context" },
+        { error: "Missing tenant context" },
         { status: 401 },
       );
     }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     if (!jobId) {
       return NextResponse.json(
-        { success: false, error: "jobId is required" },
+        { error: "jobId is required" },
         { status: 400 },
       );
     }
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     // Validate format
     if (format !== "JSON" && format !== "CSV") {
       return NextResponse.json(
-        { success: false, error: "format must be JSON or CSV" },
+        { error: "format must be JSON or CSV" },
         { status: 400 },
       );
     }
@@ -68,9 +68,8 @@ export async function POST(request: NextRequest) {
     if (!canGenerate.canGenerate) {
       return NextResponse.json(
         {
-          success: false,
           error: "Cannot generate output",
-          reason: canGenerate.reason,
+          details: canGenerate.reason,
         },
         { status: 400 },
       );
@@ -107,7 +106,6 @@ export async function POST(request: NextRequest) {
     console.error("Error generating output:", error);
     return NextResponse.json(
       {
-        success: false,
         error: "Failed to generate output",
         details: error instanceof Error ? error.message : String(error),
       },
@@ -137,7 +135,7 @@ export async function GET(request: NextRequest) {
     const tenantCtx = getTenantContext();
     if (!tenantCtx) {
       return NextResponse.json(
-        { success: false, error: "Missing tenant context" },
+        { error: "Missing tenant context" },
         { status: 401 },
       );
     }
@@ -170,7 +168,6 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching output history:", error);
     return NextResponse.json(
       {
-        success: false,
         error: "Failed to fetch output history",
         details: error instanceof Error ? error.message : String(error),
       },

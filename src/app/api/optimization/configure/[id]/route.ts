@@ -8,13 +8,9 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import type { OptimizationResult } from "@/lib/optimization/optimization-runner";
 import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-config";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - Get single optimization configuration
 export async function GET(
   request: NextRequest,
@@ -110,11 +106,24 @@ export async function PATCH(
       );
     }
 
+    // Separate selectedVehicleIds/selectedDriverIds and parse if strings
+    const { selectedVehicleIds, selectedDriverIds, ...restData } = data;
+
     // Update configuration
     const [updated] = await db
       .update(optimizationConfigurations)
       .set({
-        ...data,
+        ...restData,
+        ...(selectedVehicleIds !== undefined && {
+          selectedVehicleIds: typeof selectedVehicleIds === "string"
+            ? safeParseJson<string[]>(selectedVehicleIds)
+            : selectedVehicleIds,
+        }),
+        ...(selectedDriverIds !== undefined && {
+          selectedDriverIds: typeof selectedDriverIds === "string"
+            ? safeParseJson<string[]>(selectedDriverIds)
+            : selectedDriverIds,
+        }),
         updatedAt: new Date(),
       })
       .where(eq(optimizationConfigurations.id, id))
@@ -205,7 +214,7 @@ export async function DELETE(
 
       if (job?.result) {
         try {
-          const result = JSON.parse(job.result) as OptimizationResult;
+          const result = safeParseJson(job.result) as OptimizationResult;
           const assignedOrderIds: string[] = [];
 
           for (const route of result.routes || []) {

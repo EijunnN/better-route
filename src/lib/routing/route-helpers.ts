@@ -15,6 +15,21 @@ import {
 import { setTenantContext } from "../infra/tenant";
 
 /**
+ * Extract tenant context (companyId + userId) from request headers.
+ * Returns null if x-company-id header is missing.
+ * Used by legacy routes that rely on header-based tenant identification.
+ */
+export function extractTenantContext(request: NextRequest): {
+  companyId: string;
+  userId: string | undefined;
+} | null {
+  const companyId = request.headers.get("x-company-id");
+  const userId = request.headers.get("x-user-id");
+  if (!companyId) return null;
+  return { companyId, userId: userId || undefined };
+}
+
+/**
  * Extract user context from request headers or JWT token
  * This is a bridge function for routes that still use header-based auth
  */

@@ -7,20 +7,9 @@ import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { zoneQuerySchema, zoneSchema } from "@/lib/validations/zone";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
-
+import { safeParseJson } from "@/lib/utils/safe-json";
 export async function GET(request: NextRequest) {
   try {
     const tenantCtx = extractTenantContext(request);
@@ -81,7 +70,7 @@ export async function GET(request: NextRequest) {
         id: string;
         name: string;
         plate: string | null;
-        assignedDays: string | null;
+        assignedDays: string[] | null;
       }>
     > = {};
 
@@ -122,7 +111,7 @@ export async function GET(request: NextRequest) {
     const data = zonesData.map((zone) => {
       let parsedGeometry = null;
       try {
-        parsedGeometry = JSON.parse(zone.geometry);
+        parsedGeometry = safeParseJson(zone.geometry);
       } catch {
         // Keep as null if parsing fails
       }
@@ -130,7 +119,7 @@ export async function GET(request: NextRequest) {
       return {
         ...zone,
         parsedGeometry,
-        activeDays: zone.activeDays ? JSON.parse(zone.activeDays) : null,
+        activeDays: zone.activeDays ? safeParseJson(zone.activeDays) : null,
         vehicles: zoneVehiclesMap[zone.id] || [],
         vehicleCount: (zoneVehiclesMap[zone.id] || []).length,
       };
@@ -211,9 +200,7 @@ export async function POST(request: NextRequest) {
         geometry: validatedData.geometry,
         color: validatedData.color,
         isDefault: validatedData.isDefault,
-        activeDays: validatedData.activeDays
-          ? JSON.stringify(validatedData.activeDays)
-          : null,
+        activeDays: validatedData.activeDays || null,
         active: validatedData.active,
         companyId: tenantCtx.companyId,
         updatedAt: new Date(),
@@ -223,7 +210,7 @@ export async function POST(request: NextRequest) {
     // Parse geometry for response
     let parsedGeometry = null;
     try {
-      parsedGeometry = JSON.parse(newZone.geometry);
+      parsedGeometry = safeParseJson(newZone.geometry);
     } catch {
       // Keep as null if parsing fails
     }
@@ -235,7 +222,7 @@ export async function POST(request: NextRequest) {
       {
         ...newZone,
         parsedGeometry,
-        activeDays: newZone.activeDays ? JSON.parse(newZone.activeDays) : null,
+        activeDays: newZone.activeDays ? safeParseJson(newZone.activeDays) : null,
         vehicles: [],
         vehicleCount: 0,
       },

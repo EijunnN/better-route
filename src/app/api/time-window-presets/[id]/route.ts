@@ -7,12 +7,7 @@ import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { updateTimeWindowPresetSchema } from "@/lib/validations/time-window-preset";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 async function getTimeWindowPreset(id: string, _companyId: string) {
   const whereClause = withTenantFilter(timeWindowPresets, [

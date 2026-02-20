@@ -258,10 +258,11 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
 
   const handleCreate = useCallback(
     async (data: VehicleInput, skillIds?: string[]) => {
+      if (!companyId) return;
       try {
         const response = await fetch("/api/vehicles", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+          headers: { "Content-Type": "application/json", "x-company-id": companyId },
           body: JSON.stringify(data),
         });
         if (!response.ok) {
@@ -289,11 +290,11 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
 
   const handleUpdate = useCallback(
     async (data: VehicleInput, skillIds?: string[]) => {
-      if (!editingVehicle) return;
+      if (!editingVehicle || !companyId) return;
       try {
         const response = await fetch(`/api/vehicles/${editingVehicle.id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+          headers: { "Content-Type": "application/json", "x-company-id": companyId },
           body: JSON.stringify(data),
         });
         if (!response.ok) {
@@ -321,12 +322,13 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
 
   const handleDelete = useCallback(
     async (id: string) => {
+      if (!companyId) return;
       setDeletingId(id);
       const vehicle = vehicles.find((v) => v.id === id);
       try {
         const response = await fetch(`/api/vehicles/${id}`, {
           method: "DELETE",
-          headers: { "x-company-id": companyId ?? "" },
+          headers: { "x-company-id": companyId },
         });
         if (!response.ok) {
           const error = await response.json();
@@ -361,9 +363,10 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
 
   const handleStatusChange = useCallback(
     async (vehicleId: string, data: VehicleStatusTransitionInput) => {
+      if (!companyId) return;
       const response = await fetch(`/api/vehicles/${vehicleId}/status-transition`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
         body: JSON.stringify(data),
       });
       if (!response.ok) throw response;

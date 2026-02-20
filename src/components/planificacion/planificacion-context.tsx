@@ -577,6 +577,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
   );
 
   const handleSubmit = useCallback(async () => {
+    if (!companyId) return;
     if (selectedVehicleIds.length === 0) {
       setError("Selecciona al menos un vehículo");
       return;
@@ -601,7 +602,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-company-id": companyId ?? "",
+          "x-company-id": companyId,
         },
         body: JSON.stringify({
           name: finalName,

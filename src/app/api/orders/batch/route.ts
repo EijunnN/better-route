@@ -10,12 +10,7 @@ import {
 } from "@/lib/custom-fields/validation";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 // Schema for batch order creation
 const batchOrderSchema = z.object({
@@ -118,9 +113,8 @@ export async function POST(request: NextRequest) {
     if (validOrders.length === 0) {
       return NextResponse.json(
         {
-          success: false,
           error: "No valid orders to create",
-          invalidOrders,
+          details: invalidOrders,
         },
         { status: 400 },
       );
@@ -188,7 +182,6 @@ export async function POST(request: NextRequest) {
       if (customFieldErrors.length > 0) {
         return NextResponse.json(
           {
-            success: false,
             error: "Custom field validation failed",
             details: customFieldErrors.slice(0, 10),
           },

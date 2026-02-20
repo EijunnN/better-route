@@ -4,20 +4,9 @@ import { db } from "@/db";
 import { optimizationJobs, planMetrics } from "@/db/schema";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
-
+import { safeParseJson } from "@/lib/utils/safe-json";
 /**
  * GET /api/plans/[id] - Get a specific plan with full details
  */
@@ -65,7 +54,7 @@ export async function GET(
     if (job.result) {
       try {
         resultData =
-          typeof job.result === "string" ? JSON.parse(job.result) : job.result;
+          typeof job.result === "string" ? safeParseJson(job.result) : job.result;
       } catch {
         // Result is not valid JSON
       }

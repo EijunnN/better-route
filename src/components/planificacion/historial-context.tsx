@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // Types
 export interface OptimizationJob {
   id: string;
@@ -188,7 +189,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
           if (job.result) {
             try {
               parsedResult = typeof job.result === "string"
-                ? JSON.parse(job.result)
+                ? safeParseJson(job.result)
                 : job.result;
             } catch {
               // Ignore parse errors

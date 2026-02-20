@@ -11,13 +11,9 @@ import {
   optimizeRoutes as vroomOptimizeRoutes,
 } from "@/lib/optimization/vroom-optimizer";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 interface RouteData {
   routeId: string;
   vehicleId: string;
@@ -144,7 +140,7 @@ export async function POST(
 
     let result: OptimizationResult;
     try {
-      result = JSON.parse(job.result);
+      result = safeParseJson(job.result);
     } catch {
       return NextResponse.json(
         { error: "Invalid job result format" },
@@ -464,7 +460,7 @@ export async function POST(
     await db
       .update(optimizationJobs)
       .set({
-        result: JSON.stringify(result),
+        result: result as unknown,
         updatedAt: new Date(),
       })
       .where(eq(optimizationJobs.id, jobId));

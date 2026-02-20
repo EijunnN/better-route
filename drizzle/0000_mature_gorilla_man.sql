@@ -47,12 +47,11 @@ CREATE TABLE "alerts" (
 CREATE TABLE "audit_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"company_id" uuid NOT NULL,
-	"tenant_id" uuid NOT NULL,
 	"user_id" uuid,
 	"entity_type" varchar(100) NOT NULL,
 	"entity_id" uuid NOT NULL,
 	"action" varchar(50) NOT NULL,
-	"changes" text,
+	"changes" jsonb,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -73,16 +72,105 @@ CREATE TABLE "companies" (
 	CONSTRAINT "companies_legal_name_unique" UNIQUE("legal_name")
 );
 --> statement-breakpoint
+CREATE TABLE "company_field_definitions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"company_id" uuid NOT NULL,
+	"entity" varchar(20) DEFAULT 'orders' NOT NULL,
+	"code" varchar(50) NOT NULL,
+	"label" varchar(100) NOT NULL,
+	"field_type" varchar(20) DEFAULT 'text' NOT NULL,
+	"required" boolean DEFAULT false NOT NULL,
+	"placeholder" varchar(255),
+	"options" jsonb,
+	"default_value" text,
+	"position" integer DEFAULT 0 NOT NULL,
+	"show_in_list" boolean DEFAULT false NOT NULL,
+	"show_in_mobile" boolean DEFAULT true NOT NULL,
+	"show_in_csv" boolean DEFAULT true NOT NULL,
+	"validation_rules" jsonb,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "company_optimization_profiles" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"company_id" uuid NOT NULL,
+	"enable_order_value" boolean DEFAULT false NOT NULL,
+	"enable_order_type" boolean DEFAULT false NOT NULL,
+	"enable_weight" boolean DEFAULT true NOT NULL,
+	"enable_volume" boolean DEFAULT true NOT NULL,
+	"enable_units" boolean DEFAULT false NOT NULL,
+	"active_dimensions" jsonb DEFAULT '["WEIGHT","VOLUME"]'::jsonb NOT NULL,
+	"priority_mapping" jsonb DEFAULT '{"NEW":50,"RESCHEDULED":80,"URGENT":100}'::jsonb NOT NULL,
+	"default_time_windows" jsonb,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "company_optimization_profiles_company_id_unique" UNIQUE("company_id")
+);
+--> statement-breakpoint
+CREATE TABLE "company_workflow_states" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"company_id" uuid NOT NULL,
+	"code" varchar(50) NOT NULL,
+	"label" varchar(100) NOT NULL,
+	"system_state" varchar(20) NOT NULL,
+	"color" varchar(7) DEFAULT '#6B7280' NOT NULL,
+	"icon" varchar(50),
+	"position" integer DEFAULT 0 NOT NULL,
+	"requires_reason" boolean DEFAULT false NOT NULL,
+	"requires_photo" boolean DEFAULT false NOT NULL,
+	"requires_signature" boolean DEFAULT false NOT NULL,
+	"requires_notes" boolean DEFAULT false NOT NULL,
+	"reason_options" jsonb,
+	"is_terminal" boolean DEFAULT false NOT NULL,
+	"is_default" boolean DEFAULT false NOT NULL,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "company_workflow_transitions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"company_id" uuid NOT NULL,
+	"from_state_id" uuid NOT NULL,
+	"to_state_id" uuid NOT NULL,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "csv_column_mapping_templates" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"company_id" uuid NOT NULL,
 	"name" varchar(255) NOT NULL,
 	"description" text,
-	"column_mapping" text NOT NULL,
-	"required_fields" text NOT NULL,
+	"column_mapping" jsonb NOT NULL,
+	"required_fields" jsonb NOT NULL,
 	"active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "driver_locations" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"company_id" uuid NOT NULL,
+	"driver_id" uuid NOT NULL,
+	"vehicle_id" uuid,
+	"job_id" uuid,
+	"route_id" varchar(100),
+	"stop_sequence" integer,
+	"latitude" varchar(20) NOT NULL,
+	"longitude" varchar(20) NOT NULL,
+	"accuracy" integer,
+	"altitude" integer,
+	"speed" integer,
+	"heading" integer,
+	"source" varchar(20) DEFAULT 'GPS' NOT NULL,
+	"battery_level" integer,
+	"is_moving" boolean DEFAULT true,
+	"recorded_at" timestamp NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "fleets" (
@@ -107,8 +195,8 @@ CREATE TABLE "optimization_configurations" (
 	"depot_latitude" varchar(20) NOT NULL,
 	"depot_longitude" varchar(20) NOT NULL,
 	"depot_address" text,
-	"selected_vehicle_ids" text NOT NULL,
-	"selected_driver_ids" text NOT NULL,
+	"selected_vehicle_ids" jsonb NOT NULL,
+	"selected_driver_ids" jsonb NOT NULL,
 	"objective" varchar(20) DEFAULT 'BALANCED' NOT NULL,
 	"capacity_enabled" boolean DEFAULT true NOT NULL,
 	"work_window_start" time NOT NULL,
@@ -131,7 +219,7 @@ CREATE TABLE "optimization_jobs" (
 	"configuration_id" uuid NOT NULL,
 	"status" varchar(50) DEFAULT 'PENDING' NOT NULL,
 	"progress" integer DEFAULT 0 NOT NULL,
-	"result" text,
+	"result" jsonb,
 	"error" text,
 	"started_at" timestamp,
 	"completed_at" timestamp,
@@ -158,6 +246,7 @@ CREATE TABLE "optimization_presets" (
 	"big_vrp" boolean DEFAULT true NOT NULL,
 	"flexible_time_windows" boolean DEFAULT false NOT NULL,
 	"merge_by_distance" boolean DEFAULT false NOT NULL,
+	"group_same_location" boolean DEFAULT true NOT NULL,
 	"max_distance_km" integer DEFAULT 200,
 	"vehicle_recharge_time" integer DEFAULT 0,
 	"traffic_factor" integer DEFAULT 50,
@@ -186,12 +275,20 @@ CREATE TABLE "orders" (
 	"promised_date" timestamp,
 	"weight_required" integer,
 	"volume_required" integer,
+	"order_value" integer,
+	"units_required" integer,
+	"order_type" varchar(20),
+	"priority" integer DEFAULT 50,
+	"time_window_start" time,
+	"time_window_end" time,
 	"required_skills" text,
 	"notes" text,
+	"custom_fields" jsonb DEFAULT '{}'::jsonb,
 	"status" varchar(50) DEFAULT 'PENDING' NOT NULL,
 	"active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "orders_tracking_id_unique" UNIQUE("tracking_id")
 );
 --> statement-breakpoint
 CREATE TABLE "output_history" (
@@ -206,6 +303,18 @@ CREATE TABLE "output_history" (
 	"metadata" jsonb,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "permissions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"entity" varchar(50) NOT NULL,
+	"action" varchar(50) NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"description" text,
+	"category" varchar(50) NOT NULL,
+	"display_order" integer DEFAULT 0 NOT NULL,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "plan_metrics" (
@@ -246,13 +355,34 @@ CREATE TABLE "reassignments_history" (
 	"job_id" uuid,
 	"absent_user_id" uuid NOT NULL,
 	"absent_user_name" varchar(255) NOT NULL,
-	"route_ids" text NOT NULL,
-	"vehicle_ids" text NOT NULL,
-	"reassignments" text NOT NULL,
+	"route_ids" jsonb NOT NULL,
+	"vehicle_ids" jsonb NOT NULL,
+	"reassignments" jsonb NOT NULL,
 	"reason" text,
 	"executed_by" uuid,
 	"executed_at" timestamp DEFAULT now() NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "role_permissions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"role_id" uuid NOT NULL,
+	"permission_id" uuid NOT NULL,
+	"enabled" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "roles" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"company_id" uuid NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"description" text,
+	"is_system" boolean DEFAULT false NOT NULL,
+	"code" varchar(50),
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "route_stop_history" (
@@ -287,6 +417,9 @@ CREATE TABLE "route_stops" (
 	"started_at" timestamp,
 	"completed_at" timestamp,
 	"notes" text,
+	"failure_reason" varchar(50),
+	"evidence_urls" jsonb,
+	"workflow_state_id" uuid,
 	"metadata" jsonb,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
@@ -342,6 +475,16 @@ CREATE TABLE "user_fleet_permissions" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "user_roles" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"role_id" uuid NOT NULL,
+	"is_primary" boolean DEFAULT false NOT NULL,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "user_secondary_fleets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"company_id" uuid NOT NULL,
@@ -366,7 +509,7 @@ CREATE TABLE "user_skills" (
 --> statement-breakpoint
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"company_id" uuid NOT NULL,
+	"company_id" uuid,
 	"name" varchar(255) NOT NULL,
 	"email" varchar(255) NOT NULL,
 	"username" varchar(100) NOT NULL,
@@ -384,7 +527,9 @@ CREATE TABLE "users" (
 	"primary_fleet_id" uuid,
 	"active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "users_email_unique" UNIQUE("email"),
+	CONSTRAINT "users_username_unique" UNIQUE("username")
 );
 --> statement-breakpoint
 CREATE TABLE "vehicle_fleet_history" (
@@ -408,6 +553,16 @@ CREATE TABLE "vehicle_fleets" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "vehicle_skill_assignments" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"company_id" uuid NOT NULL,
+	"vehicle_id" uuid NOT NULL,
+	"skill_id" uuid NOT NULL,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "vehicle_skills" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"company_id" uuid NOT NULL,
@@ -417,8 +572,7 @@ CREATE TABLE "vehicle_skills" (
 	"description" text,
 	"active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "vehicle_skills_code_unique" UNIQUE("code")
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "vehicle_status_history" (
@@ -456,6 +610,8 @@ CREATE TABLE "vehicles" (
 	"type" varchar(50),
 	"weight_capacity" integer,
 	"volume_capacity" integer,
+	"max_value_capacity" integer,
+	"max_units_capacity" integer,
 	"refrigerated" boolean DEFAULT false,
 	"heated" boolean DEFAULT false,
 	"lifting" boolean DEFAULT false,
@@ -473,7 +629,7 @@ CREATE TABLE "zone_vehicles" (
 	"company_id" uuid NOT NULL,
 	"zone_id" uuid NOT NULL,
 	"vehicle_id" uuid NOT NULL,
-	"assigned_days" text,
+	"assigned_days" jsonb,
 	"active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
@@ -485,10 +641,10 @@ CREATE TABLE "zones" (
 	"name" varchar(255) NOT NULL,
 	"description" text,
 	"type" varchar(50) DEFAULT 'DELIVERY',
-	"geometry" text NOT NULL,
+	"geometry" jsonb NOT NULL,
 	"color" varchar(20) DEFAULT '#3B82F6',
 	"is_default" boolean DEFAULT false NOT NULL,
-	"active_days" text,
+	"active_days" jsonb,
 	"active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
@@ -501,9 +657,18 @@ ALTER TABLE "alerts" ADD CONSTRAINT "alerts_company_id_companies_id_fk" FOREIGN 
 ALTER TABLE "alerts" ADD CONSTRAINT "alerts_rule_id_alert_rules_id_fk" FOREIGN KEY ("rule_id") REFERENCES "public"."alert_rules"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "alerts" ADD CONSTRAINT "alerts_acknowledged_by_users_id_fk" FOREIGN KEY ("acknowledged_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_tenant_id_companies_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "csv_column_mapping_templates" ADD CONSTRAINT "csv_column_mapping_templates_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_field_definitions" ADD CONSTRAINT "company_field_definitions_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_optimization_profiles" ADD CONSTRAINT "company_optimization_profiles_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_workflow_states" ADD CONSTRAINT "company_workflow_states_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_workflow_transitions" ADD CONSTRAINT "company_workflow_transitions_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_workflow_transitions" ADD CONSTRAINT "company_workflow_transitions_from_state_id_company_workflow_states_id_fk" FOREIGN KEY ("from_state_id") REFERENCES "public"."company_workflow_states"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_workflow_transitions" ADD CONSTRAINT "company_workflow_transitions_to_state_id_company_workflow_states_id_fk" FOREIGN KEY ("to_state_id") REFERENCES "public"."company_workflow_states"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "csv_column_mapping_templates" ADD CONSTRAINT "csv_column_mapping_templates_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "driver_locations" ADD CONSTRAINT "driver_locations_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "driver_locations" ADD CONSTRAINT "driver_locations_driver_id_users_id_fk" FOREIGN KEY ("driver_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "driver_locations" ADD CONSTRAINT "driver_locations_vehicle_id_vehicles_id_fk" FOREIGN KEY ("vehicle_id") REFERENCES "public"."vehicles"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "driver_locations" ADD CONSTRAINT "driver_locations_job_id_optimization_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "public"."optimization_jobs"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "fleets" ADD CONSTRAINT "fleets_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "optimization_configurations" ADD CONSTRAINT "optimization_configurations_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "optimization_configurations" ADD CONSTRAINT "optimization_configurations_confirmed_by_users_id_fk" FOREIGN KEY ("confirmed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -523,6 +688,9 @@ ALTER TABLE "reassignments_history" ADD CONSTRAINT "reassignments_history_compan
 ALTER TABLE "reassignments_history" ADD CONSTRAINT "reassignments_history_job_id_optimization_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "public"."optimization_jobs"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "reassignments_history" ADD CONSTRAINT "reassignments_history_absent_user_id_users_id_fk" FOREIGN KEY ("absent_user_id") REFERENCES "public"."users"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "reassignments_history" ADD CONSTRAINT "reassignments_history_executed_by_users_id_fk" FOREIGN KEY ("executed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_permission_id_permissions_id_fk" FOREIGN KEY ("permission_id") REFERENCES "public"."permissions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "roles" ADD CONSTRAINT "roles_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "route_stop_history" ADD CONSTRAINT "route_stop_history_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "route_stop_history" ADD CONSTRAINT "route_stop_history_route_stop_id_route_stops_id_fk" FOREIGN KEY ("route_stop_id") REFERENCES "public"."route_stops"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "route_stop_history" ADD CONSTRAINT "route_stop_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -531,6 +699,7 @@ ALTER TABLE "route_stops" ADD CONSTRAINT "route_stops_job_id_optimization_jobs_i
 ALTER TABLE "route_stops" ADD CONSTRAINT "route_stops_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "route_stops" ADD CONSTRAINT "route_stops_vehicle_id_vehicles_id_fk" FOREIGN KEY ("vehicle_id") REFERENCES "public"."vehicles"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "route_stops" ADD CONSTRAINT "route_stops_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "route_stops" ADD CONSTRAINT "route_stops_workflow_state_id_company_workflow_states_id_fk" FOREIGN KEY ("workflow_state_id") REFERENCES "public"."company_workflow_states"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "time_window_presets" ADD CONSTRAINT "time_window_presets_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_availability" ADD CONSTRAINT "user_availability_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_availability" ADD CONSTRAINT "user_availability_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -540,6 +709,8 @@ ALTER TABLE "user_driver_status_history" ADD CONSTRAINT "user_driver_status_hist
 ALTER TABLE "user_fleet_permissions" ADD CONSTRAINT "user_fleet_permissions_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_fleet_permissions" ADD CONSTRAINT "user_fleet_permissions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_fleet_permissions" ADD CONSTRAINT "user_fleet_permissions_fleet_id_fleets_id_fk" FOREIGN KEY ("fleet_id") REFERENCES "public"."fleets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_secondary_fleets" ADD CONSTRAINT "user_secondary_fleets_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_secondary_fleets" ADD CONSTRAINT "user_secondary_fleets_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_secondary_fleets" ADD CONSTRAINT "user_secondary_fleets_fleet_id_fleets_id_fk" FOREIGN KEY ("fleet_id") REFERENCES "public"."fleets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -547,6 +718,7 @@ ALTER TABLE "user_skills" ADD CONSTRAINT "user_skills_company_id_companies_id_fk
 ALTER TABLE "user_skills" ADD CONSTRAINT "user_skills_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_skills" ADD CONSTRAINT "user_skills_skill_id_vehicle_skills_id_fk" FOREIGN KEY ("skill_id") REFERENCES "public"."vehicle_skills"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "users" ADD CONSTRAINT "users_primary_fleet_id_fleets_id_fk" FOREIGN KEY ("primary_fleet_id") REFERENCES "public"."fleets"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vehicle_fleet_history" ADD CONSTRAINT "vehicle_fleet_history_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vehicle_fleet_history" ADD CONSTRAINT "vehicle_fleet_history_vehicle_id_vehicles_id_fk" FOREIGN KEY ("vehicle_id") REFERENCES "public"."vehicles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vehicle_fleet_history" ADD CONSTRAINT "vehicle_fleet_history_previous_fleet_id_fleets_id_fk" FOREIGN KEY ("previous_fleet_id") REFERENCES "public"."fleets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -555,6 +727,9 @@ ALTER TABLE "vehicle_fleet_history" ADD CONSTRAINT "vehicle_fleet_history_user_i
 ALTER TABLE "vehicle_fleets" ADD CONSTRAINT "vehicle_fleets_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vehicle_fleets" ADD CONSTRAINT "vehicle_fleets_vehicle_id_vehicles_id_fk" FOREIGN KEY ("vehicle_id") REFERENCES "public"."vehicles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vehicle_fleets" ADD CONSTRAINT "vehicle_fleets_fleet_id_fleets_id_fk" FOREIGN KEY ("fleet_id") REFERENCES "public"."fleets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "vehicle_skill_assignments" ADD CONSTRAINT "vehicle_skill_assignments_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "vehicle_skill_assignments" ADD CONSTRAINT "vehicle_skill_assignments_vehicle_id_vehicles_id_fk" FOREIGN KEY ("vehicle_id") REFERENCES "public"."vehicles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "vehicle_skill_assignments" ADD CONSTRAINT "vehicle_skill_assignments_skill_id_vehicle_skills_id_fk" FOREIGN KEY ("skill_id") REFERENCES "public"."vehicle_skills"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vehicle_skills" ADD CONSTRAINT "vehicle_skills_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vehicle_status_history" ADD CONSTRAINT "vehicle_status_history_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vehicle_status_history" ADD CONSTRAINT "vehicle_status_history_vehicle_id_vehicles_id_fk" FOREIGN KEY ("vehicle_id") REFERENCES "public"."vehicles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -564,4 +739,24 @@ ALTER TABLE "vehicles" ADD CONSTRAINT "vehicles_assigned_driver_id_users_id_fk" 
 ALTER TABLE "zone_vehicles" ADD CONSTRAINT "zone_vehicles_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "zone_vehicles" ADD CONSTRAINT "zone_vehicles_zone_id_zones_id_fk" FOREIGN KEY ("zone_id") REFERENCES "public"."zones"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "zone_vehicles" ADD CONSTRAINT "zone_vehicles_vehicle_id_vehicles_id_fk" FOREIGN KEY ("vehicle_id") REFERENCES "public"."vehicles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "zones" ADD CONSTRAINT "zones_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "zones" ADD CONSTRAINT "zones_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "field_definitions_company_id_idx" ON "company_field_definitions" USING btree ("company_id");--> statement-breakpoint
+CREATE INDEX "workflow_states_company_id_idx" ON "company_workflow_states" USING btree ("company_id");--> statement-breakpoint
+CREATE INDEX "workflow_transitions_company_id_idx" ON "company_workflow_transitions" USING btree ("company_id");--> statement-breakpoint
+CREATE INDEX "driver_locations_company_id_idx" ON "driver_locations" USING btree ("company_id");--> statement-breakpoint
+CREATE INDEX "driver_locations_driver_id_idx" ON "driver_locations" USING btree ("driver_id");--> statement-breakpoint
+CREATE INDEX "driver_locations_recorded_at_idx" ON "driver_locations" USING btree ("recorded_at");--> statement-breakpoint
+CREATE INDEX "orders_company_id_idx" ON "orders" USING btree ("company_id");--> statement-breakpoint
+CREATE INDEX "orders_status_idx" ON "orders" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "orders_company_status_idx" ON "orders" USING btree ("company_id","status");--> statement-breakpoint
+CREATE UNIQUE INDEX "role_permissions_role_permission_idx" ON "role_permissions" USING btree ("role_id","permission_id");--> statement-breakpoint
+CREATE INDEX "route_stops_company_id_idx" ON "route_stops" USING btree ("company_id");--> statement-breakpoint
+CREATE INDEX "route_stops_job_id_idx" ON "route_stops" USING btree ("job_id");--> statement-breakpoint
+CREATE INDEX "route_stops_user_id_idx" ON "route_stops" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "route_stops_order_id_idx" ON "route_stops" USING btree ("order_id");--> statement-breakpoint
+CREATE INDEX "route_stops_status_idx" ON "route_stops" USING btree ("status");--> statement-breakpoint
+CREATE UNIQUE INDEX "user_roles_user_role_idx" ON "user_roles" USING btree ("user_id","role_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "user_secondary_fleets_user_fleet_idx" ON "user_secondary_fleets" USING btree ("user_id","fleet_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "vehicle_fleets_vehicle_fleet_idx" ON "vehicle_fleets" USING btree ("vehicle_id","fleet_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "vehicle_skill_assignments_vehicle_skill_idx" ON "vehicle_skill_assignments" USING btree ("vehicle_id","skill_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "vehicle_skills_company_code_idx" ON "vehicle_skills" USING btree ("company_id","code");

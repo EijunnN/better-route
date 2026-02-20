@@ -17,6 +17,7 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser, getOptionalUser } from "@/lib/auth/auth-api";
 
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 // Map route_stop status to order status
 const STOP_TO_ORDER_STATUS: Record<string, string> = {
   PENDING: "ASSIGNED", // Order stays assigned until stop starts
@@ -26,12 +27,6 @@ const STOP_TO_ORDER_STATUS: Record<string, string> = {
   SKIPPED: "FAILED", // Order was skipped (treat as failed)
 };
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
 
 // GET - Get a single route stop with details
 export async function GET(

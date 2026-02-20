@@ -124,9 +124,7 @@ export function withAuditLog(
     // Only log on successful operations
     if (response.status >= 200 && response.status < 300) {
       const auditAction = options.action || Action.CREATE;
-      const changes = options.changes
-        ? JSON.stringify(options.changes)
-        : undefined;
+      const changes = options.changes || undefined;
 
       // Determine log type based on action
       switch (auditAction) {

@@ -3,23 +3,24 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import {
+  extractTenantContext,
+  handleError,
+  setupAuthContext,
+  unauthorizedResponse,
+} from "@/lib/routing/route-helpers";
 
 // DELETE - Delete all orders for a company (soft delete by setting active=false)
 export async function DELETE(request: NextRequest) {
   try {
+    const authResult = await setupAuthContext(request);
+    if (!authResult.authenticated || !authResult.user) {
+      return unauthorizedResponse();
+    }
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
+      return unauthorizedResponse("Missing tenant context");
     }
 
     setTenantContext(tenantCtx);
@@ -28,6 +29,14 @@ export async function DELETE(request: NextRequest) {
     // Check if hard delete is requested
     const { searchParams } = new URL(request.url);
     const hardDelete = searchParams.get("hard") === "true";
+
+    // Hard delete requires ADMIN_SISTEMA role
+    if (hardDelete && authResult.user.role !== "ADMIN_SISTEMA") {
+      return NextResponse.json(
+        { error: "Hard delete requires ADMIN_SISTEMA role" },
+        { status: 403 },
+      );
+    }
 
     let deletedCount = 0;
 
@@ -56,13 +65,6 @@ export async function DELETE(request: NextRequest) {
       message: `${deletedCount} orders ${hardDelete ? "permanently deleted" : "marked as inactive"}`,
     });
   } catch (error) {
-    console.error("Batch delete error:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to delete orders",
-      },
-      { status: 500 },
-    );
+    return handleError(error, "batch deleting orders");
   }
 }

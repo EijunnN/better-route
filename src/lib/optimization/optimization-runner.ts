@@ -1356,7 +1356,7 @@ export async function createAndExecuteJob(
       // Update job status to running
       await db
         .update(optimizationJobs)
-        .set({ status: "RUNNING", startedAt: new Date() })
+        .set({ status: "RUNNING", startedAt: new Date(), updatedAt: new Date() })
         .where(eq(optimizationJobs.id, jobId));
 
       // Run optimization

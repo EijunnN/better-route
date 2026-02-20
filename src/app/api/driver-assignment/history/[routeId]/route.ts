@@ -4,20 +4,9 @@ import { db } from "@/db";
 import { auditLogs, optimizationJobs } from "@/db/schema";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
-
+import { safeParseJson } from "@/lib/utils/safe-json";
 /**
  * GET - Get assignment history for a route
  * Returns audit log entries for driver assignment changes
@@ -69,7 +58,7 @@ export async function GET(
       let changes = null;
       if (log.changes) {
         try {
-          changes = JSON.parse(log.changes);
+          changes = safeParseJson(log.changes);
         } catch {
           // If changes is not valid JSON, keep as-is
           changes = log.changes;

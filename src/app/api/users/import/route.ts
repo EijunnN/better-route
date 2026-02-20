@@ -6,6 +6,7 @@ import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { createUserSchema, isExpired } from "@/lib/validations/user";
 
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 interface CSVRow {
   name: string;
   email: string;
@@ -27,19 +28,6 @@ interface ImportError {
   message: string;
 }
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
 
 function detectSeparator(headerLine: string): string {
   // Count occurrences of common separators
@@ -223,9 +211,9 @@ export async function POST(request: NextRequest) {
     if (!file) {
       return NextResponse.json(
         {
-          success: false,
+          error: "No se recibió archivo",
           created: 0,
-          errors: [{ row: 0, field: "file", message: "No se recibió archivo" }],
+          details: [{ row: 0, field: "file", message: "No se recibió archivo" }],
         },
         { status: 400 },
       );
@@ -245,9 +233,9 @@ export async function POST(request: NextRequest) {
     if (rows.length === 0) {
       return NextResponse.json(
         {
-          success: false,
+          error: "Archivo vacío o formato inválido",
           created: 0,
-          errors: [
+          details: [
             {
               row: 0,
               field: "file",
@@ -302,11 +290,14 @@ export async function POST(request: NextRequest) {
 
     // If there are validation errors, return them
     if (allErrors.length > 0) {
-      return NextResponse.json({
-        success: false,
-        created: 0,
-        errors: allErrors,
-      });
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          created: 0,
+          details: allErrors,
+        },
+        { status: 400 },
+      );
     }
 
     // Create users
@@ -402,18 +393,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (createErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Algunos usuarios no pudieron ser creados",
+          created,
+          details: createErrors,
+        },
+        { status: 207 },
+      );
+    }
+
     return NextResponse.json({
-      success: createErrors.length === 0,
+      success: true,
       created,
-      errors: createErrors,
     });
   } catch (error) {
     console.error("Error importing users:", error);
     return NextResponse.json(
       {
-        success: false,
+        error: "Error interno del servidor",
         created: 0,
-        errors: [
+        details: [
           { row: 0, field: "general", message: "Error interno del servidor" },
         ],
       },

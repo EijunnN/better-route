@@ -6,17 +6,12 @@ import { orders } from "@/db/schema";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { ORDER_STATUS } from "@/lib/validations/order";
 
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 /**
  * GeoJSON API endpoint for order visualization on map
  * Returns orders as GeoJSON FeatureCollection for map rendering
  */
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
 
 // Query parameter validation schema
 const geojsonQuerySchema = z.object({

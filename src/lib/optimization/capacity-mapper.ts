@@ -8,6 +8,7 @@
 
 import type { CAPACITY_DIMENSIONS, ORDER_TYPES } from "@/db/schema";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // Types for company optimization profile
 export interface CompanyOptimizationProfile {
   id: string;
@@ -82,9 +83,9 @@ export function parseProfile(
     enableWeight: boolean;
     enableVolume: boolean;
     enableUnits: boolean;
-    activeDimensions: string;
-    priorityMapping: string;
-    defaultTimeWindows?: string | null;
+    activeDimensions: unknown;
+    priorityMapping: unknown;
+    defaultTimeWindows?: unknown;
   } | null,
 ): CompanyOptimizationProfile {
   if (!dbProfile) {
@@ -95,13 +96,13 @@ export function parseProfile(
   let priorityMapping: Record<keyof typeof ORDER_TYPES, number>;
 
   try {
-    activeDimensions = JSON.parse(dbProfile.activeDimensions);
+    activeDimensions = safeParseJson(dbProfile.activeDimensions);
   } catch {
     activeDimensions = ["WEIGHT", "VOLUME"];
   }
 
   try {
-    priorityMapping = JSON.parse(dbProfile.priorityMapping);
+    priorityMapping = safeParseJson(dbProfile.priorityMapping);
   } catch {
     priorityMapping = { NEW: 50, RESCHEDULED: 80, URGENT: 100 };
   }
@@ -117,7 +118,7 @@ export function parseProfile(
     activeDimensions,
     priorityMapping,
     defaultTimeWindows: dbProfile.defaultTimeWindows
-      ? JSON.parse(dbProfile.defaultTimeWindows)
+      ? safeParseJson(dbProfile.defaultTimeWindows)
       : undefined,
   };
 }
@@ -305,8 +306,8 @@ export function createProfileConfig(options: {
   enableWeight: boolean;
   enableVolume: boolean;
   enableUnits: boolean;
-  activeDimensions: string;
-  priorityMapping: string;
+  activeDimensions: string[];
+  priorityMapping: Record<string, number>;
 } {
   const {
     enableWeight = true,
@@ -331,12 +332,12 @@ export function createProfileConfig(options: {
     enableWeight,
     enableVolume,
     enableUnits,
-    activeDimensions: JSON.stringify(activeDimensions),
-    priorityMapping: JSON.stringify({
+    activeDimensions,
+    priorityMapping: {
       NEW: priorityNew,
       RESCHEDULED: priorityRescheduled,
       URGENT: priorityUrgent,
-    }),
+    },
   };
 }
 

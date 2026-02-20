@@ -5,20 +5,7 @@ import { vehicleSkillAssignments, vehicleSkills, vehicles } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { z } from "zod";
-
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 // GET - Get skills assigned to a vehicle
 export async function GET(

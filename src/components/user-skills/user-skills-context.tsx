@@ -171,10 +171,11 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
 
   const handleCreate = useCallback(
     async (data: UserSkillInput) => {
+      if (!companyId) return;
       try {
         const response = await fetch("/api/user-skills", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+          headers: { "Content-Type": "application/json", "x-company-id": companyId },
           body: JSON.stringify(data),
         });
         if (!response.ok) {
@@ -198,11 +199,11 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
 
   const handleUpdate = useCallback(
     async (data: UserSkillInput) => {
-      if (!editingUserSkill) return;
+      if (!editingUserSkill || !companyId) return;
       try {
         const response = await fetch(`/api/user-skills/${editingUserSkill.id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+          headers: { "Content-Type": "application/json", "x-company-id": companyId },
           body: JSON.stringify(data),
         });
         if (!response.ok) {
@@ -226,12 +227,13 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
 
   const handleDelete = useCallback(
     async (id: string) => {
+      if (!companyId) return;
       setDeletingId(id);
       const userSkill = userSkills.find((us) => us.id === id);
       try {
         const response = await fetch(`/api/user-skills/${id}`, {
           method: "DELETE",
-          headers: { "x-company-id": companyId ?? "" },
+          headers: { "x-company-id": companyId },
         });
         if (!response.ok) {
           const error = await response.json();
@@ -259,10 +261,11 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
 
   const handleToggleActive = useCallback(
     async (id: string, currentActive: boolean) => {
+      if (!companyId) return;
       try {
         const response = await fetch(`/api/user-skills/${id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+          headers: { "Content-Type": "application/json", "x-company-id": companyId },
           body: JSON.stringify({ active: !currentActive }),
         });
         if (!response.ok) {

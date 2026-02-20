@@ -5,20 +5,9 @@ import { optimizationJobs, vehicles } from "@/db/schema";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
-
+import { safeParseJson } from "@/lib/utils/safe-json";
 /**
  * DELETE - Remove driver assignment from a route
  * This endpoint allows removing a driver assignment for reassignment
@@ -79,7 +68,7 @@ export async function DELETE(
     let updatedResult = null;
     if (job.result) {
       try {
-        const result = JSON.parse(job.result);
+        const result = safeParseJson<{ routes?: Array<{ vehicleId?: string; driverId?: string | null; driverName?: string | null; isManualOverride?: boolean; manualAssignmentReason?: string | null; assignmentValidation?: unknown; stops?: Array<{ orderId?: string }> }> }>(job.result);
         // Find the route for this vehicle and remove driver assignment
         if (result.routes) {
           for (const route of result.routes) {
@@ -99,7 +88,7 @@ export async function DELETE(
           }
         }
 
-        updatedResult = JSON.stringify(result);
+        updatedResult = result;
 
         // Update the job with the new result
         await db
@@ -191,7 +180,7 @@ export async function GET(
 
     if (job.result) {
       try {
-        const result = JSON.parse(job.result);
+        const result = safeParseJson<{ routes?: Array<{ vehicleId?: string; driverId?: string | null; driverName?: string | null; isManualOverride?: boolean; manualAssignmentReason?: string | null; stops?: Array<{ orderId?: string }> }> }>(job.result);
         if (result.routes) {
           for (const route of result.routes) {
             if (route.vehicleId === vehicleId) {

@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const tenantCtx = getTenantContext();
     if (!tenantCtx) {
       return NextResponse.json(
-        { success: false, error: "Missing tenant context" },
+        { error: "Missing tenant context" },
         { status: 401 },
       );
     }
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const outputRecord = await getOutputById(companyId, outputId);
     if (!outputRecord) {
       return NextResponse.json(
-        { success: false, error: "Output not found" },
+        { error: "Output not found" },
         { status: 404 },
       );
     }
@@ -72,7 +72,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (outputRecord.status === "FAILED") {
       return NextResponse.json(
         {
-          success: false,
           error: "Output generation failed",
           details: outputRecord.error,
         },
@@ -96,7 +95,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (jobResult.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Associated job not found" },
+        { error: "Associated job not found" },
         { status: 404 },
       );
     }
@@ -264,7 +263,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     console.error("Error fetching output:", error);
     return NextResponse.json(
       {
-        success: false,
         error: "Failed to fetch output",
         details: error instanceof Error ? error.message : String(error),
       },
@@ -295,7 +293,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const tenantCtx = getTenantContext();
     if (!tenantCtx) {
       return NextResponse.json(
-        { success: false, error: "Missing tenant context" },
+        { error: "Missing tenant context" },
         { status: 401 },
       );
     }
@@ -314,7 +312,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const existingOutput = await getOutputById(companyId, outputId);
     if (!existingOutput) {
       return NextResponse.json(
-        { success: false, error: "Output not found" },
+        { error: "Output not found" },
         { status: 404 },
       );
     }
@@ -325,7 +323,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Validate format
     if (outputFormat !== "JSON" && outputFormat !== "CSV") {
       return NextResponse.json(
-        { success: false, error: "format must be JSON or CSV" },
+        { error: "format must be JSON or CSV" },
         { status: 400 },
       );
     }
@@ -361,7 +359,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     console.error("Error regenerating output:", error);
     return NextResponse.json(
       {
-        success: false,
         error: "Failed to regenerate output",
         details: error instanceof Error ? error.message : String(error),
       },
@@ -380,7 +377,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     const tenantCtx = getTenantContext();
     if (!tenantCtx) {
       return NextResponse.json(
-        { success: false, error: "Missing tenant context" },
+        { error: "Missing tenant context" },
         { status: 401 },
       );
     }
@@ -407,7 +404,6 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     console.error("Error deleting output:", error);
     return NextResponse.json(
       {
-        success: false,
         error: "Failed to delete output",
         details: error instanceof Error ? error.message : String(error),
       },

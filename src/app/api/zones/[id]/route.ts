@@ -8,20 +8,9 @@ import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { updateZoneSchema } from "@/lib/validations/zone";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
-
+import { safeParseJson } from "@/lib/utils/safe-json";
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -67,7 +56,7 @@ export async function GET(
     // Parse geometry and activeDays
     let parsedGeometry = null;
     try {
-      parsedGeometry = JSON.parse(zone.geometry);
+      parsedGeometry = safeParseJson(zone.geometry);
     } catch {
       // Keep as null if parsing fails
     }
@@ -75,10 +64,10 @@ export async function GET(
     return NextResponse.json({
       ...zone,
       parsedGeometry,
-      activeDays: zone.activeDays ? JSON.parse(zone.activeDays) : null,
+      activeDays: zone.activeDays ? safeParseJson(zone.activeDays) : null,
       vehicles: relatedVehicles.map((v) => ({
         ...v,
-        assignedDays: v.assignedDays ? JSON.parse(v.assignedDays) : null,
+        assignedDays: v.assignedDays ? safeParseJson(v.assignedDays) : null,
       })),
       vehicleIds: relatedVehicles.map((v) => v.id),
       vehicleCount: relatedVehicles.length,
@@ -173,9 +162,7 @@ export async function PATCH(
         ...updateFields,
         activeDays:
           activeDays !== undefined
-            ? activeDays
-              ? JSON.stringify(activeDays)
-              : null
+            ? activeDays || null
             : undefined,
         updatedAt: new Date(),
       })
@@ -197,7 +184,7 @@ export async function PATCH(
     // Parse geometry for response
     let parsedGeometry = null;
     try {
-      parsedGeometry = JSON.parse(updatedZone.geometry);
+      parsedGeometry = safeParseJson(updatedZone.geometry);
     } catch {
       // Keep as null if parsing fails
     }
@@ -214,11 +201,11 @@ export async function PATCH(
       ...updatedZone,
       parsedGeometry,
       activeDays: updatedZone.activeDays
-        ? JSON.parse(updatedZone.activeDays)
+        ? safeParseJson(updatedZone.activeDays)
         : null,
       vehicles: relatedVehicles.map((v) => ({
         ...v,
-        assignedDays: v.assignedDays ? JSON.parse(v.assignedDays) : null,
+        assignedDays: v.assignedDays ? safeParseJson(v.assignedDays) : null,
       })),
       vehicleCount: relatedVehicles.length,
     });

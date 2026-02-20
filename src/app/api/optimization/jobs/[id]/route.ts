@@ -6,13 +6,9 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { cancelJob as cancelJobQueue } from "@/lib/infra/job-queue";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - Get job status
 export async function GET(
   request: NextRequest,
@@ -45,7 +41,7 @@ export async function GET(
     let parsedResult = null;
     if (job.result) {
       try {
-        parsedResult = JSON.parse(job.result);
+        parsedResult = safeParseJson(job.result);
       } catch {
         // If result is not valid JSON, return as-is
         parsedResult = job.result;

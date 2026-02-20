@@ -192,9 +192,9 @@ export function OrdersListView() {
           <p className="text-muted-foreground">No se encontraron pedidos.</p>
           <p className="text-sm text-muted-foreground mt-1">Crea tu primer pedido para comenzar.</p>
         </div>
-      ) : state.viewMode === "map" ? (
+      ) : state.viewMode === "map" && meta.companyId ? (
         <OrderMap
-          companyId={meta.companyId ?? ""}
+          companyId={meta.companyId}
           statusFilter={state.filterStatus || "ALL"}
           searchQuery={state.searchQuery}
           onOrderClick={(orderId) => {

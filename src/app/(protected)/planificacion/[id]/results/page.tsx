@@ -23,6 +23,7 @@ import {
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 interface OptimizationResult {
   routes: Array<{
     routeId: string;
@@ -204,8 +205,8 @@ function ResultsPageContent() {
         const config = configData.data;
 
         // Parse the JSON arrays from the configuration
-        const vehicleIds = JSON.parse(config.selectedVehicleIds);
-        const driverIds = JSON.parse(config.selectedDriverIds);
+        const vehicleIds = safeParseJson(config.selectedVehicleIds);
+        const driverIds = safeParseJson(config.selectedDriverIds);
 
         // Now start the optimization job
         const response = await fetch("/api/optimization/jobs", {

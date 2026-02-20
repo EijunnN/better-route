@@ -5,57 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1768431695718,
-      "tag": "0000_amused_night_nurse",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1768451680797,
-      "tag": "0001_stormy_ironclad",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1768606948629,
-      "tag": "0002_white_rumiko_fujikawa",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1768863057893,
-      "tag": "0003_brave_secret_warriors",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1768975266348,
-      "tag": "0004_kind_post",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1769406203947,
-      "tag": "0005_add-vehicle-skill-assignments",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1770085307086,
-      "tag": "0006_add_driver_locations",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1770251644610,
-      "tag": "0007_add-unique-constraints",
+      "when": 1771569194355,
+      "tag": "0000_mature_gorilla_man",
       "breakpoints": true
     }
   ]

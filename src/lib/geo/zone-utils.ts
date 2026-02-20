@@ -16,6 +16,7 @@ import type {
   GeoJsonProperties,
 } from "geojson";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // Day of week types (matching what's stored in the database)
 export type DayOfWeek =
   | "MONDAY"
@@ -30,8 +31,8 @@ export type DayOfWeek =
 export interface ZoneData {
   id: string;
   name: string;
-  geometry: string; // GeoJSON string
-  activeDays?: string | null; // JSON array of days
+  geometry: unknown; // GeoJSON (jsonb)
+  activeDays?: string[] | null; // Array of days (jsonb)
   active: boolean;
   type?: string;
   color?: string;
@@ -41,7 +42,7 @@ export interface ZoneData {
 export interface VehicleZoneAssignment {
   zoneId: string;
   vehicleId: string;
-  assignedDays?: string | null; // JSON array of days
+  assignedDays?: string[] | null; // Array of days (jsonb)
   active: boolean;
 }
 
@@ -62,14 +63,14 @@ export interface VehicleWithZones {
  * Parse geometry string to GeoJSON Feature
  */
 function parseGeometry(
-  geometryString: string,
+  geometryString: unknown,
 ): Feature<Polygon | MultiPolygon, GeoJsonProperties> | null {
   try {
-    const parsed = JSON.parse(geometryString);
+    const parsed = safeParseJson<{ type: string; [key: string]: unknown }>(geometryString);
 
     // Handle both raw geometry and feature objects
     if (parsed.type === "Feature") {
-      return parsed as Feature<Polygon | MultiPolygon, GeoJsonProperties>;
+      return parsed as unknown as Feature<Polygon | MultiPolygon, GeoJsonProperties>;
     }
 
     if (parsed.type === "Polygon" || parsed.type === "MultiPolygon") {
@@ -77,7 +78,7 @@ function parseGeometry(
         type: "Feature",
         properties: {},
         geometry: parsed,
-      } as Feature<Polygon | MultiPolygon, GeoJsonProperties>;
+      } as unknown as Feature<Polygon | MultiPolygon, GeoJsonProperties>;
     }
 
     console.warn("Invalid geometry type:", parsed.type);
@@ -91,14 +92,9 @@ function parseGeometry(
 /**
  * Parse days string to array
  */
-function parseDays(daysString: string | null | undefined): DayOfWeek[] {
-  if (!daysString) return [];
-  try {
-    const parsed = JSON.parse(daysString);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+function parseDays(days: string[] | null | undefined): DayOfWeek[] {
+  if (!days) return [];
+  return Array.isArray(days) ? (days as DayOfWeek[]) : [];
 }
 
 /**

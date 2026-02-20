@@ -97,12 +97,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-/**
- * GET /api/auth/refresh
- *
- * Refresh access token via GET (for convenience in polling scenarios)
- */
-export async function GET(request: NextRequest) {
-  return POST(request);
-}

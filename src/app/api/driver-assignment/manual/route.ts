@@ -14,20 +14,9 @@ import {
   manualDriverAssignmentSchema,
 } from "@/lib/validations/driver-assignment";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
-
+import { safeParseJson } from "@/lib/utils/safe-json";
 /**
  * POST - Manually assign a driver to a route
  * This endpoint allows manual override of automatic driver assignments
@@ -109,9 +98,7 @@ export async function POST(request: NextRequest) {
       [];
     if (job.result) {
       try {
-        const result = JSON.parse(job.result);
-        // Extract order IDs from the job result
-        // The structure may vary, so we'll handle it flexibly
+        const result = safeParseJson<{ routes?: Array<{ stops?: Array<{ orderId?: string; promisedDate?: string }> }> }>(job.result);
         if (result.routes) {
           for (const route of result.routes) {
             if (route.stops) {
@@ -164,8 +151,7 @@ export async function POST(request: NextRequest) {
     let updatedResult = null;
     if (job.result) {
       try {
-        const result = JSON.parse(job.result);
-        // Find the route for this vehicle and update driver assignment
+        const result = safeParseJson<{ routes?: Array<{ vehicleId?: string; driverId?: string; driverName?: string; isManualOverride?: boolean; manualAssignmentReason?: string; assignmentValidation?: unknown }> }>(job.result);
         if (result.routes) {
           for (const route of result.routes) {
             if (route.vehicleId === data.vehicleId) {
@@ -184,7 +170,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        updatedResult = JSON.stringify(result);
+        updatedResult = result;
 
         // Update the job with the new result
         await db

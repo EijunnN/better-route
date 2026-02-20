@@ -4,16 +4,9 @@ import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { updateCsvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
-function extractTenantContext(
-  request: NextRequest,
-): { companyId: string; userId: string | undefined } | null {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
-
+import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - Get a specific column mapping template
 export async function GET(
   request: NextRequest,
@@ -51,8 +44,8 @@ export async function GET(
     // Parse JSON fields for response
     const parsedTemplate = {
       ...template[0],
-      columnMapping: JSON.parse(template[0].columnMapping),
-      requiredFields: JSON.parse(template[0].requiredFields),
+      columnMapping: safeParseJson(template[0].columnMapping),
+      requiredFields: safeParseJson(template[0].requiredFields),
     };
 
     return NextResponse.json(parsedTemplate);
@@ -133,10 +126,10 @@ export async function PATCH(
     if (validatedData.description !== undefined)
       updateData.description = validatedData.description;
     if (validatedData.columnMapping !== undefined) {
-      updateData.columnMapping = JSON.stringify(validatedData.columnMapping);
+      updateData.columnMapping = validatedData.columnMapping;
     }
     if (validatedData.requiredFields !== undefined) {
-      updateData.requiredFields = JSON.stringify(validatedData.requiredFields);
+      updateData.requiredFields = validatedData.requiredFields;
     }
     if (validatedData.active !== undefined)
       updateData.active = validatedData.active;
@@ -157,8 +150,8 @@ export async function PATCH(
     // Parse JSON fields for response
     const parsedTemplate = {
       ...updated[0],
-      columnMapping: JSON.parse(updated[0].columnMapping),
-      requiredFields: JSON.parse(updated[0].requiredFields),
+      columnMapping: safeParseJson(updated[0].columnMapping),
+      requiredFields: safeParseJson(updated[0].requiredFields),
     };
 
     return NextResponse.json(parsedTemplate);

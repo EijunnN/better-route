@@ -11,12 +11,7 @@ import {
 } from "@/lib/optimization/capacity-mapper";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 // Schema for creating/updating profiles
 const profileSchema = z.object({

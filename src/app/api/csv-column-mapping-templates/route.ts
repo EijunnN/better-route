@@ -5,13 +5,9 @@ import { csvColumnMappingTemplates } from "@/db/schema";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { csvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - List all column mapping templates for the company
 export async function GET(request: NextRequest) {
   try {
@@ -40,8 +36,8 @@ export async function GET(request: NextRequest) {
     // Parse JSON fields
     const parsedTemplates = templates.map((template) => ({
       ...template,
-      columnMapping: JSON.parse(template.columnMapping),
-      requiredFields: JSON.parse(template.requiredFields),
+      columnMapping: safeParseJson(template.columnMapping),
+      requiredFields: safeParseJson(template.requiredFields),
     }));
 
     return NextResponse.json(parsedTemplates);
@@ -98,8 +94,8 @@ export async function POST(request: NextRequest) {
         companyId: context.companyId,
         name: validatedData.name,
         description: validatedData.description || null,
-        columnMapping: JSON.stringify(validatedData.columnMapping),
-        requiredFields: JSON.stringify(validatedData.requiredFields),
+        columnMapping: validatedData.columnMapping,
+        requiredFields: validatedData.requiredFields,
         active: validatedData.active ?? true,
       })
       .returning();
@@ -107,8 +103,8 @@ export async function POST(request: NextRequest) {
     // Parse JSON fields for response
     const parsedTemplate = {
       ...template[0],
-      columnMapping: JSON.parse(template[0].columnMapping),
-      requiredFields: JSON.parse(template[0].requiredFields),
+      columnMapping: safeParseJson(template[0].columnMapping),
+      requiredFields: safeParseJson(template[0].requiredFields),
     };
 
     return NextResponse.json(parsedTemplate, { status: 201 });

@@ -10,19 +10,7 @@ import {
   executeReassignmentSchema,
 } from "@/lib/validations/reassignment";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 /**
  * POST /api/reassignment/execute
@@ -104,7 +92,7 @@ export async function POST(request: NextRequest) {
         entityType: "reassignment",
         entityId: result.reassignmentHistoryId || data.absentDriverId,
         action: "execute_reassignment",
-        changes: JSON.stringify({
+        changes: {
           absentDriverId: data.absentDriverId,
           absentDriverName: absentDriver.name,
           reassignmentsCount: data.reassignments.length,
@@ -113,7 +101,7 @@ export async function POST(request: NextRequest) {
           jobId: data.jobId,
           reason: data.reason,
           reassignmentHistoryId: result.reassignmentHistoryId,
-        }),
+        },
       });
 
       // Create individual audit logs for each reassignment
@@ -130,7 +118,7 @@ export async function POST(request: NextRequest) {
             entityType: "route_stop",
             entityId: reassignment.routeId,
             action: "driver_reassignment",
-            changes: JSON.stringify({
+            changes: {
               absentDriverId: data.absentDriverId,
               absentDriverName: absentDriver.name,
               replacementDriverId: reassignment.toDriverId,
@@ -138,7 +126,7 @@ export async function POST(request: NextRequest) {
               vehicleId: reassignment.vehicleId,
               stopIds: reassignment.stopIds,
               stopCount: reassignment.stopIds.length,
-            }),
+            },
           });
         }
       }
@@ -175,8 +163,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Reassignment execution failed",
-          data: {
-            success: false,
+          details: {
             reassignedStops: 0,
             reassignedRoutes: 0,
             errors: result.errors,

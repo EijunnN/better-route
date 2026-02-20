@@ -6,7 +6,7 @@ export interface AuditLogEntry {
   entityType: string;
   entityId: string;
   action: string;
-  changes?: string;
+  changes?: unknown;
 }
 
 export async function createAuditLog(entry: AuditLogEntry) {
@@ -32,7 +32,7 @@ export async function logCreate(
     entityType,
     entityId,
     action: "CREATE",
-    changes: JSON.stringify(data),
+    changes: data,
   });
 }
 
@@ -45,7 +45,7 @@ export async function logUpdate(
     entityType,
     entityId,
     action: "UPDATE",
-    changes: JSON.stringify(changes),
+    changes,
   });
 }
 
@@ -58,6 +58,6 @@ export async function logDelete(
     entityType,
     entityId,
     action: "DELETE",
-    changes: data ? JSON.stringify(data) : undefined,
+    changes: data ?? undefined,
   });
 }

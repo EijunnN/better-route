@@ -5,19 +5,7 @@ import { vehicleFleets, vehicles } from "@/db/schema";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { vehicleAvailabilityQuerySchema } from "@/lib/validations/vehicle-status";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 /**
  * GET /api/vehicles/available

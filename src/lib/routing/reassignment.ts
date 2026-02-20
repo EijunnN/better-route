@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { calculateRouteDistance } from "../geo/geospatial";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 /**
  * Reassignment strategy options
  */
@@ -565,10 +566,7 @@ export async function calculateReassignmentImpact(
   const requiredSkillsSet = new Set<string>();
   for (const order of ordersList) {
     if (order.requiredSkills) {
-      const skills =
-        typeof order.requiredSkills === "string"
-          ? JSON.parse(order.requiredSkills)
-          : order.requiredSkills;
+      const skills = safeParseJson<string[]>(order.requiredSkills);
       skills.forEach((skill: string) => {
         requiredSkillsSet.add(skill);
       });
@@ -1038,9 +1036,9 @@ export async function executeReassignment(
         jobId: jobId || null,
         absentUserId: absentDriverId,
         absentUserName: absentDriver.name,
-        routeIds: JSON.stringify(routeIds),
-        vehicleIds: JSON.stringify(vehicleIds),
-        reassignments: JSON.stringify(reassignmentsDetails),
+        routeIds,
+        vehicleIds,
+        reassignments: reassignmentsDetails,
         reason: reason || null,
         executedBy: userId || null,
         executedAt: new Date(),
@@ -1144,14 +1142,8 @@ export async function getReassignmentHistory(
   });
 
   return historyRecords.map((record) => {
-    const routeIds =
-      typeof record.routeIds === "string"
-        ? JSON.parse(record.routeIds)
-        : record.routeIds;
-    const reassignments =
-      typeof record.reassignments === "string"
-        ? JSON.parse(record.reassignments)
-        : record.reassignments;
+    const routeIds = safeParseJson<string[]>(record.routeIds);
+    const reassignments = safeParseJson<Array<{ userId: string; userName: string; stopCount: number }>>(record.reassignments);
 
     return {
       id: record.id,

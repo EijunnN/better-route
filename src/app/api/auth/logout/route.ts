@@ -23,12 +23,3 @@ export async function POST(_request: NextRequest) {
     );
   }
 }
-
-/**
- * GET /api/auth/logout
- *
- * Logout via GET (for convenience)
- */
-export async function GET(request: NextRequest) {
-  return POST(request);
-}

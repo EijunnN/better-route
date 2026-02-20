@@ -179,12 +179,13 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
 
   const handleCreate = useCallback(
     async (data: ZoneInput, vehicleIds: string[]) => {
+      if (!companyId) return;
       try {
         const response = await fetch("/api/zones", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-company-id": companyId ?? "",
+            "x-company-id": companyId,
           },
           body: JSON.stringify(data),
         });
@@ -200,7 +201,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "x-company-id": companyId ?? "",
+              "x-company-id": companyId,
             },
             body: JSON.stringify({
               vehicleIds,
@@ -230,14 +231,14 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
 
   const handleUpdate = useCallback(
     async (data: ZoneInput, vehicleIds: string[]) => {
-      if (!editingZone) return;
+      if (!editingZone || !companyId) return;
 
       try {
         const response = await fetch(`/api/zones/${editingZone.id}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            "x-company-id": companyId ?? "",
+            "x-company-id": companyId,
           },
           body: JSON.stringify(data),
         });
@@ -251,7 +252,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-company-id": companyId ?? "",
+            "x-company-id": companyId,
           },
           body: JSON.stringify({
             vehicleIds,
@@ -282,13 +283,14 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
 
   const handleDelete = useCallback(
     async (id: string) => {
+      if (!companyId) return;
       setDeletingId(id);
       const zone = zones.find((z) => z.id === id);
 
       try {
         const response = await fetch(`/api/zones/${id}`, {
           method: "DELETE",
-          headers: { "x-company-id": companyId ?? "" },
+          headers: { "x-company-id": companyId },
         });
 
         if (!response.ok) {
@@ -338,16 +340,18 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
         active: zone.active,
       });
 
-      try {
-        const response = await fetch(`/api/zones/${zone.id}/vehicles`, {
-          headers: { "x-company-id": companyId ?? "" },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setEditingZoneVehicleIds((data.vehicles || []).map((v: { id: string }) => v.id));
+      if (companyId) {
+        try {
+          const response = await fetch(`/api/zones/${zone.id}/vehicles`, {
+            headers: { "x-company-id": companyId },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setEditingZoneVehicleIds((data.vehicles || []).map((v: { id: string }) => v.id));
+          }
+        } catch {
+          setEditingZoneVehicleIds([]);
         }
-      } catch {
-        setEditingZoneVehicleIds([]);
       }
 
       setViewMode("form");

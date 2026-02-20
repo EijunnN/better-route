@@ -11,13 +11,9 @@ import {
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - Get monitoring summary for confirmed plans
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
@@ -102,10 +98,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse the result
-    let parsedResult = null;
+    let parsedResult: { routes?: Array<{ stops?: unknown[] }> } | null = null;
     if (confirmedJob.result) {
       try {
-        parsedResult = JSON.parse(confirmedJob.result);
+        parsedResult = safeParseJson<{ routes?: Array<{ stops?: unknown[] }> }>(confirmedJob.result);
       } catch {
         parsedResult = null;
       }

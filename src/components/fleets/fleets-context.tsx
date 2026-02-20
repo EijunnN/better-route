@@ -126,7 +126,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
       const usersData = await usersRes.json();
       const usersList = usersData.data || [];
       const usersWithFleets: UserWithFleets[] = usersList
-        .filter((u: { role: string }) => u.role === "AGENTE_SEGUIMIENTO" || u.role === "PLANIFICADOR" || u.role === "ADMIN")
+        .filter((u: { role: string }) => u.role === "ADMIN_FLOTA" || u.role === "PLANIFICADOR" || u.role === "ADMIN_SISTEMA" || u.role === "MONITOR")
         .map((u: { id: string; name: string; role: string; fleetPermissions?: Array<{ id: string; name: string }> }) => ({
           id: u.id,
           name: u.name,
@@ -146,10 +146,11 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
 
   const handleCreate = useCallback(
     async (data: FleetInput) => {
+      if (!companyId) return;
       try {
         const response = await fetch("/api/fleets", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+          headers: { "Content-Type": "application/json", "x-company-id": companyId },
           body: JSON.stringify(data),
         });
         if (!response.ok) {
@@ -173,11 +174,11 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
 
   const handleUpdate = useCallback(
     async (data: FleetInput) => {
-      if (!editingFleet) return;
+      if (!editingFleet || !companyId) return;
       try {
         const response = await fetch(`/api/fleets/${editingFleet.id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId ?? "" },
+          headers: { "Content-Type": "application/json", "x-company-id": companyId },
           body: JSON.stringify(data),
         });
         if (!response.ok) {
@@ -201,12 +202,13 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
 
   const handleDelete = useCallback(
     async (id: string) => {
+      if (!companyId) return;
       setDeletingId(id);
       const fleet = fleets.find((f) => f.id === id);
       try {
         const response = await fetch(`/api/fleets/${id}`, {
           method: "DELETE",
-          headers: { "x-company-id": companyId ?? "" },
+          headers: { "x-company-id": companyId },
         });
         if (!response.ok) {
           const error = await response.json();

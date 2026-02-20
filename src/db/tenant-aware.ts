@@ -42,12 +42,7 @@ export function withTenantFilter(
     return and(eq(users.companyId, effectiveCompanyId), ...conditions);
   }
 
-  // For other tables, add tenantId filter
-  if (table.tenantId) {
-    return and(eq(table.tenantId, effectiveCompanyId), ...conditions);
-  }
-
-  // If table has companyId instead of tenantId
+  // For other tables, filter by companyId
   if (table.companyId) {
     return and(eq(table.companyId, effectiveCompanyId), ...conditions);
   }
@@ -65,7 +60,6 @@ export function verifyTenantAccess(entityCompanyId: string) {
 export function getAuditLogContext() {
   const context = requireTenantContext();
   return {
-    tenantId: context.companyId,
     companyId: context.companyId,
     userId: context.userId,
   };

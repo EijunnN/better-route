@@ -1,9 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAvailableOptimizers } from "@/lib/optimization";
+import {
+  handleError,
+  setupAuthContext,
+  unauthorizedResponse,
+} from "@/lib/routing/route-helpers";
 
 // GET - List available optimization engines
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    const authResult = await setupAuthContext(request);
+    if (!authResult.authenticated || !authResult.user) {
+      return unauthorizedResponse();
+    }
+
     const optimizers = await getAvailableOptimizers();
 
     return NextResponse.json({
@@ -30,10 +40,6 @@ export async function GET(_request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching optimization engines:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch engines" },
-      { status: 500 },
-    );
+    return handleError(error, "fetching optimization engines");
   }
 }

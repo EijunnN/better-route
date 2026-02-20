@@ -19,7 +19,9 @@ import { parseCSVLine } from "@/lib/csv/parse-csv-line";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { orderSchema } from "@/lib/validations/order";
 
-// CSV import request schema (updated to support templates)
+import { extractTenantContext } from "@/lib/routing/route-helpers";
+
+import { safeParseJson } from "@/lib/utils/safe-json";// CSV import request schema (updated to support templates)
 const csvImportRequestSchema = z
   .object({
     // CSV content as base64 encoded string
@@ -127,12 +129,6 @@ function calculateErrorSummary(errors: CSVValidationError[]) {
   return { byField, bySeverity, byErrorType };
 }
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
 
 /**
  * Detect CSV delimiter (comma or semicolon)
@@ -619,7 +615,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      templateMapping = JSON.parse(template[0].columnMapping);
+      templateMapping = safeParseJson(template[0].columnMapping);
     }
 
     // Merge custom mapping with template mapping (custom takes precedence)

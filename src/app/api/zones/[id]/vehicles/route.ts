@@ -7,20 +7,9 @@ import { logCreate, logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { bulkZoneVehicleSchema } from "@/lib/validations/zone";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
-  if (!companyId) {
-    return null;
-  }
-
-  return {
-    companyId,
-    userId: userId || undefined,
-  };
-}
-
+import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - Get all vehicles assigned to this zone
 export async function GET(
   request: NextRequest,
@@ -74,7 +63,7 @@ export async function GET(
         id: a.vehicleId,
         name: a.vehicleName,
         plate: a.vehiclePlate,
-        assignedDays: a.assignedDays ? JSON.parse(a.assignedDays) : null,
+        assignedDays: a.assignedDays ? safeParseJson(a.assignedDays) : null,
         assignmentId: a.id,
       })),
       count: assignments.length,
@@ -158,9 +147,7 @@ export async function POST(
       .where(eq(zoneVehicles.zoneId, zoneId));
 
     // Create or reactivate assignments
-    const assignedDaysJson = validatedData.assignedDays
-      ? JSON.stringify(validatedData.assignedDays)
-      : null;
+    const assignedDaysJson = validatedData.assignedDays || null;
 
     const createdAssignments = [];
 

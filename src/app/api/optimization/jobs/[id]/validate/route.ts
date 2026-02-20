@@ -12,13 +12,9 @@ import {
 import { setTenantContext } from "@/lib/infra/tenant";
 import type { PlanValidationRequestSchema } from "@/lib/validations/plan-confirmation";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 /**
  * GET /api/optimization/jobs/[id]/validate
  *
@@ -49,7 +45,7 @@ export async function GET(
 
     if (configParam) {
       try {
-        validationConfig = JSON.parse(configParam);
+        validationConfig = safeParseJson(configParam);
       } catch {
         // Use default config if JSON parse fails
       }
@@ -129,7 +125,7 @@ export async function GET(
     let result: OptimizationResult | null = null;
     try {
       result = job.result
-        ? (JSON.parse(job.result) as OptimizationResult)
+        ? (safeParseJson(job.result) as OptimizationResult)
         : null;
     } catch (_error) {
       return NextResponse.json(

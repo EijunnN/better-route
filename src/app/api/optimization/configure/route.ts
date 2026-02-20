@@ -18,13 +18,9 @@ import {
   optimizationConfigSchema,
 } from "@/lib/validations/optimization-config";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - List optimization configurations
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
@@ -125,7 +121,7 @@ export async function POST(request: NextRequest) {
     let vehicleIds: string[] = [];
     if (data.selectedVehicleIds) {
       try {
-        vehicleIds = JSON.parse(data.selectedVehicleIds);
+        vehicleIds = safeParseJson(data.selectedVehicleIds);
         if (!Array.isArray(vehicleIds) || vehicleIds.length === 0) {
           return NextResponse.json(
             { error: "At least one vehicle must be selected" },
@@ -144,7 +140,7 @@ export async function POST(request: NextRequest) {
     let driverIds: string[] = [];
     if (data.selectedDriverIds) {
       try {
-        driverIds = JSON.parse(data.selectedDriverIds);
+        driverIds = safeParseJson(data.selectedDriverIds);
         if (!Array.isArray(driverIds) || driverIds.length === 0) {
           return NextResponse.json(
             { error: "At least one driver must be selected" },
@@ -298,8 +294,8 @@ export async function POST(request: NextRequest) {
       depotLatitude: data.depotLatitude || "0",
       depotLongitude: data.depotLongitude || "0",
       depotAddress: data.depotAddress || null,
-      selectedVehicleIds: data.selectedVehicleIds || "[]",
-      selectedDriverIds: data.selectedDriverIds || "[]",
+      selectedVehicleIds: vehicleIds,
+      selectedDriverIds: driverIds,
       objective: data.objective,
       capacityEnabled: data.capacityEnabled,
       workWindowStart: data.workWindowStart,

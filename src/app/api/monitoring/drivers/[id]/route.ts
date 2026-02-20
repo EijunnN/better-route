@@ -5,13 +5,9 @@ import { driverLocations, optimizationJobs, orders, routeStops, userSecondaryFle
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
+import { extractTenantContext } from "@/lib/routing/route-helpers";
 
+import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - Get detailed driver information with route and stops
 export async function GET(
   request: NextRequest,
@@ -259,7 +255,7 @@ export async function GET(
     // Parse result from job for distance/duration metrics
     if (confirmedJob.result) {
       try {
-        const parsedResult = JSON.parse(confirmedJob.result);
+        const parsedResult = safeParseJson<{ routes?: Array<{ driverId?: string; totalDistance?: number; totalDuration?: number }> }>(confirmedJob.result);
         const driverRoute = parsedResult.routes?.find(
           (r: { driverId?: string }) => r.driverId === driverId,
         );

@@ -19,7 +19,9 @@ import {
   planConfirmationSchema,
 } from "@/lib/validations/plan-confirmation";
 
-/**
+import { extractTenantContext } from "@/lib/routing/route-helpers";
+
+import { safeParseJson } from "@/lib/utils/safe-json";/**
  * Safely converts a date-like value to ISO string or returns a fallback
  */
 function safeToISOString(value: unknown): string | null {
@@ -55,12 +57,6 @@ function safeToISOString(value: unknown): string | null {
   return String(value);
 }
 
-function extractTenantContext(request: NextRequest) {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
 
 /**
  * POST /api/optimization/jobs/[id]/confirm
@@ -86,7 +82,6 @@ export async function POST(
     setTenantContext(tenantContext);
 
     const auditContext = {
-      tenantId: tenantContext.companyId,
       companyId: tenantContext.companyId,
       userId: tenantContext.userId,
     };
@@ -168,7 +163,7 @@ export async function POST(
     let result: OptimizationResult | null = null;
     try {
       result = job.result
-        ? (JSON.parse(job.result) as OptimizationResult)
+        ? (safeParseJson(job.result) as OptimizationResult)
         : null;
     } catch (_error) {
       return NextResponse.json(
@@ -434,7 +429,7 @@ export async function POST(
         entityType: "optimization_configuration",
         entityId: job.configurationId,
         action: "CONFIRM_PLAN",
-        changes: JSON.stringify(auditChanges),
+        changes: auditChanges,
       });
     } catch (auditError) {
       // Log but don't fail the confirmation if audit fails

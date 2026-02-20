@@ -1,1 +1,0 @@
-ALTER TABLE "optimization_presets" ADD COLUMN "group_same_location" boolean DEFAULT true NOT NULL;
