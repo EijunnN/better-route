@@ -150,6 +150,7 @@ export async function generateTokenPair(user: {
   companyId: string | null; // null for ADMIN_SISTEMA
   email: string;
   role: string;
+  sessionId?: string;
 }): Promise<{ accessToken: string; refreshToken: string }> {
   const payload = {
     userId: user.id,
@@ -158,9 +159,13 @@ export async function generateTokenPair(user: {
     role: user.role,
   };
 
+  const refreshPayload = user.sessionId
+    ? { ...payload, sessionId: user.sessionId }
+    : payload;
+
   const [accessToken, refreshToken] = await Promise.all([
     generateAccessToken(payload),
-    generateRefreshToken(payload),
+    generateRefreshToken(refreshPayload),
   ]);
 
   return { accessToken, refreshToken };

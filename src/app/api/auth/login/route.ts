@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { generateTokenPair, setAuthCookies, verifyToken } from "@/lib/auth/auth";
+import { createAuthSession, generateTokenPair, setAuthCookies, verifyToken } from "@/lib/auth/auth";
 import {
   checkRateLimit,
   getClientIp,
@@ -92,12 +92,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate tokens
+    // Create session in Redis and generate tokens with sessionId
+    const sessionId = await createAuthSession(
+      { id: user.id, companyId: user.companyId, email: user.email, role: user.role },
+      { userAgent: request.headers.get("user-agent") || undefined, ipAddress: ip },
+    );
+
     const { accessToken, refreshToken } = await generateTokenPair({
       id: user.id,
       companyId: user.companyId,
       email: user.email,
       role: user.role,
+      sessionId,
     });
 
     // Set cookies

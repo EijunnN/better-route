@@ -86,12 +86,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate new token pair
+    // Generate new token pair (preserve sessionId for continued Redis validation)
     const tokens = await generateTokenPair({
       id: user.id,
       companyId: user.companyId,
       email: user.email,
       role: user.role,
+      sessionId: payload.sessionId,
     });
 
     // Set new cookies
