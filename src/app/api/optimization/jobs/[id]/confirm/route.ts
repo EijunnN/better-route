@@ -272,9 +272,53 @@ export async function POST(
       }
     }
 
-    // Update orders status to ASSIGNED
+    // Re-validate that all orders are still PENDING before confirming
+    // This prevents race conditions where orders were modified between optimization and confirmation
     let ordersUpdatedCount = 0;
     if (assignedOrderIds.length > 0) {
+      const currentOrders = await db
+        .select({ id: orders.id, status: orders.status, active: orders.active })
+        .from(orders)
+        .where(
+          and(
+            inArray(orders.id, assignedOrderIds),
+            eq(orders.companyId, tenantContext.companyId),
+          ),
+        );
+
+      const nonPendingOrders = currentOrders.filter(
+        (o) => o.status !== "PENDING" || !o.active,
+      );
+      if (nonPendingOrders.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Some orders are no longer available for assignment. They may have been modified or assigned by another operation.",
+            conflictingOrders: nonPendingOrders.map((o) => ({
+              id: o.id,
+              currentStatus: o.status,
+              active: o.active,
+            })),
+          },
+          { status: 409 },
+        );
+      }
+
+      const missingOrderIds = assignedOrderIds.filter(
+        (id) => !currentOrders.some((o) => o.id === id),
+      );
+      if (missingOrderIds.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Some orders from the optimization plan no longer exist.",
+            missingOrderIds,
+          },
+          { status: 409 },
+        );
+      }
+
+      // All orders verified as PENDING — proceed with assignment
       await db
         .update(orders)
         .set({
@@ -519,11 +563,7 @@ export async function POST(
       console.error("Error stack:", error.stack);
     }
     return NextResponse.json(
-      {
-        error: "Internal server error",
-        message: String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -594,7 +634,7 @@ export async function GET(
   } catch (error) {
     console.error("Error getting confirmation status:", error);
     return NextResponse.json(
-      { error: "Internal server error", message: String(error) },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

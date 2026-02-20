@@ -20,6 +20,7 @@ import {
   getAssignmentQualityMetrics,
 } from "../routing/driver-assignment";
 import {
+  acquireCompanyLock,
   calculateInputHash,
   cancelJob,
   canStartJob,
@@ -28,6 +29,7 @@ import {
   getCachedResult,
   isJobAborting,
   registerJob,
+  releaseCompanyLock,
   setJobTimeout,
   updateJobProgress,
 } from "../infra/job-queue";
@@ -1342,11 +1344,23 @@ export async function createAndExecuteJob(
 
   const jobId = newJob.id;
 
+  // Acquire per-company lock to prevent concurrent optimizations
+  // using the same PENDING orders
+  if (!acquireCompanyLock(input.companyId, jobId)) {
+    // Another optimization is running for this company - fail this job
+    await db
+      .update(optimizationJobs)
+      .set({ status: "FAILED", error: "Another optimization is already running for this company. Please wait for it to finish.", updatedAt: new Date() })
+      .where(eq(optimizationJobs.id, jobId));
+    throw new Error("Ya hay una optimización en ejecución para esta empresa. Espera a que termine.");
+  }
+
   // Register job in queue
   registerJob(jobId, abortController);
 
   // Set timeout
   setJobTimeout(jobId, timeoutMs, async () => {
+    releaseCompanyLock(input.companyId, jobId);
     await failJob(jobId, "Optimization timed out");
   });
 
@@ -1366,9 +1380,11 @@ export async function createAndExecuteJob(
         jobId,
       );
 
-      // Complete job
+      // Complete job and release lock
       await completeJob(jobId, result);
+      releaseCompanyLock(input.companyId, jobId);
     } catch (error) {
+      releaseCompanyLock(input.companyId, jobId);
       if (isJobAborting(jobId)) {
         // Get partial results if available
         const partialResults = globalThis.__partialOptimizationResult;
