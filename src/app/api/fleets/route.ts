@@ -32,8 +32,11 @@ export async function GET(request: NextRequest) {
 
     const conditions = [];
 
-    if (query.active !== undefined) {
-      conditions.push(eq(fleets.active, query.active));
+    if (query.active === false) {
+      conditions.push(eq(fleets.active, false));
+    } else {
+      // Default: only show active records
+      conditions.push(eq(fleets.active, true));
     }
     if (query.type) {
       conditions.push(eq(fleets.type, query.type));

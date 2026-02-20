@@ -40,8 +40,11 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(timeWindowPresets.strictness, query.strictness));
     }
 
-    if (query.active !== undefined) {
-      conditions.push(eq(timeWindowPresets.active, query.active));
+    if (query.active === false) {
+      conditions.push(eq(timeWindowPresets.active, false));
+    } else {
+      // Default: only show active records
+      conditions.push(eq(timeWindowPresets.active, true));
     }
 
     const whereClause = withTenantFilter(
@@ -139,13 +142,9 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+    console.error("[Time Window Preset POST] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to create time window preset",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

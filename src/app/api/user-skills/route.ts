@@ -31,8 +31,11 @@ export async function GET(request: NextRequest) {
 
     const conditions = [];
 
-    if (query.active !== undefined) {
-      conditions.push(eq(userSkills.active, query.active));
+    if (query.active === false) {
+      conditions.push(eq(userSkills.active, false));
+    } else {
+      // Default: only show active records
+      conditions.push(eq(userSkills.active, true));
     }
     if (query.userId) {
       conditions.push(eq(userSkills.userId, query.userId));

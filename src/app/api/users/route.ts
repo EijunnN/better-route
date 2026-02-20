@@ -83,9 +83,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Filter by active status
-    if (query.active !== undefined) {
-      conditions.push(eq(users.active, query.active));
+    // Filter by active status (default: only show active)
+    if (query.active === false) {
+      conditions.push(eq(users.active, false));
+    } else {
+      // Default: only show active records
+      conditions.push(eq(users.active, true));
     }
 
     // Search by name, email, or username

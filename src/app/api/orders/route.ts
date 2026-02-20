@@ -36,8 +36,11 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(orders.timeWindowPresetId, query.timeWindowPresetId));
     }
 
-    if (query.active !== undefined) {
-      conditions.push(eq(orders.active, query.active));
+    if (query.active === false) {
+      conditions.push(eq(orders.active, false));
+    } else {
+      // Default: only show active records
+      conditions.push(eq(orders.active, true));
     }
 
     if (query.search) {
@@ -242,10 +245,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("Order creation error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to create order",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

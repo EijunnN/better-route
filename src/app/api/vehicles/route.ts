@@ -62,8 +62,11 @@ export async function GET(request: NextRequest) {
     if (query.type) {
       conditions.push(eq(vehicles.type, query.type));
     }
-    if (query.active !== undefined) {
-      conditions.push(eq(vehicles.active, query.active));
+    if (query.active === false) {
+      conditions.push(eq(vehicles.active, false));
+    } else {
+      // Default: only show active records
+      conditions.push(eq(vehicles.active, true));
     }
 
     // Apply tenant filtering

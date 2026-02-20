@@ -34,8 +34,11 @@ export async function GET(request: NextRequest) {
     if (query.category) {
       conditions.push(eq(vehicleSkills.category, query.category));
     }
-    if (query.active !== undefined) {
-      conditions.push(eq(vehicleSkills.active, query.active));
+    if (query.active === false) {
+      conditions.push(eq(vehicleSkills.active, false));
+    } else {
+      // Default: only show active records
+      conditions.push(eq(vehicleSkills.active, true));
     }
     if (query.search) {
       const searchCondition = or(
