@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error generating CSV template:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to generate template" },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

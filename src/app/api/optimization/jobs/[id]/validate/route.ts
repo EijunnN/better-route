@@ -169,7 +169,7 @@ export async function GET(
   } catch (error) {
     console.error("Error validating plan:", error);
     return NextResponse.json(
-      { error: "Internal server error", message: String(error) },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

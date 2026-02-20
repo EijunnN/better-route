@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching company profile:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch profile" },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("Error saving company profile:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to save profile" },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -246,7 +246,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("Error deleting company profile:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to delete profile" },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

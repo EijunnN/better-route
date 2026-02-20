@@ -74,13 +74,9 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+    console.error("[Suggest Mapping] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate suggestions",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

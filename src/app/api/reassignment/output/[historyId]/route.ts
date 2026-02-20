@@ -262,10 +262,7 @@ export async function GET(
   } catch (error) {
     console.error("Error generating reassignment output:", error);
     return NextResponse.json(
-      {
-        error: "Error generating reassignment output",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -364,10 +361,7 @@ export async function POST(
   } catch (error) {
     console.error("Error triggering output regeneration:", error);
     return NextResponse.json(
-      {
-        error: "Error triggering output regeneration",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

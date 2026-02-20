@@ -182,10 +182,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error executing reassignment:", error);
     return NextResponse.json(
-      {
-        error: "Error executing reassignment",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -245,10 +242,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error getting reassignment status:", error);
     return NextResponse.json(
-      {
-        error: "Error getting reassignment status",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

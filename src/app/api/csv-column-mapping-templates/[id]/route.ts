@@ -50,11 +50,9 @@ export async function GET(
 
     return NextResponse.json(parsedTemplate);
   } catch (error) {
+    console.error("[CSV Template GET] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to fetch template",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -165,11 +163,9 @@ export async function PATCH(
         { status: 400 },
       );
     }
+    console.error("[CSV Template PATCH] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to update template",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -222,11 +218,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error("[CSV Template DELETE] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to delete template",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

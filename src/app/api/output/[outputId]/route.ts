@@ -263,8 +263,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     console.error("Error fetching output:", error);
     return NextResponse.json(
       {
-        error: "Failed to fetch output",
-        details: error instanceof Error ? error.message : String(error),
+        error: "Internal server error",
       },
       { status: 500 },
     );
@@ -359,8 +358,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     console.error("Error regenerating output:", error);
     return NextResponse.json(
       {
-        error: "Failed to regenerate output",
-        details: error instanceof Error ? error.message : String(error),
+        error: "Internal server error",
       },
       { status: 500 },
     );
@@ -404,8 +402,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     console.error("Error deleting output:", error);
     return NextResponse.json(
       {
-        error: "Failed to delete output",
-        details: error instanceof Error ? error.message : String(error),
+        error: "Internal server error",
       },
       { status: 500 },
     );

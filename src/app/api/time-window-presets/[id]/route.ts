@@ -49,13 +49,9 @@ export async function GET(
 
     return NextResponse.json(record);
   } catch (error) {
+    console.error("[Time Window Preset GET] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch time window preset",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -138,13 +134,9 @@ export async function PATCH(
         { status: 400 },
       );
     }
+    console.error("[Time Window Preset PATCH] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to update time window preset",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -185,13 +177,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error("[Time Window Preset DELETE] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to delete time window preset",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

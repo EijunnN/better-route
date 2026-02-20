@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error retrieving historical metrics:", error);
     return NextResponse.json(
-      { error: "Internal server error", message: String(error) },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

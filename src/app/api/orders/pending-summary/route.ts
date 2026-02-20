@@ -124,13 +124,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    console.error("[Pending Summary] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch pending orders summary",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

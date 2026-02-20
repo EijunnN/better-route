@@ -250,10 +250,7 @@ export async function POST(request: NextRequest) {
 
     console.error("Batch order creation error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to create orders",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

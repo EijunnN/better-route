@@ -106,8 +106,7 @@ export async function POST(request: NextRequest) {
     console.error("Error generating output:", error);
     return NextResponse.json(
       {
-        error: "Failed to generate output",
-        details: error instanceof Error ? error.message : String(error),
+        error: "Internal server error",
       },
       { status: 500 },
     );
@@ -168,8 +167,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching output history:", error);
     return NextResponse.json(
       {
-        error: "Failed to fetch output history",
-        details: error instanceof Error ? error.message : String(error),
+        error: "Internal server error",
       },
       { status: 500 },
     );

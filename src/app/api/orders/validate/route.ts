@@ -211,11 +211,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
+    console.error("[Orders Validate POST] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to validate orders",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -298,13 +296,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    console.error("[Orders Validate GET] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to get validation summary",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

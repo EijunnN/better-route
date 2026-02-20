@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error evaluating alerts:", error);
     return NextResponse.json(
-      { error: "Failed to evaluate alerts", details: String(error) },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
