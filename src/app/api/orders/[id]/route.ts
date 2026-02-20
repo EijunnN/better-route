@@ -202,12 +202,21 @@ export async function PATCH(
       }
     }
 
+    // Merge custom fields: preserve data from deactivated field definitions
+    // while updating values for current active fields
+    const updatePayload = { ...validatedData, updatedAt: new Date() };
+    if (validatedData.customFields) {
+      const existingCustomFields =
+        (existing[0].customFields as Record<string, unknown>) || {};
+      updatePayload.customFields = {
+        ...existingCustomFields,
+        ...validatedData.customFields,
+      };
+    }
+
     const [updatedRecord] = await db
       .update(orders)
-      .set({
-        ...validatedData,
-        updatedAt: new Date(),
-      })
+      .set(updatePayload)
       .where(eq(orders.id, id))
       .returning();
 
@@ -230,11 +239,9 @@ export async function PATCH(
         { status: 400 },
       );
     }
+    console.error("[Order PATCH] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to update order",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -287,11 +294,9 @@ export async function DELETE(
 
     return NextResponse.json(deletedRecord);
   } catch (error) {
+    console.error("[Order DELETE] Error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to delete order",
-      },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
