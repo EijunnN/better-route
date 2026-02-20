@@ -148,12 +148,22 @@ export async function POST(
       );
     }
 
-    // Check if already confirmed
+    // Optimistic lock: only allow confirmation if configuration is still DRAFT
     if (job.configuration.status === "CONFIRMED") {
       return NextResponse.json(
         {
           error: "Plan has already been confirmed",
           confirmedAt: job.configuration,
+        },
+        { status: 409 },
+      );
+    }
+
+    if (job.configuration.status !== "DRAFT") {
+      return NextResponse.json(
+        {
+          error: `Plan cannot be confirmed from status "${job.configuration.status}". Only DRAFT plans can be confirmed.`,
+          currentStatus: job.configuration.status,
         },
         { status: 409 },
       );
@@ -249,8 +259,21 @@ export async function POST(
     const [updatedConfiguration] = await db
       .update(optimizationConfigurations)
       .set(updateData)
-      .where(eq(optimizationConfigurations.id, job.configurationId))
+      .where(
+        and(
+          eq(optimizationConfigurations.id, job.configurationId),
+          eq(optimizationConfigurations.status, "DRAFT"),
+        ),
+      )
       .returning();
+
+    // Optimistic lock: if no rows updated, another request confirmed first
+    if (!updatedConfiguration) {
+      return NextResponse.json(
+        { error: "Plan was confirmed by another request. Please refresh." },
+        { status: 409 },
+      );
+    }
 
     // Job stays as COMPLETED (optimization finished successfully)
     // The configuration is what gets marked as CONFIRMED
