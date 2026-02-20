@@ -472,7 +472,7 @@ export async function runOptimization(
     volumeCapacity: vehicle.volumeCapacity,
     maxValueCapacity: vehicle.maxValueCapacity,
     maxUnitsCapacity: vehicle.maxUnitsCapacity,
-    maxOrders: vehicle.maxOrders || 30,
+    maxOrders: vehicle.maxOrders ?? 30,
     originLatitude: vehicle.originLatitude,
     originLongitude: vehicle.originLongitude,
     zoneAssignments: zoneAssignmentsByVehicle.get(vehicle.id) || [],
@@ -720,11 +720,11 @@ export async function runOptimization(
         availableVehicles.map((vehicle) => ({
           id: vehicle.id,
           plate: vehicle.plate,
-          maxWeight: vehicle.weightCapacity || 10000,
-          maxVolume: vehicle.volumeCapacity || 100,
+          maxWeight: vehicle.weightCapacity ?? 10000,
+          maxVolume: vehicle.volumeCapacity ?? 100,
           maxValueCapacity: vehicle.maxValueCapacity ?? undefined,
           maxUnitsCapacity: vehicle.maxUnitsCapacity ?? undefined,
-          maxOrders: vehicle.maxOrders || 30,
+          maxOrders: vehicle.maxOrders ?? 30,
           originLatitude: vehicle.originLatitude
             ? parseFloat(vehicle.originLatitude)
             : undefined,
@@ -920,11 +920,11 @@ export async function runOptimization(
       (vehicle) => ({
         id: vehicle.id,
         plate: vehicle.plate,
-        maxWeight: vehicle.weightCapacity || 10000,
-        maxVolume: vehicle.volumeCapacity || 100,
+        maxWeight: vehicle.weightCapacity ?? 10000,
+        maxVolume: vehicle.volumeCapacity ?? 100,
         maxValueCapacity: vehicle.maxValueCapacity ?? undefined,
         maxUnitsCapacity: vehicle.maxUnitsCapacity ?? undefined,
-        maxOrders: vehicle.maxOrders || 30,
+        maxOrders: vehicle.maxOrders ?? 30,
         originLatitude: vehicle.originLatitude
           ? parseFloat(vehicle.originLatitude)
           : undefined,
