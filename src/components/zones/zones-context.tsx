@@ -56,6 +56,7 @@ export interface ZonesState {
   zones: Zone[];
   vehicles: VehicleOption[];
   isLoading: boolean;
+  isSubmitting: boolean;
   viewMode: ViewMode;
   editingZone: Zone | null;
   editingZoneVehicleIds: string[];
@@ -133,6 +134,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchZones = useCallback(async () => {
     if (!companyId) return;
@@ -179,7 +181,8 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
 
   const handleCreate = useCallback(
     async (data: ZoneInput, vehicleIds: string[]) => {
-      if (!companyId) return;
+      if (!companyId || isSubmitting) return;
+      setIsSubmitting(true);
       try {
         const response = await fetch("/api/zones", {
           method: "POST",
@@ -224,15 +227,17 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
           variant: "destructive",
         });
         throw err;
+      } finally {
+        setIsSubmitting(false);
       }
     },
-    [companyId, fetchZones, toast]
+    [companyId, isSubmitting, fetchZones, toast]
   );
 
   const handleUpdate = useCallback(
     async (data: ZoneInput, vehicleIds: string[]) => {
-      if (!editingZone || !companyId) return;
-
+      if (!editingZone || !companyId || isSubmitting) return;
+      setIsSubmitting(true);
       try {
         const response = await fetch(`/api/zones/${editingZone.id}`, {
           method: "PATCH",
@@ -276,9 +281,11 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
           variant: "destructive",
         });
         throw err;
+      } finally {
+        setIsSubmitting(false);
       }
     },
-    [editingZone, companyId, fetchZones, toast]
+    [editingZone, companyId, isSubmitting, fetchZones, toast]
   );
 
   const handleDelete = useCallback(
@@ -386,6 +393,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     zones,
     vehicles,
     isLoading,
+    isSubmitting,
     viewMode,
     editingZone,
     editingZoneVehicleIds,

@@ -93,23 +93,24 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchFleets = useCallback(async () => {
+  const fetchFleets = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
-      const response = await fetch("/api/fleets", { headers: { "x-company-id": companyId } });
+      const response = await fetch("/api/fleets", { headers: { "x-company-id": companyId }, signal });
       const data = await response.json();
       setFleets(data.data || []);
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("Error fetching fleets:", error);
     } finally {
       setIsLoading(false);
     }
   }, [companyId]);
 
-  const fetchVehiclesAndUsers = useCallback(async () => {
+  const fetchVehiclesAndUsers = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
-      const vehiclesRes = await fetch("/api/vehicles", { headers: { "x-company-id": companyId } });
+      const vehiclesRes = await fetch("/api/vehicles", { headers: { "x-company-id": companyId }, signal });
       const vehiclesData = await vehiclesRes.json();
       const vehiclesList = vehiclesData.data || [];
       const vehiclesWithFleets: VehicleWithFleets[] = vehiclesList.map(
@@ -122,7 +123,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
       );
       setVehicles(vehiclesWithFleets);
 
-      const usersRes = await fetch("/api/users", { headers: { "x-company-id": companyId } });
+      const usersRes = await fetch("/api/users", { headers: { "x-company-id": companyId }, signal });
       const usersData = await usersRes.json();
       const usersList = usersData.data || [];
       const usersWithFleets: UserWithFleets[] = usersList
@@ -135,13 +136,24 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
         }));
       setUsers(usersWithFleets);
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("Error fetching vehicles/users:", error);
     }
   }, [companyId]);
 
   useEffect(() => {
-    fetchFleets();
-    fetchVehiclesAndUsers();
+    if (!companyId) return;
+
+    const controller = new AbortController();
+
+    Promise.all([
+      fetchFleets(controller.signal),
+      fetchVehiclesAndUsers(controller.signal),
+    ]).catch(() => {
+      // Ignore abort errors
+    });
+
+    return () => controller.abort();
   }, [fetchFleets, fetchVehiclesAndUsers, companyId]);
 
   const handleCreate = useCallback(

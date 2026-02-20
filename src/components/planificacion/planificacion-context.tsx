@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useCompanyContext } from "@/hooks/use-company-context";
+import { useToast } from "@/hooks/use-toast";
 import { parseCSVLine } from "@/lib/csv/parse-csv-line";
 import type {
   Vehicle,
@@ -166,6 +167,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
+  const { toast } = useToast();
 
   // Step management
   const [currentStep, setCurrentStep] = useState<StepId>("vehiculos");
@@ -238,22 +240,24 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
   const [updateOrderError, setUpdateOrderError] = useState<string | null>(null);
 
   // Data loaders
-  const loadFleets = useCallback(async () => {
+  const loadFleets = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/fleets?limit=100&active=true", {
         headers: { "x-company-id": companyId },
+        signal,
       });
       if (response.ok) {
         const data = await response.json();
         setFleets(data.data || []);
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch fleets:", err);
     }
   }, [companyId]);
 
-  const loadVehicles = useCallback(async () => {
+  const loadVehicles = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     setVehiclesLoading(true);
     try {
@@ -263,19 +267,21 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
       }
       const response = await fetch(`/api/vehicles/available?${params}`, {
         headers: { "x-company-id": companyId },
+        signal,
       });
       if (response.ok) {
         const data = await response.json();
         setVehicles(data.data || []);
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch vehicles:", err);
     } finally {
       setVehiclesLoading(false);
     }
   }, [companyId, fleetFilter]);
 
-  const loadOrders = useCallback(async () => {
+  const loadOrders = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     setOrdersLoading(true);
     try {
@@ -285,7 +291,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
 
       const firstResponse = await fetch(
         `/api/orders?status=PENDING&active=true&limit=${limit}&offset=0`,
-        { headers: { "x-company-id": companyId } }
+        { headers: { "x-company-id": companyId }, signal }
       );
 
       if (!firstResponse.ok) return;
@@ -305,7 +311,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
         batchPromises.push(
           fetch(
             `/api/orders?status=PENDING&active=true&limit=${limit}&offset=${offset}`,
-            { headers: { "x-company-id": companyId } }
+            { headers: { "x-company-id": companyId }, signal }
           ).then(async (res) => {
             if (!res.ok) return [];
             const data = await res.json();
@@ -324,17 +330,19 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
       setOrders(allOrders);
       setSelectedOrderIds(allOrders.map((o: Order) => o.id));
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch orders:", err);
     } finally {
       setOrdersLoading(false);
     }
   }, [companyId]);
 
-  const loadZones = useCallback(async () => {
+  const loadZones = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/zones?active=true&limit=100", {
         headers: { "x-company-id": companyId },
+        signal,
       });
       if (response.ok) {
         const data = await response.json();
@@ -360,14 +368,15 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
         setZones(mappedZones);
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch zones:", err);
     }
   }, [companyId]);
 
-  const loadOptimizers = useCallback(async () => {
+  const loadOptimizers = useCallback(async (signal?: AbortSignal) => {
     setOptimizersLoading(true);
     try {
-      const response = await fetch("/api/optimization/engines");
+      const response = await fetch("/api/optimization/engines", { signal });
       if (response.ok) {
         const data = await response.json();
         setOptimizers(data.data?.optimizers || []);
@@ -376,17 +385,19 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch optimizers:", err);
     } finally {
       setOptimizersLoading(false);
     }
   }, []);
 
-  const loadCompanyProfile = useCallback(async () => {
+  const loadCompanyProfile = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/company-profiles", {
         headers: { "x-company-id": companyId },
+        signal,
       });
       if (response.ok) {
         const data = await response.json();
@@ -409,6 +420,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch company profile:", err);
       setCompanyProfile({
         enableOrderValue: false,
@@ -420,34 +432,42 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     }
   }, [companyId]);
 
-  const loadFieldDefinitions = useCallback(async () => {
+  const loadFieldDefinitions = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch(`/api/companies/${companyId}/field-definitions?entity=orders`, {
         headers: { "x-company-id": companyId },
+        signal,
       });
       if (response.ok) {
         const data = await response.json();
         setFieldDefinitions((data.data || []).filter((d: FieldDefinition) => d.active));
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch field definitions:", err);
     }
   }, [companyId]);
 
   // Initial data load
   useEffect(() => {
-    if (companyId) {
-      Promise.all([
-        loadFleets(),
-        loadVehicles(),
-        loadOrders(),
-        loadZones(),
-        loadOptimizers(),
-        loadCompanyProfile(),
-        loadFieldDefinitions(),
-      ]);
-    }
+    if (!companyId) return;
+
+    const controller = new AbortController();
+
+    Promise.all([
+      loadFleets(controller.signal),
+      loadVehicles(controller.signal),
+      loadOrders(controller.signal),
+      loadZones(controller.signal),
+      loadOptimizers(controller.signal),
+      loadCompanyProfile(controller.signal),
+      loadFieldDefinitions(controller.signal),
+    ]).catch(() => {
+      // Ignore abort errors
+    });
+
+    return () => controller.abort();
   }, [companyId, loadFleets, loadVehicles, loadOrders, loadZones, loadOptimizers, loadCompanyProfile, loadFieldDefinitions]);
 
   // Derived values
@@ -567,13 +587,17 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
           setOrders((prev) => prev.filter((o) => o.id !== id));
           setSelectedOrderIds((prev) => prev.filter((oid) => oid !== id));
         }
-      } catch {
-        // Silent fail
+      } catch (error) {
+        toast({
+          title: "Error al eliminar pedido",
+          description: error instanceof Error ? error.message : "Ocurrió un error inesperado",
+          variant: "destructive",
+        });
       } finally {
         setDeletingOrderId(null);
       }
     },
-    [companyId]
+    [companyId, toast]
   );
 
   const handleSubmit = useCallback(async () => {
