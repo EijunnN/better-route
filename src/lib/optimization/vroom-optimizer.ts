@@ -368,7 +368,7 @@ async function optimizeWithVroom(
     const startLatitude = vehicle.originLatitude ?? config.depot.latitude;
 
     // Use balanced maxOrders if balancing is enabled, otherwise use vehicle's limit
-    const effectiveMaxOrders = balancedMaxOrders || vehicle.maxOrders || 50;
+    const effectiveMaxOrders = balancedMaxOrders ?? vehicle.maxOrders ?? 50;
 
     // Apply vehicle's speed factor or global traffic-based factor
     const effectiveSpeedFactor = vehicle.speedFactor ?? speedFactor;
@@ -535,9 +535,9 @@ async function optimizeWithVroom(
         totalWeight: r.totalWeight,
         totalVolume: r.totalVolume,
         maxWeight:
-          vehicles.find((v) => v.id === r.vehicleId)?.maxWeight || 10000,
-        maxVolume: vehicles.find((v) => v.id === r.vehicleId)?.maxVolume || 100,
-        maxOrders: vehicles.find((v) => v.id === r.vehicleId)?.maxOrders || 50,
+          vehicles.find((v) => v.id === r.vehicleId)?.maxWeight ?? 10000,
+        maxVolume: vehicles.find((v) => v.id === r.vehicleId)?.maxVolume ?? 100,
+        maxOrders: vehicles.find((v) => v.id === r.vehicleId)?.maxOrders ?? 50,
       }));
 
       const balanceResult = redistributeOrders(balanceableRoutes, {
@@ -709,9 +709,9 @@ function convertVroomResponse(
     })),
     totalWeight: r.totalWeight,
     totalVolume: r.totalVolume,
-    maxWeight: vehicleMap.get(r.vehicleId)?.maxWeight || 10000,
-    maxVolume: vehicleMap.get(r.vehicleId)?.maxVolume || 100,
-    maxOrders: vehicleMap.get(r.vehicleId)?.maxOrders || 50,
+    maxWeight: vehicleMap.get(r.vehicleId)?.maxWeight ?? 10000,
+    maxVolume: vehicleMap.get(r.vehicleId)?.maxVolume ?? 100,
+    maxOrders: vehicleMap.get(r.vehicleId)?.maxOrders ?? 50,
   }));
 
   const balanceScore = getBalanceScore(balanceableRoutes);
@@ -759,14 +759,14 @@ function optimizeWithNearestNeighbor(
 
   // Distribute orders more evenly - sort by maxOrders (smallest first) to fill smaller vehicles
   const sortedVehicles = [...vehicles].sort(
-    (a, b) => (a.maxOrders || 50) - (b.maxOrders || 50),
+    (a, b) => (a.maxOrders ?? 50) - (b.maxOrders ?? 50),
   );
 
   for (const vehicle of sortedVehicles) {
     const stops: OptimizedStop[] = [];
     let currentWeight = 0;
     let currentVolume = 0;
-    const maxTasks = vehicle.maxOrders || 50;
+    const maxTasks = vehicle.maxOrders ?? 50;
 
     // Use vehicle's origin if available, otherwise depot
     let currentLocation: Coordinates = {
@@ -895,9 +895,9 @@ function optimizeWithNearestNeighbor(
     }),
     totalWeight: r.totalWeight,
     totalVolume: r.totalVolume,
-    maxWeight: vehicles.find((v) => v.id === r.vehicleId)?.maxWeight || 10000,
-    maxVolume: vehicles.find((v) => v.id === r.vehicleId)?.maxVolume || 100,
-    maxOrders: vehicles.find((v) => v.id === r.vehicleId)?.maxOrders || 50,
+    maxWeight: vehicles.find((v) => v.id === r.vehicleId)?.maxWeight ?? 10000,
+    maxVolume: vehicles.find((v) => v.id === r.vehicleId)?.maxVolume ?? 100,
+    maxOrders: vehicles.find((v) => v.id === r.vehicleId)?.maxOrders ?? 50,
   }));
 
   const balanceScore = getBalanceScore(balanceableRoutes);
