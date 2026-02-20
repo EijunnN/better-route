@@ -8,6 +8,7 @@ import {
   setAuthCookies,
   verifyToken,
 } from "@/lib/auth/auth";
+import { isRefreshTokenValid } from "@/lib/auth/session";
 import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 /**
@@ -48,6 +49,18 @@ export async function POST(request: NextRequest) {
         { error: AUTH_ERRORS.INVALID_TOKEN },
         { status: 401 },
       );
+    }
+
+    // Validate refresh token against Redis session store
+    // Prevents reuse of revoked tokens after logout
+    if (payload.sessionId) {
+      const tokenValid = await isRefreshTokenValid(payload.sessionId);
+      if (!tokenValid) {
+        return NextResponse.json(
+          { error: AUTH_ERRORS.INVALID_TOKEN },
+          { status: 401 },
+        );
+      }
     }
 
     // Get user from database
@@ -92,7 +105,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Token refresh error:", error);
     return NextResponse.json(
-      { error: "Error al refrescar token" },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
