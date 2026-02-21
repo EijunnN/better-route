@@ -9,6 +9,7 @@ const PUBLIC_API_ROUTES = [
   "/api/auth/refresh",
   "/api/health",
   "/api/docs",
+  "/api/public/tracking",
 ];
 
 const PUBLIC_PAGE_ROUTES = ["/login"];
