@@ -110,7 +110,7 @@ export async function PATCH(
 
     // Validate GeoJSON structure if geometry is being updated
     if (validatedData.geometry) {
-      const geo = validatedData.geometry as { type?: string; coordinates?: unknown };
+      const geo = (typeof validatedData.geometry === "string" ? JSON.parse(validatedData.geometry) : validatedData.geometry) as { type?: string; coordinates?: unknown };
 
       // Must be a Polygon or MultiPolygon
       if (!geo.type || !["Polygon", "MultiPolygon"].includes(geo.type)) {
