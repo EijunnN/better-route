@@ -1979,3 +1979,72 @@ export const companyWorkflowTransitionsRelations = relations(companyWorkflowTran
     relationName: "toState",
   }),
 }));
+
+// ============================================
+// TRACKING - Customer-facing delivery tracking
+// ============================================
+
+// Tracking tokens - URL-safe tokens for customer tracking links
+export const trackingTokens = pgTable("tracking_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "restrict" }),
+  trackingId: varchar("tracking_id", { length: 50 }).notNull(), // copied from order for fast lookup
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  active: boolean("active").notNull().default(true),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("tracking_tokens_token_idx").on(table.token),
+  index("tracking_tokens_company_tracking_id_idx").on(table.companyId, table.trackingId),
+]);
+
+export const trackingTokensRelations = relations(trackingTokens, ({ one }) => ({
+  company: one(companies, {
+    fields: [trackingTokens.companyId],
+    references: [companies.id],
+  }),
+  order: one(orders, {
+    fields: [trackingTokens.orderId],
+    references: [orders.id],
+  }),
+}));
+
+// Company tracking settings - per-company configuration for tracking pages
+export const companyTrackingSettings = pgTable("company_tracking_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" })
+    .unique(),
+  trackingEnabled: boolean("tracking_enabled").notNull().default(false),
+  showMap: boolean("show_map").notNull().default(true),
+  showDriverLocation: boolean("show_driver_location").notNull().default(true),
+  showDriverName: boolean("show_driver_name").notNull().default(false),
+  showDriverPhoto: boolean("show_driver_photo").notNull().default(false),
+  showEvidence: boolean("show_evidence").notNull().default(true),
+  showEta: boolean("show_eta").notNull().default(true),
+  showTimeline: boolean("show_timeline").notNull().default(true),
+  brandColor: varchar("brand_color", { length: 20 }).default("#3B82F6"),
+  logoUrl: varchar("logo_url", { length: 500 }),
+  customMessage: varchar("custom_message", { length: 500 }),
+  tokenExpiryHours: integer("token_expiry_hours").default(48),
+  autoGenerateTokens: boolean("auto_generate_tokens").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const companyTrackingSettingsRelations = relations(
+  companyTrackingSettings,
+  ({ one }) => ({
+    company: one(companies, {
+      fields: [companyTrackingSettings.companyId],
+      references: [companies.id],
+    }),
+  }),
+);

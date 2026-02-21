@@ -34,6 +34,7 @@ export const testDb = drizzle(testClient, { schema });
 export async function cleanDatabase() {
   await testDb.execute(sql`SET client_min_messages TO WARNING`);
   await testDb.execute(sql`TRUNCATE TABLE
+    tracking_tokens, company_tracking_settings,
     route_stop_history, route_stops, plan_metrics,
     reassignments_history, output_history, optimization_jobs,
     optimization_configurations, orders,
