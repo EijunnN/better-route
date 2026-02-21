@@ -371,6 +371,9 @@ export async function POST(
             : [stop.orderId];
 
         for (const orderId of orderIds) {
+          // Skip stops for orders that weren't assigned (missing or non-PENDING)
+          if (!assignedOrderIds.includes(orderId)) continue;
+
           routeStopsToCreate.push({
             companyId: tenantContext.companyId,
             jobId: job.id,
