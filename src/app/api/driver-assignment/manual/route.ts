@@ -17,12 +17,17 @@ import {
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 /**
  * POST - Manually assign a driver to a route
  * This endpoint allows manual override of automatic driver assignments
  */
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.ASSIGN);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

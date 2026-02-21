@@ -7,6 +7,8 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 /**
  * GET /api/plans/[id] - Get a specific plan with full details
  */
@@ -15,6 +17,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.PLAN, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

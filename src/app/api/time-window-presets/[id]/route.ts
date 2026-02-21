@@ -8,6 +8,8 @@ import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { updateTimeWindowPresetSchema } from "@/lib/validations/time-window-preset";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 async function getTimeWindowPreset(id: string, _companyId: string) {
   const whereClause = withTenantFilter(timeWindowPresets, [
@@ -27,6 +29,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.TIME_WINDOW_PRESET, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -63,6 +68,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.TIME_WINDOW_PRESET, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -148,6 +156,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.TIME_WINDOW_PRESET, Action.DELETE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

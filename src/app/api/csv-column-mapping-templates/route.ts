@@ -8,9 +8,14 @@ import { csvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-map
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 // GET - List all column mapping templates for the company
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -53,6 +58,9 @@ export async function GET(request: NextRequest) {
 // POST - Create a new column mapping template
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.CREATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

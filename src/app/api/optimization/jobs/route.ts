@@ -13,6 +13,8 @@ import {
 } from "@/lib/validations/optimization-job";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 // GET - List optimization jobs
 export async function GET(request: NextRequest) {
@@ -28,6 +30,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_JOB, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const query = optimizationJobQuerySchema.parse(
       Object.fromEntries(searchParams),
     );
@@ -113,6 +118,9 @@ export async function POST(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_JOB, Action.CREATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const body = await request.json();
     const data = optimizationJobCreateSchema.parse(body);
 

@@ -5,6 +5,8 @@ import { routeStops, routeStopHistory, users, vehicles, optimizationJobs } from 
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 // GET - Get recent stop events (completed, failed, skipped) in last 24 hours
 export async function GET(request: NextRequest) {
@@ -19,6 +21,9 @@ export async function GET(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Get the most recent confirmed job
     const confirmedJob = await db.query.optimizationJobs.findFirst({
       where: and(

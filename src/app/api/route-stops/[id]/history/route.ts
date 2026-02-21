@@ -6,6 +6,8 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 // GET - Get history for a specific stop
 export async function GET(
@@ -24,6 +26,9 @@ export async function GET(
   const { id: stopId } = await params;
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Verify stop exists and belongs to tenant
     const stop = await db.query.routeStops.findFirst({
       where: and(

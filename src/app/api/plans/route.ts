@@ -5,12 +5,17 @@ import { optimizationJobs, planMetrics } from "@/db/schema";
 import { setTenantContext } from "@/lib/infra/tenant";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * GET /api/plans - List confirmed plans with metrics
  */
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.PLAN, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

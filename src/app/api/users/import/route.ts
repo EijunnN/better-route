@@ -2,8 +2,10 @@ import bcrypt from "bcryptjs";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { EntityType, Action } from "@/lib/auth/authorization";
 import { createUserSchema, isExpired } from "@/lib/validations/user";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
@@ -195,6 +197,9 @@ function validateRow(row: CSVRow, rowNumber: number): ImportError[] {
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.USER, Action.IMPORT);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

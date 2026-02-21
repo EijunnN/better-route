@@ -14,9 +14,14 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { fleetQuerySchema, fleetSchema } from "@/lib/validations/fleet";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.FLEET, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -169,6 +174,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.FLEET, Action.CREATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

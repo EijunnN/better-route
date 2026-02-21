@@ -9,13 +9,18 @@ import {
   CSV_TEMPLATES,
   type CsvCustomFieldInfo,
 } from "@/lib/orders/dynamic-csv-fields";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 // GET - Download CSV template based on company profile
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

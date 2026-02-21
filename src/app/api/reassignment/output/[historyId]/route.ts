@@ -13,6 +13,8 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 /**
  * Reassignment data structure from parsed JSON
  */
@@ -75,6 +77,9 @@ export async function GET(
   { params }: { params: Promise<{ historyId: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.REASSIGNMENT, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

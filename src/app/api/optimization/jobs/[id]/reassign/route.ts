@@ -14,6 +14,8 @@ import {
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 interface RouteData {
   routeId: string;
   vehicleId: string;
@@ -102,6 +104,9 @@ export async function POST(
   const { id: jobId } = await params;
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.PLAN, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const body = await request.json();
     const { orders: ordersToReassign, targetVehicleId } = body;
 

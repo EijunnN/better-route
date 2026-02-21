@@ -6,6 +6,8 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 // GET - Get alert rule details
 export async function GET(
@@ -23,6 +25,9 @@ export async function GET(
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ALERT_RULE, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { id } = await params;
 
     const rule = await db.query.alertRules.findFirst({
@@ -68,6 +73,9 @@ export async function PUT(
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ALERT_RULE, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { id } = await params;
     const body = await request.json();
     const { name, type, severity, threshold, metadata, enabled } = body;
@@ -131,6 +139,9 @@ export async function DELETE(
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ALERT_RULE, Action.DELETE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { id } = await params;
 
     // First verify the rule exists and belongs to tenant

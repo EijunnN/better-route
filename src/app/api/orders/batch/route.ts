@@ -8,7 +8,9 @@ import {
   validateCustomFields,
   applyDefaults,
 } from "@/lib/custom-fields/validation";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
@@ -47,6 +49,9 @@ const batchOrderSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.IMPORT);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

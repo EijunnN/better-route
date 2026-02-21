@@ -7,12 +7,17 @@ import { updateCsvColumnMappingTemplateSchema } from "@/lib/validations/csv-colu
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 // GET - Get a specific column mapping template
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { id } = await params;
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
@@ -64,6 +69,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { id } = await params;
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
@@ -177,6 +185,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.DELETE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { id } = await params;
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {

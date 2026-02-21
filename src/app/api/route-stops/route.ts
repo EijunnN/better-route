@@ -6,9 +6,14 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 // POST - Create route stops from optimization job result
 export async function POST(request: NextRequest) {
+  const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.CREATE);
+  if (authResult instanceof NextResponse) return authResult;
+
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
     return NextResponse.json(
@@ -112,6 +117,9 @@ export async function GET(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get("jobId");
     const routeId = searchParams.get("routeId");

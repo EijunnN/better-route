@@ -6,6 +6,8 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 // POST - Acknowledge alert
 export async function POST(
@@ -30,6 +32,9 @@ export async function POST(
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ALERT, Action.ACKNOWLEDGE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { id } = await params;
     const body = await request.json();
     const { note } = body;

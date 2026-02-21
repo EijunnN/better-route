@@ -6,8 +6,10 @@ import {
   suggestColumnMapping,
   validateRequiredFieldsMapped,
 } from "@/lib/orders/csv-column-mapping";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { columnMappingSuggestionRequestSchema } from "@/lib/validations/csv-column-mapping";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
@@ -15,6 +17,9 @@ import { safeParseJson } from "@/lib/utils/safe-json";
 // POST - Suggest column mapping for CSV headers
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.IMPORT);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

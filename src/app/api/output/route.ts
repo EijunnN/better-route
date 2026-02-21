@@ -6,6 +6,8 @@ import {
   generatePlanOutput,
 } from "@/lib/routing/output-generator";
 import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * POST /api/output
@@ -27,6 +29,9 @@ import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
  */
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OUTPUT, Action.CREATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Extract tenant context from headers
     const tenantCtx = getTenantContext();
     if (!tenantCtx) {
@@ -130,6 +135,9 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OUTPUT, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Extract tenant context from headers
     const tenantCtx = getTenantContext();
     if (!tenantCtx) {

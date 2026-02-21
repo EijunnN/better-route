@@ -3,7 +3,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicleSkillAssignments, vehicleSkills, vehicles } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { EntityType, Action } from "@/lib/auth/authorization";
 import { z } from "zod";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
@@ -13,6 +15,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.VEHICLE_SKILL, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -91,6 +96,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.VEHICLE_SKILL, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

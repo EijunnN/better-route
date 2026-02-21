@@ -13,6 +13,8 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import type { PlanValidationRequestSchema } from "@/lib/validations/plan-confirmation";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
 /**
@@ -26,6 +28,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.PLAN, Action.VALIDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { id: jobId } = await params;
     const tenantContext = extractTenantContext(request);
 

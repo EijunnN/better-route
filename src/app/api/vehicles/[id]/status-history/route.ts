@@ -2,7 +2,9 @@ import { and, desc, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users, vehicleStatusHistory, vehicles } from "@/db/schema";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { EntityType, Action } from "@/lib/auth/authorization";
 import { vehicleStatusHistoryQuerySchema } from "@/lib/validations/vehicle-status";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
@@ -26,6 +28,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.VEHICLE, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

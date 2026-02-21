@@ -3,7 +3,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { EntityType, Action } from "@/lib/auth/authorization";
 import { ORDER_STATUS } from "@/lib/validations/order";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
@@ -39,6 +41,9 @@ const STATUS_COLORS: Record<string, string> = {
 
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Extract tenant context
     const tenantContext = extractTenantContext(request);
     if (!tenantContext) {

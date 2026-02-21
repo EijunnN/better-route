@@ -13,6 +13,8 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * GET /api/mobile/driver/my-route
@@ -42,6 +44,9 @@ export async function GET(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Obtener el usuario autenticado
     const authUser = await getAuthenticatedUser(request);
 

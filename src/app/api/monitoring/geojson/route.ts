@@ -3,7 +3,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { driverLocations, optimizationJobs, routeStops } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { optionalRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
@@ -21,6 +23,9 @@ export async function GET(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
+    // Optional auth - if authenticated, enforce permissions
+    const authResult = await optionalRoutePermission(request, EntityType.ROUTE, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
     // Get the most recent confirmed optimization job
     const confirmedJob = await db.query.optimizationJobs.findFirst({
       where: and(

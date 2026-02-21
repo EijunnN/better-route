@@ -7,6 +7,8 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 /**
  * GET - Get assignment history for a route
  * Returns audit log entries for driver assignment changes
@@ -16,6 +18,9 @@ export async function GET(
   { params }: { params: Promise<{ routeId: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

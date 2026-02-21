@@ -8,6 +8,8 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 // GET - Get detailed driver information with route and stops
 export async function GET(
   request: NextRequest,
@@ -25,6 +27,9 @@ export async function GET(
   const { id: driverId } = await params;
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.DRIVER, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Get driver info
     const driver = await db.query.users.findFirst({
       where: and(

@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
@@ -16,6 +18,9 @@ export async function POST(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ALERT, Action.CREATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Dynamically import the alert engine to avoid circular dependencies
     const { runAllAlertEvaluations } = await import("@/lib/alerts/engine");
 

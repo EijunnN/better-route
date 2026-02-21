@@ -15,6 +15,8 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * Validates latitude value
@@ -70,6 +72,9 @@ export async function POST(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Autenticar usuario
     const authUser = await getAuthenticatedUser(request);
 

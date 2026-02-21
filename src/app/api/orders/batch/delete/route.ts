@@ -2,21 +2,20 @@ import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
+import { EntityType, Action } from "@/lib/auth/authorization";
 import {
   extractTenantContext,
   handleError,
-  setupAuthContext,
   unauthorizedResponse,
 } from "@/lib/routing/route-helpers";
 
 // DELETE - Delete all orders for a company (soft delete by setting active=false)
 export async function DELETE(request: NextRequest) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.BULK_DELETE);
+    if (authResult instanceof NextResponse) return authResult;
 
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
@@ -31,7 +30,7 @@ export async function DELETE(request: NextRequest) {
     const hardDelete = searchParams.get("hard") === "true";
 
     // Hard delete requires ADMIN_SISTEMA role
-    if (hardDelete && authResult.user.role !== "ADMIN_SISTEMA") {
+    if (hardDelete && authResult.role !== "ADMIN_SISTEMA") {
       return NextResponse.json(
         { error: "Hard delete requires ADMIN_SISTEMA role" },
         { status: 403 },

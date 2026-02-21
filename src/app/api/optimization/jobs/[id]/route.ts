@@ -9,6 +9,8 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 // GET - Get job status
 export async function GET(
   request: NextRequest,
@@ -26,6 +28,9 @@ export async function GET(
   const { id } = await params;
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_JOB, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
         eq(optimizationJobs.id, id),
@@ -90,6 +95,9 @@ export async function DELETE(
   const { id } = await params;
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_JOB, Action.DELETE);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Check if job exists and belongs to tenant
     const job = await db.query.optimizationJobs.findFirst({
       where: and(

@@ -6,6 +6,8 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 // GET - List alerts with filters
 export async function GET(request: NextRequest) {
@@ -20,6 +22,9 @@ export async function GET(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ALERT, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // ACTIVE, ACKNOWLEDGED, RESOLVED, DISMISSED
     const severity = searchParams.get("severity"); // CRITICAL, WARNING, INFO
@@ -111,6 +116,9 @@ export async function POST(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ALERT, Action.CREATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const body = await request.json();
     const {
       type,

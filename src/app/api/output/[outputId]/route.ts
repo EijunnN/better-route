@@ -21,6 +21,8 @@ import type {
   RouteStopOutput,
 } from "@/lib/routing/output-generator-types";
 import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 interface RouteParams {
   params: Promise<{ outputId: string }>;
@@ -40,6 +42,9 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OUTPUT, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Extract tenant context from headers
     const tenantCtx = getTenantContext();
     if (!tenantCtx) {

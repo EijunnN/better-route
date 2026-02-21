@@ -1,18 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAvailableOptimizers } from "@/lib/optimization";
-import {
-  handleError,
-  setupAuthContext,
-  unauthorizedResponse,
-} from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
+import { handleError } from "@/lib/routing/route-helpers";
 
 // GET - List available optimization engines
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
 
     const optimizers = await getAvailableOptimizers();
 
