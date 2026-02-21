@@ -89,6 +89,55 @@ export function withPermission(
 }
 
 /**
+ * Inline permission check for route handlers.
+ * Use at the top of any handler that needs authorization.
+ * Returns the authenticated user if successful, or a 401/403 NextResponse on failure.
+ */
+export async function requireRoutePermission(
+  request: NextRequest,
+  entity: EntityType,
+  action: Action,
+): Promise<AuthenticatedUser | NextResponse> {
+  try {
+    const user = await getAuthenticatedUser(request);
+    requirePermission(user, entity, action);
+    return user;
+  } catch (error: unknown) {
+    const err = error as { name?: string; toJSON?: () => unknown };
+    if (err.name === "AuthorizationError" && err.toJSON) {
+      return NextResponse.json(err.toJSON(), { status: 403 });
+    }
+    return NextResponse.json(
+      { error: "Authentication required", code: "AUTH_REQUIRED" },
+      { status: 401 },
+    );
+  }
+}
+
+/**
+ * Optional permission check - returns user if authenticated, null if not, or 403 if forbidden.
+ * Use for routes that work with or without authentication but enforce permissions when authenticated.
+ */
+export async function optionalRoutePermission(
+  request: NextRequest,
+  entity: EntityType,
+  action: Action,
+): Promise<AuthenticatedUser | null | NextResponse> {
+  try {
+    const user = await getAuthenticatedUser(request);
+    requirePermission(user, entity, action);
+    return user;
+  } catch (error: unknown) {
+    const err = error as { name?: string; toJSON?: () => unknown };
+    if (err.name === "AuthorizationError" && err.toJSON) {
+      return NextResponse.json(err.toJSON(), { status: 403 });
+    }
+    // Not authenticated - return null (optional auth)
+    return null;
+  }
+}
+
+/**
  * Check permissions without throwing - returns check result
  */
 export function checkPermissions(
