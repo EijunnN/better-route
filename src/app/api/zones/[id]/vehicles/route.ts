@@ -10,12 +10,17 @@ import { bulkZoneVehicleSchema } from "@/lib/validations/zone";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 // GET - Get all vehicles assigned to this zone
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -27,6 +32,9 @@ export async function GET(
     setTenantContext(tenantCtx);
 
     const { id: zoneId } = await params;
+
+    const url = new URL(request.url);
+    const dayOfWeek = url.searchParams.get("dayOfWeek");
 
     // Verify zone exists and belongs to tenant
     const whereClause = withTenantFilter(
@@ -41,7 +49,7 @@ export async function GET(
     }
 
     // Get all active vehicle assignments for this zone
-    const assignments = await db
+    const allAssignments = await db
       .select({
         id: zoneVehicles.id,
         vehicleId: zoneVehicles.vehicleId,
@@ -55,6 +63,15 @@ export async function GET(
       .where(
         and(eq(zoneVehicles.zoneId, zoneId), eq(zoneVehicles.active, true)),
       );
+
+    // Filter by day of week if requested
+    const assignments = dayOfWeek
+      ? allAssignments.filter((a) => {
+          const days = (a.assignedDays as string[]) || [];
+          // If no days specified, assignment is active every day
+          return days.length === 0 || days.includes(dayOfWeek.toUpperCase());
+        })
+      : allAssignments;
 
     return NextResponse.json({
       zoneId,
@@ -86,6 +103,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -255,6 +275,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

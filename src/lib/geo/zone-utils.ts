@@ -325,6 +325,14 @@ export interface ZoneBatch<
   vehicles: TVehicle[];
 }
 
+export interface ZoneBatchResult<
+  TOrder extends OrderWithLocation,
+  TVehicle extends VehicleWithZones,
+> {
+  batches: ZoneBatch<TOrder, TVehicle>[];
+  warnings: string[];
+}
+
 export function createZoneBatches<
   TOrder extends OrderWithLocation,
   TVehicle extends VehicleWithZones,
@@ -333,8 +341,9 @@ export function createZoneBatches<
   vehicles: TVehicle[],
   zones: ZoneData[],
   day: DayOfWeek,
-): ZoneBatch<TOrder, TVehicle>[] {
+): ZoneBatchResult<TOrder, TVehicle> {
   const batches: ZoneBatch<TOrder, TVehicle>[] = [];
+  const warnings: string[] = [];
 
   // Group orders by zone
   const ordersByZone = groupOrdersByZone(orders, zones);
@@ -356,13 +365,13 @@ export function createZoneBatches<
       });
     } else {
       // No vehicles for this zone - orders will be unassigned
-      console.warn(
-        `No vehicles available for zone ${zone?.name || zoneId} on ${day}. ${zoneOrders.length} orders will be unassigned.`,
-      );
+      const warning = `Zone "${zone?.name || zoneId}" has no available vehicles for ${day}. ${zoneOrders.length} orders will be unassigned.`;
+      console.warn(warning);
+      warnings.push(warning);
     }
   }
 
-  return batches;
+  return { batches, warnings };
 }
 
 /**

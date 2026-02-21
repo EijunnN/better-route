@@ -11,11 +11,16 @@ import { updateZoneSchema } from "@/lib/validations/zone";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -86,6 +91,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -99,6 +107,46 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const validatedData = updateZoneSchema.parse({ ...body, id });
+
+    // Validate GeoJSON structure if geometry is being updated
+    if (validatedData.geometry) {
+      const geo = validatedData.geometry as { type?: string; coordinates?: unknown };
+
+      // Must be a Polygon or MultiPolygon
+      if (!geo.type || !["Polygon", "MultiPolygon"].includes(geo.type)) {
+        return NextResponse.json(
+          { error: "Zone geometry must be a Polygon or MultiPolygon GeoJSON object." },
+          { status: 400 },
+        );
+      }
+
+      // Must have coordinates
+      if (!geo.coordinates || !Array.isArray(geo.coordinates) || geo.coordinates.length === 0) {
+        return NextResponse.json(
+          { error: "Zone geometry must have valid coordinates." },
+          { status: 400 },
+        );
+      }
+
+      // Validate coordinate ranges
+      const validateCoords = (coords: unknown): boolean => {
+        if (!Array.isArray(coords)) return false;
+        if (typeof coords[0] === "number") {
+          // [lng, lat] pair
+          const [lng, lat] = coords as number[];
+          return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
+        }
+        // Nested array - recurse
+        return coords.every((c) => validateCoords(c));
+      };
+
+      if (!validateCoords(geo.coordinates)) {
+        return NextResponse.json(
+          { error: "Zone geometry contains invalid coordinates. Latitude must be -90 to 90, longitude -180 to 180." },
+          { status: 400 },
+        );
+      }
+    }
 
     // Apply tenant filtering when fetching existing zone
     const existingWhereClause = withTenantFilter(
@@ -232,6 +280,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.DELETE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
