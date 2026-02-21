@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
@@ -18,11 +18,13 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser, getOptionalUser } from "@/lib/auth/auth-api";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 // Map route_stop status to order status
 const STOP_TO_ORDER_STATUS: Record<string, string> = {
   PENDING: "ASSIGNED", // Order stays assigned until stop starts
-  IN_PROGRESS: "IN_TRANSIT", // Order is in transit
-  COMPLETED: "DELIVERED", // Order was delivered
+  IN_PROGRESS: "IN_PROGRESS", // Order is in progress
+  COMPLETED: "COMPLETED", // Order was completed
   FAILED: "FAILED", // Order delivery failed
   SKIPPED: "FAILED", // Order was skipped (treat as failed)
 };
@@ -45,6 +47,9 @@ export async function GET(
   const { id: stopId } = await params;
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const stop = await db.query.routeStops.findFirst({
       where: and(
         eq(routeStops.id, stopId),
@@ -95,6 +100,9 @@ export async function PATCH(
   const { id: stopId } = await params;
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const body = await request.json();
     const { workflowStateId, notes, failureReason, evidenceUrls } = body;
     let { status } = body;
@@ -318,13 +326,29 @@ export async function PATCH(
         // Sync order status if the stop has an associated order
         if (currentStop.orderId && STOP_TO_ORDER_STATUS[status]) {
           const newOrderStatus = STOP_TO_ORDER_STATUS[status];
-          await tx
-            .update(orders)
-            .set({
-              status: newOrderStatus as typeof orders.$inferInsert.status,
-              updatedAt: now,
-            })
-            .where(eq(orders.id, currentStop.orderId));
+
+          // Check current order status - don't overwrite CANCELLED orders
+          const [currentOrder] = await tx
+            .select({ status: orders.status })
+            .from(orders)
+            .where(eq(orders.id, currentStop.orderId))
+            .limit(1);
+
+          if (currentOrder && currentOrder.status !== "CANCELLED") {
+            await tx
+              .update(orders)
+              .set({
+                status: newOrderStatus as typeof orders.$inferInsert.status,
+                updatedAt: now,
+              })
+              .where(
+                and(
+                  eq(orders.id, currentStop.orderId),
+                  // Optimistic lock: only update if not cancelled
+                  sql`${orders.status} != 'CANCELLED'`
+                )
+              );
+          }
         }
 
         // Insert history record
