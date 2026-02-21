@@ -139,7 +139,7 @@ describe("Optimization Config & Jobs", () => {
 
   test("POST /configure rejects non-AVAILABLE vehicle (400)", async () => {
     const { company, admin, token } = await makeFixtures();
-    const vehicle = await createVehicle({ companyId: company.id, status: "IN_ROUTE" });
+    const vehicle = await createVehicle({ companyId: company.id, status: "IN_MAINTENANCE" });
     const driver = await createDriver(company.id, { driverStatus: "AVAILABLE" });
 
     const request = await createTestRequest("/api/optimization/configure", {

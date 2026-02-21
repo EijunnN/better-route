@@ -60,7 +60,7 @@ export async function createTestRequest(
     headers["content-type"] = "application/json";
   }
 
-  return new NextRequest(url, init);
+  return new NextRequest(url, init as ConstructorParameters<typeof NextRequest>[1]);
 }
 
 /**

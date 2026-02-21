@@ -100,7 +100,7 @@ function buildSingleRouteResult(
     longitude: string;
   }>,
   vehicleId: string,
-  vehiclePlate: string,
+  vehiclePlate: string | null,
   driverId: string,
 ) {
   return buildOptimizationResult([

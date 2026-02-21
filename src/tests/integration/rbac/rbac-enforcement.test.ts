@@ -30,14 +30,14 @@ import {
 let companyA: { id: string };
 let companyB: { id: string };
 
-let adminUser: { id: string; email: string; role: string };
-let plannerUser: { id: string; email: string; role: string; companyId: string };
-let monitorUser: { id: string; email: string; role: string; companyId: string };
-let fleetAdminUser: { id: string; email: string; role: string; companyId: string };
-let driverUser: { id: string; email: string; role: string; companyId: string };
+let adminUser: { id: string; email: string; role: string; companyId: string | null };
+let plannerUser: { id: string; email: string; role: string; companyId: string | null };
+let monitorUser: { id: string; email: string; role: string; companyId: string | null };
+let fleetAdminUser: { id: string; email: string; role: string; companyId: string | null };
+let driverUser: { id: string; email: string; role: string; companyId: string | null };
 
 // Company B user for tenant isolation
-let companyBUser: { id: string; email: string; role: string; companyId: string };
+let companyBUser: { id: string; email: string; role: string; companyId: string | null };
 
 beforeAll(async () => {
   await cleanDatabase();

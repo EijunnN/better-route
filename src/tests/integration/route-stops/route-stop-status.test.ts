@@ -30,11 +30,11 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
 
   // Helper: create a fresh route stop with a new order for each test
   async function freshStop(overrides: {
-    status?: string;
+    status?: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED" | "SKIPPED";
     userId?: string;
     failureReason?: string;
     evidenceUrls?: string[];
-    orderStatus?: string;
+    orderStatus?: "PENDING" | "ASSIGNED" | "COMPLETED" | "FAILED" | "IN_PROGRESS" | "CANCELLED";
   } = {}) {
     const order = await createOrder({
       companyId: company.id,

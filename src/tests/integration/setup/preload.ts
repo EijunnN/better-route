@@ -14,7 +14,7 @@ import { testDb } from "./test-db";
 // ---------------------------------------------------------------------------
 process.env.JWT_SECRET =
   "test-secret-key-for-integration-tests-minimum-32-characters!!";
-process.env.NODE_ENV = "test";
+(process.env as Record<string, string>).NODE_ENV = "test";
 
 // ---------------------------------------------------------------------------
 // 2. Core framework mocks

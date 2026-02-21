@@ -283,7 +283,7 @@ describe("Auth sessions & token management", () => {
     const { createSession } = await import("@/lib/auth/session");
 
     // Create a session owned by the admin
-    const sessionId = await createSession(admin.id, {
+    const sessionId = await (createSession as Function)(admin.id, {
       userAgent: "Admin Browser",
       ipAddress: "10.0.0.1",
     });
