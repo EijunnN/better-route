@@ -5,12 +5,17 @@ import { optimizationPresets } from "@/db/schema";
 import { setTenantContext } from "@/lib/infra/tenant";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * GET /api/optimization-presets - List all optimization presets
  */
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_PRESET, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -47,6 +52,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_PRESET, Action.CREATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -59,44 +67,57 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // If this preset is set as default, unset other defaults
-    if (body.isDefault) {
-      await db
-        .update(optimizationPresets)
-        .set({ isDefault: false, updatedAt: new Date() })
-        .where(
-          and(
-            eq(optimizationPresets.companyId, tenantCtx.companyId),
-            eq(optimizationPresets.isDefault, true),
-          ),
-        );
-    }
+    const presetValues = {
+      companyId: tenantCtx.companyId,
+      name: body.name,
+      description: body.description,
+      balanceVisits: body.balanceVisits ?? false,
+      minimizeVehicles: body.minimizeVehicles ?? false,
+      openStart: body.openStart ?? false,
+      openEnd: body.openEnd ?? false,
+      mergeSimilar: body.mergeSimilar ?? true,
+      mergeSimilarV2: body.mergeSimilarV2 ?? false,
+      oneRoutePerVehicle: body.oneRoutePerVehicle ?? true,
+      simplify: body.simplify ?? true,
+      bigVrp: body.bigVrp ?? true,
+      flexibleTimeWindows: body.flexibleTimeWindows ?? false,
+      mergeByDistance: body.mergeByDistance ?? false,
+      groupSameLocation: body.groupSameLocation ?? true,
+      maxDistanceKm: body.maxDistanceKm ?? 200,
+      vehicleRechargeTime: body.vehicleRechargeTime ?? 0,
+      trafficFactor: body.trafficFactor ?? 50,
+      isDefault: body.isDefault ?? false,
+      active: true,
+    };
 
-    const [preset] = await db
-      .insert(optimizationPresets)
-      .values({
-        companyId: tenantCtx.companyId,
-        name: body.name,
-        description: body.description,
-        balanceVisits: body.balanceVisits ?? false,
-        minimizeVehicles: body.minimizeVehicles ?? false,
-        openStart: body.openStart ?? false,
-        openEnd: body.openEnd ?? false,
-        mergeSimilar: body.mergeSimilar ?? true,
-        mergeSimilarV2: body.mergeSimilarV2 ?? false,
-        oneRoutePerVehicle: body.oneRoutePerVehicle ?? true,
-        simplify: body.simplify ?? true,
-        bigVrp: body.bigVrp ?? true,
-        flexibleTimeWindows: body.flexibleTimeWindows ?? false,
-        mergeByDistance: body.mergeByDistance ?? false,
-        groupSameLocation: body.groupSameLocation ?? true,
-        maxDistanceKm: body.maxDistanceKm ?? 200,
-        vehicleRechargeTime: body.vehicleRechargeTime ?? 0,
-        trafficFactor: body.trafficFactor ?? 50,
-        isDefault: body.isDefault ?? false,
-        active: true,
-      })
-      .returning();
+    let preset;
+
+    // If this preset is set as default, wrap in transaction to ensure
+    // only one default per company at any time
+    if (body.isDefault) {
+      [preset] = await db.transaction(async (tx) => {
+        // Unset all other defaults for this company
+        await tx
+          .update(optimizationPresets)
+          .set({ isDefault: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(optimizationPresets.companyId, tenantCtx.companyId),
+              eq(optimizationPresets.isDefault, true),
+            ),
+          );
+
+        return await tx
+          .insert(optimizationPresets)
+          .values(presetValues)
+          .returning();
+      });
+    } else {
+      [preset] = await db
+        .insert(optimizationPresets)
+        .values(presetValues)
+        .returning();
+    }
 
     return NextResponse.json({ data: preset }, { status: 201 });
   } catch (error) {

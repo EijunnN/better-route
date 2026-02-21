@@ -4,15 +4,20 @@ import { db } from "@/db";
 import { companyFieldDefinitions, orders, timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { type FieldDefinition, validateCustomFields } from "@/lib/custom-fields/validation";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { orderQuerySchema, orderSchema } from "@/lib/validations/order";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 // GET - List with filtering and pagination
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -91,7 +96,10 @@ export async function GET(request: NextRequest) {
       .from(orders)
       .leftJoin(
         timeWindowPresets,
-        eq(orders.timeWindowPresetId, timeWindowPresets.id),
+        and(
+          eq(orders.timeWindowPresetId, timeWindowPresets.id),
+          eq(timeWindowPresets.active, true),
+        ),
       )
       .where(whereClause)
       .orderBy(desc(orders.createdAt))
@@ -130,6 +138,9 @@ export async function GET(request: NextRequest) {
 // POST - Create
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.CREATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(

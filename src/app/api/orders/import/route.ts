@@ -1,8 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import {
+  companyFieldDefinitions,
   companyOptimizationProfiles,
   csvColumnMappingTemplates,
   orders,
@@ -12,12 +13,19 @@ import {
   batchInsertOrders,
   updateTableStatistics,
 } from "@/lib/orders/batch-operations";
+import {
+  type FieldDefinition,
+  validateCustomFields,
+  applyDefaults,
+} from "@/lib/custom-fields/validation";
 import { parseProfile, type CompanyOptimizationProfile } from "@/lib/optimization/capacity-mapper";
 import { mapCSVRow, suggestColumnMapping } from "@/lib/orders/csv-column-mapping";
 import { validateCsvRow, getCsvFieldsForProfile } from "@/lib/orders/dynamic-csv-fields";
 import { parseCSVLine } from "@/lib/csv/parse-csv-line";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { orderSchema } from "@/lib/validations/order";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
@@ -580,6 +588,9 @@ async function validateTimeWindowPresets(
 // POST - Import orders from CSV
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.IMPORT);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -810,6 +821,83 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Validate custom fields from CSV columns matching field definitions
+    const fieldDefs = await db
+      .select({
+        id: companyFieldDefinitions.id,
+        code: companyFieldDefinitions.code,
+        label: companyFieldDefinitions.label,
+        fieldType: companyFieldDefinitions.fieldType,
+        required: companyFieldDefinitions.required,
+        options: companyFieldDefinitions.options,
+        defaultValue: companyFieldDefinitions.defaultValue,
+        validationRules: companyFieldDefinitions.validationRules,
+      })
+      .from(companyFieldDefinitions)
+      .where(
+        and(
+          eq(companyFieldDefinitions.companyId, context.companyId),
+          eq(companyFieldDefinitions.entity, "orders"),
+          eq(companyFieldDefinitions.showInCsv, true),
+          eq(companyFieldDefinitions.active, true),
+        ),
+      )
+      .orderBy(asc(companyFieldDefinitions.position));
+
+    const typedFieldDefs: FieldDefinition[] = fieldDefs.map((d) => ({
+      ...d,
+      options: d.options as string[] | null,
+      validationRules: d.validationRules as FieldDefinition["validationRules"],
+    }));
+
+    // Extract and validate custom field values per valid record
+    const customFieldsByRow = new Map<number, Record<string, unknown>>();
+    const fieldCodes = new Set(typedFieldDefs.map((d) => d.code));
+
+    if (typedFieldDefs.length > 0) {
+      // Check which valid records have custom field data in CSV columns
+      for (let i = validRecords.length - 1; i >= 0; i--) {
+        const record = validRecords[i];
+        const row = rows.find((_, idx) => idx + 2 === record.row);
+        if (!row) continue;
+
+        // Extract custom field values from CSV columns matching definition codes
+        const customValues: Record<string, unknown> = {};
+        for (const [csvKey, csvValue] of Object.entries(row)) {
+          const normalizedKey = csvKey.trim();
+          if (fieldCodes.has(normalizedKey) && csvValue !== "") {
+            customValues[normalizedKey] = csvValue;
+          }
+        }
+
+        // Apply defaults for missing fields
+        const withDefaults = applyDefaults(typedFieldDefs, customValues);
+
+        // Validate custom fields
+        const cfErrors = validateCustomFields(typedFieldDefs, withDefaults);
+        if (cfErrors.length > 0) {
+          const csvErrors: CSVValidationError[] = cfErrors.map((e) =>
+            createValidationError(
+              record.row,
+              e.code,
+              e.message,
+              "critical",
+              ERROR_TYPES.VALIDATION,
+            ),
+          );
+          allErrors.push(...csvErrors);
+
+          // Move from valid to invalid
+          const [removed] = validRecords.splice(i, 1);
+          removed.valid = false;
+          removed.errors.push(...csvErrors);
+          invalidRecords.push(removed);
+        } else {
+          customFieldsByRow.set(record.row, withDefaults);
+        }
+      }
+    }
+
     // Calculate summary statistics
     const summary = calculateErrorSummary(allErrors);
 
@@ -851,9 +939,23 @@ export async function POST(request: NextRequest) {
     const importErrors: CSVValidationError[] = [];
 
     if (validRecords.length > 0 && criticalErrors.length === 0) {
+      // Re-derive order data from final valid records (after all validations)
+      const finalOrderDataList = validRecords.map((record) => {
+        const row = rows.find((_, i) => i + 2 === record.row);
+        if (!row) {
+          throw new Error(`Row not found for record at row ${record.row}`);
+        }
+        return {
+          data: Object.keys(finalMapping).length > 0
+            ? mapCSVRow(row, finalMapping)
+            : mapCSVRowToOrder(row, validatedData.columnMapping),
+          rowNum: record.row,
+        };
+      });
+
       // Debug: Log first order data to see if orderValue is mapped
-      if (orderDataList.length > 0) {
-        const firstOrder = orderDataList[0];
+      if (finalOrderDataList.length > 0) {
+        const firstOrder = finalOrderDataList[0].data;
         console.log("[CSV Import] First order data:", {
           trackingId: firstOrder.trackingId,
           orderValue: firstOrder.orderValue,
@@ -865,7 +967,7 @@ export async function POST(request: NextRequest) {
       // Use optimized batch insert for large datasets (Story 17.1)
       try {
         const batchResult = await batchInsertOrders(
-          orderDataList.map((data) => ({
+          finalOrderDataList.map(({ data, rowNum }) => ({
             trackingId: String(data.trackingId),
             customerName: data.customerName ? String(data.customerName) : null,
             customerPhone: data.customerPhone
@@ -916,6 +1018,7 @@ export async function POST(request: NextRequest) {
               ? String(data.requiredSkills)
               : null,
             notes: data.notes ? String(data.notes) : null,
+            customFields: customFieldsByRow.get(rowNum) || null,
           })),
           context.companyId,
           {

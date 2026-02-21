@@ -68,6 +68,7 @@ export async function batchInsertOrders(
     timeWindowEnd?: string | null;
     requiredSkills?: string | null;
     notes?: string | null;
+    customFields?: Record<string, unknown> | null;
   }>,
   companyId: string,
   config: BatchConfig = {},
@@ -147,6 +148,7 @@ export async function batchInsertOrders(
           ? String(data.requiredSkills)
           : null,
         notes: data.notes ? String(data.notes) : null,
+        customFields: data.customFields || {},
         status: "PENDING" as const,
         active: true,
       }));

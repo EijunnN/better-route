@@ -149,7 +149,7 @@ export function calculatePlanMetrics(
     averageUtilizationRate,
     maxUtilizationRate,
     minUtilizationRate,
-    timeWindowComplianceRate: metrics.timeWindowComplianceRate || 100,
+    timeWindowComplianceRate: metrics.timeWindowComplianceRate ?? 100,
     totalTimeWindowViolations: routes.reduce(
       (sum, r) => sum + (r.timeWindowViolations || 0),
       0,
@@ -162,10 +162,10 @@ export function calculatePlanMetrics(
     ),
     assignmentsWithWarnings,
     assignmentsWithErrors,
-    skillCoverage: assignmentMetrics?.skillCoverage || 100,
-    licenseCompliance: assignmentMetrics?.licenseCompliance || 100,
-    fleetAlignment: assignmentMetrics?.fleetAlignment || 100,
-    workloadBalance: assignmentMetrics?.workloadBalance || 100,
+    skillCoverage: assignmentMetrics?.skillCoverage ?? 100,
+    licenseCompliance: assignmentMetrics?.licenseCompliance ?? 100,
+    fleetAlignment: assignmentMetrics?.fleetAlignment ?? 100,
+    workloadBalance: assignmentMetrics?.workloadBalance ?? 100,
     unassignedOrders:
       summary.unassignedOrders || result.unassignedOrders?.length || 0,
     objective: result.summary?.objective,

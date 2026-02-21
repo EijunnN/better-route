@@ -5,9 +5,11 @@ import { db } from "@/db";
 import { companyFieldDefinitions, orders, timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { type FieldDefinition, validateCustomFields } from "@/lib/custom-fields/validation";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { updateOrderSchema } from "@/lib/validations/order";
+import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
@@ -17,6 +19,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -63,7 +68,10 @@ export async function GET(
       .from(orders)
       .leftJoin(
         timeWindowPresets,
-        eq(orders.timeWindowPresetId, timeWindowPresets.id),
+        and(
+          eq(orders.timeWindowPresetId, timeWindowPresets.id),
+          eq(timeWindowPresets.active, true),
+        ),
       )
       .where(
         and(
@@ -105,6 +113,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.UPDATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -208,10 +219,14 @@ export async function PATCH(
     if (validatedData.customFields) {
       const existingCustomFields =
         (existing[0].customFields as Record<string, unknown>) || {};
-      updatePayload.customFields = {
+      const merged = {
         ...existingCustomFields,
         ...validatedData.customFields,
       };
+      // Remove fields explicitly set to null (allows deletion)
+      updatePayload.customFields = Object.fromEntries(
+        Object.entries(merged).filter(([_, v]) => v !== null)
+      );
     }
 
     const [updatedRecord] = await db
@@ -253,6 +268,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.DELETE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
