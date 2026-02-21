@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, eq, gte, lt } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
@@ -109,18 +109,33 @@ export async function GET(request: NextRequest) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Buscar el route_stop mas reciente del conductor para hoy.
-    // Se ordena por createdAt DESC para obtener la parada del job MAS NUEVO,
-    // evitando tomar paradas de un job anterior fallido del mismo dia.
-    const todayStops = await db.query.routeStops.findMany({
+    // Buscar TODAS las paradas del conductor para hoy (de todos los jobs).
+    // Esto incluye paradas de jobs anteriores (ej: órdenes fallidas) y del job más reciente.
+    const allTodayStops = await db.query.routeStops.findMany({
       where: and(
         eq(routeStops.companyId, tenantCtx.companyId),
         eq(routeStops.userId, driverId),
         gte(routeStops.createdAt, today),
         lt(routeStops.createdAt, tomorrow),
       ),
-      orderBy: [desc(routeStops.createdAt)],
-      limit: 1,
+      orderBy: [asc(routeStops.sequence)],
+      with: {
+        order: {
+          columns: {
+            id: true,
+            trackingId: true,
+            customerName: true,
+            customerPhone: true,
+            customerEmail: true,
+            notes: true,
+            weightRequired: true,
+            volumeRequired: true,
+            orderValue: true,
+            unitsRequired: true,
+            customFields: true,
+          },
+        },
+      },
     });
 
     // Buscar vehiculo asignado (para info complementaria)
@@ -132,9 +147,13 @@ export async function GET(request: NextRequest) {
       ),
     });
 
-    const hasStopsToday = todayStops.length > 0;
-    const activeJobId = hasStopsToday ? todayStops[0].jobId : null;
-    const routeVehicleId = hasStopsToday ? todayStops[0].vehicleId : null;
+    const hasStopsToday = allTodayStops.length > 0;
+    // Usar el job más reciente para metadata (distancia, duración)
+    const latestStop = hasStopsToday
+      ? allTodayStops.reduce((latest, s) => s.createdAt > latest.createdAt ? s : latest, allTodayStops[0])
+      : null;
+    const activeJobId = latestStop?.jobId ?? null;
+    const routeVehicleId = latestStop?.vehicleId ?? null;
 
     // Si no hay ruta para hoy, devolver conductor con vehiculo pero sin ruta
     if (!activeJobId) {
@@ -189,30 +208,22 @@ export async function GET(request: NextRequest) {
         })
       : assignedVehicle;
 
-    // Obtener todas las paradas del conductor para este job
-    const stops = await db.query.routeStops.findMany({
-      where: and(
-        eq(routeStops.jobId, activeJob.id),
-        eq(routeStops.userId, driverId),
-      ),
-      orderBy: [asc(routeStops.sequence)],
-      with: {
-        order: {
-          columns: {
-            id: true,
-            trackingId: true,
-            customerName: true,
-            customerPhone: true,
-            customerEmail: true,
-            notes: true,
-            weightRequired: true,
-            volumeRequired: true,
-            orderValue: true,
-            unitsRequired: true,
-            customFields: true,
-          },
-        },
-      },
+    // Usar todas las paradas del día (ya cargadas con órdenes desde la query inicial).
+    // Deduplicar por orderId: si una orden aparece en múltiples jobs, usar la del job más reciente.
+    const stopsByOrder = new Map<string, typeof allTodayStops[0]>();
+    for (const stop of allTodayStops) {
+      const existing = stopsByOrder.get(stop.orderId);
+      if (!existing || stop.createdAt > existing.createdAt) {
+        stopsByOrder.set(stop.orderId, stop);
+      }
+    }
+    const stops = [...stopsByOrder.values()].sort((a, b) => {
+      // Agrupar: primero stops activos (PENDING/IN_PROGRESS), luego terminados
+      const activeStatuses = ["PENDING", "IN_PROGRESS"];
+      const aActive = activeStatuses.includes(a.status) ? 0 : 1;
+      const bActive = activeStatuses.includes(b.status) ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      return (a.sequence ?? 0) - (b.sequence ?? 0);
     });
 
     // Si no hay paradas
@@ -305,6 +316,7 @@ export async function GET(request: NextRequest) {
     // Construir lista de paradas para la app movil
     const stopsData = stops.map((stop) => ({
       id: stop.id,
+      jobId: stop.jobId,
       sequence: stop.sequence,
       status: stop.status,
       // Ubicacion
@@ -344,6 +356,7 @@ export async function GET(request: NextRequest) {
     }));
 
     const routeId = stops[0].routeId;
+    const allJobIds = [...new Set(stops.map((s) => s.jobId))];
 
     return NextResponse.json({
       data: {
@@ -352,6 +365,7 @@ export async function GET(request: NextRequest) {
         route: {
           id: routeId,
           jobId: activeJob.id,
+          jobIds: allJobIds,
           jobCreatedAt: activeJob.createdAt.toISOString(),
           stops: stopsData,
         },
