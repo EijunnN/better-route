@@ -1,14 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { clearAuthCookies } from "@/lib/auth/auth";
+import { clearAuthCookies, invalidateCurrentSession } from "@/lib/auth/auth";
 
 /**
  * POST /api/auth/logout
  *
- * Logout the current user by clearing authentication cookies
+ * Logout the current user by invalidating the Redis session
+ * and clearing all authentication cookies.
  */
 export async function POST(_request: NextRequest) {
   try {
-    // Clear authentication cookies
+    // Invalidate Redis session + clear session cookie
+    await invalidateCurrentSession();
+
+    // Clear authentication cookies (access + refresh tokens)
     await clearAuthCookies();
 
     return NextResponse.json({
