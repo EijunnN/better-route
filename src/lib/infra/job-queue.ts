@@ -16,7 +16,12 @@ const activeJobs = new Map<string, JobState>();
 const MAX_CONCURRENT_JOBS = 3; // Configurable concurrency limit
 
 // Per-company lock to prevent concurrent optimizations using the same PENDING orders
-const companyOptimizationLocks = new Map<string, string>(); // companyId -> jobId
+// Lock persists after job completion until confirmation or 30-min timeout
+interface CompanyLock {
+  jobId: string;
+  completedAt?: Date; // Set when job completes, used for stale detection
+}
+const companyOptimizationLocks = new Map<string, CompanyLock>(); // companyId -> lock info
 
 /**
  * Calculate input hash for result caching
@@ -49,20 +54,31 @@ export function canStartJob(): boolean {
 /**
  * Acquire a per-company optimization lock.
  * Prevents two simultaneous optimizations from using the same PENDING orders.
- * Returns true if lock acquired, false if another optimization is running for this company.
+ * Lock persists after job completion until confirmation or 30-min fallback timeout.
+ * Returns true if lock acquired, false if another optimization holds the lock.
  */
 export function acquireCompanyLock(companyId: string, jobId: string): boolean {
-  const existingJobId = companyOptimizationLocks.get(companyId);
-  if (existingJobId) {
-    // Check if the existing job is still active
-    const existingJob = activeJobs.get(existingJobId);
+  const existing = companyOptimizationLocks.get(companyId);
+  if (existing) {
+    // Check if the existing job is still actively running
+    const existingJob = activeJobs.get(existing.jobId);
     if (existingJob && existingJob.status === "RUNNING") {
       return false; // Another optimization is running for this company
     }
+
+    // If the job completed but lock is still held (awaiting confirmation),
+    // check if it's been more than 30 minutes (stale fallback)
+    if (existing.completedAt) {
+      const elapsed = Date.now() - existing.completedAt.getTime();
+      if (elapsed < 30 * 60 * 1000) {
+        return false; // Lock still held, awaiting confirmation
+      }
+    }
+
     // Stale lock, clean it up
     companyOptimizationLocks.delete(companyId);
   }
-  companyOptimizationLocks.set(companyId, jobId);
+  companyOptimizationLocks.set(companyId, { jobId });
   return true;
 }
 
@@ -70,9 +86,19 @@ export function acquireCompanyLock(companyId: string, jobId: string): boolean {
  * Release a per-company optimization lock.
  */
 export function releaseCompanyLock(companyId: string, jobId: string): void {
-  const currentLockHolder = companyOptimizationLocks.get(companyId);
-  if (currentLockHolder === jobId) {
+  const current = companyOptimizationLocks.get(companyId);
+  if (current?.jobId === jobId) {
     companyOptimizationLocks.delete(companyId);
+  }
+}
+
+/**
+ * Mark a company lock as completed (job finished, awaiting confirmation).
+ */
+export function markCompanyLockCompleted(companyId: string, jobId: string): void {
+  const current = companyOptimizationLocks.get(companyId);
+  if (current?.jobId === jobId) {
+    current.completedAt = new Date();
   }
 }
 

@@ -11,6 +11,8 @@ import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-c
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 // GET - Get single optimization configuration
 export async function GET(
   request: NextRequest,
@@ -28,6 +30,9 @@ export async function GET(
   const { id } = await params;
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const [config] = await db
       .select()
       .from(optimizationConfigurations)
@@ -61,6 +66,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.UPDATE);
+  if (authResult instanceof NextResponse) return authResult;
+
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
     return NextResponse.json(
@@ -103,6 +111,28 @@ export async function PATCH(
             "Cannot modify configuration while optimization is in progress",
         },
         { status: 400 },
+      );
+    }
+
+    // Check if there are any RUNNING jobs for this configuration
+    const runningJobs = await db
+      .select({ id: optimizationJobs.id })
+      .from(optimizationJobs)
+      .where(
+        and(
+          eq(optimizationJobs.configurationId, id),
+          eq(optimizationJobs.status, "RUNNING"),
+        ),
+      )
+      .limit(1);
+
+    if (runningJobs.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Cannot modify configuration while an optimization job is running.",
+        },
+        { status: 409 },
       );
     }
 
@@ -167,6 +197,9 @@ export async function DELETE(
   const { id } = await params;
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.DELETE);
+    if (authResult instanceof NextResponse) return authResult;
+
     // Check if configuration exists
     const [existing] = await db
       .select()

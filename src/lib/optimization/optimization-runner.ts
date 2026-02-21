@@ -28,6 +28,7 @@ import {
   failJob,
   getCachedResult,
   isJobAborting,
+  markCompanyLockCompleted,
   registerJob,
   releaseCompanyLock,
   setJobTimeout,
@@ -213,6 +214,7 @@ export interface OptimizationResult {
     fleetAlignment: number;
     workloadBalance: number;
   };
+  warnings?: string[];
   summary: {
     optimizedAt: string;
     objective: string;
@@ -412,9 +414,13 @@ export async function runOptimization(
 
   // Get service time from config (in minutes), convert to seconds
   // Default to 10 minutes (600 seconds) if not set
-  const serviceTimeSeconds = (config.serviceTimeMinutes || 10) * 60;
+  const serviceTimeMinutes = config.serviceTimeMinutes ?? 10;
+  if (config.serviceTimeMinutes == null) {
+    console.warn(`[Optimization] Service time not configured, using default: ${serviceTimeMinutes} minutes`);
+  }
+  const serviceTimeSeconds = serviceTimeMinutes * 60;
   console.log(
-    `[Optimization] Service time configured: ${config.serviceTimeMinutes} minutes (${serviceTimeSeconds} seconds)`,
+    `[Optimization] Service time configured: ${serviceTimeMinutes} minutes (${serviceTimeSeconds} seconds)`,
   );
 
   // Prepare orders with location info - filter out orders with missing coordinates
@@ -504,6 +510,27 @@ export async function runOptimization(
     timeWindowEnd: "22:00",
   };
 
+  const depotLat = parseFloat(config.depotLatitude);
+  const depotLng = parseFloat(config.depotLongitude);
+  const hasValidDepot = !isNaN(depotLat) && !isNaN(depotLng) && depotLat !== 0 && depotLng !== 0;
+
+  // Validate vehicles have origin coordinates (use depot as fallback)
+  for (const vehicle of selectedVehicles) {
+    if (vehicle.originLatitude == null || vehicle.originLongitude == null) {
+      if (hasValidDepot) {
+        vehicle.originLatitude = String(depotLat);
+        vehicle.originLongitude = String(depotLng);
+        console.warn(
+          `[Optimization] Vehicle "${vehicle.name || vehicle.plate || vehicle.id}" has no origin coordinates. Using depot as fallback.`,
+        );
+      } else {
+        throw new Error(
+          `El vehículo "${vehicle.name || vehicle.plate || vehicle.id}" no tiene coordenadas de origen y no hay depósito configurado.`,
+        );
+      }
+    }
+  }
+
   // Load optimization preset (default for company)
   const preset = await db.query.optimizationPresets.findFirst({
     where: and(
@@ -512,6 +539,12 @@ export async function runOptimization(
       eq(optimizationPresets.active, true),
     ),
   });
+
+  if (!preset) {
+    console.warn(
+      `[Optimization] No default optimization preset found for company ${input.companyId}. Using system defaults.`,
+    );
+  }
 
   // Get groupSameLocation setting from preset
   const groupSameLocation = preset?.groupSameLocation ?? true;
@@ -543,11 +576,11 @@ export async function runOptimization(
       (config?.objective as "DISTANCE" | "TIME" | "BALANCED") || "BALANCED",
     // Company-specific optimization profile for capacity mapping
     profile: companyProfile,
-    // Apply preset settings if available
+    // Apply preset settings if available (sensible defaults when no preset)
     balanceVisits: preset?.balanceVisits ?? false,
-    maxDistanceKm: preset?.maxDistanceKm ?? undefined,
-    maxTravelTimeMinutes: preset?.vehicleRechargeTime ?? undefined, // vehicleRechargeTime acts as max travel time
-    trafficFactor: preset?.trafficFactor ?? undefined,
+    maxDistanceKm: preset?.maxDistanceKm ?? undefined, // undefined = no limit
+    maxTravelTimeMinutes: preset?.vehicleRechargeTime ?? undefined, // undefined = no limit
+    trafficFactor: preset?.trafficFactor ?? 1.0,
     // Route end configuration
     routeEndMode:
       (preset?.routeEndMode as
@@ -574,6 +607,7 @@ export async function runOptimization(
   // Create zone batches if zones are configured
   const hasZones = zonesData.length > 0;
   const routes: OptimizationRoute[] = [];
+  const optimizationWarnings: string[] = [];
   const unassignedOrders: Array<{
     orderId: string;
     trackingId: string;
@@ -601,12 +635,13 @@ export async function runOptimization(
 
   if (hasZones) {
     // Zone-aware optimization: run optimization per zone batch
-    const zoneBatches = createZoneBatches(
+    const { batches: zoneBatches, warnings: zoneWarnings } = createZoneBatches(
       ordersWithLocation,
       vehiclesWithZones,
       zonesData,
       dayOfWeek,
     );
+    optimizationWarnings.push(...zoneWarnings);
 
     // IMPORTANT: Sort batches to process "unzoned" (Sin Zona) FIRST
     // This ensures unrestricted vehicles serve orders that ONLY they can handle
@@ -1256,6 +1291,7 @@ export async function runOptimization(
       timeWindowComplianceRate: Math.round(timeWindowComplianceRate),
     },
     assignmentMetrics,
+    warnings: optimizationWarnings.length > 0 ? optimizationWarnings : undefined,
     summary: {
       optimizedAt: new Date().toISOString(),
       objective: config.objective,
@@ -1380,9 +1416,10 @@ export async function createAndExecuteJob(
         jobId,
       );
 
-      // Complete job and release lock
+      // Complete job - mark lock as completed (awaiting confirmation)
+      // Lock will be released on confirmation or after 30 min stale fallback
       await completeJob(jobId, result);
-      releaseCompanyLock(input.companyId, jobId);
+      markCompanyLockCompleted(input.companyId, jobId);
     } catch (error) {
       releaseCompanyLock(input.companyId, jobId);
       if (isJobAborting(jobId)) {

@@ -21,6 +21,8 @@ import {
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/authorization";
 // GET - List optimization configurations
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
@@ -35,6 +37,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.READ);
+    if (authResult instanceof NextResponse) return authResult;
+
     const query = optimizationConfigQuerySchema.parse(
       Object.fromEntries(searchParams),
     );
@@ -114,6 +119,9 @@ export async function POST(request: NextRequest) {
   setTenantContext(tenantCtx);
 
   try {
+    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.CREATE);
+    if (authResult instanceof NextResponse) return authResult;
+
     const body = await request.json();
     const data = optimizationConfigSchema.parse(body);
 
@@ -276,12 +284,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate depot coordinates (only if provided)
-    if (data.depotLatitude && data.depotLongitude) {
+    if (data.depotLatitude || data.depotLongitude) {
+      if (!data.depotLatitude || !data.depotLongitude) {
+        return NextResponse.json(
+          { error: "Both depot latitude and longitude must be provided together" },
+          { status: 400 },
+        );
+      }
       const lat = parseFloat(data.depotLatitude);
       const lng = parseFloat(data.depotLongitude);
-      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      if (Number.isNaN(lat) || Number.isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
         return NextResponse.json(
-          { error: "Invalid depot coordinates" },
+          { error: "Invalid depot coordinates. Latitude must be -90 to 90, longitude -180 to 180." },
           { status: 400 },
         );
       }
