@@ -30,6 +30,25 @@ services:
     profiles:
       - routing
 
+  # PyVRP - Advanced Vehicle Routing Optimization (Python/PyVRP)
+  pyvrp:
+    build: ./pyvrp-service
+    container_name: pyvrp
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - OSRM_URL=http://osrm-backend:5000
+    depends_on:
+      - osrm-backend
+    profiles:
+      - routing
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # PostgreSQL with PostGIS (optional - for production)
   # postgres:
   #   image: postgis/postgis:16-3.4
