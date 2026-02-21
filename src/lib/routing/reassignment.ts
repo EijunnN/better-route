@@ -915,13 +915,36 @@ export async function executeReassignment(
       ),
     });
 
+    // Only reassign PENDING stops - IN_PROGRESS or COMPLETED stops should not be moved
+    const pendingStopsForReassignment = currentStops.filter(
+      (s) => s.status === "PENDING",
+    );
+    const inProgressStops = currentStops.filter(
+      (s) => s.status === "IN_PROGRESS",
+    );
+
+    if (pendingStopsForReassignment.length === 0) {
+      errors.push(
+        `No pending stops available for reassignment on route ${reassignment.routeId}. All stops are in progress or completed.`,
+      );
+      continue;
+    }
+
+    if (inProgressStops.length > 0) {
+      warnings.push(
+        `${inProgressStops.length} in-progress stop(s) on route ${reassignment.routeId} were skipped (not reassigned).`,
+      );
+    }
+
+    const pendingStopIds = pendingStopsForReassignment.map((s) => s.id);
+
     operations.push({
       routeId: reassignment.routeId,
       vehicleId: reassignment.vehicleId,
       toDriverId: reassignment.toDriverId,
       toDriverName: replacementDriver.name,
-      stopIds: reassignment.stopIds,
-      stopIdsBeforeUpdate: currentStops.map((s) => ({
+      stopIds: pendingStopIds,
+      stopIdsBeforeUpdate: pendingStopsForReassignment.map((s) => ({
         id: s.id,
         driverId: s.userId,
         status: s.status,
@@ -935,6 +958,44 @@ export async function executeReassignment(
       reassignedStops: 0,
       reassignedRoutes: 0,
       errors,
+      warnings,
+    };
+  }
+
+  // Phase 0: Validate capacity for each replacement driver before executing
+  const stopCountsByDriver = new Map<string, number>();
+  for (const op of operations) {
+    const current = stopCountsByDriver.get(op.toDriverId) || 0;
+    stopCountsByDriver.set(op.toDriverId, current + op.stopIds.length);
+  }
+
+  for (const [driverId, newStopsCount] of stopCountsByDriver) {
+    const existingPendingStops = await db.query.routeStops.findMany({
+      where: and(
+        eq(routeStops.companyId, companyId),
+        eq(routeStops.userId, driverId),
+        eq(routeStops.status, "PENDING"),
+      ),
+      columns: { id: true },
+    });
+
+    const maxCapacity = 50;
+    const projectedStops = existingPendingStops.length + newStopsCount;
+
+    if (projectedStops > maxCapacity) {
+      errors.push(
+        `Replacement driver ${driverId} cannot absorb ${newStopsCount} stops. Current: ${existingPendingStops.length}, Projected: ${projectedStops}, Max: ${maxCapacity}`,
+      );
+    }
+  }
+
+  if (errors.length > 0) {
+    return {
+      success: false,
+      reassignedStops: 0,
+      reassignedRoutes: 0,
+      errors,
+      warnings,
     };
   }
 

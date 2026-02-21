@@ -1,9 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { vehicleStatusHistory, vehicles } from "@/db/schema";
+import { routeStops, vehicleStatusHistory, vehicles } from "@/db/schema";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { EntityType, Action } from "@/lib/auth/authorization";
 import {
   requiresActiveRouteCheck,
   STATUS_DISPLAY_NAMES,
@@ -35,6 +37,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authResult = await requireRoutePermission(request, EntityType.VEHICLE, Action.CHANGE_STATUS);
+    if (authResult instanceof NextResponse) return authResult;
+
     const tenantCtx = extractTenantContext(request);
     if (!tenantCtx) {
       return NextResponse.json(
@@ -75,13 +80,27 @@ export async function POST(
 
     // Check for active routes/assignments if required
     if (requiresActiveRouteCheck(currentStatus, newStatus)) {
-      const hasActiveRoutes = currentStatus === "ASSIGNED"; // TODO: Implement actual route checking when planifications module exists
+      // Check for active route stops assigned to this vehicle
+      const activeStops = await db
+        .select({ id: routeStops.id })
+        .from(routeStops)
+        .where(
+          and(
+            eq(routeStops.vehicleId, id),
+            eq(routeStops.companyId, tenantCtx.companyId),
+            notInArray(routeStops.status, ["COMPLETED", "FAILED", "SKIPPED"]),
+          ),
+        )
+        .limit(1);
+
+      const hasActiveRoutes = activeStops.length > 0;
+
       if (hasActiveRoutes && !validatedData.force) {
         const errorResponse: StatusTransitionError = {
           valid: false,
           reason: `El vehículo tiene rutas activas asignadas. Use el parámetro 'force: true' para forzar el cambio después de reasignar las rutas.`,
           requiresReassignment: true,
-          activeRouteCount: 0, // TODO: Get actual count from planifications
+          activeRouteCount: activeStops.length,
           suggestedAlternativeStatuses:
             STATUS_TRANSITION_RULES[currentStatus]?.filter(
               (s) => s !== newStatus && s !== "INACTIVE",
