@@ -8,6 +8,7 @@ Una alternativa open-source a SimpliRoute, OptimoRoute y LogiNext — sin costos
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
 ![VROOM](https://img.shields.io/badge/VROOM-1.14-green)
+![PyVRP](https://img.shields.io/badge/PyVRP-0.13-orange?logo=python)
 ![License](https://img.shields.io/badge/License-MIT-yellow?logo=opensourceinitiative)
 
 ---
@@ -55,14 +56,23 @@ Las empresas de logistica y distribucion enfrentan un problema critico: las solu
 ## Caracteristicas
 
 ### Optimizacion de Rutas
-- **Motor VROOM + OSRM** — Algoritmos de optimizacion de vehiculos de clase mundial
-- **Distancias reales** — Calculo basado en red vial, no linea recta
+- **Dual Engine: VROOM + PyVRP** — Dos motores de optimizacion de clase mundial, seleccionables por el usuario
+- **VROOM + OSRM** — Rapido, ideal para operaciones de ultima milla con muchas paradas
+- **PyVRP (Python)** — Avanzado, soporta restricciones complejas, multi-depot, multi-start solving
+- **Multi-start solving** — PyVRP ejecuta 3 corridas con distintas semillas y conserva la mejor solucion
+- **Distancias reales** — Calculo basado en red vial via OSRM, no linea recta
+- **Presets de optimizacion** — Configuraciones reutilizables (factor de trafico, distancia maxima, ventanas flexibles, rutas abiertas, balance de carga, etc.)
+- **Intercambio de vehiculos** — Swap completo de rutas entre vehiculos con reoptimizacion automatica
 - **Restricciones avanzadas:**
   - Capacidad de vehiculos (peso, volumen, bultos)
-  - Ventanas horarias de entrega
+  - Ventanas horarias de entrega (con tolerancia flexible configurable)
   - Habilidades requeridas (cadena de frio, carga pesada, etc.)
   - Horarios de trabajo de conductores
   - Zonas de servicio
+  - Distancia maxima por ruta
+  - Factor de trafico configurable (0-100%)
+  - Rutas abiertas (sin retorno a origen)
+  - Minimizacion de vehiculos basada en capacidad real
 
 ### Gestion de Pedidos
 - Importacion masiva desde CSV/Excel
@@ -142,12 +152,13 @@ Las empresas de logistica y distribucion enfrentan un problema critico: las solu
            |
            v
 +------------------------------------------------------------------+
-|                    ROUTING ENGINE                                 |
-|  +------------------------+  +------------------------+           |
-|  |         VROOM          |  |         OSRM           |           |
-|  |   (Vehicle Routing     |<-|   (Open Source         |           |
-|  |    Optimization)       |  |    Routing Machine)    |           |
-|  +------------------------+  +------------------------+           |
+|                    ROUTING ENGINES                                |
+|  +------------------+  +------------------+  +----------------+  |
+|  |      VROOM       |  |      PyVRP       |  |     OSRM       |  |
+|  |  (Fast VRP,      |  |  (Advanced VRP,  |  |  (Road network |  |
+|  |   last-mile)     |  |   multi-start,   |  |   distances)   |  |
+|  |                  |  |   multi-depot)   |  |                |  |
+|  +------------------+  +------------------+  +----------------+  |
 +------------------------------------------------------------------+
 ```
 
@@ -156,9 +167,10 @@ Las empresas de logistica y distribucion enfrentan un problema critico: las solu
 ## Requisitos
 
 ### Minimos (Desarrollo)
-- **Node.js** 20+ o **Bun** 1.0+
+- **Bun** 1.0+ (recomendado) o **Node.js** 20+
+- **Python** 3.11+ (para motor PyVRP)
 - **PostgreSQL** 15+
-- **Docker** (para VROOM/OSRM)
+- **Docker** (para VROOM/OSRM/PyVRP)
 - 4GB RAM, 2 CPU cores
 
 ### Recomendados (Produccion)
@@ -207,9 +219,10 @@ JWT_SECRET=tu-secreto-super-seguro-minimo-32-caracteres
 UPSTASH_REDIS_REST_URL=https://tu-instancia.upstash.io
 UPSTASH_REDIS_REST_TOKEN=tu-token
 
-# VROOM y OSRM (motor de rutas)
+# Motores de rutas
 VROOM_URL=http://localhost:5000
 OSRM_URL=http://localhost:5001
+PYVRP_URL=http://localhost:8000
 
 # Cloudflare R2 para almacenamiento (fotos de evidencia)
 R2_ACCOUNT_ID=tu-account-id
@@ -249,7 +262,8 @@ docker compose --profile routing up -d
 
 Esto inicia:
 - **OSRM** en `http://localhost:5001` — calculo de distancias/tiempos
-- **VROOM** en `http://localhost:5000` — optimizacion de rutas
+- **VROOM** en `http://localhost:5000` — optimizacion de rutas (motor rapido)
+- **PyVRP** en `http://localhost:8000` — optimizacion avanzada (motor Python)
 
 ### 6. Configurar base de datos
 
@@ -331,11 +345,11 @@ planeamiento/
 │   │   │   ├── custom-fields/ # Admin campos personalizados
 │   │   │   ├── workflow/      # Config workflow states
 │   │   │   └── ...
-│   │   └── api/               # API Routes
+│   │   └── api/               # API Routes (~70 handlers)
 │   │       ├── auth/
 │   │       ├── orders/
 │   │       ├── companies/     # CRUD empresas + field definitions
-│   │       ├── optimization/
+│   │       ├── optimization/  # Jobs, config, swap, confirm, reassign
 │   │       ├── mobile/        # APIs para app movil
 │   │       └── monitoring/
 │   ├── components/            # Componentes React
@@ -344,16 +358,25 @@ planeamiento/
 │   │   ├── custom-fields/    # Admin campos personalizados
 │   │   ├── orders/           # Formularios y tablas de ordenes
 │   │   ├── monitoring/       # Vista monitoreo con mapa
-│   │   └── planificacion/    # Planificador de rutas + CSV import
+│   │   └── optimization/     # Dashboard con swap, presets, resultados
 │   ├── db/                    # Drizzle ORM
 │   │   ├── schema.ts         # Definicion de tablas
 │   │   └── seed.ts           # Datos de ejemplo
+│   ├── tests/                 # Tests de integracion
+│   │   └── integration/      # 170+ tests, real PostgreSQL
 │   └── lib/                   # Logica de negocio
-│       ├── auth/             # Autenticacion y autorizacion
+│       ├── auth/             # Autenticacion, RBAC, autorizacion
+│       ├── optimization/     # VROOM optimizer + PyVRP adapter + runner
 │       ├── custom-fields/    # Validacion y seed de campos custom
 │       ├── workflow/         # Seed de workflow states
 │       ├── infra/            # Infraestructura (cache, tenant)
 │       └── services/         # Servicios externos (VROOM, S3)
+├── pyvrp-service/             # Microservicio Python (PyVRP)
+│   ├── solver.py             # Motor VRP con multi-start
+│   ├── models.py             # Modelos Pydantic
+│   ├── main.py               # FastAPI server
+│   ├── requirements.txt      # PyVRP==0.13.3, FastAPI, etc.
+│   └── Dockerfile
 ├── drizzle/                   # Migraciones SQL
 ├── docker/                    # Configuracion Docker
 │   ├── osrm/                 # Datos de mapas
@@ -449,18 +472,24 @@ X-Company-Id: <uuid>  # Para endpoints multi-tenant
 |--------|----------|-------------|
 | GET | `/api/orders` | Listar pedidos |
 | POST | `/api/orders/import` | Importar CSV |
-| POST | `/api/optimization/jobs` | Crear optimizacion |
+| POST | `/api/optimization/configure` | Crear configuracion de optimizacion |
+| POST | `/api/optimization/jobs` | Crear y ejecutar optimizacion |
 | GET | `/api/optimization/jobs/:id` | Estado de optimizacion |
 | POST | `/api/optimization/jobs/:id/confirm` | Confirmar plan |
+| POST | `/api/optimization/jobs/:id/swap-vehicles` | Intercambiar rutas entre vehiculos |
+| GET | `/api/optimization/engines` | Motores disponibles (VROOM, PyVRP) |
+| GET | `/api/optimization-presets` | Presets de optimizacion |
+| POST | `/api/driver-assignment/manual` | Asignacion manual de conductor |
+| POST | `/api/driver-assignment/suggestions` | Sugerencias de conductor |
+| POST | `/api/reassignment/options` | Opciones de reasignacion |
 | GET | `/api/monitoring/geojson` | GeoJSON para mapa |
+| GET | `/api/monitoring/summary` | Resumen de monitoreo |
 | POST | `/api/mobile/driver/location` | Enviar ubicacion GPS |
 | GET | `/api/mobile/driver/my-route` | Ruta del conductor |
 | PATCH | `/api/route-stops/:id` | Actualizar parada |
 | GET | `/api/companies/:id/field-definitions` | Listar campos custom |
-| POST | `/api/companies/:id/field-definitions` | Crear campo custom |
-| PATCH | `/api/companies/:id/field-definitions/:fieldId` | Editar campo |
 | GET | `/api/mobile/driver/workflow-states` | Estados de workflow |
-| GET | `/api/mobile/driver/field-definitions` | Campos custom (movil) |
+| GET | `/api/tracking/:token` | Tracking publico de pedido |
 
 ---
 
@@ -507,14 +536,27 @@ flutter build apk --release
 
 ## Roadmap
 
-### Integracion PyVRP
-Migrar el motor de optimizacion de VROOM a [PyVRP](https://github.com/PyVRP/PyVRP) para obtener mayor control sobre los algoritmos de ruteo, soporte nativo de restricciones avanzadas y mejor rendimiento en instancias grandes.
-
-### Sistema mas custom
-Hacer la plataforma mas configurable y adaptable a distintos tipos de operacion logistica. *(Detalles por definir)*
+### ~~Integracion PyVRP~~ ✅ Completado
+Motor PyVRP integrado como microservicio Python. Multi-start solving (3 corridas), soporte completo de presets, multi-depot, restricciones avanzadas. Seleccionable junto a VROOM desde la configuracion de optimizacion.
 
 ### ~~Personalizacion de pedidos~~ ✅ Completado
 Cada empresa puede definir campos personalizados en sus pedidos desde la UI de admin. Los campos se renderizan dinamicamente en formularios, tablas, CSV import y la app movil.
+
+### ~~Presets de optimizacion~~ ✅ Completado
+Configuraciones reutilizables que fluyen desde la UI hasta ambos motores (VROOM y PyVRP): factor de trafico, distancia maxima, ventanas flexibles, rutas abiertas, balance de carga, minimizacion de vehiculos, etc.
+
+### ~~Intercambio de vehiculos~~ ✅ Completado
+Swap completo de rutas entre vehiculos con reoptimizacion automatica via VROOM desde la interfaz de planificacion.
+
+### ~~Tracking publico~~ ✅ Completado
+Pagina publica de seguimiento de pedidos via token unico. Los clientes finales pueden ver el estado de su entrega sin necesidad de cuenta.
+
+### Proximas mejoras
+- **Reoptimizacion en vivo** — Recalcular rutas automaticamente cuando un conductor reporta un problema
+- **ETA en tiempo real** — Notificaciones al cliente final con hora estimada de llegada actualizada
+- **Reportes y analytics** — Dashboards con KPIs historicos (cumplimiento, tiempos, costos)
+- **Webhooks** — Notificaciones push a sistemas externos en eventos clave
+- **Multi-dia** — Planificacion de rutas que abarcan multiples dias
 
 ### App Movil — [better-route-mobile](https://github.com/EijunnN/better-route-mobile)
 Evolucionar la app Flutter con nuevas funcionalidades: tracking GPS en tiempo real (SSE), firma digital de recepcion, modo offline mejorado y notificaciones push.
@@ -534,16 +576,18 @@ Evolucionar la app Flutter con nuevas funcionalidades: tracking GPS en tiempo re
 | Cache | Upstash Redis |
 | Storage | Cloudflare R2 (S3) |
 | Auth | JWT (jose) |
-| Routing Engine | VROOM + OSRM |
+| Routing Engine | VROOM + PyVRP + OSRM |
+| PyVRP Service | Python 3.11, FastAPI, PyVRP 0.13 |
 | Mobile | Flutter + Riverpod |
-| Testing | Playwright |
+| Testing | Bun Test (integration), Playwright (e2e) |
 | Linting | Biome |
 
 ---
 
 ## Agradecimientos
 
-- [VROOM Project](https://github.com/VROOM-Project/vroom) — Motor de optimizacion
+- [VROOM Project](https://github.com/VROOM-Project/vroom) — Motor de optimizacion rapido
+- [PyVRP](https://github.com/PyVRP/PyVRP) — Motor de optimizacion avanzado
 - [OSRM](https://project-osrm.org/) — Calculo de rutas
 - [Next.js](https://nextjs.org/) — Framework web
 - [Drizzle ORM](https://orm.drizzle.team/) — ORM TypeScript
