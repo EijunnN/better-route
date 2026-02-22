@@ -20,10 +20,12 @@ app = FastAPI(
 @app.get("/health")
 async def health():
     """Health check endpoint."""
+    from importlib.metadata import version
+
     return {
         "status": "ok",
         "engine": "pyvrp",
-        "version": pyvrp.__version__,
+        "version": version("pyvrp"),
     }
 
 

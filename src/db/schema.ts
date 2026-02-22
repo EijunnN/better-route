@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -726,7 +726,7 @@ export const orders = pgTable("orders", {
   companyId: uuid("company_id")
     .notNull()
     .references(() => companies.id, { onDelete: "restrict" }),
-  trackingId: varchar("tracking_id", { length: 50 }).notNull().unique(),
+  trackingId: varchar("tracking_id", { length: 50 }).notNull(),
   customerName: varchar("customer_name", { length: 255 }),
   customerPhone: varchar("customer_phone", { length: 50 }),
   customerEmail: varchar("customer_email", { length: 255 }),
@@ -775,6 +775,9 @@ export const orders = pgTable("orders", {
   index("orders_company_id_idx").on(table.companyId),
   index("orders_status_idx").on(table.status),
   index("orders_company_status_idx").on(table.companyId, table.status),
+  uniqueIndex("orders_tracking_id_active_unique")
+    .on(table.trackingId)
+    .where(sql`${table.active} = true`),
 ]);
 
 export const ordersRelations = relations(orders, ({ one }) => ({
@@ -859,6 +862,8 @@ export const optimizationConfigurations = pgTable(
     // Strategy parameters
     penaltyFactor: integer("penalty_factor").notNull().default(3),
     maxRoutes: integer("max_routes"),
+    // Engine selection
+    optimizerType: varchar("optimizer_type", { length: 20 }).notNull().default("VROOM"), // VROOM, PYVRP, AUTO
     // Metadata
     status: varchar("status", { length: 50 }).notNull().default("DRAFT"), // DRAFT, CONFIGURED, CONFIRMED
     confirmedAt: timestamp("confirmed_at"),

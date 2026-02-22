@@ -33,6 +33,17 @@ const TIME_FORMAT = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
 // Helper to transform empty strings to null
 const emptyStringToNull = (val: unknown) => (val === "" ? null : val);
 
+// Helper to normalize date-only strings to ISO datetime (DatePicker sends "2026-02-21", Zod expects "2026-02-21T00:00:00Z")
+const dateToDatetime = (val: unknown): unknown => {
+  if (val === "" || val === null || val === undefined) return null;
+  if (typeof val !== "string") return val;
+  // Already a full datetime
+  if (val.includes("T")) return val;
+  // Date-only (YYYY-MM-DD) → append T00:00:00Z
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return `${val}T00:00:00Z`;
+  return val;
+};
+
 // Helper to normalize time values (strip seconds and handle empty)
 const normalizeTime = (val: unknown): string | null => {
   if (val === "" || val === null || val === undefined) return null;
@@ -169,11 +180,11 @@ export const vehicleSchema = z
       z.enum(LICENSE_CATEGORIES).optional().nullable(),
     ),
     insuranceExpiry: z.preprocess(
-      emptyStringToNull,
+      dateToDatetime,
       z.string().datetime().optional().nullable(),
     ),
     inspectionExpiry: z.preprocess(
-      emptyStringToNull,
+      dateToDatetime,
       z.string().datetime().optional().nullable(),
     ),
 
@@ -311,11 +322,11 @@ export const updateVehicleSchema = z.object({
   lifting: z.boolean().optional(),
   licenseRequired: nullableEnum(LICENSE_CATEGORIES),
   insuranceExpiry: z.preprocess(
-    emptyToNull,
+    (v) => dateToDatetime(emptyToNull(v)),
     z.string().datetime().optional().nullable(),
   ),
   inspectionExpiry: z.preprocess(
-    emptyToNull,
+    (v) => dateToDatetime(emptyToNull(v)),
     z.string().datetime().optional().nullable(),
   ),
   status: z.enum(VEHICLE_STATUS).optional(),

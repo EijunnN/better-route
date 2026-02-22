@@ -98,6 +98,7 @@ interface OptimizationResult {
     optimizedAt: string;
     objective: string;
     processingTimeMs: number;
+    engineUsed?: string;
   };
   depot?: {
     latitude: number;

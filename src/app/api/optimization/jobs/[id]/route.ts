@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { cancelJob as cancelJobQueue } from "@/lib/infra/job-queue";
+import { cancelJob as cancelJobQueue, releaseCompanyLock } from "@/lib/infra/job-queue";
 import { setTenantContext } from "@/lib/infra/tenant";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
@@ -78,7 +78,7 @@ export async function GET(
   }
 }
 
-// DELETE - Cancel running job
+// DELETE - Cancel running job or delete completed job
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -110,18 +110,26 @@ export async function DELETE(
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    // Check if job can be cancelled
-    if (job.status !== "PENDING" && job.status !== "RUNNING") {
-      return NextResponse.json(
-        {
-          error: "Job cannot be cancelled",
-          reason: `Job is in ${job.status} state`,
+    // For COMPLETED/FAILED/CANCELLED jobs: soft-delete and release company lock
+    if (job.status === "COMPLETED" || job.status === "FAILED" || job.status === "CANCELLED") {
+      await db
+        .update(optimizationJobs)
+        .set({ status: "CANCELLED", cancelledAt: new Date(), updatedAt: new Date() })
+        .where(eq(optimizationJobs.id, id));
+
+      // Release the company lock so user can start a new optimization
+      releaseCompanyLock(tenantCtx.companyId, id);
+
+      return NextResponse.json({
+        data: {
+          id: id,
+          status: "CANCELLED",
+          message: "Job deleted and lock released",
         },
-        { status: 400 },
-      );
+      });
     }
 
-    // Attempt to cancel the job
+    // For PENDING/RUNNING jobs: cancel via queue
     const cancelled = await cancelJobQueue(id);
 
     if (!cancelled) {
@@ -130,6 +138,9 @@ export async function DELETE(
         { status: 400 },
       );
     }
+
+    // Release the company lock
+    releaseCompanyLock(tenantCtx.companyId, id);
 
     return NextResponse.json({
       data: {

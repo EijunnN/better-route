@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, List, Loader2, Map as MapIcon, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, Link2, List, Loader2, Map as MapIcon, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
   AlertDialog,
@@ -14,6 +14,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { OrderForm } from "./order-form";
 import { useOrders, type Order } from "./orders-context";
@@ -241,6 +248,8 @@ export function OrdersListView() {
           onCancel={actions.handleCloseForm}
         />
       )}
+
+      <TrackingLinkDialog />
     </div>
   );
 }
@@ -286,6 +295,15 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
         );
       })}
       <td className="p-4 text-right">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => actions.handleGenerateTrackingLink(order.id)}
+          disabled={state.isGeneratingLink}
+          title="Generar enlace de seguimiento"
+        >
+          <Link2 className="h-4 w-4" />
+        </Button>
         <Button variant="ghost" size="sm" onClick={() => actions.handleEdit(order)} disabled={state.deletingId === order.id}>
           Editar
         </Button>
@@ -315,6 +333,65 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
         </AlertDialog>
       </td>
     </tr>
+  );
+}
+
+function TrackingLinkDialog() {
+  const { state, actions } = useOrders();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!state.trackingLink) return;
+    await navigator.clipboard.writeText(state.trackingLink.url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Dialog open={!!state.trackingLink} onOpenChange={(open) => { if (!open) actions.clearTrackingLink(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Link2 className="h-5 w-5" />
+            Enlace de Seguimiento
+          </DialogTitle>
+          <DialogDescription>
+            Comparte este enlace con el cliente para que pueda rastrear el pedido <strong>{state.trackingLink?.trackingId}</strong>.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              value={state.trackingLink?.url || ""}
+              className="flex-1 px-3 py-2 border rounded-md bg-muted text-sm font-mono"
+            />
+            <Button size="sm" variant="outline" onClick={handleCopy}>
+              {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                if (state.trackingLink) window.open(state.trackingLink.url, "_blank");
+              }}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Abrir enlace
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleCopy}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              {copied ? "Copiado" : "Copiar enlace"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -112,13 +112,15 @@ export class PyVRPAdapter implements IOptimizer {
           time_window_end: config.depot.timeWindowEnd,
         },
         objective: config.objective,
-        balance_visits: config.balanceVisits,
+        balance_visits: config.balanceVisits ?? false,
         max_distance_km: config.maxDistanceKm,
         max_travel_time_minutes: config.maxTravelTimeMinutes,
+        traffic_factor: config.trafficFactor ?? 50,
         route_end_mode: config.routeEndMode,
-        minimize_vehicles: config.minimizeVehicles,
+        minimize_vehicles: config.minimizeVehicles ?? false,
+        open_start: config.openStart ?? false,
+        flexible_time_windows: config.flexibleTimeWindows ?? false,
         max_routes: config.maxRoutes,
-        // PyVRP specific options
         timeout_seconds: Math.floor((config.timeoutMs || this.config.timeoutMs) / 1000),
       },
     };

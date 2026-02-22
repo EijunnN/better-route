@@ -52,11 +52,14 @@ class Depot(BaseModel):
 class Config(BaseModel):
     depot: Depot
     objective: str = "BALANCED"  # DISTANCE | TIME | BALANCED
-    balance_visits: bool = True
+    balance_visits: bool = False
     max_distance_km: Optional[float] = None
     max_travel_time_minutes: Optional[float] = None
-    route_end_mode: Optional[str] = "RETURN_TO_DEPOT"
-    minimize_vehicles: bool = True
+    traffic_factor: Optional[int] = 50  # 0-100 scale (0=no traffic, 100=heavy)
+    route_end_mode: Optional[str] = "DRIVER_ORIGIN"
+    minimize_vehicles: bool = False
+    open_start: bool = False
+    flexible_time_windows: bool = False
     max_routes: Optional[int] = None
     timeout_seconds: int = 60
 

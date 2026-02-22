@@ -100,6 +100,7 @@ export const optimizationConfigSchema = z
     timeWindowStrictness: z.enum(TIME_WINDOW_STRICTNESS_VALUES).default("SOFT"),
     penaltyFactor: z.number().int().min(1).max(20).default(3),
     maxRoutes: z.number().int().positive().optional(),
+    optimizerType: z.enum(["VROOM", "PYVRP", "AUTO"]).default("VROOM"),
     status: z.enum(["DRAFT", "CONFIGURED"]).default("CONFIGURED"),
   })
   .refine(
@@ -141,6 +142,7 @@ export const optimizationConfigUpdateSchema = z
     timeWindowStrictness: z.enum(TIME_WINDOW_STRICTNESS_VALUES).optional(),
     penaltyFactor: z.number().int().min(1).max(20).optional(),
     maxRoutes: z.number().int().positive().optional(),
+    optimizerType: z.enum(["VROOM", "PYVRP", "AUTO"]).optional(),
     status: z.enum(["DRAFT", "CONFIGURED"]).optional(),
   })
   .refine(

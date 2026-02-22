@@ -41,6 +41,8 @@ import {
   type OptimizationConfig as VroomOptConfig,
   optimizeRoutes as vroomOptimizeRoutes,
 } from "./vroom-optimizer";
+import { selectOptimizer } from "./optimizer-factory";
+import type { IOptimizer, OptimizerType, OptimizerOrder, OptimizerVehicle, OptimizerConfig } from "./optimizer-interface";
 import {
   createZoneBatches,
   getDayOfWeek,
@@ -49,6 +51,99 @@ import {
   type ZoneData,
 } from "../geo/zone-utils";
 import { parseProfile } from "./capacity-mapper";
+
+/**
+ * Run optimization via the abstract adapter (PyVRP or fallback).
+ * Bridges between the runner's VROOM-style types and the adapter's common types.
+ */
+async function runViaAdapter(
+  adapter: IOptimizer,
+  ordersForVroom: OrderForOptimization[],
+  vehiclesForVroom: VehicleForOptimization[],
+  vroomConfig: VroomOptConfig,
+) {
+  const adapterOrders: OptimizerOrder[] = ordersForVroom.map((o) => ({
+    id: o.id,
+    trackingId: o.trackingId,
+    address: o.address,
+    latitude: o.latitude,
+    longitude: o.longitude,
+    weightRequired: o.weightRequired,
+    volumeRequired: o.volumeRequired,
+    orderValue: o.orderValue,
+    unitsRequired: o.unitsRequired,
+    orderType: o.orderType,
+    priority: o.priority,
+    timeWindowStart: o.timeWindowStart,
+    timeWindowEnd: o.timeWindowEnd,
+    serviceTime: o.serviceTime,
+    zoneId: o.zoneId,
+  }));
+
+  const adapterVehicles: OptimizerVehicle[] = vehiclesForVroom.map((v) => ({
+    id: v.id,
+    identifier: v.plate,
+    maxWeight: v.maxWeight,
+    maxVolume: v.maxVolume,
+    maxValueCapacity: v.maxValueCapacity,
+    maxUnitsCapacity: v.maxUnitsCapacity,
+    maxOrders: v.maxOrders,
+    originLatitude: v.originLatitude,
+    originLongitude: v.originLongitude,
+  }));
+
+  const adapterConfig: OptimizerConfig = {
+    depot: {
+      latitude: vroomConfig.depot.latitude,
+      longitude: vroomConfig.depot.longitude,
+      timeWindowStart: vroomConfig.depot.timeWindowStart,
+      timeWindowEnd: vroomConfig.depot.timeWindowEnd,
+    },
+    objective: vroomConfig.objective,
+    profile: vroomConfig.profile,
+    balanceVisits: vroomConfig.balanceVisits,
+    maxDistanceKm: vroomConfig.maxDistanceKm,
+    maxTravelTimeMinutes: vroomConfig.maxTravelTimeMinutes,
+    trafficFactor: vroomConfig.trafficFactor,
+    routeEndMode: vroomConfig.routeEndMode,
+    minimizeVehicles: vroomConfig.minimizeVehicles,
+    openStart: vroomConfig.openStart,
+    flexibleTimeWindows: vroomConfig.flexibleTimeWindows,
+    timeoutMs: 120000,
+  };
+
+  const result = await adapter.optimize(adapterOrders, adapterVehicles, adapterConfig);
+
+  // Convert back to runner's VROOM-style result format
+  return {
+    routes: result.routes.map((r) => ({
+      vehicleId: r.vehicleId,
+      stops: r.stops.map((s) => ({
+        orderId: s.orderId,
+        trackingId: s.trackingId,
+        address: s.address,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        sequence: s.sequence,
+        arrivalTime: s.arrivalTime,
+        serviceTime: s.serviceTime,
+        waitingTime: s.waitingTime,
+      })),
+      totalDistance: r.totalDistance,
+      totalDuration: r.totalDuration,
+      totalServiceTime: r.totalServiceTime,
+      totalTravelTime: r.totalTravelTime,
+      totalWeight: r.totalWeight,
+      totalVolume: r.totalVolume,
+      geometry: r.geometry,
+    })),
+    unassigned: result.unassigned.map((u) => ({
+      orderId: u.orderId,
+      trackingId: u.trackingId,
+      reason: u.reason,
+    })),
+  };
+}
 
 // Type for grouped orders (multiple orders at same location)
 interface GroupedOrder {
@@ -219,6 +314,7 @@ export interface OptimizationResult {
     optimizedAt: string;
     objective: string;
     processingTimeMs: number;
+    engineUsed?: string;
   };
   depot?: {
     latitude: number;
@@ -402,8 +498,7 @@ export async function runOptimization(
 
   checkAbort();
 
-  // === VROOM Optimization with Zone Support ===
-  // Uses VROOM for VRP solving when available, falls back to nearest-neighbor
+  // === Optimization with Zone Support ===
   await updateJobProgress(jobId || input.configurationId, 10);
   checkAbort();
 
@@ -469,6 +564,12 @@ export async function runOptimization(
     ]),
   );
 
+  // === Engine Selection ===
+  const requestedEngine = (config.optimizerType as OptimizerType) || "VROOM";
+  const selectedEngine = await selectOptimizer(ordersWithLocation.length, selectedVehicles.length, requestedEngine);
+  const engineUsed = selectedEngine.name;
+  console.log(`[Optimization] Engine selected: ${engineUsed} (requested: ${requestedEngine})`);
+
   // Prepare vehicles with zone assignments
   const vehiclesWithZones = selectedVehicles.map((vehicle) => ({
     id: vehicle.id,
@@ -502,12 +603,12 @@ export async function runOptimization(
     }
   }
 
-  // Depot config
+  // Depot config — use the user's configured work window
   const depotConfig: DepotConfig = {
     latitude: parseFloat(config.depotLatitude),
     longitude: parseFloat(config.depotLongitude),
-    timeWindowStart: "06:00",
-    timeWindowEnd: "22:00",
+    timeWindowStart: config.workWindowStart || "06:00",
+    timeWindowEnd: config.workWindowEnd || "22:00",
   };
 
   const depotLat = parseFloat(config.depotLatitude);
@@ -579,7 +680,7 @@ export async function runOptimization(
     // Apply preset settings if available (sensible defaults when no preset)
     balanceVisits: preset?.balanceVisits ?? false,
     maxDistanceKm: preset?.maxDistanceKm ?? undefined, // undefined = no limit
-    maxTravelTimeMinutes: preset?.vehicleRechargeTime ?? undefined, // undefined = no limit
+    maxTravelTimeMinutes: undefined, // reserved for future use
     trafficFactor: preset?.trafficFactor ?? 1.0,
     // Route end configuration
     routeEndMode:
@@ -768,12 +869,10 @@ export async function runOptimization(
             : undefined,
         }));
 
-      // Run VROOM optimization for this batch
-      const batchResult = await vroomOptimizeRoutes(
-        batchOrdersForVroom,
-        batchVehiclesForVroom,
-        vroomConfig,
-      );
+      // Run optimization for this batch (VROOM or PyVRP via adapter)
+      const batchResult = engineUsed === "VROOM"
+        ? await vroomOptimizeRoutes(batchOrdersForVroom, batchVehiclesForVroom, vroomConfig)
+        : await runViaAdapter(selectedEngine, batchOrdersForVroom, batchVehiclesForVroom, vroomConfig);
 
       // Add batch unassigned orders (expand grouped orders)
       for (const unassigned of batchResult.unassigned) {
@@ -972,11 +1071,10 @@ export async function runOptimization(
     await updateJobProgress(jobId || input.configurationId, 30);
     checkAbort();
 
-    const vroomResult = await vroomOptimizeRoutes(
-      ordersForVroom,
-      vehiclesForVroom,
-      vroomConfig,
-    );
+    // Run optimization (VROOM or PyVRP via adapter)
+    const vroomResult = engineUsed === "VROOM"
+      ? await vroomOptimizeRoutes(ordersForVroom, vehiclesForVroom, vroomConfig)
+      : await runViaAdapter(selectedEngine, ordersForVroom, vehiclesForVroom, vroomConfig);
 
     // Add unassigned orders (expand grouped orders)
     for (const unassigned of vroomResult.unassigned) {
@@ -1296,6 +1394,7 @@ export async function runOptimization(
       optimizedAt: new Date().toISOString(),
       objective: config.objective,
       processingTimeMs: Date.now() - startTime,
+      engineUsed,
     },
     depot: {
       latitude: parseFloat(config.depotLatitude),

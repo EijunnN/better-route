@@ -344,16 +344,33 @@ async function optimizeWithVroom(
   }
 
   // Calculate minimum vehicles needed if minimizeVehicles is enabled
-  // Estimate: assume average 15 stops per vehicle
-  const avgStopsPerVehicle = 15;
-  const minVehiclesNeeded = config.minimizeVehicles
-    ? Math.max(1, Math.ceil(orders.length / avgStopsPerVehicle))
-    : vehicles.length;
+  // Use actual capacity constraints instead of hardcoded assumptions
+  let vehiclesToUse = vehicles;
+  if (config.minimizeVehicles && vehicles.length > 1) {
+    const totalWeight = orders.reduce((s, o) => s + o.weightRequired, 0);
+    const totalVolume = orders.reduce((s, o) => s + o.volumeRequired, 0);
+    const totalOrders = orders.length;
 
-  // Limit vehicles if minimizing
-  const vehiclesToUse = config.minimizeVehicles
-    ? vehicles.slice(0, Math.min(minVehiclesNeeded, vehicles.length))
-    : vehicles;
+    const avgMaxWeight = vehicles.reduce((s, v) => s + v.maxWeight, 0) / vehicles.length;
+    const avgMaxVolume = vehicles.reduce((s, v) => s + v.maxVolume, 0) / vehicles.length;
+    const avgMaxOrders = vehicles.reduce((s, v) => s + (v.maxOrders ?? 50), 0) / vehicles.length;
+
+    const minByWeight = avgMaxWeight > 0 ? Math.ceil(totalWeight / avgMaxWeight) : 1;
+    const minByVolume = avgMaxVolume > 0 ? Math.ceil(totalVolume / avgMaxVolume) : 1;
+    const minByOrders = Math.ceil(totalOrders / avgMaxOrders);
+
+    // Take the most restrictive constraint + 1 safety margin for skills/time windows
+    const minVehiclesNeeded = Math.min(
+      vehicles.length,
+      Math.max(minByWeight, minByVolume, minByOrders, 1) + 1,
+    );
+
+    vehiclesToUse = vehicles.slice(0, minVehiclesNeeded);
+    console.log(
+      `[VROOM] minimizeVehicles: need≥${Math.max(minByWeight, minByVolume, minByOrders)} ` +
+      `(weight=${minByWeight}, volume=${minByVolume}, orders=${minByOrders}), using ${vehiclesToUse.length}/${vehicles.length}`,
+    );
+  }
 
   // Create VROOM vehicles
   const vroomVehicles = vehiclesToUse.map((vehicle, index) => {
@@ -577,17 +594,43 @@ async function optimizeWithVroom(
     }
   }
 
-  // Validate max distance if configured
+  // Enforce max distance: trim stops from routes that exceed the limit
   if (config.maxDistanceKm) {
     const maxDistanceMeters = config.maxDistanceKm * 1000;
 
     for (const route of result.routes) {
       if (route.totalDistance > maxDistanceMeters) {
         console.warn(
-          `Route ${route.vehiclePlate} exceeds max distance: ${(route.totalDistance / 1000).toFixed(1)}km > ${config.maxDistanceKm}km`,
+          `[VROOM] Route ${route.vehiclePlate} exceeds max distance: ${(route.totalDistance / 1000).toFixed(1)}km > ${config.maxDistanceKm}km — trimming`,
         );
-        // Note: We could move excess orders to unassigned here, but for now just warn
-        // Full implementation would require re-routing which is complex
+
+        // Remove stops from the end until route distance is within limit
+        // Estimate distance per stop as totalDistance / (stops + 1 return leg)
+        while (route.stops.length > 1 && route.totalDistance > maxDistanceMeters) {
+          const removed = route.stops.pop()!;
+          const order = orders.find((o) => o.id === removed.orderId);
+          // Approximate: reduce distance proportionally
+          const avgLegDist = route.totalDistance / (route.stops.length + 2); // +2 for start+end legs
+          route.totalDistance -= avgLegDist;
+          route.totalTravelTime -= avgLegDist / 8.33; // ~30 km/h
+          route.totalServiceTime -= (removed.serviceTime || 300);
+          route.totalDuration = route.totalTravelTime + route.totalServiceTime;
+          route.totalWeight -= order?.weightRequired || 0;
+          route.totalVolume -= order?.volumeRequired || 0;
+          result.unassigned.push({
+            orderId: removed.orderId,
+            trackingId: removed.trackingId,
+            reason: `Ruta excede distancia máxima de ${config.maxDistanceKm}km`,
+          });
+        }
+
+        // Reindex remaining stops
+        route.stops.forEach((s, i) => { s.sequence = i + 1; });
+
+        // Update metrics
+        result.metrics.totalStops = result.routes.reduce((s, r) => s + r.stops.length, 0);
+        result.metrics.totalDistance = result.routes.reduce((s, r) => s + r.totalDistance, 0);
+        result.metrics.totalDuration = result.routes.reduce((s, r) => s + r.totalDuration, 0);
       }
     }
   }

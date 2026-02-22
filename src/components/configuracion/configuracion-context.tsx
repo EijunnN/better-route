@@ -25,13 +25,32 @@ export interface ProfileTemplate {
   enableOrderType: boolean;
 }
 
+export interface TrackingSettings {
+  trackingEnabled: boolean;
+  showMap: boolean;
+  showDriverLocation: boolean;
+  showDriverName: boolean;
+  showDriverPhoto: boolean;
+  showEvidence: boolean;
+  showEta: boolean;
+  showTimeline: boolean;
+  brandColor: string;
+  logoUrl: string | null;
+  customMessage: string | null;
+  tokenExpiryHours: number;
+  autoGenerateTokens: boolean;
+}
+
 export interface ConfiguracionState {
   profile: CompanyProfile | null;
   templates: ProfileTemplate[];
+  tracking: TrackingSettings | null;
   isLoading: boolean;
   isSaving: boolean;
   isDefault: boolean;
   hasChanges: boolean;
+  trackingHasChanges: boolean;
+  isSavingTracking: boolean;
 }
 
 export interface ConfiguracionActions {
@@ -42,6 +61,9 @@ export interface ConfiguracionActions {
   handleDownloadTemplate: () => Promise<void>;
   setProfile: (profile: CompanyProfile | null) => void;
   setHasChanges: (hasChanges: boolean) => void;
+  setTracking: (tracking: TrackingSettings | null) => void;
+  setTrackingHasChanges: (hasChanges: boolean) => void;
+  handleSaveTracking: () => Promise<void>;
 }
 
 export interface ConfiguracionMeta {
@@ -68,10 +90,13 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
 
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [templates, setTemplates] = useState<ProfileTemplate[]>([]);
+  const [tracking, setTracking] = useState<TrackingSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDefault, setIsDefault] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
+  const [trackingHasChanges, setTrackingHasChanges] = useState(false);
+  const [isSavingTracking, setIsSavingTracking] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     if (!companyId || !isReady) return;
@@ -106,10 +131,25 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     }
   }, [companyId, isReady]);
 
+  const fetchTracking = useCallback(async () => {
+    if (!companyId || !isReady) return;
+    try {
+      const response = await fetch("/api/tracking/settings", { headers: { "x-company-id": companyId } });
+      const data = await response.json();
+      if (data.data) {
+        setTracking(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching tracking settings:", error);
+    }
+  }, [companyId, isReady]);
+
   useEffect(() => {
     fetchProfile();
+    fetchTracking();
     setHasChanges(false);
-  }, [fetchProfile]);
+    setTrackingHasChanges(false);
+  }, [fetchProfile, fetchTracking]);
 
   const handleSave = useCallback(async () => {
     if (!profile || !companyId) return;
@@ -215,7 +255,28 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     }
   }, [companyId]);
 
-  const state: ConfiguracionState = { profile, templates, isLoading, isSaving, isDefault, hasChanges };
+  const handleSaveTracking = useCallback(async () => {
+    if (!tracking || !companyId) return;
+    setIsSavingTracking(true);
+    try {
+      const response = await fetch("/api/tracking/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify(tracking),
+      });
+      if (response.ok) {
+        setTrackingHasChanges(false);
+        const data = await response.json();
+        if (data.data) setTracking(data.data);
+      }
+    } catch (error) {
+      console.error("Error saving tracking settings:", error);
+    } finally {
+      setIsSavingTracking(false);
+    }
+  }, [tracking, companyId]);
+
+  const state: ConfiguracionState = { profile, templates, tracking, isLoading, isSaving, isDefault, hasChanges, trackingHasChanges, isSavingTracking };
 
   const actions: ConfiguracionActions = {
     handleSave,
@@ -225,6 +286,9 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     handleDownloadTemplate,
     setProfile,
     setHasChanges,
+    setTracking,
+    setTrackingHasChanges,
+    handleSaveTracking,
   };
 
   const meta: ConfiguracionMeta = { companyId, isReady, isSystemAdmin, companies, selectedCompanyId, setSelectedCompanyId, authCompanyId };

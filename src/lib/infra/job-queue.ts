@@ -19,9 +19,11 @@ const MAX_CONCURRENT_JOBS = 3; // Configurable concurrency limit
 // Lock persists after job completion until confirmation or 30-min timeout
 interface CompanyLock {
   jobId: string;
+  acquiredAt: Date; // When the lock was acquired
   completedAt?: Date; // Set when job completes, used for stale detection
 }
 const companyOptimizationLocks = new Map<string, CompanyLock>(); // companyId -> lock info
+const STALE_RUNNING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes - if a job is still "running" after this, consider it stale
 
 /**
  * Calculate input hash for result caching
@@ -60,25 +62,34 @@ export function canStartJob(): boolean {
 export function acquireCompanyLock(companyId: string, jobId: string): boolean {
   const existing = companyOptimizationLocks.get(companyId);
   if (existing) {
+    const now = Date.now();
+
     // Check if the existing job is still actively running
     const existingJob = activeJobs.get(existing.jobId);
     if (existingJob && existingJob.status === "RUNNING") {
-      return false; // Another optimization is running for this company
+      // But if it's been running too long, it's probably stuck — release it
+      const runningElapsed = now - existing.acquiredAt.getTime();
+      if (runningElapsed < STALE_RUNNING_TIMEOUT_MS) {
+        return false; // Another optimization is genuinely running
+      }
+      console.warn(`[JobQueue] Stale running lock detected for company ${companyId}, job ${existing.jobId} (running ${Math.round(runningElapsed / 1000)}s). Releasing.`);
+      // Clean up the stale job
+      activeJobs.delete(existing.jobId);
     }
 
     // If the job completed but lock is still held (awaiting confirmation),
     // check if it's been more than 30 minutes (stale fallback)
     if (existing.completedAt) {
-      const elapsed = Date.now() - existing.completedAt.getTime();
-      if (elapsed < 30 * 60 * 1000) {
-        return false; // Lock still held, awaiting confirmation
+      const elapsed = now - existing.completedAt.getTime();
+      if (elapsed < 5 * 60 * 1000) {
+        return false; // Lock still held, awaiting confirmation (5 min window)
       }
     }
 
     // Stale lock, clean it up
     companyOptimizationLocks.delete(companyId);
   }
-  companyOptimizationLocks.set(companyId, { jobId });
+  companyOptimizationLocks.set(companyId, { jobId, acquiredAt: new Date() });
   return true;
 }
 

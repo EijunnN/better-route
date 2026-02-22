@@ -1,12 +1,14 @@
 "use client";
 
-import { Box, Download, FileSpreadsheet, Info, Loader2, Package, Save, Scale, Settings, Tag, Truck, Weight } from "lucide-react";
+import { Box, Clock, Download, Eye, ExternalLink, FileSpreadsheet, Globe, Info, Loader2, Map, Package, Save, Scale, Settings, Tag, Truck, User, Weight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { useConfiguracion, type CompanyProfile } from "./configuracion-context";
+import { Switch } from "@/components/ui/switch";
+import { useConfiguracion, type CompanyProfile, type TrackingSettings } from "./configuracion-context";
 
 const DIMENSION_INFO = {
   WEIGHT: { label: "Peso", description: "Restricción por peso del paquete (gramos)", icon: Weight, color: "blue" },
@@ -168,6 +170,8 @@ export function ConfiguracionView() {
 
       {state.profile && <OrderTypePrioritiesSection profile={state.profile} />}
 
+      {state.tracking && <TrackingSettingsSection tracking={state.tracking} />}
+
       {!state.isDefault && (
         <div className="flex justify-end">
           <Button variant="outline" onClick={actions.handleReset}>
@@ -315,6 +319,195 @@ function PrioritySlider({ label, value, onChange, color }: { label: string; valu
         {value > 60 && value <= 80 && "Prioridad alta"}
         {value > 80 && "Prioridad máxima"}
       </p>
+    </div>
+  );
+}
+
+function TrackingSettingsSection({ tracking }: { tracking: TrackingSettings }) {
+  const { state, actions } = useConfiguracion();
+
+  const update = (partial: Partial<TrackingSettings>) => {
+    actions.setTracking({ ...tracking, ...partial });
+    actions.setTrackingHasChanges(true);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Seguimiento Público
+            </CardTitle>
+            <CardDescription>Permite a tus clientes rastrear sus pedidos con un enlace público</CardDescription>
+          </div>
+          <div className="flex items-center gap-3">
+            {state.trackingHasChanges && (
+              <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700">
+                Cambios sin guardar
+              </Badge>
+            )}
+            <Button size="sm" onClick={actions.handleSaveTracking} disabled={state.isSavingTracking || !state.trackingHasChanges}>
+              {state.isSavingTracking ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Guardar
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Master toggle */}
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div>
+            <p className="font-medium">Habilitar seguimiento público</p>
+            <p className="text-sm text-muted-foreground">Los clientes podrán ver el estado de sus pedidos en tiempo real</p>
+          </div>
+          <Switch checked={tracking.trackingEnabled} onCheckedChange={(checked) => update({ trackingEnabled: checked })} />
+        </div>
+
+        {tracking.trackingEnabled && (
+          <>
+            {/* Visibility toggles */}
+            <div>
+              <p className="text-sm font-medium mb-3">Información visible para el cliente</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <TrackingToggle
+                  icon={Map}
+                  label="Mapa"
+                  description="Mostrar mapa con ubicación de entrega"
+                  checked={tracking.showMap}
+                  onChange={(v) => update({ showMap: v })}
+                />
+                <TrackingToggle
+                  icon={ExternalLink}
+                  label="Ubicación del conductor"
+                  description="Mostrar posición GPS del conductor en el mapa"
+                  checked={tracking.showDriverLocation}
+                  onChange={(v) => update({ showDriverLocation: v })}
+                />
+                <TrackingToggle
+                  icon={User}
+                  label="Nombre del conductor"
+                  description="Mostrar nombre del conductor asignado"
+                  checked={tracking.showDriverName}
+                  onChange={(v) => update({ showDriverName: v })}
+                />
+                <TrackingToggle
+                  icon={Eye}
+                  label="Evidencia de entrega"
+                  description="Mostrar fotos y notas al completar"
+                  checked={tracking.showEvidence}
+                  onChange={(v) => update({ showEvidence: v })}
+                />
+                <TrackingToggle
+                  icon={Clock}
+                  label="Tiempo estimado (ETA)"
+                  description="Mostrar hora estimada de llegada"
+                  checked={tracking.showEta}
+                  onChange={(v) => update({ showEta: v })}
+                />
+                <TrackingToggle
+                  icon={Info}
+                  label="Línea de tiempo"
+                  description="Mostrar historial de estados del pedido"
+                  checked={tracking.showTimeline}
+                  onChange={(v) => update({ showTimeline: v })}
+                />
+              </div>
+            </div>
+
+            {/* Branding */}
+            <div className="border-t pt-6">
+              <p className="text-sm font-medium mb-3">Personalización</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Color de marca</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={tracking.brandColor || "#3B82F6"}
+                      onChange={(e) => update({ brandColor: e.target.value })}
+                      className="h-9 w-12 rounded border cursor-pointer"
+                    />
+                    <Input
+                      value={tracking.brandColor || "#3B82F6"}
+                      onChange={(e) => update({ brandColor: e.target.value })}
+                      placeholder="#3B82F6"
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Mensaje personalizado</Label>
+                  <Input
+                    value={tracking.customMessage || ""}
+                    onChange={(e) => update({ customMessage: e.target.value || null })}
+                    placeholder="Ej: Gracias por tu compra"
+                    maxLength={500}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Token settings */}
+            <div className="border-t pt-6">
+              <p className="text-sm font-medium mb-3">Configuración de enlaces</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Expiración del enlace (horas)</Label>
+                  <Input
+                    type="number"
+                    value={tracking.tokenExpiryHours}
+                    onChange={(e) => update({ tokenExpiryHours: parseInt(e.target.value) || 48 })}
+                    min={1}
+                    max={720}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Los enlaces expirarán después de {tracking.tokenExpiryHours} horas ({Math.round(tracking.tokenExpiryHours / 24)} días)
+                  </p>
+                </div>
+                <div className="flex items-center justify-between p-4 border rounded-lg h-fit">
+                  <div>
+                    <p className="font-medium text-sm">Auto-generar enlaces</p>
+                    <p className="text-xs text-muted-foreground">Crear enlace automáticamente al confirmar un plan</p>
+                  </div>
+                  <Switch
+                    checked={tracking.autoGenerateTokens}
+                    onCheckedChange={(checked) => update({ autoGenerateTokens: checked })}
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TrackingToggle({
+  icon: Icon,
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between p-3 border rounded-lg">
+      <div className="flex items-center gap-3">
+        <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <div>
+          <p className="text-sm font-medium">{label}</p>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }

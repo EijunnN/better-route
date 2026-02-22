@@ -53,6 +53,8 @@ export interface OrdersState {
   viewMode: "list" | "map";
   isDeleting: boolean;
   deletingId: string | null;
+  trackingLink: { trackingId: string; url: string } | null;
+  isGeneratingLink: boolean;
 }
 
 export interface OrdersActions {
@@ -69,6 +71,8 @@ export interface OrdersActions {
   setCurrentPage: (page: number) => void;
   getStatusColor: (status: string) => string;
   getStrictnessColor: (strictness: string) => string;
+  handleGenerateTrackingLink: (orderId: string) => Promise<void>;
+  clearTrackingLink: () => void;
 }
 
 export interface OrdersMeta {
@@ -105,6 +109,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
+  const [trackingLink, setTrackingLink] = useState<{ trackingId: string; url: string } | null>(null);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     if (!companyId) return;
@@ -258,6 +264,43 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setEditingOrder(null);
   }, []);
 
+  const handleGenerateTrackingLink = useCallback(
+    async (orderId: string) => {
+      if (!companyId) return;
+      setIsGeneratingLink(true);
+      try {
+        const response = await fetch("/api/tracking/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-company-id": companyId },
+          body: JSON.stringify({ orderIds: [orderId] }),
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Error al generar enlace");
+        }
+        const result = await response.json();
+        if (result.data?.[0]) {
+          const { trackingId, url } = result.data[0];
+          const fullUrl = `${window.location.origin}${url}`;
+          setTrackingLink({ trackingId, url: fullUrl });
+        }
+      } catch (err) {
+        toast({
+          title: "Error al generar enlace",
+          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+          variant: "destructive",
+        });
+      } finally {
+        setIsGeneratingLink(false);
+      }
+    },
+    [companyId, toast]
+  );
+
+  const clearTrackingLink = useCallback(() => {
+    setTrackingLink(null);
+  }, []);
+
   const getStatusColor = useCallback((status: string) => {
     const colors: Record<string, string> = {
       PENDING: "bg-gray-500/10 text-gray-600",
@@ -291,6 +334,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     viewMode,
     isDeleting,
     deletingId,
+    trackingLink,
+    isGeneratingLink,
   };
 
   const actions: OrdersActions = {
@@ -307,6 +352,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setCurrentPage,
     getStatusColor,
     getStrictnessColor,
+    handleGenerateTrackingLink,
+    clearTrackingLink,
   };
 
   const meta: OrdersMeta = { companyId, isReady, isSystemAdmin, companies, selectedCompanyId, setSelectedCompanyId, authCompanyId };
