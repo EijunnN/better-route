@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
+import { useToast } from "@/hooks/use-toast";
 import type maplibregl from "maplibre-gl";
 
 // Types
@@ -148,6 +149,7 @@ export interface DashboardState {
   reassignmentError: string | null;
   pencilMode: boolean;
   mapInstance: maplibregl.Map | null;
+  isSwapping: boolean;
 }
 
 export interface DashboardActions {
@@ -172,6 +174,7 @@ export interface DashboardActions {
   setSelectedVehicleForReassign: (vehicleId: string | null) => void;
   handleReassignment: () => Promise<void>;
   handlePencilSelectionComplete: (selectedOrderIds: string[]) => void;
+  swapVehicleRoutes: (vehicleAId: string, vehicleBId: string) => Promise<void>;
 }
 
 export interface DashboardMeta {
@@ -235,6 +238,7 @@ export function OptimizationDashboardProvider({
   onResultUpdate,
 }: DashboardProviderProps) {
   const { effectiveCompanyId: companyId } = useCompanyContext();
+  const { toast } = useToast();
 
   // UI State
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
@@ -259,6 +263,9 @@ export function OptimizationDashboardProvider({
   // Pencil/Map state
   const [pencilMode, setPencilMode] = useState(false);
   const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
+
+  // Swap state
+  const [isSwapping, setIsSwapping] = useState(false);
 
   // Load zones
   const loadZones = useCallback(async () => {
@@ -501,6 +508,62 @@ export function OptimizationDashboardProvider({
     [allSelectableOrders],
   );
 
+  const swapVehicleRoutes = useCallback(
+    async (vehicleAId: string, vehicleBId: string) => {
+      if (!companyId || !jobId) return;
+
+      setIsSwapping(true);
+      try {
+        const response = await fetch(
+          `/api/optimization/jobs/${jobId}/swap-vehicles`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-company-id": companyId,
+            },
+            body: JSON.stringify({ vehicleAId, vehicleBId }),
+          },
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || "Error al intercambiar las rutas",
+          );
+        }
+
+        const updatedResult = await response.json();
+
+        if (onResultUpdate) {
+          onResultUpdate(updatedResult);
+        }
+
+        const plateA =
+          result.routes.find((r) => r.vehicleId === vehicleAId)
+            ?.vehiclePlate || vehicleAId;
+        const plateB =
+          result.routes.find((r) => r.vehicleId === vehicleBId)
+            ?.vehiclePlate || vehicleBId;
+
+        toast({
+          title: "Rutas intercambiadas exitosamente",
+          description: `Se intercambiaron las rutas entre ${plateA} y ${plateB}`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error al intercambiar rutas",
+          description:
+            error instanceof Error ? error.message : "Error desconocido",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSwapping(false);
+      }
+    },
+    [companyId, jobId, onResultUpdate, result.routes, toast],
+  );
+
   const state: DashboardState = {
     selectedRouteId,
     expandedRouteId,
@@ -516,6 +579,7 @@ export function OptimizationDashboardProvider({
     reassignmentError,
     pencilMode,
     mapInstance,
+    isSwapping,
   };
 
   const actions: DashboardActions = {
@@ -533,6 +597,7 @@ export function OptimizationDashboardProvider({
     setSelectedVehicleForReassign,
     handleReassignment,
     handlePencilSelectionComplete,
+    swapVehicleRoutes,
   };
 
   const meta: DashboardMeta = {

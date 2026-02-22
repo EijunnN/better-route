@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  ArrowLeftRight,
   BarChart3,
   Check,
   CheckCircle2,
@@ -37,6 +38,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { exportPlanToExcel } from "@/lib/export/export-plan-excel";
 import { DriverAssignmentDisplay } from "./driver-assignment-quality";
@@ -93,14 +102,19 @@ export function CompactRouteCard({
   routeNumber: number;
   routeColor: string;
 }) {
-  const { state, actions } = useOptimizationDashboard();
-  const { selectedRouteId, expandedRouteId } = state;
+  const { state, actions, meta } = useOptimizationDashboard();
+  const { selectedRouteId, expandedRouteId, isSwapping } = state;
   const {
     setSelectedRouteId,
     setExpandedRouteId,
     toggleOrderSelection,
     isOrderSelected,
+    swapVehicleRoutes,
   } = actions;
+  const { result } = meta;
+  const otherRoutes = result.routes.filter(
+    (r) => r.vehicleId !== route.vehicleId,
+  );
 
   const isSelected = selectedRouteId === route.routeId;
   const isExpanded = expandedRouteId === route.routeId;
@@ -161,7 +175,7 @@ export function CompactRouteCard({
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           {hasViolations && (
             <Badge
               variant="outline"
@@ -170,6 +184,45 @@ export function CompactRouteCard({
               <AlertTriangle className="h-3 w-3 mr-1" />
               {route.timeWindowViolations}
             </Badge>
+          )}
+          {otherRoutes.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  disabled={isSwapping}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Intercambiar ruta"
+                >
+                  {isSwapping ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ArrowLeftRight className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Intercambiar ruta con...</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {otherRoutes.map((other) => (
+                  <DropdownMenuItem
+                    key={other.vehicleId}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      swapVehicleRoutes(route.vehicleId, other.vehicleId);
+                    }}
+                  >
+                    <Truck className="h-4 w-4 mr-2 shrink-0" />
+                    <span className="truncate">{other.vehiclePlate}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {other.stops.length} paradas
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <Button
             variant="ghost"

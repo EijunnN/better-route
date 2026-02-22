@@ -548,11 +548,58 @@ def solve(request: SolveRequest) -> SolveResponse:
     else:
         timeout = base_timeout
 
-    print(f"[PyVRP] Solving with {n_clients} orders, {len(vehicles)} vehicles, timeout={timeout}s")
-    result = m.solve(stop=MaxRuntime(timeout), display=False)
+    # Multi-start: run solver multiple times with different seeds and keep best.
+    # Skip multi-start for small problems (<=10 orders) — single run suffices.
+    NUM_STARTS = 3
+    use_multi_start = n_clients > 10
+
+    if use_multi_start:
+        run_timeout = max(5, timeout // NUM_STARTS)
+        print(f"[PyVRP] Multi-start: {NUM_STARTS} runs x {run_timeout}s each, {n_clients} orders, {len(vehicles)} vehicles")
+
+        best_solution = None
+        best_cost = float("inf")
+        best_run = -1
+
+        for run in range(NUM_STARTS):
+            seed = run * 42 + 1  # 1, 43, 85
+            result = m.solve(stop=MaxRuntime(run_timeout), seed=seed, display=False)
+            sol = result.best
+
+            if sol is None or sol.num_routes() == 0:
+                print(f"[PyVRP]   Run {run + 1}/{NUM_STARTS} (seed={seed}): no feasible solution")
+                continue
+
+            # Calculate cost based on objective
+            if cfg.objective == "DISTANCE":
+                cost = sol.distance()
+            elif cfg.objective == "TIME":
+                cost = sol.duration()
+            else:  # BALANCED
+                cost = sol.distance() + sol.duration()
+
+            print(
+                f"[PyVRP]   Run {run + 1}/{NUM_STARTS} (seed={seed}): "
+                f"cost={cost:,.0f}, routes={sol.num_routes()}, "
+                f"dist={sol.distance():,.0f}, dur={sol.duration():,.0f}"
+            )
+
+            if cost < best_cost:
+                best_cost = cost
+                best_solution = sol
+                best_run = run + 1
+
+        solution = best_solution
+        if solution is not None:
+            print(f"[PyVRP] Best: run {best_run}/{NUM_STARTS}, cost={best_cost:,.0f}")
+        else:
+            print("[PyVRP] Multi-start: no feasible solution found in any run")
+    else:
+        print(f"[PyVRP] Solving with {n_clients} orders, {len(vehicles)} vehicles, timeout={timeout}s")
+        result = m.solve(stop=MaxRuntime(timeout), display=False)
+        solution = result.best
 
     # ── Build response ──────────────────────────────────────────────
-    solution = result.best
     routes: List[Route] = []
     assigned_order_ids: set[str] = set()
 
