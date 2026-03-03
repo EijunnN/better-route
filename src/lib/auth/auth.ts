@@ -10,6 +10,8 @@ import {
 // JWT Configuration
 const ACCESS_TOKEN_EXPIRY = process.env.NODE_ENV === "development" ? "24h" : "15min";
 const REFRESH_TOKEN_EXPIRY = "7d"; // 7 days
+const ACCESS_TOKEN_MAX_AGE_SECONDS =
+  process.env.NODE_ENV === "development" ? 24 * 60 * 60 : 15 * 60;
 
 // Cookie names
 const ACCESS_TOKEN_COOKIE = "access_token";
@@ -93,7 +95,7 @@ export async function setAuthCookies(
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 15 * 60, // 15 minutes
+    maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
     path: "/",
   });
 

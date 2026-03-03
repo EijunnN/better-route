@@ -82,7 +82,7 @@ export function useAuth(): UseAuthReturn {
   const refreshToken = useCallback(async (): Promise<boolean> => {
     // Prevent concurrent refresh attempts
     if (isRefreshingRef.current) {
-      return false;
+      return true;
     }
 
     // Don't refresh if we just did it recently (within 30 seconds)

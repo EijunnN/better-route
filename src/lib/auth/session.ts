@@ -473,7 +473,7 @@ export async function cleanupExpiredSessions(): Promise<number> {
  * @returns True if valid, false otherwise
  */
 export async function isRefreshTokenValid(
-  refreshTokenId: string,
+  tokenIdentifier: string,
 ): Promise<boolean> {
   const redis = getRedisClient();
   if (!redis) {
@@ -484,8 +484,18 @@ export async function isRefreshTokenValid(
   }
 
   try {
+    // Backwards-compatible validation:
+    // - Newer tokens may carry sessionId
+    // - Legacy flow may validate by refreshTokenId
+    const sessionExists = await redis.exists(
+      `${SESSION_PREFIX}${tokenIdentifier}`,
+    );
+    if (sessionExists) {
+      return true;
+    }
+
     const sessionId = await redis.get<string>(
-      `${REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
+      `${REFRESH_TOKEN_PREFIX}${tokenIdentifier}`,
     );
 
     return sessionId !== null;

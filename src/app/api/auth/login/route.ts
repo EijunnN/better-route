@@ -12,6 +12,9 @@ import {
 } from "@/lib/infra/rate-limit";
 import { AUTH_ERRORS, loginSchema } from "@/lib/validations/auth";
 
+const ACCESS_TOKEN_EXPIRES_IN_SECONDS =
+  process.env.NODE_ENV === "development" ? 24 * 60 * 60 : 15 * 60;
+
 /**
  * POST /api/auth/login
  *
@@ -121,7 +124,7 @@ export async function POST(request: NextRequest) {
         },
         accessToken,
         refreshToken,
-        expiresIn: 15 * 60, // 15 minutes in seconds
+        expiresIn: ACCESS_TOKEN_EXPIRES_IN_SECONDS,
       },
       { headers: getRateLimitHeaders(rateLimit) },
     );

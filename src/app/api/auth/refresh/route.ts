@@ -11,6 +11,9 @@ import {
 import { isRefreshTokenValid } from "@/lib/auth/session";
 import { AUTH_ERRORS } from "@/lib/validations/auth";
 
+const ACCESS_TOKEN_EXPIRES_IN_SECONDS =
+  process.env.NODE_ENV === "development" ? 24 * 60 * 60 : 15 * 60;
+
 /**
  * POST /api/auth/refresh
  *
@@ -101,7 +104,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-      expiresIn: 15 * 60, // 15 minutes in seconds
+      expiresIn: ACCESS_TOKEN_EXPIRES_IN_SECONDS,
     });
   } catch (error) {
     console.error("Token refresh error:", error);
