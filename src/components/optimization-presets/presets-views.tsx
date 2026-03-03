@@ -1,9 +1,10 @@
 "use client";
 
-import { AlertCircle, Edit, Plus, Settings2, Star, Trash2 } from "lucide-react";
+import { Edit, Plus, Settings2, Star, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/error-state";
 import {
   Dialog,
   DialogContent,
@@ -90,12 +91,7 @@ export function PresetsListView() {
           ))}
         </div>
       ) : state.error ? (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Error al cargar presets de optimización</h3>
-          <p className="text-muted-foreground mb-4">{state.error}</p>
-          <Button onClick={() => actions.fetchPresets()}>Reintentar</Button>
-        </div>
+        <ErrorState title="Error al cargar presets de optimización" error={state.error} onRetry={actions.fetchPresets} />
       ) : state.presets.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,6 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 import { Switch } from "@/components/ui/switch";
 import { useRoles, CATEGORY_LABELS } from "./roles-context";
 
@@ -34,12 +35,7 @@ export function RolesListView() {
       </div>
 
       {state.error ? (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Error al cargar roles</h3>
-          <p className="text-muted-foreground mb-4">{state.error}</p>
-          <Button onClick={() => actions.fetchRoles()}>Reintentar</Button>
-        </div>
+        <ErrorState title="Error al cargar roles" error={state.error} onRetry={actions.fetchRoles} />
       ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">

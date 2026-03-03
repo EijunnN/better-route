@@ -92,9 +92,7 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
       setSkills(data.data || []);
       setError(null);
     } catch (err) {
-      console.error("Error al cargar habilidades:", err);
       setError(err instanceof Error ? err.message : "No se pudieron cargar las habilidades");
-      toast({ title: "Error", description: "No se pudieron cargar las habilidades", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }

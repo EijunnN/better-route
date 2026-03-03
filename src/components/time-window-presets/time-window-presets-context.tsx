@@ -86,9 +86,7 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
       setPresets(result.data || []);
       setError(null);
     } catch (err) {
-      console.error("Error al cargar presets:", err);
       setError(err instanceof Error ? err.message : "No se pudieron cargar los presets");
-      toast({ title: "Error", description: "No se pudieron cargar los presets", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }

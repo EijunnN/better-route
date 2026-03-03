@@ -10,6 +10,16 @@ interface RateLimitEntry {
 
 const limitStore = new Map<string, RateLimitEntry>();
 
+// Periodic cleanup of expired entries to prevent unbounded memory growth
+if (typeof setInterval !== "undefined") {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of limitStore) {
+      if (entry.resetTime < now) limitStore.delete(key);
+    }
+  }, 60_000);
+}
+
 /**
  * Rate limit configuration
  */

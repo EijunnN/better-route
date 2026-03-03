@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useMemo } from "react";
 import {
-  AlertCircle,
   Camera,
   FileSignature,
   NotepadText,
@@ -21,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -106,12 +106,7 @@ export function WorkflowDashboardView() {
     return (
       <div className="flex-1 bg-background p-8">
         <div className="mx-auto max-w-4xl">
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Error al cargar flujo de entregas</h3>
-            <p className="text-muted-foreground mb-4">{state.error}</p>
-            <Button onClick={() => actions.refreshStates()}>Reintentar</Button>
-          </div>
+          <ErrorState title="Error al cargar flujo de entregas" error={state.error} onRetry={actions.refreshStates} />
         </div>
       </div>
     );

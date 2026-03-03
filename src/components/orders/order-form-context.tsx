@@ -105,7 +105,6 @@ export interface OrderFormActions {
     value: string | number | boolean | Record<string, unknown> | null,
   ) => void;
   handlePresetChange: (presetId: string) => void;
-  handleStrictnessChange: (value: string) => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
 }
 
@@ -116,8 +115,6 @@ export interface OrderFormMeta {
 }
 
 export interface OrderFormDerived {
-  effectiveStrictness: string;
-  isOverridden: boolean;
   isEditing: boolean;
 }
 
@@ -296,17 +293,6 @@ export function OrderFormProvider({
     [timeWindowPresets, handleChange],
   );
 
-  const handleStrictnessChange = useCallback(
-    (value: string) => {
-      if (value === "INHERIT") {
-        handleChange("strictness", null);
-      } else {
-        handleChange("strictness", value);
-      }
-    },
-    [handleChange],
-  );
-
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -348,10 +334,6 @@ export function OrderFormProvider({
     [formData, onSubmit],
   );
 
-  const effectiveStrictness =
-    formData.strictness || selectedPreset?.strictness || "HARD";
-  const isOverridden = formData.strictness !== null;
-
   const state: OrderFormState = {
     formData,
     errors,
@@ -366,7 +348,6 @@ export function OrderFormProvider({
   const actions: OrderFormActions = {
     handleChange,
     handlePresetChange,
-    handleStrictnessChange,
     handleSubmit,
   };
 
@@ -377,8 +358,6 @@ export function OrderFormProvider({
   };
 
   const derived: OrderFormDerived = {
-    effectiveStrictness,
-    isOverridden,
     isEditing: !!initialData,
   };
 

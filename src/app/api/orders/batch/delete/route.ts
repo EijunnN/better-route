@@ -40,20 +40,19 @@ export async function DELETE(request: NextRequest) {
     let deletedCount = 0;
 
     if (hardDelete) {
-      // Hard delete - permanently remove all orders and related records
-      // Must delete in order: tracking_tokens → route_stops → orders
-      await db
-        .delete(trackingTokens)
-        .where(eq(trackingTokens.companyId, context.companyId));
-
-      await db
-        .delete(routeStops)
-        .where(eq(routeStops.companyId, context.companyId));
-
-      const result = await db
-        .delete(orders)
-        .where(eq(orders.companyId, context.companyId))
-        .returning({ id: orders.id });
+      // Hard delete - permanently remove all orders and related records in a transaction
+      const result = await db.transaction(async (tx) => {
+        // Delete FK-dependent records in parallel (they don't depend on each other)
+        await Promise.all([
+          tx.delete(trackingTokens).where(eq(trackingTokens.companyId, context.companyId)),
+          tx.delete(routeStops).where(eq(routeStops.companyId, context.companyId)),
+        ]);
+        // Then delete orders
+        return tx
+          .delete(orders)
+          .where(eq(orders.companyId, context.companyId))
+          .returning({ id: orders.id });
+      });
 
       deletedCount = result.length;
     } else {

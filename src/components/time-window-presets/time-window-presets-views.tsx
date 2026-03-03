@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/error-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TimeWindowPresetForm } from "./time-window-preset-form";
 import { useTimeWindowPresets, TYPE_LABELS, STRICTNESS_LABELS, type TimeWindowPreset } from "./time-window-presets-context";
@@ -41,12 +42,7 @@ export function TimeWindowPresetsListView() {
           </CardContent>
         </Card>
       ) : state.error ? (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Error al cargar presets</h3>
-          <p className="text-muted-foreground mb-4">{state.error}</p>
-          <Button onClick={() => actions.fetchPresets()}>Reintentar</Button>
-        </div>
+        <ErrorState title="Error al cargar presets" error={state.error} onRetry={actions.fetchPresets} />
       ) : state.presets.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">

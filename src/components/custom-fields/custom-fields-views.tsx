@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  AlertCircle,
   Plus,
   Pencil,
   Trash2,
@@ -20,6 +19,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -90,12 +90,7 @@ export function CustomFieldsDashboardView() {
     return (
       <div className="flex-1 bg-background p-8">
         <div className="mx-auto max-w-4xl">
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Error al cargar campos personalizados</h3>
-            <p className="text-muted-foreground mb-4">{state.error}</p>
-            <Button onClick={() => actions.refreshDefinitions()}>Reintentar</Button>
-          </div>
+          <ErrorState title="Error al cargar campos personalizados" error={state.error} onRetry={actions.refreshDefinitions} />
         </div>
       </div>
     );

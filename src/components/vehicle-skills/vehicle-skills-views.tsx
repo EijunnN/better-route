@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -88,12 +89,7 @@ export function VehicleSkillsListView() {
           </CardContent>
         </Card>
       ) : state.error ? (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Error al cargar habilidades</h3>
-          <p className="text-muted-foreground mb-4">{state.error}</p>
-          <Button onClick={() => actions.fetchSkills()}>Reintentar</Button>
-        </div>
+        <ErrorState title="Error al cargar habilidades" error={state.error} onRetry={actions.fetchSkills} />
       ) : state.skills.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">

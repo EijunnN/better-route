@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,6 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 import { FleetForm } from "./fleet-form";
 import { useFleets, type Fleet } from "./fleets-context";
 import type { FleetInput } from "@/lib/validations/fleet";
@@ -36,12 +37,7 @@ export function FleetsListView() {
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
           </div>
         ) : state.error ? (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Error al cargar flotas</h3>
-            <p className="text-muted-foreground mb-4">{state.error}</p>
-            <Button onClick={() => actions.fetchFleets()}>Reintentar</Button>
-          </div>
+          <ErrorState title="Error al cargar flotas" error={state.error} onRetry={actions.fetchFleets} />
         ) : state.fleets.length === 0 ? (
           <div className="rounded-lg border border-border bg-card p-12 text-center shadow-sm">
             <p className="text-muted-foreground">No hay flotas registradas. Cree la primera flota.</p>

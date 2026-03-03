@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Loader2, Trash2, Upload } from "lucide-react";
+import { Loader2, Trash2, Upload } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,8 +13,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 import { Pagination } from "@/components/ui/pagination";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import { UserForm } from "@/components/users/user-form";
 import { UserImportDialog } from "@/components/users/user-import-dialog";
 import type { CreateUserInput } from "@/lib/validations/user";
@@ -88,12 +89,7 @@ export function UsersListView() {
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
         </div>
       ) : state.error ? (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Error al cargar usuarios</h3>
-          <p className="text-muted-foreground mb-4">{state.error}</p>
-          <Button onClick={() => actions.fetchUsers()}>Reintentar</Button>
-        </div>
+        <ErrorState title="Error al cargar usuarios" error={state.error} onRetry={actions.fetchUsers} />
       ) : derived.filteredUsers.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-12 text-center shadow-sm">
           <p className="text-muted-foreground">
@@ -115,22 +111,10 @@ export function UsersListView() {
   );
 }
 
-const USERS_PAGE_SIZE = 20;
-
 function UsersTable() {
   const { state, actions, derived } = useUsers();
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const totalPages = Math.ceil(derived.filteredUsers.length / USERS_PAGE_SIZE);
-  const paginatedUsers = useMemo(() => {
-    const start = (currentPage - 1) * USERS_PAGE_SIZE;
-    return derived.filteredUsers.slice(start, start + USERS_PAGE_SIZE);
-  }, [derived.filteredUsers, currentPage]);
-
-  // Reset to page 1 when filter changes (tab switch)
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [state.activeTab]);
+  const { paginatedItems: paginatedUsers, currentPage, setCurrentPage, totalPages } =
+    useClientPagination(derived.filteredUsers);
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">

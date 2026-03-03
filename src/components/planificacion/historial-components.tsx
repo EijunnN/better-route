@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Eye,
   Loader2,
@@ -30,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useHistorial, type OptimizationJob, type JobStatus } from "./historial-context";
 
@@ -385,73 +384,15 @@ export function HistorialJobList() {
 
 export function HistorialPagination() {
   const { state, actions, derived } = useHistorial();
-  const { currentPage, totalCount, pageSize } = state;
-  const { totalPages } = derived;
-
-  if (totalPages <= 1) return null;
-
-  const start = (currentPage - 1) * pageSize + 1;
-  const end = Math.min(currentPage * pageSize, totalCount);
 
   return (
-    <div className="flex items-center justify-between pt-2">
-      <p className="text-xs text-muted-foreground">
-        Mostrando {start}-{end} de {totalCount}
-      </p>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => actions.setPage(currentPage - 1)}
-          disabled={currentPage <= 1}
-        >
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          Anterior
-        </Button>
-        <div className="flex items-center gap-1">
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter((page) => {
-              if (totalPages <= 7) return true;
-              if (page === 1 || page === totalPages) return true;
-              if (Math.abs(page - currentPage) <= 1) return true;
-              return false;
-            })
-            .reduce<(number | "ellipsis")[]>((acc, page, idx, arr) => {
-              if (idx > 0 && arr[idx - 1] !== undefined && page - arr[idx - 1] > 1) {
-                acc.push("ellipsis");
-              }
-              acc.push(page);
-              return acc;
-            }, [])
-            .map((item, idx) =>
-              item === "ellipsis" ? (
-                <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">
-                  ...
-                </span>
-              ) : (
-                <Button
-                  key={item}
-                  variant={currentPage === item ? "default" : "outline"}
-                  size="sm"
-                  className="w-8 h-8 p-0"
-                  onClick={() => actions.setPage(item)}
-                >
-                  {item}
-                </Button>
-              ),
-            )}
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => actions.setPage(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-        >
-          Siguiente
-          <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
-      </div>
-    </div>
+    <Pagination
+      currentPage={state.currentPage}
+      totalPages={derived.totalPages}
+      onPageChange={actions.setPage}
+      totalItems={state.totalCount}
+      itemLabel="planificaciones"
+    />
   );
 }
 
