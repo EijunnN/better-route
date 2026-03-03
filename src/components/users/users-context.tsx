@@ -96,8 +96,6 @@ export interface UsersActions {
 
 // Meta
 export interface UsersMeta {
-  authUser: { role: string } | null;
-  authCompanyId: string | null;
   isAuthLoading: boolean;
   isSystemAdmin: boolean;
   effectiveCompanyId: string | null;
@@ -420,8 +418,6 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   };
 
   const meta: UsersMeta = {
-    authUser: null,
-    authCompanyId: null,
     isAuthLoading: !isReady,
     isSystemAdmin,
     effectiveCompanyId,

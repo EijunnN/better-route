@@ -1,4 +1,4 @@
-import { and, desc, eq, like, or } from "drizzle-orm";
+import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companyFieldDefinitions, orders, timeWindowPresets } from "@/db/schema";
@@ -108,8 +108,8 @@ export async function GET(request: NextRequest) {
       .limit(query.limit)
       .offset(query.offset);
 
-    const totalResult = await db
-      .select({ count: orders.id })
+    const [{ count: total }] = await db
+      .select({ count: sql<number>`count(*)` })
       .from(orders)
       .where(whereClause);
 
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       data: enrichedData,
-      meta: { total: totalResult.length },
+      meta: { total },
     });
   } catch (error) {
     return NextResponse.json(

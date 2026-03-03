@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { fleets, vehicleFleets, vehicles } from "@/db/schema";
@@ -97,7 +97,7 @@ export async function GET(
       tenantCtx.companyId,
     );
 
-    const [data, totalResult] = await Promise.all([
+    const [data, [{ count: total }]] = await Promise.all([
       db
         .select()
         .from(vehicles)
@@ -105,7 +105,7 @@ export async function GET(
         .orderBy(desc(vehicles.createdAt))
         .limit(query.limit)
         .offset(query.offset),
-      db.select({ count: vehicles.id }).from(vehicles).where(whereClause),
+      db.select({ count: sql<number>`count(*)` }).from(vehicles).where(whereClause),
     ]);
 
     return NextResponse.json({
@@ -116,7 +116,7 @@ export async function GET(
       },
       data,
       meta: {
-        total: totalResult.length,
+        total,
         limit: query.limit,
         offset: query.offset,
       },

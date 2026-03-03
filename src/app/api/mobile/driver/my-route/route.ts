@@ -60,25 +60,66 @@ export async function GET(request: NextRequest) {
 
     const driverId = authUser.userId;
 
-    // Obtener datos del conductor
-    const driver = await db.query.users.findFirst({
-      where: and(
-        withTenantFilter(users, [], tenantCtx.companyId),
-        eq(users.id, driverId),
-      ),
-      columns: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        photo: true,
-        identification: true,
-        driverStatus: true,
-        licenseNumber: true,
-        licenseExpiry: true,
-        licenseCategories: true,
-      },
-    });
+    // Obtener el inicio del dia actual (medianoche)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Fetch driver info, today's stops, and assigned vehicle in parallel
+    const [driver, allTodayStops, assignedVehicle] = await Promise.all([
+      db.query.users.findFirst({
+        where: and(
+          withTenantFilter(users, [], tenantCtx.companyId),
+          eq(users.id, driverId),
+        ),
+        columns: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          photo: true,
+          identification: true,
+          driverStatus: true,
+          licenseNumber: true,
+          licenseExpiry: true,
+          licenseCategories: true,
+        },
+      }),
+      db.query.routeStops.findMany({
+        where: and(
+          eq(routeStops.companyId, tenantCtx.companyId),
+          eq(routeStops.userId, driverId),
+          gte(routeStops.createdAt, today),
+          lt(routeStops.createdAt, tomorrow),
+        ),
+        orderBy: [asc(routeStops.sequence)],
+        with: {
+          order: {
+            columns: {
+              id: true,
+              trackingId: true,
+              customerName: true,
+              customerPhone: true,
+              customerEmail: true,
+              notes: true,
+              weightRequired: true,
+              volumeRequired: true,
+              orderValue: true,
+              unitsRequired: true,
+              customFields: true,
+            },
+          },
+        },
+      }),
+      db.query.vehicles.findFirst({
+        where: and(
+          withTenantFilter(vehicles, [], tenantCtx.companyId),
+          eq(vehicles.assignedDriverId, driverId),
+          eq(vehicles.active, true),
+        ),
+      }),
+    ]);
 
     if (!driver) {
       return NextResponse.json(
@@ -102,50 +143,6 @@ export async function GET(request: NextRequest) {
         categories: driver.licenseCategories,
       },
     };
-
-    // Obtener el inicio del dia actual (medianoche)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // Buscar TODAS las paradas del conductor para hoy (de todos los jobs).
-    // Esto incluye paradas de jobs anteriores (ej: órdenes fallidas) y del job más reciente.
-    const allTodayStops = await db.query.routeStops.findMany({
-      where: and(
-        eq(routeStops.companyId, tenantCtx.companyId),
-        eq(routeStops.userId, driverId),
-        gte(routeStops.createdAt, today),
-        lt(routeStops.createdAt, tomorrow),
-      ),
-      orderBy: [asc(routeStops.sequence)],
-      with: {
-        order: {
-          columns: {
-            id: true,
-            trackingId: true,
-            customerName: true,
-            customerPhone: true,
-            customerEmail: true,
-            notes: true,
-            weightRequired: true,
-            volumeRequired: true,
-            orderValue: true,
-            unitsRequired: true,
-            customFields: true,
-          },
-        },
-      },
-    });
-
-    // Buscar vehiculo asignado (para info complementaria)
-    const assignedVehicle = await db.query.vehicles.findFirst({
-      where: and(
-        withTenantFilter(vehicles, [], tenantCtx.companyId),
-        eq(vehicles.assignedDriverId, driverId),
-        eq(vehicles.active, true),
-      ),
-    });
 
     const hasStopsToday = allTodayStops.length > 0;
     // Usar el job más reciente para metadata (distancia, duración)
@@ -182,10 +179,20 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Obtener el job
-    const activeJob = await db.query.optimizationJobs.findFirst({
-      where: eq(optimizationJobs.id, activeJobId),
-    });
+    // Fetch job and route vehicle in parallel
+    const [activeJob, routeVehicle] = await Promise.all([
+      db.query.optimizationJobs.findFirst({
+        where: eq(optimizationJobs.id, activeJobId),
+      }),
+      routeVehicleId
+        ? db.query.vehicles.findFirst({
+            where: and(
+              withTenantFilter(vehicles, [], tenantCtx.companyId),
+              eq(vehicles.id, routeVehicleId),
+            ),
+          })
+        : Promise.resolve(assignedVehicle),
+    ]);
 
     if (!activeJob) {
       return NextResponse.json({
@@ -197,16 +204,6 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-
-    // Obtener el vehiculo de la ruta (puede ser distinto al asignado permanentemente)
-    const routeVehicle = routeVehicleId
-      ? await db.query.vehicles.findFirst({
-          where: and(
-            withTenantFilter(vehicles, [], tenantCtx.companyId),
-            eq(vehicles.id, routeVehicleId),
-          ),
-        })
-      : assignedVehicle;
 
     // Usar todas las paradas del día (ya cargadas con órdenes desde la query inicial).
     // Deduplicar por orderId: si una orden aparece en múltiples jobs, usar la del job más reciente.

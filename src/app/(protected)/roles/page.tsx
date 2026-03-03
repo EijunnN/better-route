@@ -6,7 +6,7 @@ import { RolesProvider, useRoles, RolesListView, RolesFormView } from "@/compone
 function RolesPageContent() {
   const { state, meta } = useRoles();
 
-  if (meta.isAuthLoading || (!meta.authCompanyId && !meta.isSystemAdmin)) {
+  if (meta.isAuthLoading || (!meta.effectiveCompanyId && !meta.isSystemAdmin)) {
     return (
       <div className="flex justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />

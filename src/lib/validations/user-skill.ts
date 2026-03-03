@@ -1,23 +1,5 @@
 import { z } from "zod";
-
-// Helper function to check if date is expiring soon (within 30 days)
-export const isExpiringSoon = (dateString: string) => {
-  if (!dateString) return false;
-  const expiryDate = new Date(dateString);
-  const today = new Date();
-  const daysUntilExpiry = Math.ceil(
-    (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  return daysUntilExpiry < 30 && daysUntilExpiry >= 0;
-};
-
-// Helper function to check if date is expired
-export const isExpired = (dateString: string) => {
-  if (!dateString) return false;
-  const expiryDate = new Date(dateString);
-  const today = new Date();
-  return expiryDate < today;
-};
+export { isExpired, isExpiringSoon } from "./user";
 
 // Base user skill fields
 const baseUserSkillSchema = {

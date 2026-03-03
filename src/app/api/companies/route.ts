@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
         : undefined
       : withTenantFilter(companies, conditions);
 
-    const [data, totalResult] = await Promise.all([
+    const [data, [{ count: total }]] = await Promise.all([
       db
         .select()
         .from(companies)
@@ -61,13 +61,13 @@ export async function GET(request: NextRequest) {
         .orderBy(desc(companies.createdAt))
         .limit(query.limit)
         .offset(query.offset),
-      db.select({ count: companies.id }).from(companies).where(whereClause),
+      db.select({ count: sql<number>`count(*)` }).from(companies).where(whereClause),
     ]);
 
     return NextResponse.json({
       data,
       meta: {
-        total: totalResult.length,
+        total,
         limit: query.limit,
         offset: query.offset,
       },

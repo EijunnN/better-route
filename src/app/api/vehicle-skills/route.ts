@@ -1,4 +1,4 @@
-import { desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicleSkills } from "@/db/schema";
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       conditions.filter(Boolean),
     );
 
-    const [data, totalResult] = await Promise.all([
+    const [data, [{ count: total }]] = await Promise.all([
       db
         .select()
         .from(vehicleSkills)
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         .limit(query.limit)
         .offset(query.offset),
       db
-        .select({ count: vehicleSkills.id })
+        .select({ count: sql<number>`count(*)` })
         .from(vehicleSkills)
         .where(whereClause),
     ]);
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data,
       meta: {
-        total: totalResult.length,
+        total,
         limit: query.limit,
         offset: query.offset,
       },

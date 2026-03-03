@@ -56,13 +56,29 @@ export async function GET(
         withTenantFilter(routeStops, [], tenantCtx.companyId),
       ),
       with: {
-        user: true,
-        vehicle: true,
-        order: true,
+        user: {
+          columns: { id: true, name: true, email: true, role: true, phone: true },
+        },
+        vehicle: {
+          columns: { id: true, name: true, plate: true, status: true },
+        },
+        order: {
+          columns: {
+            id: true,
+            trackingId: true,
+            customerName: true,
+            address: true,
+            latitude: true,
+            longitude: true,
+            status: true,
+          },
+        },
         job: true,
         history: {
           with: {
-            user: true,
+            user: {
+              columns: { id: true, name: true, email: true, role: true, phone: true },
+            },
           },
           orderBy: (history, { desc }) => [desc(history.createdAt)],
         },

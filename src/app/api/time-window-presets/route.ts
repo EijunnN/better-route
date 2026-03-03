@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { timeWindowPresets } from "@/db/schema";
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       tenantCtx.companyId,
     );
 
-    const [data, totalResult] = await Promise.all([
+    const [data, [{ count: total }]] = await Promise.all([
       db
         .select()
         .from(timeWindowPresets)
@@ -67,14 +67,14 @@ export async function GET(request: NextRequest) {
         .limit(query.limit)
         .offset(query.offset),
       db
-        .select({ count: timeWindowPresets.id })
+        .select({ count: sql<number>`count(*)` })
         .from(timeWindowPresets)
         .where(whereClause),
     ]);
 
     return NextResponse.json({
       data,
-      meta: { total: totalResult.length },
+      meta: { total },
     });
   } catch (error) {
     return NextResponse.json(

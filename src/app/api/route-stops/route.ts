@@ -152,9 +152,23 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
       with: {
-        user: true,
-        vehicle: true,
-        order: true,
+        user: {
+          columns: { id: true, name: true, email: true, role: true, phone: true },
+        },
+        vehicle: {
+          columns: { id: true, name: true, plate: true, status: true },
+        },
+        order: {
+          columns: {
+            id: true,
+            trackingId: true,
+            customerName: true,
+            address: true,
+            latitude: true,
+            longitude: true,
+            status: true,
+          },
+        },
       },
     });
 

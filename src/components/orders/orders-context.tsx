@@ -315,7 +315,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  const filteredOrders = orders.filter((order) => order.active);
+  // Server already filters active=true, no client-side filter needed
+  const filteredOrders = orders;
   const totalPages = Math.ceil(totalOrders / PAGE_SIZE);
 
   const state: OrdersState = {

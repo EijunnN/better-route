@@ -1,4 +1,4 @@
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicleFleets, vehicles } from "@/db/schema";
@@ -109,15 +109,15 @@ export async function GET(request: NextRequest) {
         })) || [],
     }));
 
-    const totalResult = await db
-      .select({ count: vehicles.id })
+    const [{ count: total }] = await db
+      .select({ count: sql<number>`count(*)` })
       .from(vehicles)
       .where(whereClause);
 
     return NextResponse.json({
       data: vehiclesWithFleets,
       meta: {
-        total: totalResult.length,
+        total,
         limit: query.limit,
         offset: query.offset,
       },

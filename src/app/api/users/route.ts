@@ -227,17 +227,42 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createUserSchema.parse(body);
 
-    // Check for duplicate email within the same company
-    const existingEmail = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.companyId, tenantCtx.companyId),
-          eq(users.email, validatedData.email),
-        ),
-      )
-      .limit(1);
+    // Check for duplicates in parallel (email, username, and optionally identification)
+    const [existingEmail, existingUsername, existingIdentification] =
+      await Promise.all([
+        db
+          .select()
+          .from(users)
+          .where(
+            and(
+              eq(users.companyId, tenantCtx.companyId),
+              eq(users.email, validatedData.email),
+            ),
+          )
+          .limit(1),
+        db
+          .select()
+          .from(users)
+          .where(
+            and(
+              eq(users.companyId, tenantCtx.companyId),
+              eq(users.username, validatedData.username),
+            ),
+          )
+          .limit(1),
+        validatedData.role === "CONDUCTOR" && validatedData.identification
+          ? db
+              .select()
+              .from(users)
+              .where(
+                and(
+                  eq(users.companyId, tenantCtx.companyId),
+                  eq(users.identification, validatedData.identification),
+                ),
+              )
+              .limit(1)
+          : Promise.resolve([]),
+      ]);
 
     if (existingEmail.length > 0) {
       return NextResponse.json(
@@ -245,18 +270,6 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-
-    // Check for duplicate username within the same company
-    const existingUsername = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.companyId, tenantCtx.companyId),
-          eq(users.username, validatedData.username),
-        ),
-      )
-      .limit(1);
 
     if (existingUsername.length > 0) {
       return NextResponse.json(
@@ -268,28 +281,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for duplicate identification if role is CONDUCTOR
-    if (validatedData.role === "CONDUCTOR" && validatedData.identification) {
-      const existingIdentification = await db
-        .select()
-        .from(users)
-        .where(
-          and(
-            eq(users.companyId, tenantCtx.companyId),
-            eq(users.identification, validatedData.identification),
-          ),
-        )
-        .limit(1);
-
-      if (existingIdentification.length > 0) {
-        return NextResponse.json(
-          {
-            error:
-              "Ya existe un conductor con esta identificación en la empresa",
-          },
-          { status: 400 },
-        );
-      }
+    if (existingIdentification.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Ya existe un conductor con esta identificación en la empresa",
+        },
+        { status: 400 },
+      );
     }
 
     // Hash the password

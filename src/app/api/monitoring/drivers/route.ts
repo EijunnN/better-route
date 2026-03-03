@@ -34,38 +34,38 @@ export async function GET(request: NextRequest) {
     const authResult = await requireRoutePermission(request, EntityType.DRIVER, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
 
-    // Get the most recent confirmed optimization job
-    const confirmedJob = await db.query.optimizationJobs.findFirst({
-      where: and(
-        withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
-        eq(optimizationJobs.status, "COMPLETED"),
-      ),
-      orderBy: [desc(optimizationJobs.createdAt)],
-    });
-
-    // Get all drivers (users with CONDUCTOR role) from the company
-    const allDrivers = await db.query.users.findMany({
-      where: and(
-        withTenantFilter(users, [], tenantCtx.companyId),
-        eq(users.role, USER_ROLES.CONDUCTOR),
-        eq(users.active, true),
-      ),
-      columns: {
-        id: true,
-        name: true,
-        driverStatus: true,
-        primaryFleetId: true,
-      },
-      with: {
-        primaryFleet: {
-          columns: {
-            id: true,
-            name: true,
+    // Get the most recent confirmed job and all drivers in parallel
+    const [confirmedJob, allDrivers] = await Promise.all([
+      db.query.optimizationJobs.findFirst({
+        where: and(
+          withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+          eq(optimizationJobs.status, "COMPLETED"),
+        ),
+        orderBy: [desc(optimizationJobs.createdAt)],
+      }),
+      db.query.users.findMany({
+        where: and(
+          withTenantFilter(users, [], tenantCtx.companyId),
+          eq(users.role, USER_ROLES.CONDUCTOR),
+          eq(users.active, true),
+        ),
+        columns: {
+          id: true,
+          name: true,
+          driverStatus: true,
+          primaryFleetId: true,
+        },
+        with: {
+          primaryFleet: {
+            columns: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-      limit: 1000,
-    });
+        limit: 1000,
+      }),
+    ]);
 
     // Get secondary fleets for all drivers
     const allDriverIds = allDrivers.map((d) => d.id);
@@ -183,38 +183,63 @@ export async function GET(request: NextRequest) {
       .where(eq(routeStops.jobId, confirmedJob.id))
       .groupBy(routeStops.userId, routeStops.routeId, routeStops.vehicleId);
 
-    // Get vehicle info
+    // Get vehicle info, fleet info, and driver locations in parallel
     const vehicleIds = [...new Set(driverStops.map((s) => s.vehicleId))];
-    const vehiclesData =
-      vehicleIds.length > 0
-        ? await db.query.vehicles.findMany({
-            where: and(
-              withTenantFilter(vehicles, [], tenantCtx.companyId),
-              sql`${vehicles.id} IN ${vehicleIds}`,
-            ),
-            columns: {
-              id: true,
-              plate: true,
-              name: true,
-            },
-          })
-        : [];
+    const driverIds = allDrivers.map((d) => d.id);
+
+    const [vehiclesData, vehicleFleetsData, latestLocations] =
+      await Promise.all([
+        vehicleIds.length > 0
+          ? db.query.vehicles.findMany({
+              where: and(
+                withTenantFilter(vehicles, [], tenantCtx.companyId),
+                sql`${vehicles.id} IN ${vehicleIds}`,
+              ),
+              columns: {
+                id: true,
+                plate: true,
+                name: true,
+              },
+            })
+          : Promise.resolve([]),
+        vehicleIds.length > 0
+          ? db.query.vehicleFleets.findMany({
+              where: and(
+                eq(vehicleFleets.companyId, tenantCtx.companyId),
+                eq(vehicleFleets.active, true),
+                inArray(vehicleFleets.vehicleId, vehicleIds),
+              ),
+              with: {
+                fleet: { columns: { id: true, name: true } },
+              },
+            })
+          : Promise.resolve([]),
+        driverIds.length > 0
+          ? db
+              .select({
+                driverId: driverLocations.driverId,
+                latitude: driverLocations.latitude,
+                longitude: driverLocations.longitude,
+                accuracy: driverLocations.accuracy,
+                speed: driverLocations.speed,
+                heading: driverLocations.heading,
+                isMoving: driverLocations.isMoving,
+                batteryLevel: driverLocations.batteryLevel,
+                recordedAt: driverLocations.recordedAt,
+              })
+              .from(driverLocations)
+              .where(
+                and(
+                  eq(driverLocations.companyId, tenantCtx.companyId),
+                  inArray(driverLocations.driverId, driverIds),
+                )
+              )
+              .orderBy(desc(driverLocations.recordedAt))
+              .limit(1000)
+          : Promise.resolve([]),
+      ]);
 
     const vehicleMap = new Map(vehiclesData.map((v) => [v.id, v]));
-
-    // Get fleet info for vehicles in the plan
-    const vehicleFleetsData = vehicleIds.length > 0
-      ? await db.query.vehicleFleets.findMany({
-          where: and(
-            eq(vehicleFleets.companyId, tenantCtx.companyId),
-            eq(vehicleFleets.active, true),
-            inArray(vehicleFleets.vehicleId, vehicleIds),
-          ),
-          with: {
-            fleet: { columns: { id: true, name: true } },
-          },
-        })
-      : [];
 
     // Create a map: vehicleId -> fleet name
     const vehicleFleetMap = new Map<string, string>();
@@ -226,32 +251,6 @@ export async function GET(request: NextRequest) {
 
     // Get latest location for each driver (last 5 minutes to be considered "active")
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const driverIds = allDrivers.map((d) => d.id);
-
-    // Get most recent location for each driver using a subquery
-    const latestLocations = driverIds.length > 0
-      ? await db
-          .select({
-            driverId: driverLocations.driverId,
-            latitude: driverLocations.latitude,
-            longitude: driverLocations.longitude,
-            accuracy: driverLocations.accuracy,
-            speed: driverLocations.speed,
-            heading: driverLocations.heading,
-            isMoving: driverLocations.isMoving,
-            batteryLevel: driverLocations.batteryLevel,
-            recordedAt: driverLocations.recordedAt,
-          })
-          .from(driverLocations)
-          .where(
-            and(
-              eq(driverLocations.companyId, tenantCtx.companyId),
-              inArray(driverLocations.driverId, driverIds),
-            )
-          )
-          .orderBy(desc(driverLocations.recordedAt))
-          .limit(1000)
-      : [];
 
     // Create a map of driver ID to their most recent location
     const locationMap = new Map<string, typeof latestLocations[0]>();

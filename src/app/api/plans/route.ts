@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs, planMetrics } from "@/db/schema";
@@ -52,25 +52,28 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .offset(offset);
 
-    // Get metrics for each job
-    const plansWithMetrics = await Promise.all(
-      jobs.map(async (job) => {
-        const metrics = await db
-          .select()
-          .from(planMetrics)
-          .where(eq(planMetrics.jobId, job.id))
-          .limit(1);
+    // Batch-fetch metrics for all jobs at once (avoids N+1)
+    const jobIds = jobs.map((job) => job.id);
+    const allMetrics =
+      jobIds.length > 0
+        ? await db
+            .select()
+            .from(planMetrics)
+            .where(inArray(planMetrics.jobId, jobIds))
+        : [];
 
-        return {
-          ...job,
-          metrics: metrics[0] || null,
-        };
-      }),
+    const metricsMap = new Map(
+      allMetrics.map((m) => [m.jobId, m]),
     );
 
-    // Get total count
-    const totalResult = await db
-      .select({ id: optimizationJobs.id })
+    const plansWithMetrics = jobs.map((job) => ({
+      ...job,
+      metrics: metricsMap.get(job.id) || null,
+    }));
+
+    // Get total count efficiently with COUNT(*)
+    const [{ count: total }] = await db
+      .select({ count: sql<number>`count(*)` })
       .from(optimizationJobs)
       .where(
         and(
@@ -82,7 +85,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data: plansWithMetrics,
       meta: {
-        total: totalResult.length,
+        total,
         limit,
         offset,
       },

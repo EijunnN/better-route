@@ -15,6 +15,10 @@ export const VEHICLE_TYPES = [
   "REFRIGERATED_TRUCK",
 ] as const;
 export const LICENSE_CATEGORIES = [
+  "A",
+  "A1",
+  "A2",
+  "A3",
   "B",
   "C",
   "C1",

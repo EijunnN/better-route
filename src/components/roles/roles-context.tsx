@@ -75,8 +75,6 @@ export interface RolesActions {
 }
 
 export interface RolesMeta {
-  authUser: { role: string } | null;
-  authCompanyId: string | null;
   isAuthLoading: boolean;
   isSystemAdmin: boolean;
   effectiveCompanyId: string | null;
@@ -354,7 +352,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     resetForm,
   };
 
-  const meta: RolesMeta = { authUser: null, authCompanyId: null, isAuthLoading: !isReady, isSystemAdmin, effectiveCompanyId };
+  const meta: RolesMeta = { isAuthLoading: !isReady, isSystemAdmin, effectiveCompanyId };
 
   return <RolesContext value={{ state, actions, meta }}>{children}</RolesContext>;
 }

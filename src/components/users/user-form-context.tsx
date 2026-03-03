@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { CreateUserInput } from "@/lib/validations/user";
+import { isExpired, isExpiringSoon, type CreateUserInput } from "@/lib/validations/user";
 
 interface RolePermission {
   id: string;
@@ -100,18 +100,6 @@ export interface UserFormProviderProps {
   companyId?: string;
 }
 
-function isExpired(dateString: string | null): boolean {
-  if (!dateString) return false;
-  return new Date(dateString) < new Date();
-}
-
-function isExpiringSoon(dateString: string | null): boolean {
-  if (!dateString) return false;
-  const date = new Date(dateString);
-  const thirtyDaysFromNow = new Date();
-  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-  return date > new Date() && date <= thirtyDaysFromNow;
-}
 
 export function UserFormProvider({
   children,
