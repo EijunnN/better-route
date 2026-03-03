@@ -1,5 +1,5 @@
 import type maplibregl from "maplibre-gl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Check if two line segments intersect and return intersection point
 function lineIntersection(
@@ -261,17 +261,17 @@ export function useFreehandDraw({
     };
   }, [map, enabled, onPolygonComplete]);
 
-  const startDrawing = useCallback(() => {
+  const startDrawing = () => {
     setIsDrawing(true);
-  }, []);
+  };
 
-  const stopDrawing = useCallback(() => {
+  const stopDrawing = () => {
     setIsDrawing(false);
     setFreehandPath([]);
     if (map) {
       map.dragPan.enable();
     }
-  }, [map]);
+  };
 
   return {
     isDrawing,

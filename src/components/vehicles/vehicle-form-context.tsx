@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useState, type ReactNode } from "react";
+import { createContext, use, useState, type ReactNode } from "react";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 
 export interface CompanyProfile {
@@ -121,100 +121,94 @@ export function VehicleFormProvider({
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>(initialSkillIds);
   const [activeTab, setActiveTab] = useState("general");
 
-  const updateField = useCallback(
-    (field: keyof VehicleInput, value: VehicleInput[keyof VehicleInput]) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-      setErrors((prev) => {
-        if (prev[field]) {
-          const newErrors = { ...prev };
-          delete newErrors[field];
-          return newErrors;
-        }
-        return prev;
-      });
-    },
-    [],
-  );
+  const updateField = (field: keyof VehicleInput, value: VehicleInput[keyof VehicleInput]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
+      if (prev[field]) {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      }
+      return prev;
+    });
+  };
 
-  const toggleFleetSelection = useCallback((fleetId: string) => {
+  const toggleFleetSelection = (fleetId: string) => {
     setSelectedFleetIds((prev) =>
       prev.includes(fleetId)
         ? prev.filter((id) => id !== fleetId)
         : [...prev, fleetId],
     );
-  }, []);
+  };
 
-  const toggleSkillSelection = useCallback((skillId: string) => {
+  const toggleSkillSelection = (skillId: string) => {
     setSelectedSkillIds((prev) =>
       prev.includes(skillId)
         ? prev.filter((id) => id !== skillId)
         : [...prev, skillId],
     );
-  }, []);
+  };
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setErrors({});
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
 
-      const validationErrors: Record<string, string> = {};
-      if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
-      if (!formData.useNameAsPlate && !formData.plate?.trim()) validationErrors.plate = "Placa es requerida";
-      if (Object.keys(validationErrors).length > 0) {
-        setErrors(validationErrors);
-        return;
-      }
+    const validationErrors: Record<string, string> = {};
+    if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
+    if (!formData.useNameAsPlate && !formData.plate?.trim()) validationErrors.plate = "Placa es requerida";
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
-      setIsSubmitting(true);
+    setIsSubmitting(true);
 
-      const emptyToNull = <T,>(val: T): T | null => (val === "" ? null : val);
+    const emptyToNull = <T,>(val: T): T | null => (val === "" ? null : val);
 
-      const submitData: VehicleInput = {
-        ...formData,
-        fleetIds: selectedFleetIds,
-        plate: formData.useNameAsPlate ? formData.name : formData.plate,
-        originAddress: emptyToNull(formData.originAddress),
-        originLatitude: emptyToNull(formData.originLatitude),
-        originLongitude: emptyToNull(formData.originLongitude),
-        workdayStart: emptyToNull(formData.workdayStart),
-        workdayEnd: emptyToNull(formData.workdayEnd),
-        breakTimeStart: emptyToNull(formData.breakTimeStart),
-        breakTimeEnd: emptyToNull(formData.breakTimeEnd),
-        brand: emptyToNull(formData.brand),
-        model: emptyToNull(formData.model),
-        insuranceExpiry: emptyToNull(formData.insuranceExpiry),
-        inspectionExpiry: emptyToNull(formData.inspectionExpiry),
-        loadType: emptyToNull(formData.loadType) as VehicleInput["loadType"],
-        type: emptyToNull(formData.type) as VehicleInput["type"],
-        licenseRequired: emptyToNull(
-          formData.licenseRequired,
-        ) as VehicleInput["licenseRequired"],
-        assignedDriverId: emptyToNull(formData.assignedDriverId),
+    const submitData: VehicleInput = {
+      ...formData,
+      fleetIds: selectedFleetIds,
+      plate: formData.useNameAsPlate ? formData.name : formData.plate,
+      originAddress: emptyToNull(formData.originAddress),
+      originLatitude: emptyToNull(formData.originLatitude),
+      originLongitude: emptyToNull(formData.originLongitude),
+      workdayStart: emptyToNull(formData.workdayStart),
+      workdayEnd: emptyToNull(formData.workdayEnd),
+      breakTimeStart: emptyToNull(formData.breakTimeStart),
+      breakTimeEnd: emptyToNull(formData.breakTimeEnd),
+      brand: emptyToNull(formData.brand),
+      model: emptyToNull(formData.model),
+      insuranceExpiry: emptyToNull(formData.insuranceExpiry),
+      inspectionExpiry: emptyToNull(formData.inspectionExpiry),
+      loadType: emptyToNull(formData.loadType) as VehicleInput["loadType"],
+      type: emptyToNull(formData.type) as VehicleInput["type"],
+      licenseRequired: emptyToNull(
+        formData.licenseRequired,
+      ) as VehicleInput["licenseRequired"],
+      assignedDriverId: emptyToNull(formData.assignedDriverId),
+    };
+
+    try {
+      await onSubmit(submitData, selectedSkillIds);
+    } catch (error: unknown) {
+      const err = error as {
+        details?: Array<{ path?: string[]; field?: string; message: string }>;
+        error?: string;
       };
-
-      try {
-        await onSubmit(submitData, selectedSkillIds);
-      } catch (error: unknown) {
-        const err = error as {
-          details?: Array<{ path?: string[]; field?: string; message: string }>;
-          error?: string;
-        };
-        if (err.details && Array.isArray(err.details)) {
-          const fieldErrors: Record<string, string> = {};
-          err.details.forEach((detail) => {
-            const fieldName = detail.path?.[0] || detail.field || "form";
-            fieldErrors[fieldName] = detail.message;
-          });
-          setErrors(fieldErrors);
-        } else {
-          setErrors({ form: err.error || "Error al guardar el vehículo" });
-        }
-      } finally {
-        setIsSubmitting(false);
+      if (err.details && Array.isArray(err.details)) {
+        const fieldErrors: Record<string, string> = {};
+        err.details.forEach((detail) => {
+          const fieldName = detail.path?.[0] || detail.field || "form";
+          fieldErrors[fieldName] = detail.message;
+        });
+        setErrors(fieldErrors);
+      } else {
+        setErrors({ form: err.error || "Error al guardar el vehículo" });
       }
-    },
-    [formData, selectedFleetIds, selectedSkillIds, onSubmit],
-  );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const state: VehicleFormState = {
     formData,

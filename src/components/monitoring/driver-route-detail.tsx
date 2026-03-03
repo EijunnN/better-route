@@ -15,7 +15,7 @@ import {
   User,
   XCircle,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -174,7 +174,7 @@ export function DriverRouteDetail({
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     if (!onRefresh) return;
     setIsRefreshing(true);
     try {
@@ -183,7 +183,7 @@ export function DriverRouteDetail({
       // Small delay so the user sees the spinner
       setTimeout(() => setIsRefreshing(false), 600);
     }
-  }, [onRefresh]);
+  };
 
   const formatDistance = (meters: number) => {
     if (meters < 1000) return `${meters}m`;
@@ -205,42 +205,39 @@ export function DriverRouteDetail({
     });
   };
 
-  const handleStatusUpdate = useCallback(
-    async (stopId: string, status: string, notes?: string, workflowStateId?: string) => {
-      setUpdatingStatus(true);
-      try {
-        const body: Record<string, string | undefined> = { status, notes };
-        if (workflowStateId) body.workflowStateId = workflowStateId;
+  const handleStatusUpdate = async (stopId: string, status: string, notes?: string, workflowStateId?: string) => {
+    setUpdatingStatus(true);
+    try {
+      const body: Record<string, string | undefined> = { status, notes };
+      if (workflowStateId) body.workflowStateId = workflowStateId;
 
-        const response = await fetch(`/api/route-stops/${stopId}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            // In a real app, these would come from auth context
-            "x-company-id": localStorage.getItem("companyId") || "",
-            "x-user-id": localStorage.getItem("userId") || "",
-          },
-          body: JSON.stringify(body),
-        });
+      const response = await fetch(`/api/route-stops/${stopId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          // In a real app, these would come from auth context
+          "x-company-id": localStorage.getItem("companyId") || "",
+          "x-user-id": localStorage.getItem("userId") || "",
+        },
+        body: JSON.stringify(body),
+      });
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to update stop status");
-        }
-
-        // Refresh the data to show updated status
-        if (onRefresh) {
-          onRefresh();
-        }
-      } catch (error) {
-        console.error("Failed to update stop status:", error);
-        throw error;
-      } finally {
-        setUpdatingStatus(false);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update stop status");
       }
-    },
-    [onRefresh],
-  );
+
+      // Refresh the data to show updated status
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error("Failed to update stop status:", error);
+      throw error;
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   const openStatusDialog = (stop: Stop) => {
     if (!stop.id) {

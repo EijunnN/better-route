@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, Check, Copy, ExternalLink, Link2, List, Loader2, Map as MapIcon, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
@@ -36,7 +36,7 @@ interface ListFieldDefinition {
 function useListFieldDefinitions(companyId: string | null) {
   const [fields, setFields] = useState<ListFieldDefinition[]>([]);
 
-  const load = useCallback(async () => {
+  const load = async () => {
     if (!companyId) return;
     try {
       const res = await fetch(
@@ -54,7 +54,7 @@ function useListFieldDefinitions(companyId: string | null) {
     } catch {
       // silent
     }
-  }, [companyId]);
+  };
 
   useEffect(() => { load(); }, [load]);
 

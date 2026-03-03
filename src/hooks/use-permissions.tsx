@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, use, type ReactNode } from "react";
+import { createContext, use, type ReactNode } from "react";
 import { useAuth } from "./use-auth";
 
 interface PermissionsContextValue {
@@ -26,28 +26,22 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   // Create Set for O(1) lookups - React Compiler handles memoization automatically
   const permissionsSet = new Set(permissions);
 
-  const hasPermission = useCallback(
-    (entity: string, action: string): boolean => {
-      // Admin has all permissions
-      if (permissionsSet.has("*")) {
-        return true;
-      }
-      return permissionsSet.has(`${entity}:${action}`);
-    },
-    [permissionsSet],
-  );
+  const hasPermission = (entity: string, action: string): boolean => {
+    // Admin has all permissions
+    if (permissionsSet.has("*")) {
+      return true;
+    }
+    return permissionsSet.has(`${entity}:${action}`);
+  };
 
-  const hasAnyPermission = useCallback(
-    (checks: Array<{ entity: string; action: string }>): boolean => {
-      if (permissionsSet.has("*")) {
-        return true;
-      }
-      return checks.some((check) =>
-        permissionsSet.has(`${check.entity}:${check.action}`),
-      );
-    },
-    [permissionsSet],
-  );
+  const hasAnyPermission = (checks: Array<{ entity: string; action: string }>): boolean => {
+    if (permissionsSet.has("*")) {
+      return true;
+    }
+    return checks.some((check) =>
+      permissionsSet.has(`${check.entity}:${check.action}`),
+    );
+  };
 
   const value = {
     permissions,

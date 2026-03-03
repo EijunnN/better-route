@@ -2,7 +2,7 @@
 
 import { AlertCircle, Bell, ChevronLeft, ChevronRight, History, Loader2, MapPin, RefreshCw, Search, Users, X } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import { AlertPanel } from "@/components/alerts/alert-panel";
 import { DriverListItem } from "./driver-list-item";
 import { DriverRouteDetail } from "./driver-route-detail";
@@ -39,21 +39,16 @@ export function MonitoringDashboardView() {
   const mapRef = useRef<MapRef | null>(null);
 
   // Filter drivers based on search and status
-  const filteredDrivers = useMemo(() => {
-    return state.driversData.filter((driver) => {
-      const matchesSearch = searchQuery === "" ||
-        driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        driver.vehiclePlate?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === null || driver.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [state.driversData, searchQuery, statusFilter]);
+  const filteredDrivers = state.driversData.filter((driver) => {
+    const matchesSearch = searchQuery === "" ||
+      driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      driver.vehiclePlate?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === null || driver.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   // Get unique statuses for filter
-  const availableStatuses = useMemo(() => {
-    const statuses = new Set(state.driversData.map(d => d.status));
-    return Array.from(statuses);
-  }, [state.driversData]);
+  const availableStatuses = Array.from(new Set(state.driversData.map(d => d.status)));
 
   // Status labels in Spanish
   const statusLabels: Record<string, string> = {
@@ -65,9 +60,9 @@ export function MonitoringDashboardView() {
   };
 
   // Handle locate on map
-  const handleLocateOnMap = useCallback((lat: number, lng: number) => {
+  const handleLocateOnMap = (lat: number, lng: number) => {
     mapRef.current?.flyTo(lat, lng, 16);
-  }, []);
+  };
 
   if (state.error && !state.monitoringData) {
     return (

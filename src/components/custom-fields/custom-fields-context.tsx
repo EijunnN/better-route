@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useState, type ReactNode } from "react";
+import { createContext, use, useState, type ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useApiData } from "@/hooks/use-api";
 import { useToast } from "@/hooks/use-toast";
@@ -111,94 +111,85 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
     mutate: mutateDefinitions,
   } = useApiData<FieldDefinition[]>(definitionsUrl, companyId);
 
-  const createDefinition = useCallback(
-    async (data: FieldDefinitionInput) => {
-      if (!companyId || isSubmitting) return;
-      setIsSubmitting(true);
-      try {
-        const response = await fetch(`/api/companies/${companyId}/field-definitions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ error: "Error al crear campo" }));
-          throw new Error(error.error || "Error al crear campo");
-        }
-        await mutateDefinitions();
-        toast({ title: "Campo creado", description: `El campo "${data.label}" ha sido creado.` });
-      } finally {
-        setIsSubmitting(false);
+  const createDefinition = async (data: FieldDefinitionInput) => {
+    if (!companyId || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/companies/${companyId}/field-definitions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Error al crear campo" }));
+        throw new Error(error.error || "Error al crear campo");
       }
-    },
-    [companyId, isSubmitting, mutateDefinitions, toast]
-  );
+      await mutateDefinitions();
+      toast({ title: "Campo creado", description: `El campo "${data.label}" ha sido creado.` });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const updateDefinition = useCallback(
-    async (id: string, data: FieldDefinitionInput) => {
-      if (!companyId || isSubmitting) return;
-      setIsSubmitting(true);
-      try {
-        const response = await fetch(`/api/companies/${companyId}/field-definitions/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ error: "Error al actualizar campo" }));
-          throw new Error(error.error || "Error al actualizar campo");
-        }
-        await mutateDefinitions();
-        toast({ title: "Campo actualizado", description: `El campo "${data.label}" ha sido actualizado.` });
-      } finally {
-        setIsSubmitting(false);
+  const updateDefinition = async (id: string, data: FieldDefinitionInput) => {
+    if (!companyId || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/companies/${companyId}/field-definitions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Error al actualizar campo" }));
+        throw new Error(error.error || "Error al actualizar campo");
       }
-    },
-    [companyId, isSubmitting, mutateDefinitions, toast]
-  );
+      await mutateDefinitions();
+      toast({ title: "Campo actualizado", description: `El campo "${data.label}" ha sido actualizado.` });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const deleteDefinition = useCallback(
-    async (id: string) => {
-      if (!companyId || isSubmitting) return;
-      setIsSubmitting(true);
-      try {
-        const response = await fetch(`/api/companies/${companyId}/field-definitions/${id}`, {
-          method: "DELETE",
-          headers: { "x-company-id": companyId },
-        });
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ error: "Error al eliminar campo" }));
-          throw new Error(error.error || "Error al eliminar campo");
-        }
-        await mutateDefinitions();
-        toast({ title: "Campo eliminado", description: "El campo ha sido eliminado." });
-      } finally {
-        setIsSubmitting(false);
+  const deleteDefinition = async (id: string) => {
+    if (!companyId || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/companies/${companyId}/field-definitions/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": companyId },
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Error al eliminar campo" }));
+        throw new Error(error.error || "Error al eliminar campo");
       }
-    },
-    [companyId, isSubmitting, mutateDefinitions, toast]
-  );
+      await mutateDefinitions();
+      toast({ title: "Campo eliminado", description: "El campo ha sido eliminado." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const openCreateDialog = useCallback(() => {
+  const openCreateDialog = () => {
     setSelectedDefinition(null);
     setDialogMode("create");
     setShowDialog(true);
-  }, []);
+  };
 
-  const openEditDialog = useCallback((definition: FieldDefinition) => {
+  const openEditDialog = (definition: FieldDefinition) => {
     setSelectedDefinition(definition);
     setDialogMode("edit");
     setShowDialog(true);
-  }, []);
+  };
 
-  const closeDialog = useCallback(() => {
+  const closeDialog = () => {
     setShowDialog(false);
     setSelectedDefinition(null);
-  }, []);
+  };
 
-  const refreshDefinitions = useCallback(() => {
+  const refreshDefinitions = () => {
     mutateDefinitions();
-  }, [mutateDefinitions]);
+  };
 
   const contextState: CustomFieldsState = {
     definitions: Array.isArray(definitions) ? [...definitions].sort((a, b) => a.position - b.position) : [],

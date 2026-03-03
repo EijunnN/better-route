@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useState, type ReactNode } from "react";
+import { createContext, use, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { useToast } from "@/hooks/use-toast";
 import type { CompanyInput } from "@/lib/validations/company";
@@ -62,105 +62,96 @@ export function CompaniesProvider({ children }: { children: ReactNode }) {
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleCreate = useCallback(
-    async (data: CompanyInput) => {
-      try {
-        const response = await fetch("/api/companies", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al crear empresa");
-        }
-        await mutate();
-        setShowForm(false);
-        toast({ title: "Empresa creada", description: `La empresa "${data.commercialName}" ha sido creada exitosamente.` });
-      } catch (err) {
-        toast({
-          title: "Error al crear empresa",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-        throw err;
+  const handleCreate = async (data: CompanyInput) => {
+    try {
+      const response = await fetch("/api/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear empresa");
       }
-    },
-    [mutate, toast]
-  );
+      await mutate();
+      setShowForm(false);
+      toast({ title: "Empresa creada", description: `La empresa "${data.commercialName}" ha sido creada exitosamente.` });
+    } catch (err) {
+      toast({
+        title: "Error al crear empresa",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
 
-  const handleUpdate = useCallback(
-    async (data: CompanyInput) => {
-      if (!editingCompany) return;
-      const optimisticData = companies.map((c) => (c.id === editingCompany.id ? { ...c, ...data } : c));
-      try {
-        await mutate(
-          async () => {
-            const response = await fetch(`/api/companies/${editingCompany.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data),
-            });
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.error || "Error al actualizar empresa");
-            }
-            return fetcher("/api/companies");
-          },
-          { optimisticData, rollbackOnError: true, revalidate: false }
-        );
-        setEditingCompany(null);
-        toast({ title: "Empresa actualizada", description: `La empresa "${data.commercialName}" ha sido actualizada exitosamente.` });
-      } catch (err) {
-        toast({
-          title: "Error al actualizar empresa",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-        throw err;
-      }
-    },
-    [editingCompany, companies, mutate, toast]
-  );
+  const handleUpdate = async (data: CompanyInput) => {
+    if (!editingCompany) return;
+    const optimisticData = companies.map((c) => (c.id === editingCompany.id ? { ...c, ...data } : c));
+    try {
+      await mutate(
+        async () => {
+          const response = await fetch(`/api/companies/${editingCompany.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || "Error al actualizar empresa");
+          }
+          return fetcher("/api/companies");
+        },
+        { optimisticData, rollbackOnError: true, revalidate: false }
+      );
+      setEditingCompany(null);
+      toast({ title: "Empresa actualizada", description: `La empresa "${data.commercialName}" ha sido actualizada exitosamente.` });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar empresa",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
 
-  const handleDelete = useCallback(
-    async (id: string) => {
-      setDeletingId(id);
-      const company = companies.find((c) => c.id === id);
-      const optimisticData = companies.map((c) => (c.id === id ? { ...c, active: false } : c));
-      try {
-        await mutate(
-          async () => {
-            const response = await fetch(`/api/companies/${id}`, { method: "DELETE" });
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.error || "Error al desactivar empresa");
-            }
-            return fetcher("/api/companies");
-          },
-          { optimisticData, rollbackOnError: true, revalidate: false }
-        );
-        toast({
-          title: "Empresa desactivada",
-          description: company ? `La empresa "${company.commercialName}" ha sido desactivada.` : "La empresa ha sido desactivada.",
-        });
-      } catch (err) {
-        toast({
-          title: "Error al desactivar empresa",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [companies, mutate, toast]
-  );
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    const company = companies.find((c) => c.id === id);
+    const optimisticData = companies.map((c) => (c.id === id ? { ...c, active: false } : c));
+    try {
+      await mutate(
+        async () => {
+          const response = await fetch(`/api/companies/${id}`, { method: "DELETE" });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || "Error al desactivar empresa");
+          }
+          return fetcher("/api/companies");
+        },
+        { optimisticData, rollbackOnError: true, revalidate: false }
+      );
+      toast({
+        title: "Empresa desactivada",
+        description: company ? `La empresa "${company.commercialName}" ha sido desactivada.` : "La empresa ha sido desactivada.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al desactivar empresa",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
-  const cancelForm = useCallback(() => {
+  const cancelForm = () => {
     setShowForm(false);
     setEditingCompany(null);
-  }, []);
+  };
 
   const state: CompaniesState = { companies, isLoading, error, showForm, editingCompany, deletingId };
   const actions: CompaniesActions = {

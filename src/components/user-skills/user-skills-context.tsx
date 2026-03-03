@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { UserSkillInput } from "@/lib/validations/user-skill";
@@ -121,7 +121,7 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
   const [filterExpiry, setFilterExpiry] = useState<string>("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchUserSkills = useCallback(async () => {
+  const fetchUserSkills = async () => {
     if (!companyId) return;
     try {
       const params = new URLSearchParams();
@@ -138,9 +138,9 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [companyId, filterUser, filterStatus, filterExpiry, toast]);
+  };
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/users?active=true", { headers: { "x-company-id": companyId } });
@@ -150,9 +150,9 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error al cargar usuarios:", error);
     }
-  }, [companyId]);
+  };
 
-  const fetchSkills = useCallback(async () => {
+  const fetchSkills = async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/vehicle-skills?active=true", { headers: { "x-company-id": companyId } });
@@ -161,139 +161,126 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error al cargar habilidades:", error);
     }
-  }, [companyId]);
+  };
 
   useEffect(() => {
     fetchUserSkills();
     fetchUsers();
     fetchSkills();
-  }, [fetchUserSkills, fetchUsers, fetchSkills]);
+  }, [companyId, filterUser, filterStatus, filterExpiry]);
 
-  const handleCreate = useCallback(
-    async (data: UserSkillInput) => {
-      if (!companyId) return;
-      try {
-        const response = await fetch("/api/user-skills", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw error;
-        }
-        await fetchUserSkills();
-        setShowForm(false);
-        toast({ title: "Habilidad asignada", description: "La habilidad ha sido asignada exitosamente al usuario." });
-      } catch (err) {
-        toast({
-          title: "Error al asignar habilidad",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-        throw err;
+  const handleCreate = async (data: UserSkillInput) => {
+    if (!companyId) return;
+    try {
+      const response = await fetch("/api/user-skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw error;
       }
-    },
-    [companyId, fetchUserSkills, toast]
-  );
+      await fetchUserSkills();
+      setShowForm(false);
+      toast({ title: "Habilidad asignada", description: "La habilidad ha sido asignada exitosamente al usuario." });
+    } catch (err) {
+      toast({
+        title: "Error al asignar habilidad",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
 
-  const handleUpdate = useCallback(
-    async (data: UserSkillInput) => {
-      if (!editingUserSkill || !companyId) return;
-      try {
-        const response = await fetch(`/api/user-skills/${editingUserSkill.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw error;
-        }
-        await fetchUserSkills();
-        setEditingUserSkill(null);
-        toast({ title: "Habilidad actualizada", description: "La habilidad del usuario ha sido actualizada exitosamente." });
-      } catch (err) {
-        toast({
-          title: "Error al actualizar habilidad",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-        throw err;
+  const handleUpdate = async (data: UserSkillInput) => {
+    if (!editingUserSkill || !companyId) return;
+    try {
+      const response = await fetch(`/api/user-skills/${editingUserSkill.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw error;
       }
-    },
-    [editingUserSkill, companyId, fetchUserSkills, toast]
-  );
+      await fetchUserSkills();
+      setEditingUserSkill(null);
+      toast({ title: "Habilidad actualizada", description: "La habilidad del usuario ha sido actualizada exitosamente." });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar habilidad",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
 
-  const handleDelete = useCallback(
-    async (id: string) => {
-      if (!companyId) return;
-      setDeletingId(id);
-      const userSkill = userSkills.find((us) => us.id === id);
-      try {
-        const response = await fetch(`/api/user-skills/${id}`, {
-          method: "DELETE",
-          headers: { "x-company-id": companyId },
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || error.details || "Error al desactivar la habilidad");
-        }
-        await fetchUserSkills();
-        toast({
-          title: "Habilidad desactivada",
-          description: userSkill
-            ? `La habilidad "${userSkill.skill.name}" de ${userSkill.user.name} ha sido desactivada.`
-            : "La habilidad ha sido desactivada.",
-        });
-      } catch (err) {
-        toast({
-          title: "Error al desactivar habilidad",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      } finally {
-        setDeletingId(null);
+  const handleDelete = async (id: string) => {
+    if (!companyId) return;
+    setDeletingId(id);
+    const userSkill = userSkills.find((us) => us.id === id);
+    try {
+      const response = await fetch(`/api/user-skills/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": companyId },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.details || "Error al desactivar la habilidad");
       }
-    },
-    [companyId, userSkills, fetchUserSkills, toast]
-  );
+      await fetchUserSkills();
+      toast({
+        title: "Habilidad desactivada",
+        description: userSkill
+          ? `La habilidad "${userSkill.skill.name}" de ${userSkill.user.name} ha sido desactivada.`
+          : "La habilidad ha sido desactivada.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al desactivar habilidad",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
-  const handleToggleActive = useCallback(
-    async (id: string, currentActive: boolean) => {
-      if (!companyId) return;
-      try {
-        const response = await fetch(`/api/user-skills/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify({ active: !currentActive }),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || error.details || "Error al actualizar el estado");
-        }
-        await fetchUserSkills();
-        toast({ title: "Estado actualizado", description: `La habilidad ahora está ${!currentActive ? "activa" : "inactiva"}.` });
-      } catch (err) {
-        toast({
-          title: "Error al actualizar estado",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
+  const handleToggleActive = async (id: string, currentActive: boolean) => {
+    if (!companyId) return;
+    try {
+      const response = await fetch(`/api/user-skills/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify({ active: !currentActive }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.details || "Error al actualizar el estado");
       }
-    },
-    [companyId, fetchUserSkills, toast]
-  );
+      await fetchUserSkills();
+      toast({ title: "Estado actualizado", description: `La habilidad ahora está ${!currentActive ? "activa" : "inactiva"}.` });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar estado",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const cancelForm = useCallback(() => {
+  const cancelForm = () => {
     setShowForm(false);
     setEditingUserSkill(null);
-  }, []);
+  };
 
-  const filteredUserSkills = useMemo(() => {
-    if (!filterCategory || filterCategory === "__all__") return userSkills;
-    return userSkills.filter((us) => us.skill.category === filterCategory);
-  }, [userSkills, filterCategory]);
+  const filteredUserSkills = (!filterCategory || filterCategory === "__all__")
+    ? userSkills
+    : userSkills.filter((us) => us.skill.category === filterCategory);
 
   const state: UserSkillsState = {
     userSkills,

@@ -3,9 +3,7 @@
 import {
   createContext,
   use,
-  useCallback,
   useEffect,
-  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -114,26 +112,22 @@ export function SidebarProvider({
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   // Check permission including wildcard for admins
-  const checkPermission = useCallback(
-    (permission: string): boolean => {
-      if (permissions.includes("*")) return true;
-      const [entity, action] = permission.split(":");
-      return hasPermission(entity, action);
-    },
-    [hasPermission, permissions]
-  );
+  const checkPermission = (permission: string): boolean => {
+    if (permissions.includes("*")) return true;
+    const [entity, action] = permission.split(":");
+    return hasPermission(entity, action);
+  };
 
   // Filter navigation sections based on permissions
-  const filteredNavSections = useMemo(() => {
-    if (isLoadingPermissions) return [];
-    return filterNavItemsByPermissions(navSections, checkPermission);
-  }, [navSections, checkPermission, isLoadingPermissions]);
+  const filteredNavSections = isLoadingPermissions
+    ? []
+    : filterNavItemsByPermissions(navSections, checkPermission);
 
-  const toggleCollapse = useCallback(() => {
+  const toggleCollapse = () => {
     setCollapsed((prev) => !prev);
-  }, []);
+  };
 
-  const toggleExpanded = useCallback((href: string) => {
+  const toggleExpanded = (href: string) => {
     setExpandedItems((prev) => {
       const next = new Set(prev);
       if (next.has(href)) {
@@ -143,20 +137,17 @@ export function SidebarProvider({
       }
       return next;
     });
-  }, []);
+  };
 
-  const isActive = useCallback(
-    (href: string, exact?: boolean) => {
-      if (href === "/dashboard") {
-        return pathname === "/dashboard" || pathname === "/";
-      }
-      if (exact) {
-        return pathname === href;
-      }
-      return pathname.startsWith(href);
-    },
-    [pathname]
-  );
+  const isActive = (href: string, exact?: boolean) => {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard" || pathname === "/";
+    }
+    if (exact) {
+      return pathname === href;
+    }
+    return pathname.startsWith(href);
+  };
 
   // Auto-expand items that have active children
   useEffect(() => {

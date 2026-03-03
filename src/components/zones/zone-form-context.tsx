@@ -3,7 +3,6 @@
 import {
   createContext,
   use,
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -111,101 +110,95 @@ export function ZoneFormProvider({
     useState<string[]>(initialVehicleIds);
   const [vehicleSearch, setVehicleSearch] = useState("");
 
-  const updateField = useCallback(
-    (field: keyof ZoneInput, value: ZoneInput[keyof ZoneInput]) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-      setErrors((prev) => {
-        if (prev[field]) {
-          const newErrors = { ...prev };
-          delete newErrors[field];
-          return newErrors;
-        }
-        return prev;
-      });
-    },
-    [],
-  );
+  const updateField = (field: keyof ZoneInput, value: ZoneInput[keyof ZoneInput]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
+      if (prev[field]) {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      }
+      return prev;
+    });
+  };
 
-  const toggleDay = useCallback((day: string) => {
+  const toggleDay = (day: string) => {
     setSelectedDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
     );
-  }, []);
+  };
 
-  const selectAllDays = useCallback(() => {
+  const selectAllDays = () => {
     setSelectedDays([...DAYS_OF_WEEK]);
-  }, []);
+  };
 
-  const selectWeekdays = useCallback(() => {
+  const selectWeekdays = () => {
     setSelectedDays(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]);
-  }, []);
+  };
 
-  const clearDays = useCallback(() => {
+  const clearDays = () => {
     setSelectedDays([]);
-  }, []);
+  };
 
-  const toggleVehicle = useCallback((vehicleId: string) => {
+  const toggleVehicle = (vehicleId: string) => {
     setSelectedVehicleIds((prev) =>
       prev.includes(vehicleId)
         ? prev.filter((id) => id !== vehicleId)
         : [...prev, vehicleId],
     );
-  }, []);
+  };
 
-  const selectAllVehicles = useCallback(() => {
+  const selectAllVehicles = () => {
     setSelectedVehicleIds(vehicles.map((v) => v.id));
-  }, [vehicles]);
+  };
 
-  const clearVehicles = useCallback(() => {
+  const clearVehicles = () => {
     setSelectedVehicleIds([]);
-  }, []);
+  };
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setErrors({});
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
 
-      const validationErrors: Record<string, string> = {};
-      if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
-      if (!formData.geometry) validationErrors.geometry = "Geometría es requerida";
-      if (Object.keys(validationErrors).length > 0) {
-        setErrors(validationErrors);
-        return;
-      }
+    const validationErrors: Record<string, string> = {};
+    if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
+    if (!formData.geometry) validationErrors.geometry = "Geometría es requerida";
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
-      setIsSubmitting(true);
+    setIsSubmitting(true);
 
-      const submitData: ZoneInput = {
-        ...formData,
-        activeDays:
-          selectedDays.length > 0
-            ? (selectedDays as (typeof DAYS_OF_WEEK)[number][])
-            : null,
+    const submitData: ZoneInput = {
+      ...formData,
+      activeDays:
+        selectedDays.length > 0
+          ? (selectedDays as (typeof DAYS_OF_WEEK)[number][])
+          : null,
+    };
+
+    try {
+      await onSubmit(submitData, selectedVehicleIds);
+    } catch (error: unknown) {
+      const err = error as {
+        details?: Array<{ path?: string[]; field?: string; message: string }>;
+        error?: string;
       };
-
-      try {
-        await onSubmit(submitData, selectedVehicleIds);
-      } catch (error: unknown) {
-        const err = error as {
-          details?: Array<{ path?: string[]; field?: string; message: string }>;
-          error?: string;
-        };
-        if (err.details && Array.isArray(err.details)) {
-          const fieldErrors: Record<string, string> = {};
-          err.details.forEach((e) => {
-            const fieldName = e.path?.[0] || e.field || "form";
-            fieldErrors[fieldName] = e.message;
-          });
-          setErrors(fieldErrors);
-        } else {
-          setErrors({ form: err.error || "Error al guardar la zona" });
-        }
-      } finally {
-        setIsSubmitting(false);
+      if (err.details && Array.isArray(err.details)) {
+        const fieldErrors: Record<string, string> = {};
+        err.details.forEach((e) => {
+          const fieldName = e.path?.[0] || e.field || "form";
+          fieldErrors[fieldName] = e.message;
+        });
+        setErrors(fieldErrors);
+      } else {
+        setErrors({ form: err.error || "Error al guardar la zona" });
       }
-    },
-    [formData, selectedDays, selectedVehicleIds, onSubmit],
-  );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Sync form data changes to parent (for preview map and state persistence)
   const onFormDataChangeRef = useRef(onFormDataChange);

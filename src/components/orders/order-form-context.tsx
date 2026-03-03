@@ -3,7 +3,6 @@
 import {
   createContext,
   use,
-  useCallback,
   useEffect,
   useState,
   type ReactNode,
@@ -266,73 +265,64 @@ export function OrderFormProvider({
     }
   }, [initialData, timeWindowPresets]);
 
-  const handleChange = useCallback(
-    (field: keyof OrderFormData, value: string | number | boolean | Record<string, unknown> | null) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-      setErrors((prev) => {
-        if (prev[field]) {
-          const newErrors = { ...prev };
-          delete newErrors[field];
-          return newErrors;
-        }
-        return prev;
-      });
-    },
-    [],
-  );
-
-  const handlePresetChange = useCallback(
-    (presetId: string) => {
-      handleChange("timeWindowPresetId", presetId);
-      const preset = timeWindowPresets.find((p) => p.id === presetId);
-      setSelectedPreset(preset || null);
-      if (preset) {
-        handleChange("strictness", null);
+  const handleChange = (field: keyof OrderFormData, value: string | number | boolean | Record<string, unknown> | null) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
+      if (prev[field]) {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
       }
-    },
-    [timeWindowPresets, handleChange],
-  );
+      return prev;
+    });
+  };
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setErrors({});
+  const handlePresetChange = (presetId: string) => {
+    handleChange("timeWindowPresetId", presetId);
+    const preset = timeWindowPresets.find((p) => p.id === presetId);
+    setSelectedPreset(preset || null);
+    if (preset) {
+      handleChange("strictness", null);
+    }
+  };
 
-      const validationErrors: Record<string, string> = {};
-      if (!formData.trackingId.trim()) validationErrors.trackingId = "Tracking ID es requerido";
-      if (!formData.address.trim()) validationErrors.address = "Dirección es requerida";
-      if (!formData.latitude.trim()) validationErrors.latitude = "Latitud es requerida";
-      if (!formData.longitude.trim()) validationErrors.longitude = "Longitud es requerida";
-      if (Object.keys(validationErrors).length > 0) {
-        setErrors(validationErrors);
-        return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    const validationErrors: Record<string, string> = {};
+    if (!formData.trackingId.trim()) validationErrors.trackingId = "Tracking ID es requerido";
+    if (!formData.address.trim()) validationErrors.address = "Dirección es requerida";
+    if (!formData.latitude.trim()) validationErrors.latitude = "Latitud es requerida";
+    if (!formData.longitude.trim()) validationErrors.longitude = "Longitud es requerida";
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await onSubmit(formData);
+    } catch (error: unknown) {
+      const err = error as {
+        details?: Array<{ path?: string[]; field?: string; message: string }>;
+        message?: string;
+      };
+      if (err.details && Array.isArray(err.details)) {
+        const fieldErrors: Record<string, string> = {};
+        err.details.forEach((detail) => {
+          const fieldName = detail.path?.[0] || detail.field || "form";
+          fieldErrors[fieldName] = detail.message;
+        });
+        setErrors(fieldErrors);
+      } else {
+        setErrors({ form: err.message || "Failed to save order" });
       }
-
-      setIsSubmitting(true);
-
-      try {
-        await onSubmit(formData);
-      } catch (error: unknown) {
-        const err = error as {
-          details?: Array<{ path?: string[]; field?: string; message: string }>;
-          message?: string;
-        };
-        if (err.details && Array.isArray(err.details)) {
-          const fieldErrors: Record<string, string> = {};
-          err.details.forEach((detail) => {
-            const fieldName = detail.path?.[0] || detail.field || "form";
-            fieldErrors[fieldName] = detail.message;
-          });
-          setErrors(fieldErrors);
-        } else {
-          setErrors({ form: err.message || "Failed to save order" });
-        }
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    [formData, onSubmit],
-  );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const state: OrderFormState = {
     formData,

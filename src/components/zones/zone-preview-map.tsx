@@ -1,7 +1,7 @@
 "use client";
 
 import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Crosshair, Layers, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,8 +44,7 @@ export function ZonePreviewMap({
   const addZoneLayersRef = useRef((_m: MapLibreMap) => {});
 
   // Helper to add all zone sources and layers to the map
-  const addZoneLayers = useCallback(
-    (mapInstance: MapLibreMap) => {
+  const addZoneLayers = (mapInstance: MapLibreMap) => {
       const bounds = new maplibregl.LngLatBounds();
       let hasValidZone = false;
 
@@ -113,9 +112,7 @@ export function ZonePreviewMap({
       if (hasValidZone && !bounds.isEmpty()) {
         mapInstance.fitBounds(bounds, { padding: 50, maxZoom: 14 });
       }
-    },
-    [zones, selectedZoneId, onZoneSelect],
-  );
+  };
   addZoneLayersRef.current = addZoneLayers;
 
   // Initialize map

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Route } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +31,7 @@ export default function OnboardingPage() {
   const [checkingCompanies, setCheckingCompanies] = useState(true);
 
   // Check if companies already exist
-  const checkCompanies = useCallback(async () => {
+  const checkCompanies = async () => {
     try {
       const res = await fetch("/api/companies?limit=1", {
         credentials: "include",
@@ -48,7 +48,7 @@ export default function OnboardingPage() {
     } finally {
       setCheckingCompanies(false);
     }
-  }, [router]);
+  };
 
   useEffect(() => {
     if (authLoading) return;

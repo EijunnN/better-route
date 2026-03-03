@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, AlertTriangle } from "lucide-react";
 import {
@@ -78,7 +78,7 @@ export default function TrackingPage() {
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchTracking = useCallback(async () => {
+  const fetchTracking = async () => {
     try {
       const res = await fetch(`/api/public/tracking/${token}`);
       if (res.status === 404) {
@@ -103,7 +103,7 @@ export default function TrackingPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  };
 
   // Initial fetch
   useEffect(() => {

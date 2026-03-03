@@ -8,7 +8,7 @@ import {
   Loader2,
   Upload,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -165,7 +165,7 @@ export function PlanConfirmationDialog({
   >({});
 
   // Fetch drivers (users with role CONDUCTOR) for the company
-  const fetchDrivers = useCallback(async () => {
+  const fetchDrivers = async () => {
     try {
       const response = await fetch("/api/users?role=CONDUCTOR&active=true", {
         headers: {
@@ -179,9 +179,9 @@ export function PlanConfirmationDialog({
     } catch (err) {
       console.error("Error fetching drivers:", err);
     }
-  }, [companyId]);
+  };
 
-  const validatePlan = useCallback(async () => {
+  const validatePlan = async () => {
     setIsValidating(true);
     setError(null);
 
@@ -231,7 +231,7 @@ export function PlanConfirmationDialog({
     } finally {
       setIsValidating(false);
     }
-  }, [jobId, companyId]);
+  };
 
   useEffect(() => {
     if (open) {

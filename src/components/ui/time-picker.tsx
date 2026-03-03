@@ -43,11 +43,11 @@ export function TimePicker({
 }: TimePickerProps) {
   const [open, setOpen] = React.useState(false);
 
-  const [selectedHour, selectedMinute] = React.useMemo(() => {
+  const [selectedHour, selectedMinute] = (() => {
     if (!value) return ["", ""];
     const [h, m] = value.split(":");
     return [h || "", m || ""];
-  }, [value]);
+  })();
 
   const handleHourChange = (hour: string) => {
     const newTime = `${hour}:${selectedMinute || "00"}`;

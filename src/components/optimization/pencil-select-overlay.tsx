@@ -3,7 +3,7 @@
 import * as turf from "@turf/turf";
 import { Pencil, X } from "lucide-react";
 import type maplibregl from "maplibre-gl";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useFreehandDraw } from "@/hooks/use-freehand-draw";
 
@@ -29,34 +29,31 @@ export function PencilSelectOverlay({
   allOrders,
 }: PencilSelectOverlayProps) {
   // Handle polygon completion - find orders inside the polygon
-  const handlePolygonComplete = useCallback(
-    (polygon: [number, number][]) => {
-      if (polygon.length < 3) return;
+  const handlePolygonComplete = (polygon: [number, number][]) => {
+    if (polygon.length < 3) return;
 
-      // Create a turf polygon (needs to be closed)
-      const closedPolygon = [...polygon, polygon[0]];
-      const turfPolygon = turf.polygon([closedPolygon]);
+    // Create a turf polygon (needs to be closed)
+    const closedPolygon = [...polygon, polygon[0]];
+    const turfPolygon = turf.polygon([closedPolygon]);
 
-      // Find all orders inside the polygon
-      const selectedIds: string[] = [];
+    // Find all orders inside the polygon
+    const selectedIds: string[] = [];
 
-      for (const order of allOrders) {
-        const point = turf.point([order.longitude, order.latitude]);
-        if (turf.booleanPointInPolygon(point, turfPolygon)) {
-          selectedIds.push(order.orderId);
-        }
+    for (const order of allOrders) {
+      const point = turf.point([order.longitude, order.latitude]);
+      if (turf.booleanPointInPolygon(point, turfPolygon)) {
+        selectedIds.push(order.orderId);
       }
+    }
 
-      // Notify parent with selected order IDs
-      if (selectedIds.length > 0) {
-        onSelectionComplete(selectedIds);
-      }
+    // Notify parent with selected order IDs
+    if (selectedIds.length > 0) {
+      onSelectionComplete(selectedIds);
+    }
 
-      // Deactivate pencil mode after selection
-      onToggle();
-    },
-    [allOrders, onSelectionComplete, onToggle],
-  );
+    // Deactivate pencil mode after selection
+    onToggle();
+  };
 
   // Use the freehand draw hook
   const { isDrawing } = useFreehandDraw({

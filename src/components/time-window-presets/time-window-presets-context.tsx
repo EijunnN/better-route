@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { TimeWindowPresetFormData } from "./time-window-preset-form";
@@ -75,7 +75,7 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
   const [editingPreset, setEditingPreset] = useState<TimeWindowPreset | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchPresets = useCallback(async () => {
+  const fetchPresets = async () => {
     if (!companyId) return;
     setIsLoading(true);
     try {
@@ -90,117 +90,108 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
     } finally {
       setIsLoading(false);
     }
-  }, [companyId, toast]);
+  };
 
   useEffect(() => {
     fetchPresets();
   }, [fetchPresets]);
 
-  const handleCreate = useCallback(
-    async (data: TimeWindowPresetFormData) => {
-      if (!companyId) return;
-      try {
-        const response = await fetch("/api/time-window-presets", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al crear el preset");
-        }
-        await fetchPresets();
-        setShowForm(false);
-        toast({ title: "Preset creado", description: `El preset "${data.name}" ha sido creado exitosamente.` });
-      } catch (err) {
-        toast({
-          title: "Error al crear preset",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-        throw err;
+  const handleCreate = async (data: TimeWindowPresetFormData) => {
+    if (!companyId) return;
+    try {
+      const response = await fetch("/api/time-window-presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear el preset");
       }
-    },
-    [companyId, fetchPresets, toast]
-  );
+      await fetchPresets();
+      setShowForm(false);
+      toast({ title: "Preset creado", description: `El preset "${data.name}" ha sido creado exitosamente.` });
+    } catch (err) {
+      toast({
+        title: "Error al crear preset",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
 
-  const handleUpdate = useCallback(
-    async (data: TimeWindowPresetFormData) => {
-      if (!editingPreset || !companyId) return;
-      try {
-        const response = await fetch(`/api/time-window-presets/${editingPreset.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify({ ...data, id: editingPreset.id }),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al actualizar el preset");
-        }
-        await fetchPresets();
-        setEditingPreset(null);
-        setShowForm(false);
-        toast({ title: "Preset actualizado", description: `El preset "${data.name}" ha sido actualizado exitosamente.` });
-      } catch (err) {
-        toast({
-          title: "Error al actualizar preset",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-        throw err;
+  const handleUpdate = async (data: TimeWindowPresetFormData) => {
+    if (!editingPreset || !companyId) return;
+    try {
+      const response = await fetch(`/api/time-window-presets/${editingPreset.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify({ ...data, id: editingPreset.id }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al actualizar el preset");
       }
-    },
-    [editingPreset, companyId, fetchPresets, toast]
-  );
+      await fetchPresets();
+      setEditingPreset(null);
+      setShowForm(false);
+      toast({ title: "Preset actualizado", description: `El preset "${data.name}" ha sido actualizado exitosamente.` });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar preset",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
 
-  const handleEdit = useCallback((preset: TimeWindowPreset) => {
+  const handleEdit = (preset: TimeWindowPreset) => {
     setEditingPreset(preset);
     setShowForm(true);
-  }, []);
+  };
 
-  const handleDelete = useCallback(
-    async (id: string) => {
-      if (!companyId) return;
-      setDeletingId(id);
-      const preset = presets.find((p) => p.id === id);
-      try {
-        const response = await fetch(`/api/time-window-presets/${id}`, {
-          method: "DELETE",
-          headers: { "x-company-id": companyId },
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al eliminar el preset");
-        }
-        await fetchPresets();
-        toast({
-          title: "Preset eliminado",
-          description: preset ? `El preset "${preset.name}" ha sido eliminado.` : "El preset ha sido eliminado.",
-        });
-      } catch (err) {
-        toast({
-          title: "Error al eliminar preset",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      } finally {
-        setDeletingId(null);
+  const handleDelete = async (id: string) => {
+    if (!companyId) return;
+    setDeletingId(id);
+    const preset = presets.find((p) => p.id === id);
+    try {
+      const response = await fetch(`/api/time-window-presets/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": companyId },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al eliminar el preset");
       }
-    },
-    [companyId, presets, fetchPresets, toast]
-  );
+      await fetchPresets();
+      toast({
+        title: "Preset eliminado",
+        description: preset ? `El preset "${preset.name}" ha sido eliminado.` : "El preset ha sido eliminado.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al eliminar preset",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
-  const cancelForm = useCallback(() => {
+  const cancelForm = () => {
     setShowForm(false);
     setEditingPreset(null);
-  }, []);
+  };
 
-  const formatTimeDisplay = useCallback((preset: TimeWindowPreset) => {
+  const formatTimeDisplay = (preset: TimeWindowPreset) => {
     if (preset.type === "EXACT") {
       return `${preset.exactTime} ±${preset.toleranceMinutes}min`;
     }
     return `${preset.startTime} - ${preset.endTime}`;
-  }, []);
+  };
 
   const state: TimeWindowPresetsState = { presets, isLoading, error, showForm, editingPreset, deletingId };
   const actions: TimeWindowPresetsActions = {

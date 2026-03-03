@@ -4,7 +4,7 @@ import maplibregl, {
   type Map as MapLibreMap,
   type GeoJSONSource,
 } from "maplibre-gl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
   Eraser,
@@ -168,8 +168,7 @@ export function ZoneMapEditor({
   }
 
   // Stable function to add all custom layers to the map
-  const addLayers = useCallback(
-    (mapInstance: MapLibreMap) => {
+  const addLayers = (mapInstance: MapLibreMap) => {
       // Polygon fill
       mapInstance.addSource("polygon", {
         type: "geojson",
@@ -295,9 +294,7 @@ export function ZoneMapEditor({
           "circle-opacity": 0.8,
         },
       });
-    },
-    [zoneColor],
-  );
+  };
   addLayersRef.current = addLayers;
 
   // Initialize points from initial geometry

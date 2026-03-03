@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useMemo, useState, type ReactNode } from "react";
+import { createContext, use, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { useCompanyContext } from "@/hooks/use-company-context";
 
@@ -221,50 +221,50 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     { revalidateOnFocus: false }
   );
 
-  const fieldDefinitionLabels = useMemo(() => {
+  const fieldDefinitionLabels: Record<string, string> = (() => {
     const map: Record<string, string> = {};
     for (const fd of rawFieldDefs) {
       if (fd.active) map[fd.code] = fd.label;
     }
     return map;
-  }, [rawFieldDefs]);
+  })();
 
   const alertsCount = monitoringData?.metrics?.activeAlerts ?? 0;
   const isLoading = isLoadingMonitoring && !monitoringData;
   const error = monitoringError?.message ?? null;
 
-  const handleDriverClick = useCallback((driverId: string) => {
+  const handleDriverClick = (driverId: string) => {
     setSelectedDriverId(driverId);
     setView("detail");
-  }, []);
+  };
 
-  const handleBackToOverview = useCallback(() => {
+  const handleBackToOverview = () => {
     setView("overview");
     setSelectedDriverId(null);
-  }, []);
+  };
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = () => {
     mutateMonitoring();
     mutateDrivers();
-  }, [mutateMonitoring, mutateDrivers]);
+  };
 
-  const handleDetailRefresh = useCallback(() => {
+  const handleDetailRefresh = () => {
     mutateDetail();
     mutateDrivers();
     mutateMonitoring();
-  }, [mutateDetail, mutateDrivers, mutateMonitoring]);
+  };
 
-  const formatLastUpdate = useCallback((date: Date) => date.toLocaleTimeString(), []);
+  const formatLastUpdate = (date: Date) => date.toLocaleTimeString();
 
-  const getWorkflowLabel = useCallback((systemState: string) => {
+  const getWorkflowLabel = (systemState: string) => {
     const wf = workflowStates.find(s => s.systemState === systemState);
     return wf?.label || systemState;
-  }, [workflowStates]);
+  };
 
-  const getWorkflowColor = useCallback((systemState: string) => {
+  const getWorkflowColor = (systemState: string) => {
     const wf = workflowStates.find(s => s.systemState === systemState);
     return wf?.color || "#6B7280";
-  }, [workflowStates]);
+  };
 
   const state: MonitoringState = {
     monitoringData,

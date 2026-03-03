@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 
 export interface CompanyProfile {
@@ -98,7 +98,7 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
   const [trackingHasChanges, setTrackingHasChanges] = useState(false);
   const [isSavingTracking, setIsSavingTracking] = useState(false);
 
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = async () => {
     if (!companyId || !isReady) return;
     setIsLoading(true);
     try {
@@ -129,9 +129,9 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [companyId, isReady]);
+  };
 
-  const fetchTracking = useCallback(async () => {
+  const fetchTracking = async () => {
     if (!companyId || !isReady) return;
     try {
       const response = await fetch("/api/tracking/settings", { headers: { "x-company-id": companyId } });
@@ -142,16 +142,16 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching tracking settings:", error);
     }
-  }, [companyId, isReady]);
+  };
 
   useEffect(() => {
     fetchProfile();
     fetchTracking();
     setHasChanges(false);
     setTrackingHasChanges(false);
-  }, [fetchProfile, fetchTracking]);
+  }, [companyId, isReady]);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = async () => {
     if (!profile || !companyId) return;
     setIsSaving(true);
     try {
@@ -179,9 +179,9 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsSaving(false);
     }
-  }, [profile, companyId, fetchProfile]);
+  };
 
-  const handleReset = useCallback(async () => {
+  const handleReset = async () => {
     if (!companyId || !confirm("¿Restablecer a valores predeterminados?")) return;
     try {
       await fetch("/api/company-profiles", { method: "DELETE", headers: { "x-company-id": companyId } });
@@ -190,53 +190,47 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error resetting profile:", error);
     }
-  }, [companyId, fetchProfile]);
+  };
 
-  const handleApplyTemplate = useCallback(
-    (templateId: string) => {
-      const template = templates.find((t) => t.id === templateId);
-      if (!template || !profile) return;
+  const handleApplyTemplate = (templateId: string) => {
+    const template = templates.find((t) => t.id === templateId);
+    if (!template || !profile) return;
 
-      const newDimensions: string[] = [];
-      if (template.enableWeight) newDimensions.push("WEIGHT");
-      if (template.enableVolume) newDimensions.push("VOLUME");
-      if (template.enableOrderValue) newDimensions.push("VALUE");
-      if (template.enableUnits) newDimensions.push("UNITS");
+    const newDimensions: string[] = [];
+    if (template.enableWeight) newDimensions.push("WEIGHT");
+    if (template.enableVolume) newDimensions.push("VOLUME");
+    if (template.enableOrderValue) newDimensions.push("VALUE");
+    if (template.enableUnits) newDimensions.push("UNITS");
 
-      setProfile({
-        ...profile,
-        enableWeight: template.enableWeight,
-        enableVolume: template.enableVolume,
-        enableOrderValue: template.enableOrderValue,
-        enableUnits: template.enableUnits,
-        enableOrderType: template.enableOrderType,
-        activeDimensions: newDimensions,
-      });
-      setHasChanges(true);
-    },
-    [templates, profile]
-  );
+    setProfile({
+      ...profile,
+      enableWeight: template.enableWeight,
+      enableVolume: template.enableVolume,
+      enableOrderValue: template.enableOrderValue,
+      enableUnits: template.enableUnits,
+      enableOrderType: template.enableOrderType,
+      activeDimensions: newDimensions,
+    });
+    setHasChanges(true);
+  };
 
-  const toggleDimension = useCallback(
-    (key: "enableWeight" | "enableVolume" | "enableOrderValue" | "enableUnits", dimension: string) => {
-      if (!profile) return;
+  const toggleDimension = (key: "enableWeight" | "enableVolume" | "enableOrderValue" | "enableUnits", dimension: string) => {
+    if (!profile) return;
 
-      const isEnabled = profile[key];
-      let newDimensions = [...profile.activeDimensions];
+    const isEnabled = profile[key];
+    let newDimensions = [...profile.activeDimensions];
 
-      if (isEnabled) {
-        newDimensions = newDimensions.filter((d) => d !== dimension);
-      } else {
-        newDimensions.push(dimension);
-      }
+    if (isEnabled) {
+      newDimensions = newDimensions.filter((d) => d !== dimension);
+    } else {
+      newDimensions.push(dimension);
+    }
 
-      setProfile({ ...profile, [key]: !isEnabled, activeDimensions: newDimensions });
-      setHasChanges(true);
-    },
-    [profile]
-  );
+    setProfile({ ...profile, [key]: !isEnabled, activeDimensions: newDimensions });
+    setHasChanges(true);
+  };
 
-  const handleDownloadTemplate = useCallback(async () => {
+  const handleDownloadTemplate = async () => {
     if (!companyId) return;
     try {
       const response = await fetch(`/api/orders/csv-template?locale=es`, { headers: { "x-company-id": companyId } });
@@ -253,9 +247,9 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error downloading template:", error);
     }
-  }, [companyId]);
+  };
 
-  const handleSaveTracking = useCallback(async () => {
+  const handleSaveTracking = async () => {
     if (!tracking || !companyId) return;
     setIsSavingTracking(true);
     try {
@@ -274,7 +268,7 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsSavingTracking(false);
     }
-  }, [tracking, companyId]);
+  };
 
   const state: ConfiguracionState = { profile, templates, tracking, isLoading, isSaving, isDefault, hasChanges, trackingHasChanges, isSavingTracking };
 

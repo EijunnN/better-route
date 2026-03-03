@@ -3,7 +3,6 @@
 import {
   createContext,
   use,
-  useCallback,
   useEffect,
   useState,
   type ReactNode,
@@ -39,7 +38,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const setTheme = useCallback((newTheme: Theme) => {
+  const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     localStorage.setItem("theme", newTheme);
     if (newTheme === "dark") {
@@ -47,11 +46,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       document.documentElement.classList.remove("dark");
     }
-  }, []);
+  };
 
-  const toggleTheme = useCallback(() => {
+  const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
-  }, [theme, setTheme]);
+  };
 
   return (
     <ThemeContext value={{ theme, isDark: theme === "dark", toggleTheme, setTheme }}>

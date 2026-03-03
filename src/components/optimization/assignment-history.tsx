@@ -9,7 +9,7 @@ import {
   Loader2,
   User,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +59,7 @@ export function AssignmentHistory({
     byAction: Record<string, number>;
   } | null>(null);
 
-  const loadHistory = useCallback(async () => {
+  const loadHistory = async () => {
     setLoading(true);
     try {
       const response = await fetch(
@@ -83,7 +83,7 @@ export function AssignmentHistory({
     } finally {
       setLoading(false);
     }
-  }, [routeId]);
+  };
 
   useEffect(() => {
     if (open) {

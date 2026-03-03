@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { VehicleInput } from "@/lib/validations/vehicle";
@@ -148,7 +148,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
   const [statusModalVehicle, setStatusModalVehicle] = useState<Vehicle | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchVehicles = useCallback(async () => {
+  const fetchVehicles = async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/vehicles", { headers: { "x-company-id": companyId } });
@@ -165,9 +165,9 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [companyId]);
+  };
 
-  const fetchFleets = useCallback(async () => {
+  const fetchFleets = async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/fleets", { headers: { "x-company-id": companyId } });
@@ -176,9 +176,9 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching fleets:", error);
     }
-  }, [companyId]);
+  };
 
-  const fetchDrivers = useCallback(async () => {
+  const fetchDrivers = async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/users?role=CONDUCTOR", { headers: { "x-company-id": companyId } });
@@ -187,9 +187,9 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching drivers:", error);
     }
-  }, [companyId]);
+  };
 
-  const fetchCompanyProfile = useCallback(async () => {
+  const fetchCompanyProfile = async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/company-profiles", { headers: { "x-company-id": companyId } });
@@ -208,9 +208,9 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
       console.error("Error fetching company profile:", error);
       setCompanyProfile({ enableOrderValue: false, enableUnits: false, enableWeight: true, enableVolume: true });
     }
-  }, [companyId]);
+  };
 
-  const fetchAvailableSkills = useCallback(async () => {
+  const fetchAvailableSkills = async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/vehicle-skills?active=true", { headers: { "x-company-id": companyId } });
@@ -219,38 +219,32 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching vehicle skills:", error);
     }
-  }, [companyId]);
+  };
 
-  const fetchVehicleSkills = useCallback(
-    async (vehicleId: string) => {
-      if (!companyId) return [];
-      try {
-        const response = await fetch(`/api/vehicles/${vehicleId}/skills`, { headers: { "x-company-id": companyId } });
-        const data = await response.json();
-        return data.skillIds || [];
-      } catch (error) {
-        console.error("Error fetching vehicle skills:", error);
-        return [];
-      }
-    },
-    [companyId]
-  );
+  const fetchVehicleSkills = async (vehicleId: string) => {
+    if (!companyId) return [];
+    try {
+      const response = await fetch(`/api/vehicles/${vehicleId}/skills`, { headers: { "x-company-id": companyId } });
+      const data = await response.json();
+      return data.skillIds || [];
+    } catch (error) {
+      console.error("Error fetching vehicle skills:", error);
+      return [];
+    }
+  };
 
-  const saveVehicleSkills = useCallback(
-    async (vehicleId: string, skillIds: string[]) => {
-      if (!companyId) return;
-      try {
-        await fetch(`/api/vehicles/${vehicleId}/skills`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify({ skillIds }),
-        });
-      } catch (error) {
-        console.error("Error saving vehicle skills:", error);
-      }
-    },
-    [companyId]
-  );
+  const saveVehicleSkills = async (vehicleId: string, skillIds: string[]) => {
+    if (!companyId) return;
+    try {
+      await fetch(`/api/vehicles/${vehicleId}/skills`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify({ skillIds }),
+      });
+    } catch (error) {
+      console.error("Error saving vehicle skills:", error);
+    }
+  };
 
   useEffect(() => {
     fetchVehicles();
@@ -260,130 +254,115 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     fetchAvailableSkills();
   }, [companyId, fetchDrivers, fetchFleets, fetchVehicles, fetchCompanyProfile, fetchAvailableSkills]);
 
-  const handleCreate = useCallback(
-    async (data: VehicleInput, skillIds?: string[]) => {
-      if (!companyId) return;
-      try {
-        const response = await fetch("/api/vehicles", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al crear vehículo");
-        }
-        const result = await response.json();
-        if (skillIds && skillIds.length > 0 && result.id) {
-          await saveVehicleSkills(result.id, skillIds);
-        }
-        await fetchVehicles();
-        setShowForm(false);
-        toast({ title: "Vehículo creado", description: `El vehículo "${data.name}" ha sido creado exitosamente.` });
-      } catch (err) {
-        toast({
-          title: "Error al crear vehículo",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-        throw err;
-      }
-    },
-    [companyId, saveVehicleSkills, fetchVehicles, toast]
-  );
-
-  const handleUpdate = useCallback(
-    async (data: VehicleInput, skillIds?: string[]) => {
-      if (!editingVehicle || !companyId) return;
-      try {
-        const response = await fetch(`/api/vehicles/${editingVehicle.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al actualizar vehículo");
-        }
-        if (skillIds !== undefined) {
-          await saveVehicleSkills(editingVehicle.id, skillIds);
-        }
-        await fetchVehicles();
-        setEditingVehicle(null);
-        setEditingVehicleSkillIds([]);
-        toast({ title: "Vehículo actualizado", description: `El vehículo "${data.name}" ha sido actualizado exitosamente.` });
-      } catch (err) {
-        toast({
-          title: "Error al actualizar vehículo",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-        throw err;
-      }
-    },
-    [editingVehicle, companyId, saveVehicleSkills, fetchVehicles, toast]
-  );
-
-  const handleDelete = useCallback(
-    async (id: string) => {
-      if (!companyId) return;
-      setDeletingId(id);
-      const vehicle = vehicles.find((v) => v.id === id);
-      try {
-        const response = await fetch(`/api/vehicles/${id}`, {
-          method: "DELETE",
-          headers: { "x-company-id": companyId },
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || error.details || "Error al desactivar el vehículo");
-        }
-        await fetchVehicles();
-        toast({
-          title: "Vehículo desactivado",
-          description: vehicle ? `El vehículo "${vehicle.name}" ha sido desactivado.` : "El vehículo ha sido desactivado.",
-        });
-      } catch (err) {
-        toast({
-          title: "Error al desactivar vehículo",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [vehicles, companyId, fetchVehicles, toast]
-  );
-
-  const handleEditVehicle = useCallback(
-    async (vehicle: Vehicle) => {
-      setEditingVehicle(vehicle);
-      const skillIds = await fetchVehicleSkills(vehicle.id);
-      setEditingVehicleSkillIds(skillIds);
-    },
-    [fetchVehicleSkills]
-  );
-
-  const handleStatusChange = useCallback(
-    async (vehicleId: string, data: VehicleStatusTransitionInput) => {
-      if (!companyId) return;
-      const response = await fetch(`/api/vehicles/${vehicleId}/status-transition`, {
+  const handleCreate = async (data: VehicleInput, skillIds?: string[]) => {
+    if (!companyId) return;
+    try {
+      const response = await fetch("/api/vehicles", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-company-id": companyId },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw response;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear vehículo");
+      }
+      const result = await response.json();
+      if (skillIds && skillIds.length > 0 && result.id) {
+        await saveVehicleSkills(result.id, skillIds);
+      }
       await fetchVehicles();
-    },
-    [companyId, fetchVehicles]
-  );
+      setShowForm(false);
+      toast({ title: "Vehículo creado", description: `El vehículo "${data.name}" ha sido creado exitosamente.` });
+    } catch (err) {
+      toast({
+        title: "Error al crear vehículo",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
 
-  const cancelForm = useCallback(() => {
+  const handleUpdate = async (data: VehicleInput, skillIds?: string[]) => {
+    if (!editingVehicle || !companyId) return;
+    try {
+      const response = await fetch(`/api/vehicles/${editingVehicle.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al actualizar vehículo");
+      }
+      if (skillIds !== undefined) {
+        await saveVehicleSkills(editingVehicle.id, skillIds);
+      }
+      await fetchVehicles();
+      setEditingVehicle(null);
+      setEditingVehicleSkillIds([]);
+      toast({ title: "Vehículo actualizado", description: `El vehículo "${data.name}" ha sido actualizado exitosamente.` });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar vehículo",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!companyId) return;
+    setDeletingId(id);
+    const vehicle = vehicles.find((v) => v.id === id);
+    try {
+      const response = await fetch(`/api/vehicles/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": companyId },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.details || "Error al desactivar el vehículo");
+      }
+      await fetchVehicles();
+      toast({
+        title: "Vehículo desactivado",
+        description: vehicle ? `El vehículo "${vehicle.name}" ha sido desactivado.` : "El vehículo ha sido desactivado.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al desactivar vehículo",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleEditVehicle = async (vehicle: Vehicle) => {
+    setEditingVehicle(vehicle);
+    const skillIds = await fetchVehicleSkills(vehicle.id);
+    setEditingVehicleSkillIds(skillIds);
+  };
+
+  const handleStatusChange = async (vehicleId: string, data: VehicleStatusTransitionInput) => {
+    if (!companyId) return;
+    const response = await fetch(`/api/vehicles/${vehicleId}/status-transition`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-company-id": companyId },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw response;
+    await fetchVehicles();
+  };
+
+  const cancelForm = () => {
     setShowForm(false);
     setEditingVehicle(null);
     setEditingVehicleSkillIds([]);
-  }, []);
+  };
 
   const state: VehiclesState = {
     vehicles,

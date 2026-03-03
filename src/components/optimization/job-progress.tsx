@@ -7,7 +7,7 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,7 +74,7 @@ export function JobProgress({
   const [error, setError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const fetchJobStatus = useCallback(async () => {
+  const fetchJobStatus = async () => {
     if (!jobId) return;
 
     try {
@@ -98,7 +98,7 @@ export function JobProgress({
         err instanceof Error ? err.message : "Failed to fetch job status",
       );
     }
-  }, [jobId, companyId, userId]);
+  };
 
   const cancelJob = async () => {
     if (!jobId || isCancelling) return;

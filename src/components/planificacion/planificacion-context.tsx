@@ -3,9 +3,7 @@
 import {
   createContext,
   use,
-  useCallback,
   useEffect,
-  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -240,7 +238,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
   const [updateOrderError, setUpdateOrderError] = useState<string | null>(null);
 
   // Data loaders
-  const loadFleets = useCallback(async (signal?: AbortSignal) => {
+  const loadFleets = async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/fleets?limit=100&active=true", {
@@ -255,9 +253,9 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch fleets:", err);
     }
-  }, [companyId]);
+  };
 
-  const loadVehicles = useCallback(async (signal?: AbortSignal) => {
+  const loadVehicles = async (signal?: AbortSignal) => {
     if (!companyId) return;
     setVehiclesLoading(true);
     try {
@@ -279,9 +277,9 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     } finally {
       setVehiclesLoading(false);
     }
-  }, [companyId, fleetFilter]);
+  };
 
-  const loadOrders = useCallback(async (signal?: AbortSignal) => {
+  const loadOrders = async (signal?: AbortSignal) => {
     if (!companyId) return;
     setOrdersLoading(true);
     try {
@@ -335,9 +333,9 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     } finally {
       setOrdersLoading(false);
     }
-  }, [companyId]);
+  };
 
-  const loadZones = useCallback(async (signal?: AbortSignal) => {
+  const loadZones = async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/zones?active=true&limit=100", {
@@ -371,9 +369,9 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch zones:", err);
     }
-  }, [companyId]);
+  };
 
-  const loadOptimizers = useCallback(async (signal?: AbortSignal) => {
+  const loadOptimizers = async (signal?: AbortSignal) => {
     setOptimizersLoading(true);
     try {
       const response = await fetch("/api/optimization/engines", { signal });
@@ -390,9 +388,9 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     } finally {
       setOptimizersLoading(false);
     }
-  }, []);
+  };
 
-  const loadCompanyProfile = useCallback(async (signal?: AbortSignal) => {
+  const loadCompanyProfile = async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/company-profiles", {
@@ -430,9 +428,9 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
         enableOrderType: false,
       });
     }
-  }, [companyId]);
+  };
 
-  const loadFieldDefinitions = useCallback(async (signal?: AbortSignal) => {
+  const loadFieldDefinitions = async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch(`/api/companies/${companyId}/field-definitions?entity=orders`, {
@@ -447,7 +445,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch field definitions:", err);
     }
-  }, [companyId]);
+  };
 
   // Initial data load
   useEffect(() => {
@@ -468,85 +466,71 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     });
 
     return () => controller.abort();
-  }, [companyId, loadFleets, loadVehicles, loadOrders, loadZones, loadOptimizers, loadCompanyProfile, loadFieldDefinitions]);
+  }, [companyId, fleetFilter]);
 
   // Derived values
-  const selectedVehicleIdsSet = useMemo(() => new Set(selectedVehicleIds), [selectedVehicleIds]);
-  const selectedOrderIdsSet = useMemo(() => new Set(selectedOrderIds), [selectedOrderIds]);
+  const selectedVehicleIdsSet = new Set(selectedVehicleIds);
+  const selectedOrderIdsSet = new Set(selectedOrderIds);
 
-  const filteredVehicles = useMemo(() => {
-    return vehicles.filter((v) => {
-      const searchLower = vehicleSearch.toLowerCase();
-      return (
-        !vehicleSearch ||
-        v.name.toLowerCase().includes(searchLower) ||
-        (v.plate?.toLowerCase().includes(searchLower) ?? false) ||
-        (v.assignedDriver?.name.toLowerCase().includes(searchLower) ?? false)
-      );
-    });
-  }, [vehicles, vehicleSearch]);
+  const filteredVehicles = vehicles.filter((v) => {
+    const searchLower = vehicleSearch.toLowerCase();
+    return (
+      !vehicleSearch ||
+      v.name.toLowerCase().includes(searchLower) ||
+      (v.plate?.toLowerCase().includes(searchLower) ?? false) ||
+      (v.assignedDriver?.name.toLowerCase().includes(searchLower) ?? false)
+    );
+  });
 
-  const filteredOrders = useMemo(() => {
-    let filtered = orders;
-    if (orderTab === "alertas") {
-      filtered = filtered.filter((o) => !o.latitude || !o.longitude);
-    } else if (orderTab === "conHorario") {
-      filtered = filtered.filter((o) => o.timeWindowPresetId);
-    }
-    if (orderSearch) {
-      const searchLower = orderSearch.toLowerCase();
-      filtered = filtered.filter(
-        (o) =>
-          o.trackingId.toLowerCase().includes(searchLower) ||
-          (o.customerName?.toLowerCase().includes(searchLower) ?? false) ||
-          o.address.toLowerCase().includes(searchLower)
-      );
-    }
-    return filtered;
-  }, [orders, orderTab, orderSearch]);
+  let filteredOrders = orders;
+  if (orderTab === "alertas") {
+    filteredOrders = filteredOrders.filter((o) => !o.latitude || !o.longitude);
+  } else if (orderTab === "conHorario") {
+    filteredOrders = filteredOrders.filter((o) => o.timeWindowPresetId);
+  }
+  if (orderSearch) {
+    const searchLower = orderSearch.toLowerCase();
+    filteredOrders = filteredOrders.filter(
+      (o) =>
+        o.trackingId.toLowerCase().includes(searchLower) ||
+        (o.customerName?.toLowerCase().includes(searchLower) ?? false) ||
+        o.address.toLowerCase().includes(searchLower)
+    );
+  }
 
-  const ordersWithIssues = useMemo(
-    () => orders.filter((o) => !o.latitude || !o.longitude),
-    [orders]
-  );
+  const ordersWithIssues = orders.filter((o) => !o.latitude || !o.longitude);
 
-  const selectedVehicles = useMemo(
-    () => vehicles.filter((v) => selectedVehicleIdsSet.has(v.id)),
-    [vehicles, selectedVehicleIdsSet]
-  );
+  const selectedVehicles = vehicles.filter((v) => selectedVehicleIdsSet.has(v.id));
 
-  const selectedOrders = useMemo(
-    () => orders.filter((o) => selectedOrderIdsSet.has(o.id)),
-    [orders, selectedOrderIdsSet]
-  );
+  const selectedOrders = orders.filter((o) => selectedOrderIdsSet.has(o.id));
 
   // Actions
-  const goToStep = useCallback((step: StepId) => {
+  const goToStep = (step: StepId) => {
     setCurrentStep(step);
-  }, []);
+  };
 
-  const nextStep = useCallback(() => {
+  const nextStep = () => {
     const currentIndex = STEPS.indexOf(currentStep);
     if (currentIndex < STEPS.length - 1) {
       setCompletedSteps((prev) => new Set([...prev, currentStep]));
       setCurrentStep(STEPS[currentIndex + 1]);
     }
-  }, [currentStep]);
+  };
 
-  const prevStep = useCallback(() => {
+  const prevStep = () => {
     const currentIndex = STEPS.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(STEPS[currentIndex - 1]);
     }
-  }, [currentStep]);
+  };
 
-  const toggleVehicle = useCallback((id: string) => {
+  const toggleVehicle = (id: string) => {
     setSelectedVehicleIds((prev) =>
       prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]
     );
-  }, []);
+  };
 
-  const selectAllVehicles = useCallback(() => {
+  const selectAllVehicles = () => {
     const allSelected = filteredVehicles.every((v) => selectedVehicleIdsSet.has(v.id));
     if (allSelected) {
       const filteredSet = new Set(filteredVehicles.map((v) => v.id));
@@ -555,15 +539,15 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
       const newIds = filteredVehicles.map((v) => v.id);
       setSelectedVehicleIds((prev) => [...new Set([...prev, ...newIds])]);
     }
-  }, [filteredVehicles, selectedVehicleIdsSet]);
+  };
 
-  const toggleOrder = useCallback((id: string) => {
+  const toggleOrder = (id: string) => {
     setSelectedOrderIds((prev) =>
       prev.includes(id) ? prev.filter((o) => o !== id) : [...prev, id]
     );
-  }, []);
+  };
 
-  const selectAllOrders = useCallback(() => {
+  const selectAllOrders = () => {
     const allSelected = filteredOrders.every((o) => selectedOrderIdsSet.has(o.id));
     if (allSelected) {
       const filteredSet = new Set(filteredOrders.map((o) => o.id));
@@ -572,35 +556,32 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
       const newIds = filteredOrders.map((o) => o.id);
       setSelectedOrderIds((prev) => [...new Set([...prev, ...newIds])]);
     }
-  }, [filteredOrders, selectedOrderIdsSet]);
+  };
 
-  const deleteOrder = useCallback(
-    async (id: string) => {
-      if (!companyId) return;
-      setDeletingOrderId(id);
-      try {
-        const res = await fetch(`/api/orders/${id}`, {
-          method: "DELETE",
-          headers: { "x-company-id": companyId },
-        });
-        if (res.ok) {
-          setOrders((prev) => prev.filter((o) => o.id !== id));
-          setSelectedOrderIds((prev) => prev.filter((oid) => oid !== id));
-        }
-      } catch (error) {
-        toast({
-          title: "Error al eliminar pedido",
-          description: error instanceof Error ? error.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      } finally {
-        setDeletingOrderId(null);
+  const deleteOrder = async (id: string) => {
+    if (!companyId) return;
+    setDeletingOrderId(id);
+    try {
+      const res = await fetch(`/api/orders/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": companyId },
+      });
+      if (res.ok) {
+        setOrders((prev) => prev.filter((o) => o.id !== id));
+        setSelectedOrderIds((prev) => prev.filter((oid) => oid !== id));
       }
-    },
-    [companyId, toast]
-  );
+    } catch (error) {
+      toast({
+        title: "Error al eliminar pedido",
+        description: error instanceof Error ? error.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingOrderId(null);
+    }
+  };
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
     if (!companyId) return;
     if (selectedVehicleIds.length === 0) {
       setError("Selecciona al menos un vehículo");
@@ -659,24 +640,10 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [
-    selectedVehicleIds,
-    selectedOrderIds,
-    selectedVehicles,
-    companyId,
-    planName,
-    planDate,
-    planTime,
-    objective,
-    capacityEnabled,
-    serviceTime,
-    optimizerType,
-    router,
-  ]);
+  };
 
   // CSV parsing
-  const parseCSV = useCallback(
-    (text: string): CsvRow[] => {
+  const parseCSV = (text: string): CsvRow[] => {
       const cleanText = text.replace(/^\uFEFF/, "");
       const lines = cleanText.split("\n").filter((line) => line.trim());
       if (lines.length < 2) {
@@ -863,49 +830,44 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
       }
 
       return data;
-    },
-    [companyProfile, fieldDefinitions]
-  );
+    };
 
-  const handleCsvFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  const handleCsvFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      setCsvFile(file);
-      setCsvError(null);
+    setCsvFile(file);
+    setCsvError(null);
 
-      try {
-        const buffer = await file.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
+    try {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
 
-        let text: string;
-        if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
-          text = new TextDecoder("utf-8").decode(buffer);
-        } else if (bytes[0] === 0xff && bytes[1] === 0xfe) {
-          text = new TextDecoder("utf-16le").decode(buffer);
-        } else if (bytes[0] === 0xfe && bytes[1] === 0xff) {
-          text = new TextDecoder("utf-16be").decode(buffer);
+      let text: string;
+      if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+        text = new TextDecoder("utf-8").decode(buffer);
+      } else if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+        text = new TextDecoder("utf-16le").decode(buffer);
+      } else if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+        text = new TextDecoder("utf-16be").decode(buffer);
+      } else {
+        const utf8Text = new TextDecoder("utf-8").decode(buffer);
+        if (utf8Text.includes("\uFFFD")) {
+          text = new TextDecoder("windows-1252").decode(buffer);
         } else {
-          const utf8Text = new TextDecoder("utf-8").decode(buffer);
-          if (utf8Text.includes("\uFFFD")) {
-            text = new TextDecoder("windows-1252").decode(buffer);
-          } else {
-            text = utf8Text;
-          }
+          text = utf8Text;
         }
-
-        const data = parseCSV(text);
-        setCsvPreview(data);
-      } catch (err) {
-        setCsvError(err instanceof Error ? err.message : "Error al leer el archivo");
-        setCsvPreview([]);
       }
-    },
-    [parseCSV]
-  );
 
-  const handleCsvUpload = useCallback(async () => {
+      const data = parseCSV(text);
+      setCsvPreview(data);
+    } catch (err) {
+      setCsvError(err instanceof Error ? err.message : "Error al leer el archivo");
+      setCsvPreview([]);
+    }
+  };
+
+  const handleCsvUpload = async () => {
     if (!companyId || csvPreview.length === 0) return;
 
     setCsvUploading(true);
@@ -1123,17 +1085,17 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     } finally {
       setCsvUploading(false);
     }
-  }, [companyId, csvPreview, loadOrders, fieldDefinitions]);
+  };
 
-  const resetCsvState = useCallback(() => {
+  const resetCsvState = () => {
     setShowCsvUpload(false);
     setCsvFile(null);
     setCsvPreview([]);
     setCsvError(null);
     setCsvCustomFieldMappings([]);
-  }, []);
+  };
 
-  const downloadCsvTemplate = useCallback(async () => {
+  const downloadCsvTemplate = async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/orders/csv-template?format=csv&locale=es", {
@@ -1152,9 +1114,9 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       setCsvError(err instanceof Error ? err.message : "Error al descargar la plantilla");
     }
-  }, [companyId]);
+  };
 
-  const openEditOrder = useCallback((order: Order) => {
+  const openEditOrder = (order: Order) => {
     setEditingOrder(order);
     setEditOrderData({
       address: order.address || "",
@@ -1162,9 +1124,9 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
       longitude: order.longitude || "",
     });
     setUpdateOrderError(null);
-  }, []);
+  };
 
-  const saveOrderChanges = useCallback(async () => {
+  const saveOrderChanges = async () => {
     if (!editingOrder || !companyId) return;
 
     setIsUpdatingOrder(true);
@@ -1208,11 +1170,11 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsUpdatingOrder(false);
     }
-  }, [editingOrder, companyId, editOrderData]);
+  };
 
-  const closeEditOrder = useCallback(() => {
+  const closeEditOrder = () => {
     setEditingOrder(null);
-  }, []);
+  };
 
   // Build context value
   const state: PlanificacionState = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -52,12 +52,13 @@ export function UserSkillForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Calculate expiry status for alert display
-  const expiryStatus = useMemo(() => {
-    if (!formData.expiresAt) return null;
-    if (isExpired(formData.expiresAt)) return "expired";
-    if (isExpiringSoon(formData.expiresAt)) return "expiring_soon";
-    return "valid";
-  }, [formData.expiresAt]);
+  const expiryStatus = !formData.expiresAt
+    ? null
+    : isExpired(formData.expiresAt)
+      ? "expired"
+      : isExpiringSoon(formData.expiresAt)
+        ? "expiring_soon"
+        : "valid";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 
 interface Company {
@@ -37,7 +37,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
   const isSystemAdmin = user?.role === "ADMIN_SISTEMA";
 
-  const setSelectedCompanyId = useCallback((id: string | null) => {
+  const setSelectedCompanyId = (id: string | null) => {
     setSelectedCompanyIdState(id);
     if (typeof window !== "undefined") {
       if (id) {
@@ -46,7 +46,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
-  }, []);
+  };
 
   const effectiveCompanyId =
     isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;
@@ -57,7 +57,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       (isSystemAdmin && !!effectiveCompanyId));
 
   // Fetch companies for system admins
-  const fetchCompanies = useCallback(async () => {
+  const fetchCompanies = async () => {
     if (!isSystemAdmin) return;
     setIsLoadingCompanies(true);
     try {
@@ -71,13 +71,13 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoadingCompanies(false);
     }
-  }, [isSystemAdmin]);
+  };
 
   useEffect(() => {
     if (isSystemAdmin && !isAuthLoading) {
       fetchCompanies();
     }
-  }, [isSystemAdmin, isAuthLoading, fetchCompanies]);
+  }, [isSystemAdmin, isAuthLoading]);
 
   // Auto-select: use localStorage value if valid, otherwise first company
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState } from "react";
 import {
   Camera,
   FileSignature,
@@ -369,12 +369,10 @@ function StateCard({
   const { state, actions } = useWorkflow();
 
   // Compute transitions FROM this state
-  const transitionsFrom = useMemo(() => {
-    const fromIds = state.transitions
-      .filter((t) => t.fromStateId === workflowState.id)
-      .map((t) => t.toStateId);
-    return state.states.filter((s) => fromIds.includes(s.id));
-  }, [state.transitions, state.states, workflowState.id]);
+  const fromIds = state.transitions
+    .filter((t) => t.fromStateId === workflowState.id)
+    .map((t) => t.toStateId);
+  const transitionsFrom = state.states.filter((s) => fromIds.includes(s.id));
 
   // Inline edit form state
   const [editData, setEditData] = useState<WorkflowStateInput | null>(null);
@@ -679,20 +677,18 @@ function TransitionsSection({
   const [updatingCells, setUpdatingCells] = useState<Set<string>>(new Set());
 
   // Build a summary of transitions
-  const transitionSummary = useMemo(() => {
-    const byFrom: Record<string, string[]> = {};
-    for (const t of state.transitions) {
-      const from = state.states.find((s) => s.id === t.fromStateId);
-      const to = state.states.find((s) => s.id === t.toStateId);
-      if (from && to) {
-        if (!byFrom[from.label]) byFrom[from.label] = [];
-        byFrom[from.label].push(to.label);
-      }
+  const byFrom: Record<string, string[]> = {};
+  for (const t of state.transitions) {
+    const from = state.states.find((s) => s.id === t.fromStateId);
+    const to = state.states.find((s) => s.id === t.toStateId);
+    if (from && to) {
+      if (!byFrom[from.label]) byFrom[from.label] = [];
+      byFrom[from.label].push(to.label);
     }
-    return Object.entries(byFrom)
-      .map(([from, tos]) => `${from} -> ${tos.join(", ")}`)
-      .join("  |  ");
-  }, [state.transitions, state.states]);
+  }
+  const transitionSummary = Object.entries(byFrom)
+    .map(([from, tos]) => `${from} -> ${tos.join(", ")}`)
+    .join("  |  ");
 
   const findTransition = (fromId: string, toId: string) => {
     return state.transitions.find((t) => t.fromStateId === fromId && t.toStateId === toId);

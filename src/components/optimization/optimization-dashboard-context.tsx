@@ -3,7 +3,6 @@
 import {
   createContext,
   use,
-  useCallback,
   useEffect,
   useState,
   type ReactNode,
@@ -268,7 +267,7 @@ export function OptimizationDashboardProvider({
   const [isSwapping, setIsSwapping] = useState(false);
 
   // Load zones
-  const loadZones = useCallback(async () => {
+  const loadZones = async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/zones?active=true&limit=100", {
@@ -302,11 +301,11 @@ export function OptimizationDashboardProvider({
     } catch (err) {
       console.error("Failed to fetch zones:", err);
     }
-  }, [companyId]);
+  };
 
   useEffect(() => {
     loadZones();
-  }, [loadZones]);
+  }, [companyId]);
 
   // Derived: Available vehicles
   const availableVehicles: AvailableVehicle[] = [
@@ -378,53 +377,47 @@ export function OptimizationDashboardProvider({
   ];
 
   // Actions
-  const toggleOrderSelection = useCallback(
-    (
-      orderId: string,
-      trackingId: string,
-      address: string,
-      vehicleId: string | null,
-      vehiclePlate: string | null,
-      routeId: string | null,
-    ) => {
-      setSelectedOrdersForReassign((prev) => {
-        const exists = prev.find((o) => o.orderId === orderId);
-        if (exists) {
-          return prev.filter((o) => o.orderId !== orderId);
-        }
-        return [
-          ...prev,
-          { orderId, trackingId, address, vehicleId, vehiclePlate, routeId },
-        ];
-      });
-      if (!isSelectMode) {
-        setIsSelectMode(true);
+  const toggleOrderSelection = (
+    orderId: string,
+    trackingId: string,
+    address: string,
+    vehicleId: string | null,
+    vehiclePlate: string | null,
+    routeId: string | null,
+  ) => {
+    setSelectedOrdersForReassign((prev) => {
+      const exists = prev.find((o) => o.orderId === orderId);
+      if (exists) {
+        return prev.filter((o) => o.orderId !== orderId);
       }
-    },
-    [isSelectMode],
-  );
+      return [
+        ...prev,
+        { orderId, trackingId, address, vehicleId, vehiclePlate, routeId },
+      ];
+    });
+    if (!isSelectMode) {
+      setIsSelectMode(true);
+    }
+  };
 
-  const isOrderSelected = useCallback(
-    (orderId: string) => {
-      return selectedOrdersForReassign.some((o) => o.orderId === orderId);
-    },
-    [selectedOrdersForReassign],
-  );
+  const isOrderSelected = (orderId: string) => {
+    return selectedOrdersForReassign.some((o) => o.orderId === orderId);
+  };
 
-  const clearSelection = useCallback(() => {
+  const clearSelection = () => {
     setSelectedOrdersForReassign([]);
     setIsSelectMode(false);
     setShowReassignModal(false);
-  }, []);
+  };
 
-  const openReassignModal = useCallback(() => {
+  const openReassignModal = () => {
     if (selectedOrdersForReassign.length === 0) return;
     setSelectedVehicleForReassign(null);
     setReassignmentError(null);
     setShowReassignModal(true);
-  }, [selectedOrdersForReassign.length]);
+  };
 
-  const handleReassignment = useCallback(async () => {
+  const handleReassignment = async () => {
     if (
       selectedOrdersForReassign.length === 0 ||
       !selectedVehicleForReassign ||
@@ -471,98 +464,85 @@ export function OptimizationDashboardProvider({
     } finally {
       setIsReassigning(false);
     }
-  }, [
-    selectedOrdersForReassign,
-    selectedVehicleForReassign,
-    companyId,
-    jobId,
-    onResultUpdate,
-    clearSelection,
-  ]);
+  };
 
-  const handlePencilSelectionComplete = useCallback(
-    (selectedOrderIds: string[]) => {
-      const newSelectedOrders = selectedOrderIds
-        .map((orderId) => allSelectableOrders.find((o) => o.orderId === orderId))
-        .filter((o): o is NonNullable<typeof o> => o !== undefined)
-        .map((o) => ({
-          orderId: o.orderId,
-          trackingId: o.trackingId,
-          address: o.address,
-          vehicleId: o.vehicleId,
-          vehiclePlate: o.vehiclePlate,
-          routeId: o.routeId,
-        }));
+  const handlePencilSelectionComplete = (selectedOrderIds: string[]) => {
+    const newSelectedOrders = selectedOrderIds
+      .map((orderId) => allSelectableOrders.find((o) => o.orderId === orderId))
+      .filter((o): o is NonNullable<typeof o> => o !== undefined)
+      .map((o) => ({
+        orderId: o.orderId,
+        trackingId: o.trackingId,
+        address: o.address,
+        vehicleId: o.vehicleId,
+        vehiclePlate: o.vehiclePlate,
+        routeId: o.routeId,
+      }));
 
-      setSelectedOrdersForReassign((prev) => {
-        const existingIds = new Set(prev.map((o) => o.orderId));
-        const uniqueNew = newSelectedOrders.filter(
-          (o) => !existingIds.has(o.orderId),
-        );
-        return [...prev, ...uniqueNew];
-      });
+    setSelectedOrdersForReassign((prev) => {
+      const existingIds = new Set(prev.map((o) => o.orderId));
+      const uniqueNew = newSelectedOrders.filter(
+        (o) => !existingIds.has(o.orderId),
+      );
+      return [...prev, ...uniqueNew];
+    });
 
-      setIsSelectMode(true);
-      setPencilMode(false);
-    },
-    [allSelectableOrders],
-  );
+    setIsSelectMode(true);
+    setPencilMode(false);
+  };
 
-  const swapVehicleRoutes = useCallback(
-    async (vehicleAId: string, vehicleBId: string) => {
-      if (!companyId || !jobId) return;
+  const swapVehicleRoutes = async (vehicleAId: string, vehicleBId: string) => {
+    if (!companyId || !jobId) return;
 
-      setIsSwapping(true);
-      try {
-        const response = await fetch(
-          `/api/optimization/jobs/${jobId}/swap-vehicles`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-company-id": companyId,
-            },
-            body: JSON.stringify({ vehicleAId, vehicleBId }),
+    setIsSwapping(true);
+    try {
+      const response = await fetch(
+        `/api/optimization/jobs/${jobId}/swap-vehicles`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": companyId,
           },
+          body: JSON.stringify({ vehicleAId, vehicleBId }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || "Error al intercambiar las rutas",
         );
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error || "Error al intercambiar las rutas",
-          );
-        }
-
-        const updatedResult = await response.json();
-
-        if (onResultUpdate) {
-          onResultUpdate(updatedResult);
-        }
-
-        const plateA =
-          result.routes.find((r) => r.vehicleId === vehicleAId)
-            ?.vehiclePlate || vehicleAId;
-        const plateB =
-          result.routes.find((r) => r.vehicleId === vehicleBId)
-            ?.vehiclePlate || vehicleBId;
-
-        toast({
-          title: "Rutas intercambiadas exitosamente",
-          description: `Se intercambiaron las rutas entre ${plateA} y ${plateB}`,
-        });
-      } catch (error) {
-        toast({
-          title: "Error al intercambiar rutas",
-          description:
-            error instanceof Error ? error.message : "Error desconocido",
-          variant: "destructive",
-        });
-      } finally {
-        setIsSwapping(false);
       }
-    },
-    [companyId, jobId, onResultUpdate, result.routes, toast],
-  );
+
+      const updatedResult = await response.json();
+
+      if (onResultUpdate) {
+        onResultUpdate(updatedResult);
+      }
+
+      const plateA =
+        result.routes.find((r) => r.vehicleId === vehicleAId)
+          ?.vehiclePlate || vehicleAId;
+      const plateB =
+        result.routes.find((r) => r.vehicleId === vehicleBId)
+          ?.vehiclePlate || vehicleBId;
+
+      toast({
+        title: "Rutas intercambiadas exitosamente",
+        description: `Se intercambiaron las rutas entre ${plateA} y ${plateB}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error al intercambiar rutas",
+        description:
+          error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSwapping(false);
+    }
+  };
 
   const state: DashboardState = {
     selectedRouteId,

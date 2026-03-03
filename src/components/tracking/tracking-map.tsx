@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getMapStyle } from "@/lib/map-styles";
@@ -37,7 +37,7 @@ export function TrackingMap({
     ? document.documentElement.classList.contains("dark")
     : false;
 
-  const initMap = useCallback(async () => {
+  const initMap = async () => {
     if (!mapContainer.current) return;
 
     try {
@@ -81,8 +81,7 @@ export function TrackingMap({
       console.error("Failed to initialize tracking map:", err);
       setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  };
 
   // Initialize map once
   useEffect(() => {

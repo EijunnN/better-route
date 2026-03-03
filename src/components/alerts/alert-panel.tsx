@@ -8,7 +8,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -43,7 +43,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
   const { toast } = useToast();
 
   // Fetch alerts
-  const fetchAlerts = useCallback(async () => {
+  const fetchAlerts = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(
@@ -69,7 +69,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [companyId, statusFilter, toast]);
+  };
 
   useEffect(() => {
     if (companyId) {

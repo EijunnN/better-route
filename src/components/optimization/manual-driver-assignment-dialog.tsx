@@ -12,7 +12,7 @@ import {
   Wrench,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -94,7 +94,7 @@ export function ManualDriverAssignmentDialog({
   } | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  const loadDrivers = useCallback(async () => {
+  const loadDrivers = async () => {
     setLoading(true);
     try {
       // Get driver suggestions for this vehicle
@@ -124,36 +124,33 @@ export function ManualDriverAssignmentDialog({
     } finally {
       setLoading(false);
     }
-  }, [vehicleId]);
+  };
 
-  const validateDriver = useCallback(
-    async (driverId: string) => {
-      try {
-        const response = await fetch("/api/driver-assignment/validate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": localStorage.getItem("companyId") || "",
-            "x-user-id": localStorage.getItem("userId") || "",
-          },
-          body: JSON.stringify({
-            companyId: localStorage.getItem("companyId"),
-            driverId,
-            vehicleId,
-            routeStops: [],
-          }),
-        });
+  const validateDriver = async (driverId: string) => {
+    try {
+      const response = await fetch("/api/driver-assignment/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": localStorage.getItem("companyId") || "",
+          "x-user-id": localStorage.getItem("userId") || "",
+        },
+        body: JSON.stringify({
+          companyId: localStorage.getItem("companyId"),
+          driverId,
+          vehicleId,
+          routeStops: [],
+        }),
+      });
 
-        if (response.ok) {
-          const result = await response.json();
-          setValidation(result.data);
-        }
-      } catch (error) {
-        console.error("Error validating driver:", error);
+      if (response.ok) {
+        const result = await response.json();
+        setValidation(result.data);
       }
-    },
-    [vehicleId],
-  );
+    } catch (error) {
+      console.error("Error validating driver:", error);
+    }
+  };
 
   // Load drivers when dialog opens
   useEffect(() => {

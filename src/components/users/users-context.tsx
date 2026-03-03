@@ -3,7 +3,6 @@
 import {
   createContext,
   use,
-  useCallback,
   useEffect,
   useState,
   type ReactNode,
@@ -136,7 +135,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = async () => {
     if (!effectiveCompanyId) return;
     try {
       const url = activeTab === "all" ? "/api/users" : `/api/users?role=${activeTab}`;
@@ -152,9 +151,9 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, effectiveCompanyId]);
+  };
 
-  const fetchFleets = useCallback(async () => {
+  const fetchFleets = async () => {
     if (!effectiveCompanyId) return;
     try {
       const response = await fetch("/api/fleets", {
@@ -165,9 +164,9 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching fleets:", error);
     }
-  }, [effectiveCompanyId]);
+  };
 
-  const fetchRoles = useCallback(async () => {
+  const fetchRoles = async () => {
     if (!effectiveCompanyId) return;
     try {
       const response = await fetch("/api/roles", {
@@ -178,32 +177,27 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching roles:", error);
     }
-  }, [effectiveCompanyId]);
+  };
 
-  const fetchUserRoles = useCallback(
-    async (userId: string) => {
-      if (!effectiveCompanyId) return [];
-      try {
-        const response = await fetch(`/api/users/${userId}/roles`, {
-          headers: { "x-company-id": effectiveCompanyId },
-        });
-        const data = await response.json();
-        return (data.data || []).map((ur: { roleId: string }) => ur.roleId);
-      } catch (error) {
-        console.error("Error fetching user roles:", error);
-        return [];
-      }
-    },
-    [effectiveCompanyId]
-  );
-
-  // Fetch fleets and roles when company changes
-  useEffect(() => {
-    if (effectiveCompanyId) {
-      fetchFleets();
-      fetchRoles();
+  const fetchUserRoles = async (userId: string) => {
+    if (!effectiveCompanyId) return [];
+    try {
+      const response = await fetch(`/api/users/${userId}/roles`, {
+        headers: { "x-company-id": effectiveCompanyId },
+      });
+      const data = await response.json();
+      return (data.data || []).map((ur: { roleId: string }) => ur.roleId);
+    } catch (error) {
+      console.error("Error fetching user roles:", error);
+      return [];
     }
-  }, [effectiveCompanyId, fetchFleets, fetchRoles]);
+  };
+
+  // Fetch fleets and roles lazily (only needed for the form)
+  const ensureFormData = async () => {
+    if (fleets.length === 0) fetchFleets();
+    if (roles.length === 0) fetchRoles();
+  };
 
   // Fetch users when company or tab changes
   useEffect(() => {
@@ -213,175 +207,166 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     }
   }, [effectiveCompanyId, fetchUsers]);
 
-  const assignRolesToUser = useCallback(
-    async (userId: string, roleIds: string[], currentRoleIds: string[] = []) => {
-      if (!effectiveCompanyId) return;
-      const rolesToAdd = roleIds.filter((id) => !currentRoleIds.includes(id));
-      const rolesToRemove = currentRoleIds.filter((id) => !roleIds.includes(id));
+  const assignRolesToUser = async (userId: string, roleIds: string[], currentRoleIds: string[] = []) => {
+    if (!effectiveCompanyId) return;
+    const rolesToAdd = roleIds.filter((id) => !currentRoleIds.includes(id));
+    const rolesToRemove = currentRoleIds.filter((id) => !roleIds.includes(id));
 
-      for (const roleId of rolesToAdd) {
-        await fetch(`/api/users/${userId}/roles`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": effectiveCompanyId,
-          },
-          body: JSON.stringify({
-            roleId,
-            isPrimary: rolesToAdd.indexOf(roleId) === 0,
-          }),
-        });
+    for (const roleId of rolesToAdd) {
+      await fetch(`/api/users/${userId}/roles`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": effectiveCompanyId,
+        },
+        body: JSON.stringify({
+          roleId,
+          isPrimary: rolesToAdd.indexOf(roleId) === 0,
+        }),
+      });
+    }
+
+    for (const roleId of rolesToRemove) {
+      await fetch(`/api/users/${userId}/roles?roleId=${roleId}`, {
+        method: "DELETE",
+        headers: { "x-company-id": effectiveCompanyId },
+      });
+    }
+  };
+
+  const handleCreate = async (data: CreateUserInput, selectedRoleIds: string[]) => {
+    if (!effectiveCompanyId) return;
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": effectiveCompanyId,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear usuario");
       }
 
-      for (const roleId of rolesToRemove) {
-        await fetch(`/api/users/${userId}/roles?roleId=${roleId}`, {
-          method: "DELETE",
-          headers: { "x-company-id": effectiveCompanyId },
-        });
+      const result = await response.json();
+      const userId = result.data?.id;
+
+      if (userId && selectedRoleIds.length > 0) {
+        await assignRolesToUser(userId, selectedRoleIds);
       }
-    },
-    [effectiveCompanyId]
-  );
 
-  const handleCreate = useCallback(
-    async (data: CreateUserInput, selectedRoleIds: string[]) => {
-      if (!effectiveCompanyId) return;
-      try {
-        const response = await fetch("/api/users", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": effectiveCompanyId,
-          },
-          body: JSON.stringify(data),
-        });
+      await fetchUsers();
+      setShowForm(false);
+      toast({
+        title: "Usuario creado",
+        description: `El usuario "${data.name}" ha sido creado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al crear usuario",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al crear usuario");
-        }
+  const handleUpdate = async (data: CreateUserInput, selectedRoleIds: string[]) => {
+    if (!editingUser || !effectiveCompanyId) return;
 
-        const result = await response.json();
-        const userId = result.data?.id;
-
-        if (userId && selectedRoleIds.length > 0) {
-          await assignRolesToUser(userId, selectedRoleIds);
-        }
-
-        await fetchUsers();
-        setShowForm(false);
-        toast({
-          title: "Usuario creado",
-          description: `El usuario "${data.name}" ha sido creado exitosamente.`,
-        });
-      } catch (err) {
-        toast({
-          title: "Error al crear usuario",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-        throw err;
+    try {
+      const updateData = { ...data };
+      if (!updateData.password) {
+        delete (updateData as Partial<CreateUserInput>).password;
       }
-    },
-    [effectiveCompanyId, assignRolesToUser, fetchUsers, toast]
-  );
 
-  const handleUpdate = useCallback(
-    async (data: CreateUserInput, selectedRoleIds: string[]) => {
-      if (!editingUser || !effectiveCompanyId) return;
+      const response = await fetch(`/api/users/${editingUser.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": effectiveCompanyId,
+        },
+        body: JSON.stringify(updateData),
+      });
 
-      try {
-        const updateData = { ...data };
-        if (!updateData.password) {
-          delete (updateData as Partial<CreateUserInput>).password;
-        }
-
-        const response = await fetch(`/api/users/${editingUser.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": effectiveCompanyId,
-          },
-          body: JSON.stringify(updateData),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al actualizar usuario");
-        }
-
-        await assignRolesToUser(editingUser.id, selectedRoleIds, editingUserRoleIds);
-
-        await fetchUsers();
-        setEditingUser(null);
-        setEditingUserRoleIds([]);
-        toast({
-          title: "Usuario actualizado",
-          description: `El usuario "${data.name}" ha sido actualizado exitosamente.`,
-        });
-      } catch (err) {
-        toast({
-          title: "Error al actualizar usuario",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-        throw err;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al actualizar usuario");
       }
-    },
-    [editingUser, effectiveCompanyId, editingUserRoleIds, assignRolesToUser, fetchUsers, toast]
-  );
 
-  const handleDelete = useCallback(
-    async (id: string) => {
-      if (!effectiveCompanyId) return;
-      setDeletingId(id);
-      const user = users.find((u) => u.id === id);
+      await assignRolesToUser(editingUser.id, selectedRoleIds, editingUserRoleIds);
 
-      try {
-        const response = await fetch(`/api/users/${id}`, {
-          method: "DELETE",
-          headers: { "x-company-id": effectiveCompanyId },
-        });
+      await fetchUsers();
+      setEditingUser(null);
+      setEditingUserRoleIds([]);
+      toast({
+        title: "Usuario actualizado",
+        description: `El usuario "${data.name}" ha sido actualizado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar usuario",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || error.details || "Error al desactivar el usuario");
-        }
+  const handleDelete = async (id: string) => {
+    if (!effectiveCompanyId) return;
+    setDeletingId(id);
+    const user = users.find((u) => u.id === id);
 
-        await fetchUsers();
-        toast({
-          title: "Usuario desactivado",
-          description: user
-            ? `El usuario "${user.name}" ha sido desactivado.`
-            : "El usuario ha sido desactivado.",
-        });
-      } catch (err) {
-        toast({
-          title: "Error al desactivar usuario",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      } finally {
-        setDeletingId(null);
+    try {
+      const response = await fetch(`/api/users/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": effectiveCompanyId },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.details || "Error al desactivar el usuario");
       }
-    },
-    [effectiveCompanyId, users, fetchUsers, toast]
-  );
 
-  const handleEditUser = useCallback(
-    async (user: User) => {
-      const userRoleIds = await fetchUserRoles(user.id);
-      setEditingUserRoleIds(userRoleIds);
-      setEditingUser(user);
-    },
-    [fetchUserRoles]
-  );
+      await fetchUsers();
+      toast({
+        title: "Usuario desactivado",
+        description: user
+          ? `El usuario "${user.name}" ha sido desactivado.`
+          : "El usuario ha sido desactivado.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al desactivar usuario",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
-  const cancelForm = useCallback(() => {
+  const handleEditUser = async (user: User) => {
+    ensureFormData();
+    const userRoleIds = await fetchUserRoles(user.id);
+    setEditingUserRoleIds(userRoleIds);
+    setEditingUser(user);
+  };
+
+  const openForm = (show: boolean) => {
+    if (show) ensureFormData();
+    setShowForm(show);
+  };
+
+  const cancelForm = () => {
     setShowForm(false);
     setEditingUser(null);
     setEditingUserRoleIds([]);
-  }, []);
+  };
 
   // Derived values
   const filteredUsers = users.filter((user) => {
@@ -411,7 +396,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     handleUpdate,
     handleDelete,
     handleEditUser,
-    setShowForm,
+    setShowForm: openForm,
     setShowImportDialog,
     setActiveTab,
     cancelForm,

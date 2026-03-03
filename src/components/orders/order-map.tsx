@@ -4,7 +4,7 @@ import maplibregl, {
   type Map as MapLibreMap,
   type StyleSpecification,
 } from "maplibre-gl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { ORDER_STATUS } from "@/lib/validations/order";
 
@@ -82,8 +82,7 @@ export function OrderMap({
   const isInitialized = useRef(false);
 
   // Add order source and layers to map
-  const addOrderLayers = useCallback(
-    (mapInstance: MapLibreMap) => {
+  const addOrderLayers = (mapInstance: MapLibreMap) => {
       // Add GeoJSON source for orders
       mapInstance.addSource("orders", {
         type: "geojson",
@@ -226,13 +225,10 @@ export function OrderMap({
       mapInstance.on("mouseleave", "unclustered-point", () => {
         mapInstance.getCanvas().style.cursor = "";
       });
-    },
-    [onOrderClick],
-  );
+  };
 
   // Fetch orders and update map
-  const fetchOrders = useCallback(
-    async (mapInstance: MapLibreMap) => {
+  const fetchOrders = async (mapInstance: MapLibreMap) => {
       try {
         const bounds = mapInstance.getBounds();
         const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
@@ -287,9 +283,7 @@ export function OrderMap({
       } catch (error) {
         console.error("Failed to fetch orders:", error);
       }
-    },
-    [companyId, statusFilter, searchQuery],
-  );
+  };
 
   // Initialize map
   useEffect(() => {

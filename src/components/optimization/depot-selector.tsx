@@ -1,7 +1,7 @@
 "use client";
 
 import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,19 +56,16 @@ export function DepotSelector({
   const [manualAddress, setManualAddress] = useState(value.address || "");
   const [manualInputMode, setManualInputMode] = useState(false);
 
-  const updateDepotLocation = useCallback(
-    (lat: string, lng: string, address?: string) => {
-      onChange({
-        latitude: lat,
-        longitude: lng,
-        address: address || value.address,
-      });
-      setManualLat(lat);
-      setManualLng(lng);
-      if (address) setManualAddress(address);
-    },
-    [onChange, value.address],
-  );
+  const updateDepotLocation = (lat: string, lng: string, address?: string) => {
+    onChange({
+      latitude: lat,
+      longitude: lng,
+      address: address || value.address,
+    });
+    setManualLat(lat);
+    setManualLng(lng);
+    if (address) setManualAddress(address);
+  };
 
   // Initialize map
   useEffect(() => {

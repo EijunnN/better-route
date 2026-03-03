@@ -3,9 +3,8 @@
 import {
   createContext,
   use,
-  useCallback,
   useEffect,
-  useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -152,166 +151,157 @@ export function UserFormProvider({
   const [isLoadingAllPermissions, setIsLoadingAllPermissions] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
 
-  const roleIds = useMemo(() => roles.map((r) => r.id).join(","), [roles]);
+  const prevRoleIdsRef = useRef<string>("");
 
   useEffect(() => {
     if (!companyId || roles.length === 0) return;
+    const roleIds = roles.map((r) => r.id).sort().join(",");
+    if (roleIds === prevRoleIdsRef.current) return;
+    prevRoleIdsRef.current = roleIds;
+
     const fetchAllPermissions = async () => {
       setIsLoadingAllPermissions(true);
-      const permissionsMap: Record<string, GroupedPermissions> = {};
-      await Promise.all(
-        roles.map(async (role) => {
-          try {
-            const response = await fetch(`/api/roles/${role.id}/permissions`, {
-              headers: { "x-company-id": companyId },
-            });
-            if (response.ok) {
-              const data = await response.json();
-              permissionsMap[role.id] = data.permissions || {};
-            }
-          } catch (error) {
-            console.error(
-              `Error fetching permissions for role ${role.id}:`,
-              error,
-            );
-          }
-        }),
-      );
-      setRolePermissions(permissionsMap);
-      setIsLoadingAllPermissions(false);
+      try {
+        const response = await fetch(
+          `/api/roles/batch/permissions?roleIds=${roleIds}`,
+          { headers: { "x-company-id": companyId } },
+        );
+        if (response.ok) {
+          const result = await response.json();
+          setRolePermissions(result.data || {});
+        }
+      } catch (error) {
+        console.error("Error fetching role permissions:", error);
+      } finally {
+        setIsLoadingAllPermissions(false);
+      }
     };
     fetchAllPermissions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId, roleIds]);
+  }, [companyId, roles]);
 
-  const updateField = useCallback(
-    (
-      field: keyof CreateUserInput,
-      value: CreateUserInput[keyof CreateUserInput],
-    ) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-      setErrors((prev) => {
-        if (prev[field]) {
-          const n = { ...prev };
-          delete n[field];
-          return n;
-        }
-        return prev;
-      });
-    },
-    [],
-  );
+  const updateField = (
+    field: keyof CreateUserInput,
+    value: CreateUserInput[keyof CreateUserInput],
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
+      if (prev[field]) {
+        const n = { ...prev };
+        delete n[field];
+        return n;
+      }
+      return prev;
+    });
+  };
 
-  const toggleLicenseCategory = useCallback((category: string) => {
+  const toggleLicenseCategory = (category: string) => {
     setSelectedLicenseCategories((prev) =>
       prev.includes(category)
         ? prev.filter((c) => c !== category)
         : [...prev, category],
     );
-  }, []);
+  };
 
-  const toggleRole = useCallback((roleId: string) => {
+  const toggleRole = (roleId: string) => {
     setSelectedRoleIds((prev) =>
       prev.includes(roleId)
         ? prev.filter((id) => id !== roleId)
         : [...prev, roleId],
     );
-  }, []);
+  };
 
-  const handleExpandRole = useCallback((roleId: string) => {
+  const handleExpandRole = (roleId: string) => {
     setExpandedRoleId((prev) => (prev === roleId ? null : roleId));
-  }, []);
+  };
 
   const isConductor = formData.role === "CONDUCTOR";
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setErrors({});
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
 
-      const validationErrors: Record<string, string> = {};
-      if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
-      if (!formData.email.trim()) {
-        validationErrors.email = "Email es requerido";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        validationErrors.email = "Formato de email inválido";
-      }
-      if (!formData.username.trim()) {
-        validationErrors.username = "Username es requerido";
-      } else if (formData.username.trim().length < 3) {
-        validationErrors.username = "Username debe tener al menos 3 caracteres";
-      }
-      if (!isEditing && !formData.password) {
-        validationErrors.password = "Contraseña es requerida";
-      } else if (!isEditing && formData.password.length < 8) {
-        validationErrors.password = "Contraseña debe tener al menos 8 caracteres";
-      }
-      if (!formData.role) validationErrors.role = "Rol es requerido";
-      if (Object.keys(validationErrors).length > 0) {
-        setErrors(validationErrors);
-        return;
-      }
+    const validationErrors: Record<string, string> = {};
+    if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
+    if (!formData.email.trim()) {
+      validationErrors.email = "Email es requerido";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      validationErrors.email = "Formato de email inválido";
+    }
+    if (!formData.username.trim()) {
+      validationErrors.username = "Username es requerido";
+    } else if (formData.username.trim().length < 3) {
+      validationErrors.username = "Username debe tener al menos 3 caracteres";
+    }
+    if (!isEditing && !formData.password) {
+      validationErrors.password = "Contraseña es requerida";
+    } else if (!isEditing && formData.password.length < 8) {
+      validationErrors.password = "Contraseña debe tener al menos 8 caracteres";
+    }
+    if (!formData.role) validationErrors.role = "Rol es requerido";
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
-      setIsSubmitting(true);
+    setIsSubmitting(true);
 
-      const emptyToNull = (value: string | null | undefined): string | null => {
-        if (value === undefined || value === null || value.trim() === "")
-          return null;
-        return value;
+    const emptyToNull = (value: string | null | undefined): string | null => {
+      if (value === undefined || value === null || value.trim() === "")
+        return null;
+      return value;
+    };
+
+    const submitData: CreateUserInput = {
+      ...formData,
+      phone: emptyToNull(formData.phone),
+      photo: emptyToNull(formData.photo),
+      birthDate: emptyToNull(formData.birthDate),
+      certifications: emptyToNull(formData.certifications),
+      licenseCategories: isConductor
+        ? selectedLicenseCategories.length > 0
+          ? selectedLicenseCategories.join(", ")
+          : null
+        : null,
+      identification: isConductor
+        ? emptyToNull(formData.identification)
+        : null,
+      licenseNumber: isConductor ? emptyToNull(formData.licenseNumber) : null,
+      licenseExpiry: isConductor ? emptyToNull(formData.licenseExpiry) : null,
+      driverStatus: isConductor ? formData.driverStatus : null,
+      primaryFleetId: isConductor
+        ? emptyToNull(formData.primaryFleetId)
+        : null,
+    };
+
+    try {
+      await onSubmit(submitData, selectedRoleIds);
+    } catch (error: unknown) {
+      const err = error as {
+        details?: Array<{ path?: string[]; field?: string; message: string }>;
+        error?: string;
       };
-
-      const submitData: CreateUserInput = {
-        ...formData,
-        phone: emptyToNull(formData.phone),
-        photo: emptyToNull(formData.photo),
-        birthDate: emptyToNull(formData.birthDate),
-        certifications: emptyToNull(formData.certifications),
-        licenseCategories: isConductor
-          ? selectedLicenseCategories.length > 0
-            ? selectedLicenseCategories.join(", ")
-            : null
-          : null,
-        identification: isConductor
-          ? emptyToNull(formData.identification)
-          : null,
-        licenseNumber: isConductor ? emptyToNull(formData.licenseNumber) : null,
-        licenseExpiry: isConductor ? emptyToNull(formData.licenseExpiry) : null,
-        driverStatus: isConductor ? formData.driverStatus : null,
-        primaryFleetId: isConductor
-          ? emptyToNull(formData.primaryFleetId)
-          : null,
-      };
-
-      try {
-        await onSubmit(submitData, selectedRoleIds);
-      } catch (error: unknown) {
-        const err = error as {
-          details?: Array<{ path?: string[]; field?: string; message: string }>;
-          error?: string;
-        };
-        if (err.details && Array.isArray(err.details)) {
-          const fieldErrors: Record<string, string> = {};
-          err.details.forEach((detail) => {
-            const fieldName = detail.path?.[0] || detail.field || "form";
-            fieldErrors[fieldName] = detail.message;
-          });
-          setErrors(fieldErrors);
-        } else {
-          setErrors({ form: err.error || "Error al guardar el usuario" });
-        }
-      } finally {
-        setIsSubmitting(false);
+      if (err.details && Array.isArray(err.details)) {
+        const fieldErrors: Record<string, string> = {};
+        err.details.forEach((detail) => {
+          const fieldName = detail.path?.[0] || detail.field || "form";
+          fieldErrors[fieldName] = detail.message;
+        });
+        setErrors(fieldErrors);
+      } else {
+        setErrors({ form: err.error || "Error al guardar el usuario" });
       }
-    },
-    [formData, selectedLicenseCategories, selectedRoleIds, isConductor, onSubmit],
-  );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const licenseStatus = useMemo(() => {
-    if (!formData.licenseExpiry) return null;
-    if (isExpired(formData.licenseExpiry)) return "expired";
-    if (isExpiringSoon(formData.licenseExpiry)) return "expiring_soon";
-    return "valid";
-  }, [formData.licenseExpiry]);
+  const licenseStatus = !formData.licenseExpiry
+    ? null
+    : isExpired(formData.licenseExpiry)
+      ? "expired"
+      : isExpiringSoon(formData.licenseExpiry)
+        ? "expiring_soon"
+        : "valid";
 
   const showRolesColumn = formData.role !== "ADMIN_SISTEMA";
   const showRolesSection =

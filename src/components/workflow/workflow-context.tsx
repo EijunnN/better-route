@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, type ReactNode } from "react";
+import { createContext, use, type ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useApiData } from "@/hooks/use-api";
 import { useToast } from "@/hooks/use-toast";
@@ -179,161 +179,143 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     mutate: mutateTransitions,
   } = useApiData<WorkflowTransition[]>(transitionsUrl, companyId);
 
-  const createState = useCallback(
-    async (data: WorkflowStateInput) => {
-      if (!companyId) return;
+  const createState = async (data: WorkflowStateInput) => {
+    if (!companyId) return;
+    const response = await fetch(`/api/companies/${companyId}/workflow-states`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-company-id": companyId },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Error al crear estado" }));
+      throw new Error(error.error || "Error al crear estado");
+    }
+    await mutateStates();
+    toast({ title: "Estado creado", description: `El estado "${data.label}" ha sido creado.` });
+  };
+
+  const updateState = async (id: string, data: WorkflowStateInput) => {
+    if (!companyId) return;
+    const response = await fetch(`/api/companies/${companyId}/workflow-states/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-company-id": companyId },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Error al actualizar estado" }));
+      throw new Error(error.error || "Error al actualizar estado");
+    }
+    await mutateStates();
+    toast({ title: "Estado actualizado", description: `El estado "${data.label}" ha sido actualizado.` });
+  };
+
+  const deleteState = async (id: string) => {
+    if (!companyId) return;
+    const response = await fetch(`/api/companies/${companyId}/workflow-states/${id}`, {
+      method: "DELETE",
+      headers: { "x-company-id": companyId },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Error al eliminar estado" }));
+      throw new Error(error.error || "Error al eliminar estado");
+    }
+    await Promise.all([mutateStates(), mutateTransitions()]);
+    toast({ title: "Estado eliminado", description: "El estado ha sido eliminado." });
+  };
+
+  const createTransition = async (fromStateId: string, toStateId: string) => {
+    if (!companyId) return;
+    const response = await fetch(`/api/companies/${companyId}/workflow-transitions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-company-id": companyId },
+      body: JSON.stringify({ fromStateId, toStateId }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Error al crear transicion" }));
+      throw new Error(error.error || "Error al crear transicion");
+    }
+    await mutateTransitions();
+  };
+
+  const deleteTransition = async (id: string) => {
+    if (!companyId) return;
+    const response = await fetch(`/api/companies/${companyId}/workflow-transitions/${id}`, {
+      method: "DELETE",
+      headers: { "x-company-id": companyId },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Error al eliminar transicion" }));
+      throw new Error(error.error || "Error al eliminar transicion");
+    }
+    await mutateTransitions();
+  };
+
+  const createFromTemplate = async (templateType: TemplateType) => {
+    if (!companyId) return;
+    const template = WORKFLOW_TEMPLATES[templateType];
+
+    // Delete all existing states (which cascades transitions via soft-delete)
+    const currentStates = Array.isArray(states) ? states : [];
+    for (const s of currentStates) {
+      await fetch(`/api/companies/${companyId}/workflow-states/${s.id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": companyId },
+      });
+    }
+
+    // Create all template states
+    const codeToId: Record<string, string> = {};
+    for (const stateConfig of template.states) {
       const response = await fetch(`/api/companies/${companyId}/workflow-states`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-company-id": companyId },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          code: stateConfig.code,
+          label: stateConfig.label,
+          systemState: stateConfig.systemState,
+          color: stateConfig.color,
+          position: stateConfig.position,
+          isDefault: stateConfig.isDefault ?? false,
+          isTerminal: stateConfig.isTerminal ?? false,
+          requiresPhoto: stateConfig.requiresPhoto ?? false,
+          requiresSignature: stateConfig.requiresSignature ?? false,
+          requiresNotes: stateConfig.requiresNotes ?? false,
+          requiresReason: stateConfig.requiresReason ?? false,
+          reasonOptions: stateConfig.reasonOptions ?? [],
+        }),
       });
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Error al crear estado" }));
-        throw new Error(error.error || "Error al crear estado");
+        throw new Error(`Error al crear estado ${stateConfig.label}`);
       }
-      await mutateStates();
-      toast({ title: "Estado creado", description: `El estado "${data.label}" ha sido creado.` });
-    },
-    [companyId, mutateStates, toast]
-  );
+      const result = await response.json();
+      const created = result.data;
+      codeToId[stateConfig.code] = created.id;
+    }
 
-  const updateState = useCallback(
-    async (id: string, data: WorkflowStateInput) => {
-      if (!companyId) return;
-      const response = await fetch(`/api/companies/${companyId}/workflow-states/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Error al actualizar estado" }));
-        throw new Error(error.error || "Error al actualizar estado");
-      }
-      await mutateStates();
-      toast({ title: "Estado actualizado", description: `El estado "${data.label}" ha sido actualizado.` });
-    },
-    [companyId, mutateStates, toast]
-  );
-
-  const deleteState = useCallback(
-    async (id: string) => {
-      if (!companyId) return;
-      const response = await fetch(`/api/companies/${companyId}/workflow-states/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Error al eliminar estado" }));
-        throw new Error(error.error || "Error al eliminar estado");
-      }
-      await Promise.all([mutateStates(), mutateTransitions()]);
-      toast({ title: "Estado eliminado", description: "El estado ha sido eliminado." });
-    },
-    [companyId, mutateStates, mutateTransitions, toast]
-  );
-
-  const createTransition = useCallback(
-    async (fromStateId: string, toStateId: string) => {
-      if (!companyId) return;
-      const response = await fetch(`/api/companies/${companyId}/workflow-transitions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
-        body: JSON.stringify({ fromStateId, toStateId }),
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Error al crear transicion" }));
-        throw new Error(error.error || "Error al crear transicion");
-      }
-      await mutateTransitions();
-    },
-    [companyId, mutateTransitions]
-  );
-
-  const deleteTransition = useCallback(
-    async (id: string) => {
-      if (!companyId) return;
-      const response = await fetch(`/api/companies/${companyId}/workflow-transitions/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Error al eliminar transicion" }));
-        throw new Error(error.error || "Error al eliminar transicion");
-      }
-      await mutateTransitions();
-    },
-    [companyId, mutateTransitions]
-  );
-
-  const createFromTemplate = useCallback(
-    async (templateType: TemplateType) => {
-      if (!companyId) return;
-      const template = WORKFLOW_TEMPLATES[templateType];
-
-      // Delete all existing states (which cascades transitions via soft-delete)
-      const currentStates = Array.isArray(states) ? states : [];
-      for (const s of currentStates) {
-        await fetch(`/api/companies/${companyId}/workflow-states/${s.id}`, {
-          method: "DELETE",
-          headers: { "x-company-id": companyId },
-        });
-      }
-
-      // Create all template states
-      const codeToId: Record<string, string> = {};
-      for (const stateConfig of template.states) {
-        const response = await fetch(`/api/companies/${companyId}/workflow-states`, {
+    // Create all transitions
+    for (const [fromCode, toCode] of template.transitions) {
+      const fromId = codeToId[fromCode];
+      const toId = codeToId[toCode];
+      if (fromId && toId) {
+        await fetch(`/api/companies/${companyId}/workflow-transitions`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-company-id": companyId },
-          body: JSON.stringify({
-            code: stateConfig.code,
-            label: stateConfig.label,
-            systemState: stateConfig.systemState,
-            color: stateConfig.color,
-            position: stateConfig.position,
-            isDefault: stateConfig.isDefault ?? false,
-            isTerminal: stateConfig.isTerminal ?? false,
-            requiresPhoto: stateConfig.requiresPhoto ?? false,
-            requiresSignature: stateConfig.requiresSignature ?? false,
-            requiresNotes: stateConfig.requiresNotes ?? false,
-            requiresReason: stateConfig.requiresReason ?? false,
-            reasonOptions: stateConfig.reasonOptions ?? [],
-          }),
+          body: JSON.stringify({ fromStateId: fromId, toStateId: toId }),
         });
-        if (!response.ok) {
-          throw new Error(`Error al crear estado ${stateConfig.label}`);
-        }
-        const result = await response.json();
-        const created = result.data;
-        codeToId[stateConfig.code] = created.id;
       }
+    }
 
-      // Create all transitions
-      for (const [fromCode, toCode] of template.transitions) {
-        const fromId = codeToId[fromCode];
-        const toId = codeToId[toCode];
-        if (fromId && toId) {
-          await fetch(`/api/companies/${companyId}/workflow-transitions`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-company-id": companyId },
-            body: JSON.stringify({ fromStateId: fromId, toStateId: toId }),
-          });
-        }
-      }
+    await Promise.all([mutateStates(), mutateTransitions()]);
+    toast({ title: "Plantilla aplicada", description: `Se configuro el flujo "${template.name}" con ${template.states.length} estados.` });
+  };
 
-      await Promise.all([mutateStates(), mutateTransitions()]);
-      toast({ title: "Plantilla aplicada", description: `Se configuro el flujo "${template.name}" con ${template.states.length} estados.` });
-    },
-    [companyId, states, mutateStates, mutateTransitions, toast]
-  );
-
-  const refreshStates = useCallback(() => {
+  const refreshStates = () => {
     mutateStates();
-  }, [mutateStates]);
+  };
 
-  const refreshTransitions = useCallback(() => {
+  const refreshTransitions = () => {
     mutateTransitions();
-  }, [mutateTransitions]);
+  };
 
   const contextState: WorkflowContextState = {
     states: Array.isArray(states) ? [...states].sort((a, b) => a.position - b.position) : [],

@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useTheme } from "@/components/layout/theme-context";
 import { getMapStyle, DEFAULT_MAP_CENTER } from "@/lib/map-styles";
@@ -47,7 +47,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
     },
   }), []);
 
-  const loadMapData = useCallback(async (fitBounds = false) => {
+  const loadMapData = async (fitBounds = false) => {
     if (!map.current || !companyId || !map.current.isStyleLoaded()) return;
 
     try {
@@ -396,7 +396,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
       console.error("Failed to load map data:", err);
       setError("Error al cargar datos del mapa");
     }
-  }, [companyId, selectedDriverId, onDriverSelect]);
+  };
 
   // Stable ref to always call latest loadMapData without triggering effect re-runs
   const loadMapDataRef = useRef(loadMapData);

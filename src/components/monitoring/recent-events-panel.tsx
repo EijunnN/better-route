@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCircle, Clock, MapPin, Package, XCircle } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -63,7 +63,7 @@ export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap, getW
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "FAILED" | "COMPLETED">("all");
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = async () => {
     try {
       const response = await fetch("/api/monitoring/events", {
         headers: { "x-company-id": companyId },
@@ -78,7 +78,7 @@ export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap, getW
     } finally {
       setIsLoading(false);
     }
-  }, [companyId]);
+  };
 
   useEffect(() => {
     fetchEvents();

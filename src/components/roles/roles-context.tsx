@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -108,7 +108,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
   const [formData, setFormData] = useState({ name: "", description: "" });
   const [formError, setFormError] = useState("");
 
-  const fetchRoles = useCallback(async () => {
+  const fetchRoles = async () => {
     if (!effectiveCompanyId) return;
     try {
       const response = await fetch("/api/roles", {
@@ -123,26 +123,23 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [effectiveCompanyId]);
+  };
 
-  const fetchRolePermissions = useCallback(
-    async (roleId: string) => {
-      if (!effectiveCompanyId) return;
-      setIsLoadingPermissions(true);
-      try {
-        const response = await fetch(`/api/roles/${roleId}/permissions`, {
-          headers: { "x-company-id": effectiveCompanyId },
-        });
-        const data = await response.json();
-        setRolePermissions(data);
-      } catch (error) {
-        console.error("Error fetching role permissions:", error);
-      } finally {
-        setIsLoadingPermissions(false);
-      }
-    },
-    [effectiveCompanyId]
-  );
+  const fetchRolePermissions = async (roleId: string) => {
+    if (!effectiveCompanyId) return;
+    setIsLoadingPermissions(true);
+    try {
+      const response = await fetch(`/api/roles/${roleId}/permissions`, {
+        headers: { "x-company-id": effectiveCompanyId },
+      });
+      const data = await response.json();
+      setRolePermissions(data);
+    } catch (error) {
+      console.error("Error fetching role permissions:", error);
+    } finally {
+      setIsLoadingPermissions(false);
+    }
+  };
 
   useEffect(() => {
     if (effectiveCompanyId) {
@@ -161,170 +158,158 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedRole, fetchRolePermissions]);
 
-  const handleCreateRole = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setFormError("");
-      if (!formData.name.trim()) {
-        setFormError("El nombre del rol es requerido");
-        return;
-      }
-      if (!effectiveCompanyId) {
-        setFormError("Debe seleccionar una empresa primero");
-        return;
-      }
-      try {
-        const response = await fetch("/api/roles", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": effectiveCompanyId,
-          },
-          body: JSON.stringify(formData),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al crear el rol");
-        }
-        await fetchRoles();
-        setShowForm(false);
-        setFormData({ name: "", description: "" });
-        toast({ title: "Rol creado", description: `El rol "${formData.name}" ha sido creado exitosamente.` });
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Error al crear el rol";
-        setFormError(errorMessage);
-        toast({ title: "Error al crear rol", description: errorMessage, variant: "destructive" });
-      }
-    },
-    [formData, effectiveCompanyId, fetchRoles, toast]
-  );
-
-  const handleDeleteRole = useCallback(
-    async (id: string) => {
-      if (!effectiveCompanyId) return;
-      setDeletingId(id);
-      const role = roles.find((r) => r.id === id);
-      try {
-        const response = await fetch(`/api/roles/${id}`, {
-          method: "DELETE",
-          headers: { "x-company-id": effectiveCompanyId },
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al eliminar el rol");
-        }
-        if (selectedRole?.id === id) setSelectedRole(null);
-        await fetchRoles();
-        toast({
-          title: "Rol eliminado",
-          description: role ? `El rol "${role.name}" ha sido eliminado.` : "El rol ha sido eliminado.",
-        });
-      } catch (err) {
-        toast({
-          title: "Error al eliminar rol",
-          description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [effectiveCompanyId, roles, selectedRole, fetchRoles, toast]
-  );
-
-  const handleTogglePermission = useCallback(
-    async (permissionId: string, enabled: boolean) => {
-      if (!selectedRole || selectedRole.isSystem || !effectiveCompanyId) return;
-      setSavingPermission(permissionId);
-      try {
-        const response = await fetch(`/api/roles/${selectedRole.id}/permissions`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": effectiveCompanyId,
-          },
-          body: JSON.stringify({ permissionId, enabled }),
-        });
-        if (response.ok) {
-          setRolePermissions((prev) => {
-            if (!prev) return prev;
-            const updated = { ...prev };
-            for (const category in updated.permissions) {
-              updated.permissions[category] = updated.permissions[category].map((p) =>
-                p.id === permissionId ? { ...p, enabled } : p
-              );
-            }
-            return updated;
-          });
-          setRoles((prev) =>
-            prev.map((r) =>
-              r.id === selectedRole.id
-                ? { ...r, enabledPermissionsCount: r.enabledPermissionsCount + (enabled ? 1 : -1) }
-                : r
-            )
-          );
-        }
-      } catch (error) {
-        console.error("Error toggling permission:", error);
-      } finally {
-        setSavingPermission(null);
-      }
-    },
-    [selectedRole, effectiveCompanyId]
-  );
-
-  const handleToggleAllInCategory = useCallback(
-    async (category: string, enable: boolean) => {
-      if (!selectedRole || !rolePermissions || selectedRole.isSystem || !effectiveCompanyId) return;
-      const permsInCategory = rolePermissions.permissions[category] || [];
-      const updates = permsInCategory.filter((p) => p.enabled !== enable).map((p) => ({ permissionId: p.id, enabled: enable }));
-      if (updates.length === 0) return;
-
-      const permissionIdsToUpdate = new Set(updates.map((u) => u.permissionId));
-      setRolePermissions((prev) => {
-        if (!prev) return prev;
-        const updated = { ...prev };
-        updated.permissions = { ...updated.permissions };
-        updated.permissions[category] = updated.permissions[category].map((p) =>
-          permissionIdsToUpdate.has(p.id) ? { ...p, enabled: enable } : p
-        );
-        return updated;
+  const handleCreateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError("");
+    if (!formData.name.trim()) {
+      setFormError("El nombre del rol es requerido");
+      return;
+    }
+    if (!effectiveCompanyId) {
+      setFormError("Debe seleccionar una empresa primero");
+      return;
+    }
+    try {
+      const response = await fetch("/api/roles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": effectiveCompanyId,
+        },
+        body: JSON.stringify(formData),
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear el rol");
+      }
+      await fetchRoles();
+      setShowForm(false);
+      setFormData({ name: "", description: "" });
+      toast({ title: "Rol creado", description: `El rol "${formData.name}" ha sido creado exitosamente.` });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Error al crear el rol";
+      setFormError(errorMessage);
+      toast({ title: "Error al crear rol", description: errorMessage, variant: "destructive" });
+    }
+  };
 
-      const countDelta = enable ? updates.length : -updates.length;
-      setRoles((prev) =>
-        prev.map((r) =>
-          r.id === selectedRole.id ? { ...r, enabledPermissionsCount: r.enabledPermissionsCount + countDelta } : r
-        )
-      );
+  const handleDeleteRole = async (id: string) => {
+    if (!effectiveCompanyId) return;
+    setDeletingId(id);
+    const role = roles.find((r) => r.id === id);
+    try {
+      const response = await fetch(`/api/roles/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": effectiveCompanyId },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al eliminar el rol");
+      }
+      if (selectedRole?.id === id) setSelectedRole(null);
+      await fetchRoles();
+      toast({
+        title: "Rol eliminado",
+        description: role ? `El rol "${role.name}" ha sido eliminado.` : "El rol ha sido eliminado.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al eliminar rol",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
-      try {
-        const response = await fetch(`/api/roles/${selectedRole.id}/permissions`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": effectiveCompanyId,
-          },
-          body: JSON.stringify({ permissions: updates }),
+  const handleTogglePermission = async (permissionId: string, enabled: boolean) => {
+    if (!selectedRole || selectedRole.isSystem || !effectiveCompanyId) return;
+    setSavingPermission(permissionId);
+    try {
+      const response = await fetch(`/api/roles/${selectedRole.id}/permissions`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": effectiveCompanyId,
+        },
+        body: JSON.stringify({ permissionId, enabled }),
+      });
+      if (response.ok) {
+        setRolePermissions((prev) => {
+          if (!prev) return prev;
+          const updated = { ...prev };
+          for (const category in updated.permissions) {
+            updated.permissions[category] = updated.permissions[category].map((p) =>
+              p.id === permissionId ? { ...p, enabled } : p
+            );
+          }
+          return updated;
         });
-        if (!response.ok) {
-          await fetchRolePermissions(selectedRole.id);
-          await fetchRoles();
-        }
-      } catch (error) {
-        console.error("Error toggling category permissions:", error);
+        setRoles((prev) =>
+          prev.map((r) =>
+            r.id === selectedRole.id
+              ? { ...r, enabledPermissionsCount: r.enabledPermissionsCount + (enabled ? 1 : -1) }
+              : r
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error toggling permission:", error);
+    } finally {
+      setSavingPermission(null);
+    }
+  };
+
+  const handleToggleAllInCategory = async (category: string, enable: boolean) => {
+    if (!selectedRole || !rolePermissions || selectedRole.isSystem || !effectiveCompanyId) return;
+    const permsInCategory = rolePermissions.permissions[category] || [];
+    const updates = permsInCategory.filter((p) => p.enabled !== enable).map((p) => ({ permissionId: p.id, enabled: enable }));
+    if (updates.length === 0) return;
+
+    const permissionIdsToUpdate = new Set(updates.map((u) => u.permissionId));
+    setRolePermissions((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      updated.permissions = { ...updated.permissions };
+      updated.permissions[category] = updated.permissions[category].map((p) =>
+        permissionIdsToUpdate.has(p.id) ? { ...p, enabled: enable } : p
+      );
+      return updated;
+    });
+
+    const countDelta = enable ? updates.length : -updates.length;
+    setRoles((prev) =>
+      prev.map((r) =>
+        r.id === selectedRole.id ? { ...r, enabledPermissionsCount: r.enabledPermissionsCount + countDelta } : r
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/roles/${selectedRole.id}/permissions`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": effectiveCompanyId,
+        },
+        body: JSON.stringify({ permissions: updates }),
+      });
+      if (!response.ok) {
         await fetchRolePermissions(selectedRole.id);
         await fetchRoles();
       }
-    },
-    [selectedRole, rolePermissions, effectiveCompanyId, fetchRolePermissions, fetchRoles]
-  );
+    } catch (error) {
+      console.error("Error toggling category permissions:", error);
+      await fetchRolePermissions(selectedRole.id);
+      await fetchRoles();
+    }
+  };
 
-  const resetForm = useCallback(() => {
+  const resetForm = () => {
     setShowForm(false);
     setFormData({ name: "", description: "" });
     setFormError("");
-  }, []);
+  };
 
   const state: RolesState = {
     roles,

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -122,7 +122,7 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
   const [editingPreset, setEditingPreset] = useState<Partial<OptimizationPreset> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchPresets = useCallback(async () => {
+  const fetchPresets = async () => {
     if (!companyId || !isReady) return;
     setIsLoading(true);
     try {
@@ -138,23 +138,23 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [companyId, isReady]);
+  };
 
   useEffect(() => {
     fetchPresets();
   }, [fetchPresets]);
 
-  const handleCreate = useCallback(() => {
+  const handleCreate = () => {
     setEditingPreset({ ...DEFAULT_PRESET });
     setDialogOpen(true);
-  }, []);
+  };
 
-  const handleEdit = useCallback((preset: OptimizationPreset) => {
+  const handleEdit = (preset: OptimizationPreset) => {
     setEditingPreset({ ...preset });
     setDialogOpen(true);
-  }, []);
+  };
 
-  const handleSave = useCallback(async () => {
+  const handleSave = async () => {
     if (!editingPreset || !companyId) return;
     setIsSaving(true);
     try {
@@ -185,57 +185,51 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsSaving(false);
     }
-  }, [editingPreset, companyId, fetchPresets, toast]);
+  };
 
-  const handleDelete = useCallback(
-    async (id: string) => {
-      if (!companyId || !confirm("¿Estás seguro de eliminar este preset?")) return;
-      try {
-        const response = await fetch(`/api/optimization-presets/${id}`, {
-          method: "DELETE",
-          headers: { "x-company-id": companyId },
-        });
-        if (response.ok) {
-          fetchPresets();
-        } else {
-          const data = await response.json().catch(() => null);
-          toast({ title: "Error al eliminar preset", description: data?.error || "Ocurrió un error inesperado", variant: "destructive" });
-        }
-      } catch (error) {
-        toast({ title: "Error al eliminar preset", description: error instanceof Error ? error.message : "Ocurrió un error inesperado", variant: "destructive" });
+  const handleDelete = async (id: string) => {
+    if (!companyId || !confirm("¿Estás seguro de eliminar este preset?")) return;
+    try {
+      const response = await fetch(`/api/optimization-presets/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": companyId },
+      });
+      if (response.ok) {
+        fetchPresets();
+      } else {
+        const data = await response.json().catch(() => null);
+        toast({ title: "Error al eliminar preset", description: data?.error || "Ocurrió un error inesperado", variant: "destructive" });
       }
-    },
-    [companyId, fetchPresets, toast]
-  );
+    } catch (error) {
+      toast({ title: "Error al eliminar preset", description: error instanceof Error ? error.message : "Ocurrió un error inesperado", variant: "destructive" });
+    }
+  };
 
-  const handleSetDefault = useCallback(
-    async (preset: OptimizationPreset) => {
-      if (!companyId) return;
-      try {
-        const response = await fetch(`/api/optimization-presets/${preset.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": companyId,
-          },
-          body: JSON.stringify({ isDefault: true }),
-        });
-        if (response.ok) {
-          fetchPresets();
-        } else {
-          const data = await response.json().catch(() => null);
-          toast({ title: "Error al establecer preset predeterminado", description: data?.error || "Ocurrió un error inesperado", variant: "destructive" });
-        }
-      } catch (error) {
-        toast({ title: "Error al establecer preset predeterminado", description: error instanceof Error ? error.message : "Ocurrió un error inesperado", variant: "destructive" });
+  const handleSetDefault = async (preset: OptimizationPreset) => {
+    if (!companyId) return;
+    try {
+      const response = await fetch(`/api/optimization-presets/${preset.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify({ isDefault: true }),
+      });
+      if (response.ok) {
+        fetchPresets();
+      } else {
+        const data = await response.json().catch(() => null);
+        toast({ title: "Error al establecer preset predeterminado", description: data?.error || "Ocurrió un error inesperado", variant: "destructive" });
       }
-    },
-    [companyId, fetchPresets, toast]
-  );
+    } catch (error) {
+      toast({ title: "Error al establecer preset predeterminado", description: error instanceof Error ? error.message : "Ocurrió un error inesperado", variant: "destructive" });
+    }
+  };
 
-  const updateEditingPreset = useCallback((updates: Partial<OptimizationPreset>) => {
+  const updateEditingPreset = (updates: Partial<OptimizationPreset>) => {
     setEditingPreset((prev) => (prev ? { ...prev, ...updates } : null));
-  }, []);
+  };
 
   const state: PresetsState = { presets, isLoading, error, dialogOpen, editingPreset, isSaving };
 

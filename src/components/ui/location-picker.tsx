@@ -6,7 +6,7 @@ import maplibregl, {
   type StyleSpecification,
 } from "maplibre-gl";
 import { MapPin, Search } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Button } from "./button";
 import { Input } from "./input";
@@ -133,7 +133,7 @@ export function LocationPicker({
     }
   }, [value?.lat, value?.lng, isLoading]);
 
-  const addMarker = useCallback((lng: number, lat: number) => {
+  const addMarker = (lng: number, lat: number) => {
     if (!map.current) return;
 
     // Remove existing marker
@@ -154,7 +154,7 @@ export function LocationPicker({
     marker.current = new maplibregl.Marker({ element: el, anchor: "bottom" })
       .setLngLat([lng, lat])
       .addTo(map.current);
-  }, []);
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || isSearching) return;

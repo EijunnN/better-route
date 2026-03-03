@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface ClientPaginationResult<T> {
   paginatedItems: T[];
@@ -18,10 +18,8 @@ export function useClientPagination<T>(
   // Clamp page when items shrink (e.g. after delete)
   const safePage = Math.min(currentPage, totalPages || 1);
 
-  const paginatedItems = useMemo(() => {
-    const start = (safePage - 1) * pageSize;
-    return items.slice(start, start + pageSize);
-  }, [items, safePage, pageSize]);
+  const start = (safePage - 1) * pageSize;
+  const paginatedItems = items.slice(start, start + pageSize);
 
   // Reset to page 1 when the source array identity changes
   useEffect(() => {
