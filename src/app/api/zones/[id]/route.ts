@@ -106,6 +106,10 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
+    // Normalize geometry to string — DB column is jsonb so it may arrive as object
+    if (body.geometry && typeof body.geometry !== "string") {
+      body.geometry = JSON.stringify(body.geometry);
+    }
     const validatedData = updateZoneSchema.parse({ ...body, id });
 
     // Validate GeoJSON structure if geometry is being updated

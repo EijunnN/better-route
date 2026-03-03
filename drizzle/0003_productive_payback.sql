@@ -1,0 +1,2 @@
+ALTER TABLE "orders" DROP CONSTRAINT "orders_tracking_id_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "orders_tracking_id_active_unique" ON "orders" USING btree ("tracking_id") WHERE "orders"."active" = true;

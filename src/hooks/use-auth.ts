@@ -24,8 +24,9 @@ interface UseAuthReturn {
 
 // Refresh token before it expires (refresh when 2 minutes left)
 const TOKEN_REFRESH_MARGIN_MS = 2 * 60 * 1000;
-// Token lifetime from server (15 minutes)
-const TOKEN_LIFETIME_MS = 15 * 60 * 1000;
+// Token lifetime from server (24h in dev, 15min in prod)
+const IS_DEV = process.env.NODE_ENV === "development";
+const TOKEN_LIFETIME_MS = IS_DEV ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000;
 
 // Fetcher for SWR
 const fetcher = async (url: string): Promise<User> => {

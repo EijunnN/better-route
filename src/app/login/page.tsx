@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, Loader2, Route } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LogoAnt } from "@/components/ui/logo-ant";
 
 interface FormErrors {
   email?: string;
@@ -110,9 +111,7 @@ export default function LoginPage() {
       <Card className="relative w-full max-w-md border-border bg-card/95 shadow-2xl backdrop-blur-sm">
         <CardHeader className="space-y-4 text-center">
           {/* Logo */}
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary shadow-lg">
-            <Route className="h-8 w-8 text-primary-foreground" />
-          </div>
+          <LogoAnt className="mx-auto h-20 w-20" />
           <div>
             <CardTitle className="text-2xl font-bold text-foreground">
               BetterRoute

@@ -1,0 +1,26 @@
+trackcode;direccion;latitud;longitud;nombre_cliente;telefono;email;valorizado;tipo_pedido;prioridad;Ventana Horaria Inicio;Ventana Horaria Fin;referencia;departamento;provincia;distrito;notas
+ORD-101;Av. Larco 345, Miraflores;-12.1197;-77.0311;María García;912345678;;4500;NUEVO;100;09:00;18:00;Cerca al Parque Kennedy;LIMA;LIMA;MIRAFLORES;
+ORD-102;Calle Schell 456, Miraflores;-12.1215;-77.0295;Carlos López;923456789;;3200;NUEVO;100;09:00;18:00;Frente a Wong;LIMA;LIMA;MIRAFLORES;
+ORD-103;Av. Benavides 1520, Miraflores;-12.128;-77.019;Ana Torres;934567890;;5800;URGENTE;100;09:00;14:00;Cruce con Av. República de Panamá;LIMA;LIMA;MIRAFLORES;
+ORD-104;Av. Angamos Oeste 1200, Surquillo;-12.112;-77.015;Pedro Ramírez;945678901;;2100;NUEVO;100;09:00;18:00;Frente a Metro;LIMA;LIMA;SURQUILLO;
+ORD-105;Calle Los Olivos 230, San Isidro;-12.097;-77.037;Lucía Mendoza;956789012;;7500;URGENTE;100;09:00;12:00;Edificio empresarial;LIMA;LIMA;SAN ISIDRO;
+ORD-106;Av. Javier Prado Este 2465, San Borja;-12.089;-77.002;Roberto Díaz;967890123;;3400;NUEVO;100;09:00;18:00;Centro Comercial La Rambla;LIMA;LIMA;SAN BORJA;
+ORD-107;Av. Aviación 3050, San Borja;-12.1;-76.998;Elena Vargas;978901234;;4200;REPROGRAMADO;50;10:00;17:00;Cerca al Pentagonito;LIMA;LIMA;SAN BORJA;
+ORD-108;Av. Caminos del Inca 1520, Surco;-12.135;-76.99;Fernando Castillo;989012345;;6100;NUEVO;100;09:00;18:00;Frente al Jockey Plaza;LIMA;LIMA;SANTIAGO DE SURCO;
+ORD-109;Av. El Polo 670, Surco;-12.108;-76.975;Gabriela Flores;990123456;;2800;NUEVO;100;09:00;18:00;Centro Comercial El Polo;LIMA;LIMA;SANTIAGO DE SURCO;
+ORD-110;Av. Primavera 1100, Surco;-12.116;-76.982;Diego Morales;901234567;;3900;REPROGRAMADO;50;11:00;18:00;Intersección con Av. Central;LIMA;LIMA;SANTIAGO DE SURCO;
+ORD-111;Jr. de la Unión 600, Cercado de Lima;-12.046;-77.034;Sofía Herrera;912345670;;1500;NUEVO;100;09:00;18:00;Plaza San Martín;LIMA;LIMA;LIMA;
+ORD-112;Av. Abancay 500, Cercado de Lima;-12.054;-77.028;Andrés Quispe;923456780;;2200;NUEVO;100;09:00;18:00;Cerca al Congreso;LIMA;LIMA;LIMA;
+ORD-113;Av. Brasil 2500, Jesús María;-12.075;-77.045;Valentina Cruz;934567800;;4800;URGENTE;100;09:00;13:00;Frente al Campo de Marte;LIMA;LIMA;JESUS MARIA;
+ORD-114;Av. Salaverry 1234, Jesús María;-12.083;-77.048;Miguel Rojas;945678900;;3100;NUEVO;100;09:00;18:00;Cerca al Hospital Rebagliati;LIMA;LIMA;JESUS MARIA;
+ORD-115;Av. La Marina 2300, San Miguel;-12.077;-77.085;Patricia Luna;956789000;;2600;NUEVO;100;09:00;18:00;Cerca a Plaza San Miguel;LIMA;LIMA;SAN MIGUEL;
+ORD-116;Av. Universitaria 1800, San Miguel;-12.065;-77.078;Javier Paz;967890100;;5200;REPROGRAMADO;50;10:00;16:00;Frente a la PUCP;LIMA;LIMA;SAN MIGUEL;
+ORD-117;Av. Arequipa 4500, Miraflores;-12.11;-77.035;Carmen Soto;978901200;;3700;NUEVO;100;09:00;18:00;Óvalo de Miraflores;LIMA;LIMA;MIRAFLORES;
+ORD-118;Av. Tomás Marsano 2500, Surquillo;-12.12;-77.01;Ricardo Guzmán;989012300;;4100;NUEVO;100;09:00;18:00;Cerca a Open Plaza;LIMA;LIMA;SURQUILLO;
+ORD-119;Av. Guardia Civil 350, San Borja;-12.105;-76.995;Daniela Vega;990123400;;6800;URGENTE;100;09:00;11:00;Museo de la Nación;LIMA;LIMA;SAN BORJA;
+ORD-120;Calle Monte Rosa 250, Surco;-12.112;-76.97;Alejandro Núñez;901234500;;2400;NUEVO;100;09:00;18:00;Chacarilla del Estanque;LIMA;LIMA;SANTIAGO DE SURCO;
+ORD-121;Av. Petit Thouars 3800, San Isidro;-12.102;-77.032;Isabela Medina;912340078;;5500;NUEVO;100;09:00;18:00;Cerca al Bosque El Olivar;LIMA;LIMA;SAN ISIDRO;
+ORD-122;Av. Del Ejército 800, Miraflores;-12.115;-77.038;Tomás Paredes;923450089;;3300;REPROGRAMADO;50;10:00;17:00;Frente al Larcomar;LIMA;LIMA;MIRAFLORES;
+ORD-123;Av. Guardia Peruana 1050, Chorrillos;-12.165;-77.018;Camila Rivas;934560090;;1800;NUEVO;100;09:00;18:00;Cerca a la Costa Verde;LIMA;LIMA;CHORRILLOS;
+ORD-124;Av. Huaylas 600, Chorrillos;-12.175;-77.01;Sebastián Ortiz;945670001;;2900;NUEVO;100;09:00;18:00;Mercado de Chorrillos;LIMA;LIMA;CHORRILLOS;
+ORD-125;Av. República de Panamá 3500, San Isidro;-12.105;-77.025;Renata Silva;956780012;;7200;URGENTE;100;09:00;12:00;Torre empresarial;LIMA;LIMA;SAN ISIDRO;

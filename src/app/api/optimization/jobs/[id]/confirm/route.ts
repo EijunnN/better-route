@@ -155,7 +155,7 @@ export async function POST(
       );
     }
 
-    // Optimistic lock: only allow confirmation if configuration is still DRAFT
+    // Optimistic lock: only allow confirmation if configuration is DRAFT or CONFIGURED
     if (job.configuration.status === "CONFIRMED") {
       return NextResponse.json(
         {
@@ -166,10 +166,10 @@ export async function POST(
       );
     }
 
-    if (job.configuration.status !== "DRAFT") {
+    if (job.configuration.status !== "DRAFT" && job.configuration.status !== "CONFIGURED") {
       return NextResponse.json(
         {
-          error: `Plan cannot be confirmed from status "${job.configuration.status}". Only DRAFT plans can be confirmed.`,
+          error: `Plan cannot be confirmed from status "${job.configuration.status}". Only DRAFT or CONFIGURED plans can be confirmed.`,
           currentStatus: job.configuration.status,
         },
         { status: 409 },
@@ -428,7 +428,7 @@ export async function POST(
         .where(
           and(
             eq(optimizationConfigurations.id, job.configurationId),
-            eq(optimizationConfigurations.status, "DRAFT"),
+            inArray(optimizationConfigurations.status, ["DRAFT", "CONFIGURED"]),
           ),
         )
         .returning();

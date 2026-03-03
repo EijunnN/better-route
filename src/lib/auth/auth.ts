@@ -8,7 +8,7 @@ import {
 } from "./session";
 
 // JWT Configuration
-const ACCESS_TOKEN_EXPIRY = "15min"; // 15 minutes
+const ACCESS_TOKEN_EXPIRY = process.env.NODE_ENV === "development" ? "24h" : "15min";
 const REFRESH_TOKEN_EXPIRY = "7d"; // 7 days
 
 // Cookie names

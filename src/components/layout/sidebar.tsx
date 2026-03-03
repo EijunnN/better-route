@@ -29,6 +29,7 @@ import {
   Warehouse,
 } from "lucide-react";
 import Link from "next/link";
+import { LogoAnt } from "@/components/ui/logo-ant";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -115,14 +116,12 @@ function SidebarFrame({ children }: { children: React.ReactNode }) {
 function SidebarLogo() {
   const { state } = useSidebar();
 
-  if (state.collapsed) return null;
-
   return (
     <Link href="/dashboard" className="flex items-center gap-2">
-      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
-        <Route className="h-4 w-4 text-primary-foreground" />
-      </div>
-      <span className="text-sm font-semibold text-sidebar-foreground">BetterRoute</span>
+      <LogoAnt className="h-9 w-9 shrink-0 text-sidebar-foreground" />
+      {!state.collapsed && (
+        <span className="text-sm font-semibold text-sidebar-foreground">BetterRoute</span>
+      )}
     </Link>
   );
 }
