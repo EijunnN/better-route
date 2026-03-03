@@ -293,16 +293,7 @@ export async function POST(
     });
     const skippedOrderIds = [...new Set([...missingOrderIds, ...nonPendingOrderIds])];
 
-    if (missingOrderIds.length > 0) {
-      console.warn(
-        `[Confirm Plan] ${missingOrderIds.length} orders no longer exist, skipping: ${missingOrderIds.join(", ")}`,
-      );
-    }
-    if (nonPendingOrderIds.length > 0) {
-      console.warn(
-        `[Confirm Plan] ${nonPendingOrderIds.length} orders are no longer PENDING (already modified), skipping: ${nonPendingOrderIds.join(", ")}`,
-      );
-    }
+    // Missing or non-pending orders are filtered out and skipped
 
     if (skippedOrderIds.length > 0) {
       const validOrderIds = assignedOrderIds.filter((id) => !skippedOrderIds.includes(id));
@@ -455,16 +446,7 @@ export async function POST(
           )
           .returning({ id: orders.id });
 
-        if (updatedOrders.length !== assignedOrderIds.length) {
-          // Some orders changed status between pre-validation and transaction - warn but continue
-          console.warn(
-            `[Confirm Plan] Race condition: expected ${assignedOrderIds.length} PENDING orders but only ${updatedOrders.length} were updated. Continuing with partial assignment.`,
-          );
-        }
         ordersUpdatedCount = updatedOrders.length;
-        console.log(
-          `[Confirm Plan] Updated ${ordersUpdatedCount} orders to ASSIGNED status`,
-        );
       }
 
       // 3. Insert route stops
@@ -472,9 +454,6 @@ export async function POST(
       if (routeStopsToCreate.length > 0) {
         await tx.insert(routeStops).values(routeStopsToCreate);
         routeStopsCreatedCount = routeStopsToCreate.length;
-        console.log(
-          `[Confirm Plan] Created ${routeStopsCreatedCount} route stops`,
-        );
       }
 
       // 4. Save plan metrics
@@ -656,9 +635,6 @@ export async function POST(
       return NextResponse.json({ error: message }, { status: 409 });
     }
     console.error("Error confirming plan:", error);
-    if (error instanceof Error) {
-      console.error("Error stack:", error.stack);
-    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

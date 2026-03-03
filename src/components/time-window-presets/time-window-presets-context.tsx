@@ -34,6 +34,7 @@ export const STRICTNESS_LABELS: Record<string, string> = {
 export interface TimeWindowPresetsState {
   presets: TimeWindowPreset[];
   isLoading: boolean;
+  error: string | null;
   showForm: boolean;
   editingPreset: TimeWindowPreset | null;
   deletingId: string | null;
@@ -69,6 +70,7 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
 
   const [presets, setPresets] = useState<TimeWindowPreset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingPreset, setEditingPreset] = useState<TimeWindowPreset | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -82,8 +84,10 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
       });
       const result = await response.json();
       setPresets(result.data || []);
-    } catch (error) {
-      console.error("Error al cargar presets:", error);
+      setError(null);
+    } catch (err) {
+      console.error("Error al cargar presets:", err);
+      setError(err instanceof Error ? err.message : "No se pudieron cargar los presets");
       toast({ title: "Error", description: "No se pudieron cargar los presets", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -200,7 +204,7 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
     return `${preset.startTime} - ${preset.endTime}`;
   }, []);
 
-  const state: TimeWindowPresetsState = { presets, isLoading, showForm, editingPreset, deletingId };
+  const state: TimeWindowPresetsState = { presets, isLoading, error, showForm, editingPreset, deletingId };
   const actions: TimeWindowPresetsActions = {
     fetchPresets,
     handleCreate,

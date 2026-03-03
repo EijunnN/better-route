@@ -51,6 +51,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
 export interface RolesState {
   roles: Role[];
   isLoading: boolean;
+  error: string | null;
   showForm: boolean;
   selectedRole: Role | null;
   rolePermissions: RolePermissionsResponse | null;
@@ -99,6 +100,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [rolePermissions, setRolePermissions] = useState<RolePermissionsResponse | null>(null);
@@ -116,8 +118,10 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       });
       const data = await response.json();
       setRoles(data.data || []);
-    } catch (error) {
-      console.error("Error fetching roles:", error);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching roles:", err);
+      setError(err instanceof Error ? err.message : "Error al cargar roles");
     } finally {
       setIsLoading(false);
     }
@@ -327,6 +331,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
   const state: RolesState = {
     roles,
     isLoading,
+    error,
     showForm,
     selectedRole,
     rolePermissions,

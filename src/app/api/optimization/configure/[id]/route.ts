@@ -272,9 +272,6 @@ export async function DELETE(
                 ),
               );
             ordersReverted = assignedOrderIds.length;
-            console.log(
-              `[Delete Plan] Reverted ${ordersReverted} orders from ASSIGNED to PENDING`,
-            );
           }
         } catch {
           console.error("[Delete Plan] Failed to parse job result for order reversion");

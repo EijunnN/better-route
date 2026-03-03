@@ -156,7 +156,6 @@ export async function GET(request: NextRequest) {
       error instanceof Error &&
       error.message.startsWith("Missing required environment variable")
     ) {
-      console.error("R2 configuration error:", error.message);
       return NextResponse.json(
         { error: "Storage service not configured" },
         { status: 503 },

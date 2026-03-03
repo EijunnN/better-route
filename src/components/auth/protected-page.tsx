@@ -122,20 +122,3 @@ export function ProtectedPage({
   // Has access - render children
   return <>{children}</>;
 }
-
-/**
- * Mapeo de rutas a permisos requeridos
- * Usado para proteger automáticamente páginas
- */
-export const PAGE_PERMISSIONS: Record<string, string> = {
-  "/roles": "roles:VIEW",
-  "/users": "users:VIEW",
-  "/orders": "orders:VIEW",
-  "/vehicles": "vehicles:VIEW",
-  "/fleets": "fleets:VIEW",
-  "/zones": "zones:VIEW",
-  "/alerts": "alerts:VIEW",
-  "/optimization-presets": "presets:VIEW",
-  "/planificacion": "optimization:VIEW",
-  "/monitoring": "routes:VIEW",
-};

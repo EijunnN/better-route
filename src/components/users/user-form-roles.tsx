@@ -75,7 +75,7 @@ export function UserFormRoles() {
                       onCheckedChange={() => toggleRole(role.id)}
                       onClick={(e) => e.stopPropagation()}
                       disabled={isSubmitting}
-                      className="scale-75"
+                      className="scale-90"
                     />
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium">{role.name}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Trash2 } from "lucide-react";
+import { AlertCircle, Loader2, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +34,13 @@ export function FleetsListView() {
         {state.isLoading ? (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+          </div>
+        ) : state.error ? (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Error al cargar flotas</h3>
+            <p className="text-muted-foreground mb-4">{state.error}</p>
+            <Button onClick={() => actions.fetchFleets()}>Reintentar</Button>
           </div>
         ) : state.fleets.length === 0 ? (
           <div className="rounded-lg border border-border bg-card p-12 text-center shadow-sm">

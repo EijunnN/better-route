@@ -510,13 +510,7 @@ export async function runOptimization(
   // Get service time from config (in minutes), convert to seconds
   // Default to 10 minutes (600 seconds) if not set
   const serviceTimeMinutes = config.serviceTimeMinutes ?? 10;
-  if (config.serviceTimeMinutes == null) {
-    console.warn(`[Optimization] Service time not configured, using default: ${serviceTimeMinutes} minutes`);
-  }
   const serviceTimeSeconds = serviceTimeMinutes * 60;
-  console.log(
-    `[Optimization] Service time configured: ${serviceTimeMinutes} minutes (${serviceTimeSeconds} seconds)`,
-  );
 
   // Prepare orders with location info - filter out orders with missing coordinates
   const ordersWithInvalidCoords: typeof pendingOrders = [];
@@ -549,12 +543,7 @@ export async function runOptimization(
       timeWindowEnd: order.timeWindowEnd ?? undefined,
     }));
 
-  // Log warning for orders with invalid coordinates
-  if (ordersWithInvalidCoords.length > 0) {
-    console.warn(
-      `[Optimization] ${ordersWithInvalidCoords.length} orders excluded due to missing/invalid coordinates: ${ordersWithInvalidCoords.map((o) => o.trackingId).join(", ")}`,
-    );
-  }
+  // Orders with invalid coordinates are added to unassigned list below
 
   // Create lookup map for order details (used when populating unassigned orders)
   const orderDetailsMap = new Map(
@@ -568,7 +557,6 @@ export async function runOptimization(
   const requestedEngine = (config.optimizerType as OptimizerType) || "VROOM";
   const selectedEngine = await selectOptimizer(ordersWithLocation.length, selectedVehicles.length, requestedEngine);
   const engineUsed = selectedEngine.name;
-  console.log(`[Optimization] Engine selected: ${engineUsed} (requested: ${requestedEngine})`);
 
   // Prepare vehicles with zone assignments
   const vehiclesWithZones = selectedVehicles.map((vehicle) => ({
@@ -621,9 +609,6 @@ export async function runOptimization(
       if (hasValidDepot) {
         vehicle.originLatitude = String(depotLat);
         vehicle.originLongitude = String(depotLng);
-        console.warn(
-          `[Optimization] Vehicle "${vehicle.name || vehicle.plate || vehicle.id}" has no origin coordinates. Using depot as fallback.`,
-        );
       } else {
         throw new Error(
           `El vehículo "${vehicle.name || vehicle.plate || vehicle.id}" no tiene coordenadas de origen y no hay depósito configurado.`,
@@ -641,11 +626,7 @@ export async function runOptimization(
     ),
   });
 
-  if (!preset) {
-    console.warn(
-      `[Optimization] No default optimization preset found for company ${input.companyId}. Using system defaults.`,
-    );
-  }
+  // If no preset found, system defaults are used
 
   // Get groupSameLocation setting from preset
   const groupSameLocation = preset?.groupSameLocation ?? true;
@@ -666,9 +647,6 @@ export async function runOptimization(
     .limit(1);
 
   const companyProfile = parseProfile(companyProfileRow ?? null);
-  console.log(
-    `[Optimization] Company profile loaded: enableOrderValue=${companyProfile.enableOrderValue}, activeDimensions=${companyProfile.activeDimensions.join(",")}`,
-  );
 
   // Optimization config with preset values
   const vroomConfig: VroomOptConfig = {
@@ -753,13 +731,6 @@ export async function runOptimization(
       return 0;
     });
 
-    console.log(
-      `Zone batches created: ${zoneBatches.length} batches for ${ordersWithLocation.length} orders`,
-    );
-    console.log(
-      `Batch order: ${zoneBatches.map((b) => `${b.zoneName}(${b.orders.length} orders, ${b.vehicles.length} vehicles)`).join(" → ")}`,
-    );
-
     const progressPerBatch =
       zoneBatches.length > 0 ? 50 / zoneBatches.length : 50;
     let currentProgress = 20;
@@ -771,10 +742,6 @@ export async function runOptimization(
       const availableVehicles = oneRoutePerVehicle
         ? batch.vehicles.filter((v) => !vehiclesWithRoutes.has(v.id))
         : batch.vehicles;
-
-      console.log(
-        `Processing zone batch: ${batch.zoneName} (${batch.orders.length} orders, ${availableVehicles.length}/${batch.vehicles.length} vehicles available)`,
-      );
 
       if (availableVehicles.length === 0) {
         // No vehicles available for this zone - mark all orders as unassigned
@@ -806,9 +773,6 @@ export async function runOptimization(
           globalGroupMap.set(key, value);
         }
         ordersToProcess = groupedOrders;
-        console.log(
-          `Grouped ${batch.orders.length} orders into ${groupedOrders.length} unique locations for zone ${batch.zoneName}`,
-        );
       }
 
       // Convert batch orders to VROOM format
@@ -1008,9 +972,6 @@ export async function runOptimization(
         globalGroupMap.set(key, value);
       }
       ordersToProcess = groupedOrders;
-      console.log(
-        `Grouped ${ordersWithLocation.length} orders into ${groupedOrders.length} unique locations`,
-      );
     }
 
     const ordersForVroom: OrderForOptimization[] = ordersToProcess.map(

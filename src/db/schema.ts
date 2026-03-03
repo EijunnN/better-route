@@ -85,7 +85,10 @@ export const users = pgTable("users", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("users_company_id_idx").on(table.companyId),
+  index("users_company_role_idx").on(table.companyId, table.role),
+]);
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   company: one(companies, {
@@ -145,7 +148,9 @@ export const fleets = pgTable("fleets", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("fleets_company_id_idx").on(table.companyId),
+]);
 
 export const fleetsRelations = relations(fleets, ({ one, many }) => ({
   company: one(companies, {
@@ -231,7 +236,11 @@ export const vehicles = pgTable("vehicles", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("vehicles_company_id_idx").on(table.companyId),
+  index("vehicles_company_status_idx").on(table.companyId, table.status),
+  index("vehicles_assigned_driver_idx").on(table.assignedDriverId),
+]);
 
 export const vehiclesRelations = relations(vehicles, ({ one, many }) => ({
   company: one(companies, {
@@ -265,6 +274,7 @@ export const vehicleFleets = pgTable("vehicle_fleets", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("vehicle_fleets_vehicle_fleet_idx").on(table.vehicleId, table.fleetId),
+  index("vehicle_fleets_fleet_id_idx").on(table.fleetId),
 ]);
 
 export const vehicleFleetsRelations = relations(vehicleFleets, ({ one }) => ({
@@ -921,7 +931,11 @@ export const optimizationJobs = pgTable("optimization_jobs", {
   // Metadata
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("optimization_jobs_company_id_idx").on(table.companyId),
+  index("optimization_jobs_company_status_idx").on(table.companyId, table.status),
+  index("optimization_jobs_config_idx").on(table.configurationId),
+]);
 
 export const optimizationJobsRelations = relations(
   optimizationJobs,
@@ -1052,7 +1066,11 @@ export const alerts = pgTable("alerts", {
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("alerts_company_id_idx").on(table.companyId),
+  index("alerts_company_status_idx").on(table.companyId, table.status),
+  index("alerts_entity_idx").on(table.entityType, table.entityId),
+]);
 
 export const alertsRelations = relations(alerts, ({ one, many }) => ({
   company: one(companies, {
@@ -1513,7 +1531,10 @@ export const zoneVehicles = pgTable("zone_vehicles", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("zone_vehicles_vehicle_id_idx").on(table.vehicleId),
+  index("zone_vehicles_zone_id_idx").on(table.zoneId),
+]);
 
 export const zoneVehiclesRelations = relations(zoneVehicles, ({ one }) => ({
   company: one(companies, {

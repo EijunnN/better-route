@@ -82,6 +82,8 @@ export async function GET(request: NextRequest) {
         unitsRequired: orders.unitsRequired,
         orderType: orders.orderType,
         priority: orders.priority,
+        timeWindowStart: orders.timeWindowStart,
+        timeWindowEnd: orders.timeWindowEnd,
         requiredSkills: orders.requiredSkills,
         notes: orders.notes,
         customFields: orders.customFields,

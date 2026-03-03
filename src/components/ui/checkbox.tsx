@@ -14,7 +14,7 @@ function Checkbox({
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        "peer size-4 shrink-0 rounded-[4px] border border-muted-foreground/40 bg-background shadow-xs outline-none transition-shadow hover:border-muted-foreground/60 dark:border-muted-foreground/50 dark:bg-muted/30 dark:hover:border-muted-foreground/70 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 disabled:cursor-not-allowed disabled:opacity-50",
+        "peer size-4 shrink-0 rounded-[4px] border border-muted-foreground/40 bg-background shadow-xs outline-none transition-shadow hover:border-muted-foreground/60 dark:border-muted-foreground/50 dark:bg-muted/30 dark:hover:border-muted-foreground/70 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-white focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}
@@ -23,7 +23,7 @@ function Checkbox({
         data-slot="checkbox-indicator"
         className="grid place-content-center text-current transition-none"
       >
-        <CheckIcon className="size-3.5" />
+        <CheckIcon className="size-3.5 stroke-[3] drop-shadow-[0_0_1px_rgba(0,0,0,0.35)]" />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   );

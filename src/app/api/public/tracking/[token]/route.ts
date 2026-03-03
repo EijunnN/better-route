@@ -10,6 +10,12 @@ import {
   trackingTokens,
   users,
 } from "@/db/schema";
+import {
+  checkRateLimit,
+  getClientIp,
+  getRateLimitHeaders,
+  RATE_LIMITS,
+} from "@/lib/infra/rate-limit";
 
 /**
  * GET /api/public/tracking/[token]
@@ -20,13 +26,27 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> },
 ) {
   try {
+    // Rate limiting by IP
+    const ip = getClientIp(_request);
+    const rateLimit = checkRateLimit(
+      `public-tracking:${ip}`,
+      RATE_LIMITS.PUBLIC_TRACKING,
+    );
+
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Intente nuevamente en un momento." },
+        {
+          status: 429,
+          headers: getRateLimitHeaders(rateLimit, RATE_LIMITS.PUBLIC_TRACKING),
+        },
+      );
+    }
+
     const { token } = await params;
 
     if (!token || token.length > 255) {
-      return NextResponse.json(
-        { error: "Token inválido" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Token inválido" }, { status: 400 });
     }
 
     // 1. Look up the tracking token
@@ -108,7 +128,12 @@ export async function GET(
       } | null;
     } | null = null;
 
-    if (stop?.userId && (effectiveSettings.showDriverName || effectiveSettings.showDriverLocation || effectiveSettings.showDriverPhoto)) {
+    if (
+      stop?.userId &&
+      (effectiveSettings.showDriverName ||
+        effectiveSettings.showDriverLocation ||
+        effectiveSettings.showDriverPhoto)
+    ) {
       const driver = await db.query.users.findFirst({
         where: eq(users.id, stop.userId),
         columns: {
@@ -157,7 +182,11 @@ export async function GET(
     }
 
     // 7. Build timeline from stop timestamps
-    const timeline: { status: string; timestamp: string | null; label: string }[] = [];
+    const timeline: {
+      status: string;
+      timestamp: string | null;
+      label: string;
+    }[] = [];
 
     if (effectiveSettings.showTimeline) {
       timeline.push({
@@ -228,7 +257,9 @@ export async function GET(
             startedAt: stop.startedAt?.toISOString() ?? null,
             completedAt: stop.completedAt?.toISOString() ?? null,
             failureReason: stop.status === "FAILED" ? stop.failureReason : null,
-            evidenceUrls: effectiveSettings.showEvidence ? stop.evidenceUrls : null,
+            evidenceUrls: effectiveSettings.showEvidence
+              ? stop.evidenceUrls
+              : null,
             notes: stop.notes,
           }
         : null,

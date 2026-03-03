@@ -87,6 +87,13 @@ export function VehicleSkillsListView() {
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </CardContent>
         </Card>
+      ) : state.error ? (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
+          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Error al cargar habilidades</h3>
+          <p className="text-muted-foreground mb-4">{state.error}</p>
+          <Button onClick={() => actions.fetchSkills()}>Reintentar</Button>
+        </div>
       ) : state.skills.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">

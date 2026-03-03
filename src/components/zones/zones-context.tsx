@@ -56,6 +56,7 @@ export interface ZonesState {
   zones: Zone[];
   vehicles: VehicleOption[];
   isLoading: boolean;
+  error: string | null;
   isSubmitting: boolean;
   viewMode: ViewMode;
   editingZone: Zone | null;
@@ -127,6 +128,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
   const [zones, setZones] = useState<Zone[]>([]);
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
   const [editingZoneVehicleIds, setEditingZoneVehicleIds] = useState<string[]>([]);
@@ -144,8 +146,10 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
       });
       const data = await response.json();
       setZones(data.data || []);
-    } catch (error) {
-      console.error("Error fetching zones:", error);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching zones:", err);
+      setError(err instanceof Error ? err.message : "Error al cargar zonas");
     } finally {
       setIsLoading(false);
     }
@@ -393,6 +397,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     zones,
     vehicles,
     isLoading,
+    error,
     isSubmitting,
     viewMode,
     editingZone,

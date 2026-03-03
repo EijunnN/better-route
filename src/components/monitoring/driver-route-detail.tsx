@@ -244,7 +244,6 @@ export function DriverRouteDetail({
 
   const openStatusDialog = (stop: Stop) => {
     if (!stop.id) {
-      console.warn("Cannot update stop status: stop has no ID");
       return;
     }
     setSelectedStop({

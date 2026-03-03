@@ -110,8 +110,8 @@ export async function getRoute(
       distance: Math.round(data.routes[0].distance),
       duration: Math.round(data.routes[0].duration),
     };
-  } catch (error) {
-    console.warn("OSRM route failed, using Haversine fallback:", error);
+  } catch {
+    // OSRM unavailable, use Haversine fallback
     const distance = haversineDistance(from, to);
     const duration = Math.round(distance / ((40 * 1000) / 3600));
     return { distance, duration };
@@ -183,10 +183,8 @@ export async function getDistanceMatrix(
     }
 
     return { distances, durations };
-  } catch (error) {
-    console.warn("OSRM table failed, using Haversine fallback:", error);
-
-    // Fallback to Haversine
+  } catch {
+    // OSRM unavailable, use Haversine fallback
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
         if (i !== j) {
@@ -258,8 +256,7 @@ export async function getOptimizedTrip(
         tripIndex: wp.trips_index,
       })),
     };
-  } catch (error) {
-    console.warn("OSRM trip failed:", error);
+  } catch {
     return null;
   }
 }

@@ -18,6 +18,8 @@ export interface Order {
   latitude: string;
   longitude: string;
   timeWindowPresetId: string | null;
+  timeWindowStart: string | null;
+  timeWindowEnd: string | null;
   strictness: (typeof TIME_WINDOW_STRICTNESS)[number] | null;
   promisedDate: string | null;
   weightRequired: number | null;
@@ -70,7 +72,6 @@ export interface OrdersActions {
   setViewMode: (mode: "list" | "map") => void;
   setCurrentPage: (page: number) => void;
   getStatusColor: (status: string) => string;
-  getStrictnessColor: (strictness: string) => string;
   handleGenerateTrackingLink: (orderId: string) => Promise<void>;
   clearTrackingLink: () => void;
 }
@@ -313,9 +314,6 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return colors[status] || "bg-gray-500/10 text-gray-600";
   }, []);
 
-  const getStrictnessColor = useCallback((strictness: string) => {
-    return strictness === "HARD" ? "bg-destructive/10 text-destructive" : "bg-yellow-500/10 text-yellow-600";
-  }, []);
 
   const filteredOrders = orders.filter((order) => order.active);
   const totalPages = Math.ceil(totalOrders / PAGE_SIZE);
@@ -351,7 +349,6 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setViewMode,
     setCurrentPage,
     getStatusColor,
-    getStrictnessColor,
     handleGenerateTrackingLink,
     clearTrackingLink,
   };

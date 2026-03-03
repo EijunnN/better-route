@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders } from "@/db/schema";
+import { orders, routeStops, trackingTokens } from "@/db/schema";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { EntityType, Action } from "@/lib/auth/authorization";
@@ -40,7 +40,16 @@ export async function DELETE(request: NextRequest) {
     let deletedCount = 0;
 
     if (hardDelete) {
-      // Hard delete - permanently remove all orders
+      // Hard delete - permanently remove all orders and related records
+      // Must delete in order: tracking_tokens → route_stops → orders
+      await db
+        .delete(trackingTokens)
+        .where(eq(trackingTokens.companyId, context.companyId));
+
+      await db
+        .delete(routeStops)
+        .where(eq(routeStops.companyId, context.companyId));
+
       const result = await db
         .delete(orders)
         .where(eq(orders.companyId, context.companyId))

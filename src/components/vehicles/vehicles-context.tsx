@@ -85,6 +85,7 @@ export interface VehiclesState {
   companyProfile: CompanyProfile | null;
   availableSkills: VehicleSkill[];
   isLoading: boolean;
+  error: string | null;
   showForm: boolean;
   editingVehicle: Vehicle | null;
   editingVehicleSkillIds: string[];
@@ -140,6 +141,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [availableSkills, setAvailableSkills] = useState<VehicleSkill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [editingVehicleSkillIds, setEditingVehicleSkillIds] = useState<string[]>([]);
@@ -156,8 +158,10 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
         fleetIds: v.fleets?.map((f) => f.id) || [],
       }));
       setVehicles(vehiclesData);
-    } catch (error) {
-      console.error("Error fetching vehicles:", error);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching vehicles:", err);
+      setError(err instanceof Error ? err.message : "Error al cargar vehículos");
     } finally {
       setIsLoading(false);
     }
@@ -388,6 +392,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     companyProfile,
     availableSkills,
     isLoading,
+    error,
     showForm,
     editingVehicle,
     editingVehicleSkillIds,

@@ -56,9 +56,7 @@ export async function selectOptimizer(
     if (await optimizer.isAvailable()) {
       return optimizer;
     }
-    console.warn(
-      `Preferred optimizer ${preferredType} not available, falling back`,
-    );
+    // Preferred optimizer not available, fall back to auto selection
   }
 
   // Check availability
@@ -144,10 +142,6 @@ export async function optimize(
     orders.length,
     vehicles.length,
     preferredType,
-  );
-
-  console.log(
-    `[OptimizerFactory] Using ${optimizer.name} for ${orders.length} orders, ${vehicles.length} vehicles`,
   );
 
   return optimizer.optimize(orders, vehicles, config);

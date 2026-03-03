@@ -132,6 +132,7 @@ interface WorkflowContextState {
   transitions: WorkflowTransition[];
   isLoadingStates: boolean;
   isLoadingTransitions: boolean;
+  error: string | null;
 }
 
 interface WorkflowActions {
@@ -168,6 +169,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   const {
     data: states = [],
     isLoading: isLoadingStates,
+    error: statesError,
     mutate: mutateStates,
   } = useApiData<WorkflowState[]>(statesUrl, companyId);
 
@@ -338,6 +340,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     transitions: Array.isArray(transitions) ? transitions : [],
     isLoadingStates,
     isLoadingTransitions,
+    error: statesError ? (statesError instanceof Error ? statesError.message : "Error al cargar flujo de entregas") : null,
   };
 
   const contextActions: WorkflowActions = {

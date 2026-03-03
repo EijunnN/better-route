@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, Link2, List, Loader2, Map as MapIcon, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, Copy, ExternalLink, Link2, List, Loader2, Map as MapIcon, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
   AlertDialog,
@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 import { OrderForm } from "./order-form";
 import { useOrders, type Order } from "./orders-context";
 
@@ -218,8 +219,7 @@ export function OrdersListView() {
                 <th className="text-left p-4 font-medium">Tracking ID</th>
                 <th className="text-left p-4 font-medium">Cliente</th>
                 <th className="text-left p-4 font-medium">Dirección</th>
-                <th className="text-left p-4 font-medium">Ventana Tiempo</th>
-                <th className="text-left p-4 font-medium">Strictness</th>
+                <th className="text-left p-4 font-medium">Ventana Horaria</th>
                 <th className="text-left p-4 font-medium">Estado</th>
                 {customFieldDefs.map((fd) => (
                   <th key={fd.id} className="text-left p-4 font-medium text-sm">
@@ -238,7 +238,13 @@ export function OrdersListView() {
         </div>
       )}
 
-      {state.totalPages > 1 && <OrdersPagination />}
+      <Pagination
+        currentPage={state.currentPage}
+        totalPages={state.totalPages}
+        onPageChange={actions.setCurrentPage}
+        totalItems={state.totalOrders}
+        itemLabel="pedidos"
+      />
 
       {state.showForm && (
         <OrderForm
@@ -268,19 +274,13 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
       </td>
       <td className="p-4 max-w-xs truncate text-sm">{order.address}</td>
       <td className="p-4">
-        {order.presetName ? (
-          <div>
-            <div className="text-sm">{order.presetName}</div>
-            {order.isStrictnessOverridden && <span className="text-xs text-amber-600">(override)</span>}
-          </div>
+        {order.timeWindowStart && order.timeWindowEnd ? (
+          <span className="text-sm font-mono">{order.timeWindowStart.slice(0, 5)} - {order.timeWindowEnd.slice(0, 5)}</span>
+        ) : order.presetName ? (
+          <span className="text-sm">{order.presetName}</span>
         ) : (
-          <span className="text-muted-foreground text-sm">Sin preset</span>
+          <span className="text-muted-foreground text-sm">-</span>
         )}
-      </td>
-      <td className="p-4">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${actions.getStrictnessColor(order.effectiveStrictness)}`}>
-          {order.effectiveStrictness}
-        </span>
       </td>
       <td className="p-4">
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${actions.getStatusColor(order.status)}`}>{order.status}</span>
@@ -395,56 +395,3 @@ function TrackingLinkDialog() {
   );
 }
 
-function OrdersPagination() {
-  const { state, actions } = useOrders();
-
-  return (
-    <div className="flex items-center justify-center gap-2 pt-4">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => actions.setCurrentPage(Math.max(1, state.currentPage - 1))}
-        disabled={state.currentPage === 1}
-      >
-        <ChevronLeft className="w-4 h-4 mr-1" />
-        Anterior
-      </Button>
-
-      <div className="flex items-center gap-1">
-        {Array.from({ length: Math.min(5, state.totalPages) }, (_, i) => {
-          let pageNum: number;
-          if (state.totalPages <= 5) {
-            pageNum = i + 1;
-          } else if (state.currentPage <= 3) {
-            pageNum = i + 1;
-          } else if (state.currentPage >= state.totalPages - 2) {
-            pageNum = state.totalPages - 4 + i;
-          } else {
-            pageNum = state.currentPage - 2 + i;
-          }
-          return (
-            <Button
-              key={pageNum}
-              variant={state.currentPage === pageNum ? "default" : "outline"}
-              size="sm"
-              className="w-10"
-              onClick={() => actions.setCurrentPage(pageNum)}
-            >
-              {pageNum}
-            </Button>
-          );
-        })}
-      </div>
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => actions.setCurrentPage(Math.min(state.totalPages, state.currentPage + 1))}
-        disabled={state.currentPage === state.totalPages}
-      >
-        Siguiente
-        <ChevronRight className="w-4 h-4 ml-1" />
-      </Button>
-    </div>
-  );
-}

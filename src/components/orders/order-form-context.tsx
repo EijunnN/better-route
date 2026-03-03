@@ -71,6 +71,8 @@ export interface Order {
   latitude: string;
   longitude: string;
   timeWindowPresetId: string | null;
+  timeWindowStart: string | null;
+  timeWindowEnd: string | null;
   strictness: (typeof TIME_WINDOW_STRICTNESS)[number] | null;
   promisedDate: string | null;
   weightRequired: number | null;
@@ -238,6 +240,8 @@ export function OrderFormProvider({
         latitude: initialData.latitude,
         longitude: initialData.longitude,
         timeWindowPresetId: initialData.timeWindowPresetId || "",
+        timeWindowStart: initialData.timeWindowStart || "",
+        timeWindowEnd: initialData.timeWindowEnd || "",
         strictness: initialData.strictness || null,
         promisedDate: initialData.promisedDate
           ? initialData.promisedDate.slice(0, 10)

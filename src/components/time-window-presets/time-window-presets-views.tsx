@@ -40,6 +40,13 @@ export function TimeWindowPresetsListView() {
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </CardContent>
         </Card>
+      ) : state.error ? (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
+          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Error al cargar presets</h3>
+          <p className="text-muted-foreground mb-4">{state.error}</p>
+          <Button onClick={() => actions.fetchPresets()}>Reintentar</Button>
+        </div>
       ) : state.presets.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">

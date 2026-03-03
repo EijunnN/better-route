@@ -9,6 +9,7 @@ import {
   companies,
   companyFieldDefinitions,
   companyOptimizationProfiles,
+  companyTrackingSettings,
   companyWorkflowStates,
   companyWorkflowTransitions,
   csvColumnMappingTemplates,
@@ -28,6 +29,7 @@ import {
   routeStopHistory,
   routeStops,
   timeWindowPresets,
+  trackingTokens,
   userAvailability,
   userDriverStatusHistory,
   userFleetPermissions,
@@ -65,6 +67,7 @@ async function seed() {
       await db.delete(companyWorkflowTransitions);
       await db.delete(companyWorkflowStates);
       await db.delete(routeStops);
+      await db.delete(trackingTokens);
       await db.delete(alerts);
       await db.delete(alertRules);
       await db.delete(optimizationJobs);
@@ -94,6 +97,7 @@ async function seed() {
       await db.delete(permissions);
       await db.delete(optimizationPresets);
       await db.delete(companyOptimizationProfiles);
+      await db.delete(companyTrackingSettings);
       await db.delete(users);
       await db.delete(companies);
       console.log("✅ Database reset complete");

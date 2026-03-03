@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  AlertCircle,
   Plus,
   Pencil,
   Trash2,
@@ -79,6 +80,21 @@ export function CustomFieldsDashboardView() {
         <div className="mx-auto max-w-4xl">
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <div className="flex-1 bg-background p-8">
+        <div className="mx-auto max-w-4xl">
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Error al cargar campos personalizados</h3>
+            <p className="text-muted-foreground mb-4">{state.error}</p>
+            <Button onClick={() => actions.refreshDefinitions()}>Reintentar</Button>
           </div>
         </div>
       </div>

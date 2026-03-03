@@ -2,6 +2,7 @@
 
 import dynamicImport from "next/dynamic";
 import {
+  AlertCircle,
   Calendar,
   ChevronRight,
   Edit3,
@@ -115,6 +116,13 @@ export function ZonesListView() {
             {state.isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+            ) : state.error ? (
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-8 text-center mx-4">
+                <AlertCircle className="h-10 w-10 mx-auto text-destructive mb-3" />
+                <h3 className="text-sm font-semibold mb-2">Error al cargar zonas</h3>
+                <p className="text-xs text-muted-foreground mb-3">{state.error}</p>
+                <Button size="sm" onClick={() => actions.fetchZones()}>Reintentar</Button>
               </div>
             ) : derived.filteredZones.length === 0 ? (
               <div className="text-center py-12">

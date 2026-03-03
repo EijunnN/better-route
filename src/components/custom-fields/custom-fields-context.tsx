@@ -63,6 +63,7 @@ export const FIELD_ENTITY_LABELS: Record<FieldEntity, string> = {
 interface CustomFieldsState {
   definitions: FieldDefinition[];
   isLoading: boolean;
+  error: string | null;
   isSubmitting: boolean;
   selectedDefinition: FieldDefinition | null;
   showDialog: boolean;
@@ -106,6 +107,7 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   const {
     data: definitions = [],
     isLoading,
+    error: definitionsError,
     mutate: mutateDefinitions,
   } = useApiData<FieldDefinition[]>(definitionsUrl, companyId);
 
@@ -201,6 +203,7 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   const contextState: CustomFieldsState = {
     definitions: Array.isArray(definitions) ? [...definitions].sort((a, b) => a.position - b.position) : [],
     isLoading,
+    error: definitionsError ? (definitionsError instanceof Error ? definitionsError.message : "Error al cargar campos personalizados") : null,
     isSubmitting,
     selectedDefinition,
     showDialog,

@@ -155,85 +155,62 @@ export function OrderFormLocation() {
 }
 
 export function OrderFormTimeWindow() {
-  const { state, actions, derived } = useOrderForm();
+  const { state, actions } = useOrderForm();
   const { formData, timeWindowPresets, selectedPreset, isLoadingPresets } = state;
-  const { handleChange, handlePresetChange, handleStrictnessChange } = actions;
-  const { effectiveStrictness, isOverridden } = derived;
+  const { handleChange, handlePresetChange } = actions;
 
   return (
     <div className="border-b pb-4">
-      <h3 className="font-medium mb-3">Configuración de Ventana de Tiempo</h3>
+      <h3 className="font-medium mb-3">Ventana Horaria</h3>
 
-      <div>
-        <Label htmlFor="timeWindowPresetId">Preset de Ventana de Tiempo</Label>
-        {isLoadingPresets ? (
-          <p className="text-sm text-muted-foreground">Cargando presets...</p>
-        ) : (
-          <select
-            id="timeWindowPresetId"
-            value={formData.timeWindowPresetId}
-            onChange={(e) => handlePresetChange(e.target.value)}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label htmlFor="timeWindowStart">Hora Inicio</Label>
+          <input
+            id="timeWindowStart"
+            type="time"
+            value={formData.timeWindowStart || ""}
+            onChange={(e) => handleChange("timeWindowStart", e.target.value)}
             className="w-full px-3 py-2 border rounded-md bg-background"
-          >
-            <option value="">Sin preset</option>
-            {timeWindowPresets.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.name} ({preset.type}, {preset.strictness})
-              </option>
-            ))}
-          </select>
-        )}
+          />
+        </div>
+        <div>
+          <Label htmlFor="timeWindowEnd">Hora Fin</Label>
+          <input
+            id="timeWindowEnd"
+            type="time"
+            value={formData.timeWindowEnd || ""}
+            onChange={(e) => handleChange("timeWindowEnd", e.target.value)}
+            className="w-full px-3 py-2 border rounded-md bg-background"
+          />
+        </div>
       </div>
+      <p className="text-xs text-muted-foreground mt-1">Rango horario en el que se puede realizar la entrega</p>
 
-      {selectedPreset && (
-        <div className="mt-3 p-3 bg-muted/50 rounded-md">
-          <p className="text-sm font-medium">Detalles del Preset:</p>
-          <p className="text-sm text-muted-foreground">
-            Tipo: {selectedPreset.type}
-            {selectedPreset.type === "EXACT"
-              ? ` - ${selectedPreset.exactTime} ±${selectedPreset.toleranceMinutes}min`
-              : ` - ${selectedPreset.startTime} - ${selectedPreset.endTime}`}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Exigencia del Preset:{" "}
-            <span
-              className={`px-2 py-0.5 rounded text-xs font-medium ${
-                selectedPreset.strictness === "HARD"
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-yellow-500/10 text-yellow-600"
-              }`}
+      {timeWindowPresets.length > 0 && (
+        <div className="mt-3">
+          <Label htmlFor="timeWindowPresetId">O usar un preset</Label>
+          {isLoadingPresets ? (
+            <p className="text-sm text-muted-foreground">Cargando presets...</p>
+          ) : (
+            <select
+              id="timeWindowPresetId"
+              value={formData.timeWindowPresetId}
+              onChange={(e) => handlePresetChange(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md bg-background"
             >
-              {selectedPreset.strictness}
-            </span>
-          </p>
+              <option value="">Sin preset</option>
+              {timeWindowPresets.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.name} ({preset.type === "EXACT"
+                    ? `${preset.exactTime} ±${preset.toleranceMinutes}min`
+                    : `${preset.startTime} - ${preset.endTime}`})
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       )}
-
-      <div className="mt-3">
-        <Label htmlFor="strictness">Nivel de Exigencia</Label>
-        <select
-          id="strictness"
-          value={formData.strictness || "INHERIT"}
-          onChange={(e) => handleStrictnessChange(e.target.value)}
-          disabled={!selectedPreset}
-          className="w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50"
-        >
-          <option value="INHERIT">
-            {selectedPreset
-              ? `Heredar del preset (${selectedPreset.strictness})`
-              : "Seleccione un preset primero"}
-          </option>
-          <option value="HARD">Estricto (rechazar violaciones)</option>
-          <option value="SOFT">Flexible (minimizar retrasos)</option>
-        </select>
-        {isOverridden && selectedPreset && (
-          <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
-            <span className="font-medium">Sobreescrito:</span> Este pedido usará{" "}
-            <span className="font-medium">{effectiveStrictness === "HARD" ? "Estricto" : "Flexible"}</span> en
-            vez del preset ({selectedPreset.strictness})
-          </p>
-        )}
-      </div>
 
       <div className="mt-3">
         <Label htmlFor="promisedDate">Fecha Prometida</Label>

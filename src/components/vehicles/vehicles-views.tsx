@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Loader2, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -15,14 +16,32 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { VehicleForm } from "@/components/vehicles/vehicle-form";
 import { VehicleStatusModal } from "@/components/vehicles/vehicle-status-modal";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 import { useVehicles, VEHICLE_STATUS_LABELS, type Vehicle } from "./vehicles-context";
 
+const VEHICLES_PAGE_SIZE = 20;
+
 export function VehiclesListView() {
   const { state, actions } = useVehicles();
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(state.vehicles.length / VEHICLES_PAGE_SIZE);
+  const paginatedVehicles = useMemo(() => {
+    const start = (currentPage - 1) * VEHICLES_PAGE_SIZE;
+    return state.vehicles.slice(start, start + VEHICLES_PAGE_SIZE);
+  }, [state.vehicles, currentPage]);
+
+  // Reset to page 1 when vehicles list changes (e.g. after delete/create)
+  const vehicleCount = state.vehicles.length;
+  useEffect(() => {
+    if (currentPage > 1 && currentPage > Math.ceil(vehicleCount / VEHICLES_PAGE_SIZE)) {
+      setCurrentPage(1);
+    }
+  }, [vehicleCount, currentPage]);
 
   return (
     <div className="space-y-6">
@@ -40,6 +59,13 @@ export function VehiclesListView() {
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </CardContent>
         </Card>
+      ) : state.error ? (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
+          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Error al cargar vehículos</h3>
+          <p className="text-muted-foreground mb-4">{state.error}</p>
+          <Button onClick={() => actions.fetchVehicles()}>Reintentar</Button>
+        </div>
       ) : state.vehicles.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -62,11 +88,20 @@ export function VehiclesListView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {state.vehicles.map((vehicle) => (
+              {paginatedVehicles.map((vehicle) => (
                 <VehicleRow key={vehicle.id} vehicle={vehicle} />
               ))}
             </TableBody>
           </Table>
+          <div className="px-4 pb-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={state.vehicles.length}
+              itemLabel="vehículos"
+            />
+          </div>
         </Card>
       )}
 

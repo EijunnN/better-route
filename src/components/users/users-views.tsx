@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, Trash2, Upload } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, Loader2, Trash2, Upload } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserForm } from "@/components/users/user-form";
 import { UserImportDialog } from "@/components/users/user-import-dialog";
@@ -85,6 +87,13 @@ export function UsersListView() {
         <div className="flex justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
         </div>
+      ) : state.error ? (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
+          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Error al cargar usuarios</h3>
+          <p className="text-muted-foreground mb-4">{state.error}</p>
+          <Button onClick={() => actions.fetchUsers()}>Reintentar</Button>
+        </div>
       ) : derived.filteredUsers.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-12 text-center shadow-sm">
           <p className="text-muted-foreground">
@@ -106,8 +115,22 @@ export function UsersListView() {
   );
 }
 
+const USERS_PAGE_SIZE = 20;
+
 function UsersTable() {
   const { state, actions, derived } = useUsers();
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(derived.filteredUsers.length / USERS_PAGE_SIZE);
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * USERS_PAGE_SIZE;
+    return derived.filteredUsers.slice(start, start + USERS_PAGE_SIZE);
+  }, [derived.filteredUsers, currentPage]);
+
+  // Reset to page 1 when filter changes (tab switch)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [state.activeTab]);
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
@@ -149,11 +172,20 @@ function UsersTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {derived.filteredUsers.map((user) => (
+            {paginatedUsers.map((user) => (
               <UserRow key={user.id} user={user} />
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="px-4 pb-4">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={derived.filteredUsers.length}
+          itemLabel="usuarios"
+        />
       </div>
     </div>
   );

@@ -26,6 +26,7 @@ export const CATEGORY_BADGE_COLORS: Record<string, string> = {
 export interface VehicleSkillsState {
   skills: VehicleSkill[];
   isLoading: boolean;
+  error: string | null;
   showForm: boolean;
   editingSkill: VehicleSkill | null;
   filterCategory: string;
@@ -67,6 +68,7 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
 
   const [skills, setSkills] = useState<VehicleSkill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingSkill, setEditingSkill] = useState<VehicleSkill | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("");
@@ -88,8 +90,10 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
       });
       const data = await response.json();
       setSkills(data.data || []);
-    } catch (error) {
-      console.error("Error al cargar habilidades:", error);
+      setError(null);
+    } catch (err) {
+      console.error("Error al cargar habilidades:", err);
+      setError(err instanceof Error ? err.message : "No se pudieron cargar las habilidades");
       toast({ title: "Error", description: "No se pudieron cargar las habilidades", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -225,6 +229,7 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
   const state: VehicleSkillsState = {
     skills,
     isLoading,
+    error,
     showForm,
     editingSkill,
     filterCategory,

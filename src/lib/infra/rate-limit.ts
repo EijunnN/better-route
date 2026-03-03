@@ -25,6 +25,7 @@ export const RATE_LIMITS = {
   AUTH: { maxRequests: 5, windowMs: 60 * 1000 }, // 5 requests per minute
   API: { maxRequests: 100, windowMs: 60 * 1000 }, // 100 requests per minute
   POLLING: { maxRequests: 60, windowMs: 60 * 1000 }, // 60 requests per minute
+  PUBLIC_TRACKING: { maxRequests: 30, windowMs: 60 * 1000 }, // 30 requests per minute
 } as const;
 
 /**
@@ -90,13 +91,16 @@ export function resetRateLimit(identifier: string): void {
 /**
  * Get rate limit headers for response
  */
-export function getRateLimitHeaders(info: {
-  remaining: number;
-  resetTime: number;
-}): Record<string, string> {
+export function getRateLimitHeaders(
+  info: {
+    remaining: number;
+    resetTime: number;
+  },
+  config: RateLimitConfig = RATE_LIMITS.AUTH,
+): Record<string, string> {
   const resetTime = Math.ceil(info.resetTime / 1000);
   return {
-    "X-RateLimit-Limit": RATE_LIMITS.AUTH.maxRequests.toString(),
+    "X-RateLimit-Limit": config.maxRequests.toString(),
     "X-RateLimit-Remaining": info.remaining.toString(),
     "X-RateLimit-Reset": resetTime.toString(),
   };

@@ -182,27 +182,6 @@ export async function isVroomAvailable(): Promise<boolean> {
  * Solve a Vehicle Routing Problem using VROOM
  */
 export async function solveVRP(request: VroomRequest): Promise<VroomResponse> {
-  // Debug: Log full request for troubleshooting
-  console.log("[VROOM] ============ VROOM REQUEST ============");
-  console.log(`[VROOM] Jobs count: ${request.jobs?.length || 0}`);
-  console.log(`[VROOM] Vehicles count: ${request.vehicles?.length || 0}`);
-
-  // Log first 3 jobs and vehicles for debugging
-  if (request.jobs && request.jobs.length > 0) {
-    for (let i = 0; i < Math.min(3, request.jobs.length); i++) {
-      console.log(`[VROOM] Job ${i + 1}: ${JSON.stringify(request.jobs[i])}`);
-    }
-  }
-  if (request.vehicles && request.vehicles.length > 0) {
-    for (let i = 0; i < Math.min(3, request.vehicles.length); i++) {
-      console.log(`[VROOM] Vehicle ${i + 1}: ${JSON.stringify(request.vehicles[i])}`);
-    }
-  }
-
-  // CRITICAL: Log full request to file for debugging
-  console.log("[VROOM] Full request JSON:");
-  console.log(JSON.stringify(request, null, 2));
-
   const response = await fetch(VROOM_URL, {
     method: "POST",
     headers: {
@@ -214,15 +193,12 @@ export async function solveVRP(request: VroomRequest): Promise<VroomResponse> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[VROOM] HTTP error: ${response.status} - ${errorText}`);
     throw new Error(`VROOM error: ${response.status} - ${errorText}`);
   }
 
   const result: VroomResponse = await response.json();
 
   if (result.code !== 0) {
-    console.error(`[VROOM] Optimization failed: ${result.error}`);
-    console.error(`[VROOM] Full response: ${JSON.stringify(result)}`);
     throw new Error(
       `VROOM optimization failed: ${result.error || "Unknown error"}`,
     );
@@ -253,12 +229,10 @@ export function parseTimeWindow(timeStr: string): number | null {
   const [hours, minutes] = timeStr.split(":").map(Number);
   // Validate parsed values
   if (isNaN(hours) || hours < 0 || hours > 23) {
-    console.warn(`[VROOM] Invalid time window hours: ${timeStr}`);
     return null;
   }
   const mins = minutes || 0;
   if (isNaN(mins) || mins < 0 || mins > 59) {
-    console.warn(`[VROOM] Invalid time window minutes: ${timeStr}`);
     return null;
   }
   return hours * 3600 + mins * 60;

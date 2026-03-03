@@ -40,6 +40,7 @@ export interface FleetsState {
   vehicles: VehicleWithFleets[];
   users: UserWithFleets[];
   isLoading: boolean;
+  error: string | null;
   showForm: boolean;
   editingFleet: Fleet | null;
   deletingId: string | null;
@@ -89,6 +90,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
   const [vehicles, setVehicles] = useState<VehicleWithFleets[]>([]);
   const [users, setUsers] = useState<UserWithFleets[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -99,9 +101,11 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/fleets", { headers: { "x-company-id": companyId }, signal });
       const data = await response.json();
       setFleets(data.data || []);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      console.error("Error fetching fleets:", error);
+      setError(null);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      console.error("Error fetching fleets:", err);
+      setError(err instanceof Error ? err.message : "Error al cargar flotas");
     } finally {
       setIsLoading(false);
     }
@@ -249,7 +253,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     setEditingFleet(null);
   }, []);
 
-  const state: FleetsState = { fleets, vehicles, users, isLoading, showForm, editingFleet, deletingId };
+  const state: FleetsState = { fleets, vehicles, users, isLoading, error, showForm, editingFleet, deletingId };
   const actions: FleetsActions = { fetchFleets, handleCreate, handleUpdate, handleDelete, setShowForm, setEditingFleet, cancelForm };
   const meta: FleetsMeta = { companyId, isReady, isSystemAdmin, companies, selectedCompanyId, setSelectedCompanyId, authCompanyId };
 

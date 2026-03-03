@@ -72,6 +72,7 @@ export interface UsersState {
   fleets: Fleet[];
   roles: CustomRole[];
   isLoading: boolean;
+  error: string | null;
   showForm: boolean;
   showImportDialog: boolean;
   editingUser: User | null;
@@ -129,6 +130,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [roles, setRoles] = useState<CustomRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -145,8 +147,10 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       });
       const data = await response.json();
       setUsers(data.data || []);
-    } catch (error) {
-      console.error("Error fetching users:", error);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+      setError(err instanceof Error ? err.message : "Error al cargar usuarios");
     } finally {
       setIsLoading(false);
     }
@@ -394,6 +398,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     fleets,
     roles,
     isLoading,
+    error,
     showForm,
     showImportDialog,
     editingUser,

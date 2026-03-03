@@ -67,6 +67,7 @@ export const DEFAULT_PRESET: Partial<OptimizationPreset> = {
 export interface PresetsState {
   presets: OptimizationPreset[];
   isLoading: boolean;
+  error: string | null;
   dialogOpen: boolean;
   editingPreset: Partial<OptimizationPreset> | null;
   isSaving: boolean;
@@ -116,6 +117,7 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
 
   const [presets, setPresets] = useState<OptimizationPreset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPreset, setEditingPreset] = useState<Partial<OptimizationPreset> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -129,8 +131,10 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
       });
       const data = await response.json();
       setPresets(data.data || []);
-    } catch (error) {
-      console.error("Error fetching presets:", error);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching presets:", err);
+      setError(err instanceof Error ? err.message : "Error al cargar presets de optimización");
     } finally {
       setIsLoading(false);
     }
@@ -233,7 +237,7 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
     setEditingPreset((prev) => (prev ? { ...prev, ...updates } : null));
   }, []);
 
-  const state: PresetsState = { presets, isLoading, dialogOpen, editingPreset, isSaving };
+  const state: PresetsState = { presets, isLoading, error, dialogOpen, editingPreset, isSaving };
 
   const actions: PresetsActions = {
     fetchPresets,

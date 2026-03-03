@@ -176,11 +176,8 @@ export async function optimizeRoutes(
   if (vroomAvailable) {
     try {
       return await optimizeWithVroom(orders, vehicles, config, startTime);
-    } catch (error) {
-      console.warn(
-        "VROOM optimization failed, falling back to nearest-neighbor:",
-        error,
-      );
+    } catch {
+      // VROOM optimization failed, fall back to nearest-neighbor
     }
   }
 
@@ -199,7 +196,6 @@ async function optimizeWithVroom(
 ): Promise<OptimizationOutput> {
   // Validate inputs
   if (orders.length === 0) {
-    console.warn("[VROOM] No orders to optimize, returning empty result");
     return {
       routes: [],
       unassigned: [],
@@ -215,7 +211,6 @@ async function optimizeWithVroom(
   }
 
   if (vehicles.length === 0) {
-    console.warn("[VROOM] No vehicles available, returning all orders as unassigned");
     return {
       routes: [],
       unassigned: orders.map((o) => ({
@@ -243,13 +238,8 @@ async function optimizeWithVroom(
 
   // Safeguard: If no active dimensions, fall back to default profile
   if (!profile.activeDimensions || profile.activeDimensions.length === 0) {
-    console.warn("[VROOM] Profile has no active dimensions, falling back to default (WEIGHT, VOLUME)");
     profile = DEFAULT_PROFILE;
   }
-
-  console.log(`[VROOM] Using profile: ${getDimensionInfo(profile)}`);
-  console.log(`[VROOM] Active dimensions: ${profile.activeDimensions.join(", ")}`);
-  console.log(`[VROOM] Orders: ${orders.length}, Vehicles: ${vehicles.length}`);
 
   // Calculate balanced maxOrders if balancing is enabled (pre-balancing)
   const balancedMaxOrders = config.balanceVisits
@@ -299,14 +289,6 @@ async function optimizeWithVroom(
       profile,
     );
 
-    // Log first few orders for debugging
-    if (index < 3) {
-      console.log(`[VROOM] Order ${jobId}: trackingId=${order.trackingId}, ` +
-        `coords=[${order.longitude}, ${order.latitude}], ` +
-        `orderValue=${order.orderValue}, unitsRequired=${order.unitsRequired}, ` +
-        `delivery=${JSON.stringify(capacityMapping.capacityArray)}`);
-    }
-
     return createVroomJob(jobId, order.longitude, order.latitude, {
       description: order.trackingId,
       service: order.serviceTime || 300, // 5 min default
@@ -338,9 +320,6 @@ async function optimizeWithVroom(
     // Add 20% buffer for service times and variability
     const estimatedTimeHours = (config.maxDistanceKm / AVERAGE_SPEED_KMH) * 1.2;
     maxTravelTime = Math.round(estimatedTimeHours * 3600); // Convert to seconds
-    console.log(
-      `Max distance ${config.maxDistanceKm}km -> estimated max travel time: ${Math.round(estimatedTimeHours * 60)} minutes`,
-    );
   }
 
   // Calculate minimum vehicles needed if minimizeVehicles is enabled
@@ -366,10 +345,6 @@ async function optimizeWithVroom(
     );
 
     vehiclesToUse = vehicles.slice(0, minVehiclesNeeded);
-    console.log(
-      `[VROOM] minimizeVehicles: need≥${Math.max(minByWeight, minByVolume, minByOrders)} ` +
-      `(weight=${minByWeight}, volume=${minByVolume}, orders=${minByOrders}), using ${vehiclesToUse.length}/${vehicles.length}`,
-    );
   }
 
   // Create VROOM vehicles
@@ -421,13 +396,6 @@ async function optimizeWithVroom(
       profile,
     );
 
-    // Log first few vehicles for debugging
-    if (index < 3) {
-      console.log(`[VROOM] Vehicle ${vehicleId}: plate=${vehicle.plate}, ` +
-        `maxValueCapacity=${vehicle.maxValueCapacity}, maxUnitsCapacity=${vehicle.maxUnitsCapacity}, ` +
-        `capacity=${JSON.stringify(capacityMapping.capacityArray)}`);
-    }
-
     return createVroomVehicle(
       vehicleId,
       config.openStart ? undefined : startLongitude,
@@ -469,10 +437,6 @@ async function optimizeWithVroom(
     }
   })();
 
-  console.log(
-    `[VROOM] Optimization objective: ${config.objective} -> ${JSON.stringify(vroomObjectives)}`,
-  );
-
   // Build VROOM request
   const request: VroomRequest = {
     jobs,
@@ -483,21 +447,9 @@ async function optimizeWithVroom(
     objectives: vroomObjectives,
   };
 
-  // Debug: Log request summary
-  console.log(`[VROOM] Request: ${jobs.length} jobs, ${vroomVehicles.length} vehicles`);
-  if (jobs.length > 0) {
-    const sampleJob = jobs[0];
-    console.log(`[VROOM] Sample job: id=${sampleJob.id}, location=[${sampleJob.location}], delivery=${JSON.stringify(sampleJob.delivery)}`);
-  }
-  if (vroomVehicles.length > 0) {
-    const sampleVehicle = vroomVehicles[0];
-    console.log(`[VROOM] Sample vehicle: id=${sampleVehicle.id}, capacity=${JSON.stringify(sampleVehicle.capacity)}`);
-  }
-
   // Validate jobs have valid coordinates
   for (const job of jobs) {
     if (!job.location || isNaN(job.location[0]) || isNaN(job.location[1])) {
-      console.error(`[VROOM] Invalid job coordinates: id=${job.id}, location=${JSON.stringify(job.location)}`);
       throw new Error(`Job ${job.id} has invalid coordinates: ${JSON.stringify(job.location)}`);
     }
   }
@@ -507,11 +459,8 @@ async function optimizeWithVroom(
     const jobDeliveryLength = jobs[0].delivery?.length || 0;
     const vehicleCapacityLength = vroomVehicles[0].capacity?.length || 0;
     if (jobDeliveryLength !== vehicleCapacityLength) {
-      console.error(`[VROOM] Capacity dimension mismatch: jobs have ${jobDeliveryLength} dimensions, vehicles have ${vehicleCapacityLength}`);
-      console.error(`[VROOM] Profile dimensions: ${profile.activeDimensions.join(", ")}`);
       throw new Error(`Capacity dimension mismatch: jobs=${jobDeliveryLength}, vehicles=${vehicleCapacityLength}`);
     }
-    console.log(`[VROOM] Capacity dimensions validated: ${jobDeliveryLength} dimensions (${profile.activeDimensions.join(", ")})`);
   }
 
   // Call VROOM
@@ -565,10 +514,6 @@ async function optimizeWithVroom(
 
       // Only apply if improvement is significant
       if (balanceResult.newScore > initialScore + 5) {
-        console.log(
-          `Balance improved from ${initialScore} to ${balanceResult.newScore} (moved ${balanceResult.movedOrders} orders)`,
-        );
-
         // Update routes with balanced results
         for (const balancedRoute of balanceResult.routes) {
           const originalRoute = result.routes.find(
@@ -600,10 +545,6 @@ async function optimizeWithVroom(
 
     for (const route of result.routes) {
       if (route.totalDistance > maxDistanceMeters) {
-        console.warn(
-          `[VROOM] Route ${route.vehiclePlate} exceeds max distance: ${(route.totalDistance / 1000).toFixed(1)}km > ${config.maxDistanceKm}km — trimming`,
-        );
-
         // Remove stops from the end until route distance is within limit
         // Estimate distance per stop as totalDistance / (stops + 1 return leg)
         while (route.stops.length > 1 && route.totalDistance > maxDistanceMeters) {
@@ -703,10 +644,6 @@ function convertVroomResponse(
       // Total duration = travel + service + waiting
       const totalTravelTime = vroomDuration;
       const totalDuration = totalTravelTime + totalServiceTime + waitingTime;
-
-      console.log(
-        `[VROOM Route ${vehicle.plate}] VROOM duration: ${vroomDuration}s, service: ${totalServiceTime}s, waiting: ${waitingTime}s -> travel: ${totalTravelTime}s, total: ${totalDuration}s`,
-      );
 
       routes.push({
         vehicleId,

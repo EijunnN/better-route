@@ -261,7 +261,7 @@ export async function POST(
       }
 
       if (!orderFound) {
-        console.warn(`Order ${orderId} not found, skipping`);
+        // Order not found in any route or unassigned list, skip
       }
     }
 
