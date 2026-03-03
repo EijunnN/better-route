@@ -180,7 +180,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
       fetchZones();
       fetchVehicles();
     }
-  }, [companyId, fetchZones, fetchVehicles]);
+  }, [companyId]);
 
   const handleCreate = async (data: ZoneInput, vehicleIds: string[]) => {
     if (!companyId || isSubmitting) return;

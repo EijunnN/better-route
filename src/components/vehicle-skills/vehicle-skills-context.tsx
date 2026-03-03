@@ -100,7 +100,7 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchSkills();
-  }, [fetchSkills]);
+  }, [companyId, filterCategory, filterActive, searchTerm]);
 
   const handleCreate = async (data: VehicleSkillInput) => {
     if (!companyId) return;

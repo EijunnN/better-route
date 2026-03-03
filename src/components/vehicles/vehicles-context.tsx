@@ -252,7 +252,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     fetchDrivers();
     fetchCompanyProfile();
     fetchAvailableSkills();
-  }, [companyId, fetchDrivers, fetchFleets, fetchVehicles, fetchCompanyProfile, fetchAvailableSkills]);
+  }, [companyId]);
 
   const handleCreate = async (data: VehicleInput, skillIds?: string[]) => {
     if (!companyId) return;

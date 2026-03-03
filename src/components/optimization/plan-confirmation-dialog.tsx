@@ -241,7 +241,7 @@ export function PlanConfirmationDialog({
       fetchDrivers();
       validatePlan();
     }
-  }, [open, validatePlan, fetchDrivers]);
+  }, [open, jobId, companyId]);
 
   const handleDriverChange = (vehicleId: string, driverId: string) => {
     setDriverAssignments((prev) => ({

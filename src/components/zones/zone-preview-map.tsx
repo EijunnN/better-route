@@ -170,7 +170,7 @@ export function ZonePreviewMap({
     });
 
     addZoneLayers(mapInstance);
-  }, [zones, selectedZoneId, mapReady, addZoneLayers]);
+  }, [zones, selectedZoneId, mapReady]);
 
   // Handle runtime theme changes (skip first run - layers added in "load")
   // In MapLibre v5 diff mode, style.load fires synchronously during setStyle(),

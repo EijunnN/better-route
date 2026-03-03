@@ -205,7 +205,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       fetchUsers();
     }
-  }, [effectiveCompanyId, fetchUsers]);
+  }, [effectiveCompanyId, activeTab]);
 
   const assignRolesToUser = async (userId: string, roleIds: string[], currentRoleIds: string[] = []) => {
     if (!effectiveCompanyId) return;

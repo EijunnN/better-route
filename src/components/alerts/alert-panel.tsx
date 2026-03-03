@@ -75,7 +75,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
     if (companyId) {
       fetchAlerts();
     }
-  }, [companyId, fetchAlerts]);
+  }, [companyId, statusFilter]);
 
   // Filter alerts
   useEffect(() => {

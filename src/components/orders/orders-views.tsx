@@ -56,7 +56,7 @@ function useListFieldDefinitions(companyId: string | null) {
     }
   };
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [companyId]);
 
   return fields;
 }

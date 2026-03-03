@@ -136,7 +136,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+  }, [companyId, filterStatus, searchQuery, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);

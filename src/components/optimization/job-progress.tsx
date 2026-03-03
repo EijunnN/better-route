@@ -141,7 +141,7 @@ export function JobProgress({
     }, pollInterval);
 
     return () => clearInterval(intervalId);
-  }, [jobId, pollInterval, fetchJobStatus]);
+  }, [jobId, pollInterval, companyId, userId]);
 
   // Handle job completion/failure
   useEffect(() => {

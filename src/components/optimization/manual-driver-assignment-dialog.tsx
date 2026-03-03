@@ -158,7 +158,7 @@ export function ManualDriverAssignmentDialog({
       loadDrivers();
       setSelectedDriverId(currentDriverId || null);
     }
-  }, [open, currentDriverId, loadDrivers]);
+  }, [open, currentDriverId, vehicleId]);
 
   // Validate selected driver
   useEffect(() => {
@@ -167,7 +167,7 @@ export function ManualDriverAssignmentDialog({
     } else {
       setValidation(null);
     }
-  }, [selectedDriverId, open, validateDriver]);
+  }, [selectedDriverId, open, vehicleId]);
 
   async function handleAssign() {
     if (!selectedDriverId) return;

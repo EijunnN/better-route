@@ -148,7 +148,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       setRolePermissions(null);
       fetchRoles();
     }
-  }, [effectiveCompanyId, fetchRoles]);
+  }, [effectiveCompanyId]);
 
   useEffect(() => {
     if (selectedRole) {
@@ -156,7 +156,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     } else {
       setRolePermissions(null);
     }
-  }, [selectedRole, fetchRolePermissions]);
+  }, [selectedRole, effectiveCompanyId]);
 
   const handleCreateRole = async (e: React.FormEvent) => {
     e.preventDefault();

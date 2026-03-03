@@ -102,7 +102,7 @@ export function DepotSelector({
       mapInstance.remove();
       map.current = null;
     };
-  }, [updateDepotLocation]);
+  }, []);
 
   // Update marker when value changes
   useEffect(() => {

@@ -158,7 +158,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     });
 
     return () => controller.abort();
-  }, [fetchFleets, fetchVehiclesAndUsers, companyId]);
+  }, [companyId]);
 
   const handleCreate = async (data: FleetInput) => {
     if (!companyId) return;

@@ -341,14 +341,14 @@ export function OrderMap({
       console.error("Failed to initialize map:", error);
       setIsLoading(false);
     }
-  }, [addOrderLayers, fetchOrders]);
+  }, []);
 
   // Fetch orders when filters change
   useEffect(() => {
     if (map.current) {
       fetchOrders(map.current);
     }
-  }, [fetchOrders]);
+  }, [companyId, statusFilter, searchQuery]);
 
   return (
     <div className={`relative ${className}`}>

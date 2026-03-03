@@ -94,7 +94,7 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
 
   useEffect(() => {
     fetchPresets();
-  }, [fetchPresets]);
+  }, [companyId]);
 
   const handleCreate = async (data: TimeWindowPresetFormData) => {
     if (!companyId) return;
