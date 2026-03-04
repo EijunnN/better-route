@@ -142,7 +142,7 @@ mock.module("@/lib/optimization/optimization-runner", () => ({
   }),
 }));
 
-// Plan metrics — return sensible defaults
+// Plan metrics — return sensible defaults (includes ALL exported functions)
 mock.module("@/lib/optimization/plan-metrics", () => ({
   calculatePlanMetrics: (
     companyId: string,
@@ -174,6 +174,64 @@ mock.module("@/lib/optimization/plan-metrics", () => ({
     processingTimeMs: 500,
   }),
   calculateComparisonMetrics: async () => null,
+  findPreviousJobForComparison: async () => null,
+  savePlanMetrics: async () => "mock-metrics-id",
+  getPlanMetrics: async (companyId: string, jobId: string) => ({
+    id: "mock-plan-metrics",
+    companyId,
+    jobId,
+    totalRoutes: 1,
+    totalStops: 2,
+    totalDistance: 1000,
+    totalDuration: 3600,
+    averageUtilizationRate: 50,
+    timeWindowComplianceRate: 90,
+  }),
+  getHistoricalMetrics: async (_companyId: string, limit: number = 10) => {
+    return Array.from({ length: Math.min(3, limit) }, (_, i) => ({
+      jobId: `hist-job-${i + 1}`,
+      createdAt: new Date(Date.now() - i * 86400000),
+      totalRoutes: 2 + i,
+      totalStops: 5 + i * 2,
+      totalDistance: 3000 + i * 1000,
+      totalDuration: 2400 + i * 600,
+      averageUtilizationRate: 55 + i * 5,
+      timeWindowComplianceRate: 92 - i,
+    }));
+  },
+  getMetricsSummaryStats: async (_companyId: string) => ({
+    totalSessions: 3,
+    averageDistance: 5000,
+    averageDuration: 3600,
+    averageCompliance: 90,
+    averageUtilization: 60,
+  }),
+}));
+
+// Cache layer — in-memory replacement for Redis-based cache
+mock.module("@/lib/infra/cache", () => ({
+  getCacheStats: async () => ({
+    available: true,
+    hitRate: 0.85,
+    metrics: { hits: 850, misses: 150, sets: 200, deletes: 10, errors: 0 },
+  }),
+  invalidateAllCache: async () => {},
+  warmupCache: async (_companyId: string) => {},
+  cacheGet: async () => null,
+  cacheSet: async () => {},
+  cacheDelete: async () => {},
+  cacheDeletePattern: async () => {},
+  CACHE_TTL: {
+    SESSION: 604800,
+    GEOCODING: 2592000,
+    REFERENCE_DATA: 3600,
+    USER_DATA: 900,
+    OPERATIONAL_DATA: 300,
+    PLANNING_DATA: 120,
+    REALTIME_DATA: 30,
+    METRICS: 60,
+    OPTIMIZATION_RESULTS: 600,
+  },
 }));
 
 // Alert engine — no-op in tests
@@ -220,13 +278,24 @@ mock.module("@/lib/auth/session", () => {
     getUserSessions: async (userId: string) =>
       [...sessions.entries()]
         .filter(([, s]) => s.userId === userId)
-        .map(([id, s]) => ({ id, ...s })),
+        .map(([id, s]) => ({ sessionId: id, ...s })),
+    invalidateUserSessions: async (userId: string) => {
+      for (const [id, s] of sessions) {
+        if (s.userId === userId) sessions.delete(id);
+      }
+    },
     isRefreshTokenValid: async () => true,
     invalidateAllSessions: async () => {
       const c = sessions.size;
       sessions.clear();
       return c;
     },
+    updateSessionActivity: async () => {},
+    getSessionByRefreshToken: async () => null,
+    getUserSessionCount: async () => 0,
+    getGlobalSessionCount: async () => 0,
+    cleanupExpiredSessions: async () => 0,
+    invalidateRefreshToken: async () => {},
   };
 });
 
@@ -235,16 +304,29 @@ mock.module("@/lib/auth/session", () => {
 // ---------------------------------------------------------------------------
 
 mock.module("@/lib/storage/r2", () => ({
-  generatePresignedUploadUrl: async (key: string) => ({
-    uploadUrl: `https://fake-r2.test/upload/${key}`,
-    publicUrl: `https://fake-r2.test/public/${key}`,
-    key,
-    expiresIn: 300,
-  }),
+  ALLOWED_CONTENT_TYPES: [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+  ],
+  MAX_FILE_SIZE: 10 * 1024 * 1024,
+  PRESIGNED_URL_EXPIRATION: 300,
+  isAllowedContentType: (ct: string) =>
+    ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(ct),
+  generatePresignedUploadUrl: async (key: string) =>
+    `https://fake-r2.test/upload/${key}?signed=true`,
   getFilePublicUrl: (key: string) => `https://fake-r2.test/public/${key}`,
   generateEvidenceKey: (companyId: string, filename: string) =>
-    `evidence/${companyId}/${filename}`,
-  generateUniqueFilename: (name: string) => `${crypto.randomUUID()}-${name}`,
-  generateTrackingFilename: (trackingId: string, contentType: string, index: number) =>
-    `${trackingId}-${index}.${contentType.split("/")[1]}`,
+    `evidence/${companyId}/${new Date().toISOString().split("T")[0]}/${filename}`,
+  generateUniqueFilename: (name: string, _contentType: string) =>
+    `${crypto.randomUUID()}-${name}`,
+  generateTrackingFilename: (trackingId: string, contentType: string, index?: number) => {
+    const ext = contentType.split("/")[1] || "jpg";
+    const ts = Date.now().toString(36);
+    return index && index > 1
+      ? `${trackingId}_${index}_${ts}.${ext}`
+      : `${trackingId}_${ts}.${ext}`;
+  },
 }));

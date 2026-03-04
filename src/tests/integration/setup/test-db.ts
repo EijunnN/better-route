@@ -27,13 +27,7 @@ export const testClient = postgres(TEST_DATABASE_URL, {
 
 export const testDb = drizzle(testClient, { schema });
 
-/**
- * Delete all data from all tables in the correct order.
- * Uses TRUNCATE ... CASCADE for simplicity.
- */
-export async function cleanDatabase() {
-  await testDb.execute(sql`SET client_min_messages TO WARNING`);
-  await testDb.execute(sql`TRUNCATE TABLE
+const TRUNCATE_SQL = sql`TRUNCATE TABLE
     tracking_tokens, company_tracking_settings,
     route_stop_history, route_stops, plan_metrics,
     reassignments_history, output_history, optimization_jobs,
@@ -50,7 +44,33 @@ export async function cleanDatabase() {
     company_field_definitions,
     csv_column_mapping_templates, company_optimization_profiles,
     vehicles, fleets, audit_logs, users, companies
-    CASCADE`);
+    CASCADE`;
+
+/**
+ * Delete all data from all tables in the correct order.
+ * Uses TRUNCATE ... CASCADE for simplicity.
+ * Retries on deadlock (code 40P01) since concurrent test processes
+ * may hold locks on the same tables.
+ */
+export async function cleanDatabase(retries = 3) {
+  await testDb.execute(sql`SET client_min_messages TO WARNING`);
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await testDb.execute(TRUNCATE_SQL);
+      return;
+    } catch (error: unknown) {
+      const isDeadlock =
+        error instanceof Error &&
+        "code" in error &&
+        (error as { code: string }).code === "40P01";
+      if (isDeadlock && attempt < retries) {
+        // Wait briefly, then retry
+        await new Promise((r) => setTimeout(r, 100 * attempt));
+        continue;
+      }
+      throw error;
+    }
+  }
 }
 
 /**
