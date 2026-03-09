@@ -52,11 +52,14 @@ export function DatePicker({
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
+          captionLayout="dropdown"
           selected={value ?? undefined}
           onSelect={(date) => {
             onChange?.(date ?? null);
             setOpen(false);
           }}
+          startMonth={new Date(2020, 0)}
+          endMonth={new Date(2035, 11)}
           initialFocus
         />
       </PopoverContent>
