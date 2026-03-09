@@ -34,15 +34,25 @@ export async function GET(request: NextRequest) {
     const authResult = await requireRoutePermission(request, EntityType.DRIVER, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
 
-    // Get the most recent confirmed job and all drivers in parallel
+    // Accept optional jobId parameter
+    const jobId = request.nextUrl.searchParams.get("jobId");
+
+    // Get the specified or most recent confirmed job and all drivers in parallel
     const [confirmedJob, allDrivers] = await Promise.all([
-      db.query.optimizationJobs.findFirst({
-        where: and(
-          withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
-          eq(optimizationJobs.status, "COMPLETED"),
-        ),
-        orderBy: [desc(optimizationJobs.createdAt)],
-      }),
+      jobId
+        ? db.query.optimizationJobs.findFirst({
+            where: and(
+              withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+              eq(optimizationJobs.id, jobId),
+            ),
+          })
+        : db.query.optimizationJobs.findFirst({
+            where: and(
+              withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+              eq(optimizationJobs.status, "COMPLETED"),
+            ),
+            orderBy: [desc(optimizationJobs.createdAt)],
+          }),
       db.query.users.findMany({
         where: and(
           withTenantFilter(users, [], tenantCtx.companyId),
@@ -142,6 +152,7 @@ export async function GET(request: NextRequest) {
           ],
           hasRoute: false,
           routeId: null,
+          vehicleId: null,
           vehiclePlate: null,
           progress: {
             completedStops: 0,
@@ -314,6 +325,7 @@ export async function GET(request: NextRequest) {
         fleetNames,
         hasRoute,
         routeId: stopData?.routeId || null,
+        vehicleId: stopData?.vehicleId || null,
         vehiclePlate: vehicle?.plate || vehicle?.name || null,
         progress: {
           completedStops,

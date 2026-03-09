@@ -57,6 +57,7 @@ export interface DriverMonitoringData {
   fleetNames: string[];
   hasRoute: boolean;
   routeId: string | null;
+  vehicleId: string | null;
   vehiclePlate: string | null;
   progress: { completedStops: number; totalStops: number; percentage: number };
   alerts: string[];
@@ -123,11 +124,22 @@ export interface DriverDetailData {
   } | null;
 }
 
+export interface ConfirmedPlan {
+  id: string;
+  configurationName: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
 export interface MonitoringState {
   monitoringData: MonitoringData | undefined;
   driversData: DriverMonitoringData[];
   driverDetail: DriverDetailData | undefined;
   selectedDriverId: string | null;
+  selectedJobId: string | null;
+  selectedVehicleIds: string[];
+  confirmedPlans: ConfirmedPlan[];
+  isLoadingPlans: boolean;
   view: "overview" | "detail";
   showAlerts: boolean;
   isLoading: boolean;
@@ -146,6 +158,9 @@ export interface MonitoringActions {
   handleRefresh: () => void;
   handleDetailRefresh: () => void;
   setShowAlerts: (show: boolean) => void;
+  setSelectedJobId: (jobId: string | null) => void;
+  setSelectedVehicleIds: (ids: string[]) => void;
+  toggleVehicleId: (id: string) => void;
   formatLastUpdate: (date: Date) => string;
   getWorkflowLabel: (systemState: string) => string;
   getWorkflowColor: (systemState: string) => string;
@@ -174,9 +189,34 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     useCompanyContext();
 
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
   const [view, setView] = useState<"overview" | "detail">("overview");
   const [showAlerts, setShowAlerts] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  // Fetch confirmed plans for the plan selector
+  const {
+    data: confirmedPlans = [],
+    isLoading: isLoadingPlans,
+  } = useSWR<ConfirmedPlan[]>(
+    companyId ? ["/api/plans", companyId] : null,
+    ([url, cId]: [string, string]) => fetcher(url, cId),
+    { revalidateOnFocus: false }
+  );
+
+  // Build URL with optional jobId parameter
+  const summaryUrl = companyId
+    ? selectedJobId
+      ? `/api/monitoring/summary?jobId=${selectedJobId}`
+      : "/api/monitoring/summary"
+    : null;
+
+  const driversUrl = companyId
+    ? selectedJobId
+      ? `/api/monitoring/drivers?jobId=${selectedJobId}`
+      : "/api/monitoring/drivers"
+    : null;
 
   const {
     data: monitoringData,
@@ -184,7 +224,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     isLoading: isLoadingMonitoring,
     mutate: mutateMonitoring,
   } = useSWR<MonitoringData>(
-    companyId ? ["/api/monitoring/summary", companyId] : null,
+    summaryUrl ? [summaryUrl, companyId] : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
     { refreshInterval: POLLING_INTERVAL, revalidateOnFocus: true, dedupingInterval: 2000, onSuccess: () => setLastUpdate(new Date()) }
   );
@@ -194,7 +234,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     isLoading: isLoadingDrivers,
     mutate: mutateDrivers,
   } = useSWR<DriverMonitoringData[]>(
-    companyId ? ["/api/monitoring/drivers", companyId] : null,
+    driversUrl ? [driversUrl, companyId] : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
     { refreshInterval: POLLING_INTERVAL, revalidateOnFocus: true, dedupingInterval: 2000, onSuccess: () => setLastUpdate(new Date()) }
   );
@@ -254,6 +294,12 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     mutateMonitoring();
   };
 
+  const toggleVehicleId = (id: string) => {
+    setSelectedVehicleIds((prev) =>
+      prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id],
+    );
+  };
+
   const formatLastUpdate = (date: Date) => date.toLocaleTimeString();
 
   const getWorkflowLabel = (systemState: string) => {
@@ -271,6 +317,10 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     driversData,
     driverDetail,
     selectedDriverId,
+    selectedJobId,
+    selectedVehicleIds,
+    confirmedPlans,
+    isLoadingPlans,
     view,
     showAlerts,
     isLoading,
@@ -289,6 +339,12 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     handleRefresh,
     handleDetailRefresh,
     setShowAlerts,
+    setSelectedJobId: (jobId: string | null) => {
+      setSelectedJobId(jobId);
+      setSelectedVehicleIds([]); // Reset vehicle filter when switching plans
+    },
+    setSelectedVehicleIds,
+    toggleVehicleId,
     formatLastUpdate,
     getWorkflowLabel,
     getWorkflowColor,

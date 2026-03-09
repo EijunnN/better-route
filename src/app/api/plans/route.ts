@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, planMetrics } from "@/db/schema";
+import { optimizationConfigurations, optimizationJobs, planMetrics } from "@/db/schema";
 import { setTenantContext } from "@/lib/infra/tenant";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
@@ -30,18 +30,21 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
-    // Get completed jobs with their metrics
+    // Get completed jobs with their metrics and configuration name
     const jobs = await db
       .select({
         id: optimizationJobs.id,
         status: optimizationJobs.status,
         progress: optimizationJobs.progress,
         inputHash: optimizationJobs.inputHash,
+        configurationId: optimizationJobs.configurationId,
+        configurationName: optimizationConfigurations.name,
         createdAt: optimizationJobs.createdAt,
         startedAt: optimizationJobs.startedAt,
         completedAt: optimizationJobs.completedAt,
       })
       .from(optimizationJobs)
+      .leftJoin(optimizationConfigurations, eq(optimizationJobs.configurationId, optimizationConfigurations.id))
       .where(
         and(
           eq(optimizationJobs.companyId, tenantCtx.companyId),

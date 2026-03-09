@@ -10,6 +10,47 @@ import { EntityType, Action } from "@/lib/auth/authorization";
 import { extractTenantContext } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
+
+/**
+ * Decode Google Polyline Algorithm Format (from VROOM/OSRM)
+ */
+function decodePolyline(encoded: string, precision = 5): [number, number][] {
+  const coordinates: [number, number][] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  const factor = 10 ** precision;
+
+  while (index < encoded.length) {
+    let shift = 0;
+    let result = 0;
+    let byte: number;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+
+    shift = 0;
+    result = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+
+    coordinates.push([lng / factor, lat / factor]);
+  }
+
+  return coordinates;
+}
+
 // GET - Get GeoJSON data for monitoring map visualization
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
@@ -26,14 +67,30 @@ export async function GET(request: NextRequest) {
     // Optional auth - if authenticated, enforce permissions
     const authResult = await optionalRoutePermission(request, EntityType.ROUTE, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
-    // Get the most recent confirmed optimization job
-    const confirmedJob = await db.query.optimizationJobs.findFirst({
-      where: and(
-        withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
-        eq(optimizationJobs.status, "COMPLETED"),
-      ),
-      orderBy: [desc(optimizationJobs.createdAt)],
-    });
+
+    // Accept optional jobId parameter, otherwise use most recent completed job
+    const jobId = request.nextUrl.searchParams.get("jobId");
+    // Accept optional vehicleIds filter (comma-separated)
+    const vehicleIdsParam = request.nextUrl.searchParams.get("vehicleIds");
+    const filterVehicleIds = vehicleIdsParam ? vehicleIdsParam.split(",").filter(Boolean) : null;
+
+    let confirmedJob;
+    if (jobId) {
+      confirmedJob = await db.query.optimizationJobs.findFirst({
+        where: and(
+          withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+          eq(optimizationJobs.id, jobId),
+        ),
+      });
+    } else {
+      confirmedJob = await db.query.optimizationJobs.findFirst({
+        where: and(
+          withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+          eq(optimizationJobs.status, "COMPLETED"),
+        ),
+        orderBy: [desc(optimizationJobs.createdAt)],
+      });
+    }
 
     if (!confirmedJob?.result) {
       return NextResponse.json({
@@ -47,8 +104,10 @@ export async function GET(request: NextRequest) {
     let parsedResult: {
       routes?: Array<{
         routeId: string;
+        vehicleId?: string;
         vehiclePlate: string;
         driverName?: string;
+        geometry?: string;
         stops?: Array<{
           longitude: string;
           latitude: string;
@@ -138,12 +197,19 @@ export async function GET(request: NextRequest) {
     // Build GeoJSON features
     const features: GeoJSON.Feature[] = [];
 
-    parsedResult.routes.forEach(
+    // Filter routes by vehicleIds if specified
+    const routesToRender = filterVehicleIds
+      ? parsedResult.routes.filter((r) => r.vehicleId && filterVehicleIds.includes(r.vehicleId))
+      : parsedResult.routes;
+
+    routesToRender.forEach(
       (
         route: {
           routeId: string;
+          vehicleId?: string;
           vehiclePlate: string;
           driverName?: string;
+          geometry?: string;
           stops?: Array<{
             longitude: string;
             latitude: string;
@@ -159,10 +225,18 @@ export async function GET(request: NextRequest) {
         // Add route line feature
         if (route.stops && route.stops.length > 0) {
           const stops = route.stops;
-          const coordinates = stops.map((stop) => [
-            parseFloat(stop.longitude),
-            parseFloat(stop.latitude),
-          ]);
+
+          // Use decoded polyline geometry if available (actual routed path),
+          // otherwise fall back to straight lines between stops
+          let coordinates: number[][];
+          if (route.geometry) {
+            coordinates = decodePolyline(route.geometry);
+          } else {
+            coordinates = stops.map((stop) => [
+              parseFloat(stop.longitude),
+              parseFloat(stop.latitude),
+            ]);
+          }
 
           // Get driver info from DB (more reliable than job result)
           const driverInfo = routeDriverMap.get(route.routeId);
@@ -174,6 +248,7 @@ export async function GET(request: NextRequest) {
             properties: {
               type: "route",
               routeId: route.routeId,
+              vehicleId: route.vehicleId || null,
               vehiclePlate: route.vehiclePlate,
               driverId,
               driverName,

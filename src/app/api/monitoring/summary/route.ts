@@ -32,19 +32,28 @@ export async function GET(request: NextRequest) {
     // Optional auth - if authenticated, enforce permissions
     const authResult = await optionalRoutePermission(request, EntityType.METRICS, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
+    // Accept optional jobId parameter
+    const jobId = request.nextUrl.searchParams.get("jobId");
+
     // Execute independent queries in parallel
     const [confirmedJob, allDrivers, activeAlertsResult] = await Promise.all([
-      // Get the most recent confirmed optimization job for this company
-      db.query.optimizationJobs.findFirst({
-        where: and(
-          withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
-          eq(optimizationJobs.status, "COMPLETED"),
-        ),
-        with: {
-          configuration: true,
-        },
-        orderBy: [desc(optimizationJobs.createdAt)],
-      }),
+      // Get specific job or the most recent completed one
+      jobId
+        ? db.query.optimizationJobs.findFirst({
+            where: and(
+              withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+              eq(optimizationJobs.id, jobId),
+            ),
+            with: { configuration: true },
+          })
+        : db.query.optimizationJobs.findFirst({
+            where: and(
+              withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+              eq(optimizationJobs.status, "COMPLETED"),
+            ),
+            with: { configuration: true },
+            orderBy: [desc(optimizationJobs.createdAt)],
+          }),
       // Get all driver (users with CONDUCTOR role) statuses from the company
       db.query.users.findMany({
         where: and(

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Bell, ChevronLeft, ChevronRight, History, Loader2, MapPin, RefreshCw, Search, Users, X } from "lucide-react";
+import { AlertCircle, Bell, ChevronDown, ChevronLeft, ChevronRight, History, Loader2, MapPin, RefreshCw, Search, Users, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState, useRef } from "react";
 import { AlertPanel } from "@/components/alerts/alert-panel";
@@ -50,6 +50,12 @@ export function MonitoringDashboardView() {
   // Get unique statuses for filter
   const availableStatuses = Array.from(new Set(state.driversData.map(d => d.status)));
 
+  // Get unique vehicles with routes for vehicle filter
+  const vehiclesWithRoutes = state.driversData
+    .filter((d) => d.hasRoute && d.vehicleId && d.vehiclePlate)
+    .map((d) => ({ id: d.vehicleId!, plate: d.vehiclePlate! }))
+    .filter((v, i, arr) => arr.findIndex((a) => a.id === v.id) === i);
+
   // Status labels in Spanish
   const statusLabels: Record<string, string> = {
     IN_ROUTE: "En Ruta",
@@ -90,6 +96,24 @@ export function MonitoringDashboardView() {
             <div className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary" />
               <span className="font-semibold">Monitoreo</span>
+            </div>
+
+            {/* Plan selector */}
+            <div className="h-6 w-px bg-border" />
+            <div className="relative">
+              <select
+                value={state.selectedJobId || ""}
+                onChange={(e) => actions.setSelectedJobId(e.target.value || null)}
+                className="appearance-none bg-muted/50 border border-border rounded-md px-3 py-1 pr-7 text-sm cursor-pointer hover:bg-muted focus:outline-none focus:ring-1 focus:ring-primary max-w-[220px] truncate"
+              >
+                <option value="">Último plan</option>
+                {state.confirmedPlans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.configurationName || new Date(plan.completedAt || plan.createdAt).toLocaleDateString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
             </div>
 
             {state.monitoringData && (
@@ -248,6 +272,35 @@ export function MonitoringDashboardView() {
                     </Badge>
                   ))}
                 </div>
+
+                {/* Vehicle filter chips */}
+                {vehiclesWithRoutes.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Vehículos:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {state.selectedVehicleIds.length > 0 && (
+                        <Badge
+                          variant="outline"
+                          className="cursor-pointer text-xs"
+                          onClick={() => actions.setSelectedVehicleIds([])}
+                        >
+                          <X className="w-2.5 h-2.5 mr-0.5" />
+                          Limpiar
+                        </Badge>
+                      )}
+                      {vehiclesWithRoutes.map((v) => (
+                        <Badge
+                          key={v.id}
+                          variant={state.selectedVehicleIds.includes(v.id) ? "default" : "outline"}
+                          className="cursor-pointer text-xs"
+                          onClick={() => actions.toggleVehicleId(v.id)}
+                        >
+                          {v.plate}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Driver List */}
@@ -355,9 +408,10 @@ export function MonitoringDashboardView() {
       <div className="absolute inset-0">
         <MonitoringMap
           ref={mapRef}
-          jobId={state.monitoringData?.jobId || null}
+          jobId={state.selectedJobId || state.monitoringData?.jobId || null}
           companyId={meta.companyId!}
           selectedDriverId={state.selectedDriverId}
+          selectedVehicleIds={state.selectedVehicleIds}
           onDriverSelect={actions.handleDriverClick}
         />
       </div>

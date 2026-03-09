@@ -10,6 +10,7 @@ interface MonitoringMapProps {
   jobId: string | null;
   companyId: string;
   selectedDriverId: string | null;
+  selectedVehicleIds?: string[];
   onDriverSelect?: (driverId: string) => void;
 }
 
@@ -20,9 +21,10 @@ export interface MonitoringMapRef {
 const REFRESH_INTERVAL = 15000; // 15 seconds
 
 export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(function MonitoringMap({
-  jobId: _jobId,
+  jobId,
   companyId,
   selectedDriverId,
+  selectedVehicleIds = [],
   onDriverSelect,
 }, ref) {
   const { isDark } = useTheme();
@@ -51,7 +53,13 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
     if (!map.current || !companyId || !map.current.isStyleLoaded()) return;
 
     try {
-      const response = await fetch("/api/monitoring/geojson", {
+      const params = new URLSearchParams();
+      if (jobId) params.set("jobId", jobId);
+      if (selectedVehicleIds.length > 0) params.set("vehicleIds", selectedVehicleIds.join(","));
+      const queryString = params.toString();
+      const url = `/api/monitoring/geojson${queryString ? `?${queryString}` : ""}`;
+
+      const response = await fetch(url, {
         headers: { "x-company-id": companyId },
       });
 
@@ -467,12 +475,13 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
     };
   }, [isLoading]);
 
-  // Update data when selectedDriverId changes
+  // Update data when selectedDriverId, jobId, or vehicleIds change
   useEffect(() => {
     if (map.current && !isLoading) {
-      loadMapData(false);
+      loadMapData(true);
     }
-  }, [selectedDriverId, loadMapData, isLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDriverId, jobId, selectedVehicleIds.join(","), isLoading]);
 
   // React to theme changes
   useEffect(() => {
