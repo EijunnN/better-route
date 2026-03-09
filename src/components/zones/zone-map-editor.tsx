@@ -169,6 +169,9 @@ export function ZoneMapEditor({
 
   // Stable function to add all custom layers to the map
   const addLayers = (mapInstance: MapLibreMap) => {
+      // Skip if sources already exist (e.g. style.load fired twice)
+      if (mapInstance.getSource("polygon")) return;
+
       // Polygon fill
       mapInstance.addSource("polygon", {
         type: "geojson",
@@ -384,12 +387,11 @@ export function ZoneMapEditor({
     const mapInstance = map.current;
     setIsMapReady(false);
 
-    // Register BEFORE setStyle — style.load may fire synchronously in diff mode
     mapInstance.once("style.load", () => {
       addLayersRef.current(mapInstance);
       setIsMapReady(true);
     });
-    mapInstance.setStyle(getMapStyle(isDark));
+    mapInstance.setStyle(getMapStyle(isDark), { diff: false });
   }, [isDark]);
 
   // Update polygon layers when points change
@@ -931,7 +933,7 @@ export function ZoneMapEditor({
   };
 
   return (
-    <div className={`relative h-full ${className}`}>
+    <div className={`relative ${className}`} style={{ height }}>
       {/* Toolbar */}
       <div className="absolute top-4 left-4 z-10 flex gap-1 bg-background/95 backdrop-blur-sm p-2 rounded-lg shadow-lg border">
         <Button
