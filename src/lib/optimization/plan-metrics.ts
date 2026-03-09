@@ -106,10 +106,10 @@ export function calculatePlanMetrics(
       : 0;
 
   const maxUtilizationRate =
-    utilizationRates.length > 0 ? Math.max(...utilizationRates) : 0;
+    utilizationRates.length > 0 ? Math.round(Math.max(...utilizationRates)) : 0;
 
   const minUtilizationRate =
-    utilizationRates.length > 0 ? Math.min(...utilizationRates) : 0;
+    utilizationRates.length > 0 ? Math.round(Math.min(...utilizationRates)) : 0;
 
   // Count assignments with warnings and errors
   let assignmentsWithWarnings = 0;
@@ -140,12 +140,14 @@ export function calculatePlanMetrics(
     totalStops:
       metrics.totalStops ||
       routes.reduce((sum, r) => sum + (r.stops?.length || 0), 0),
-    totalDistance:
+    totalDistance: Math.round(
       metrics.totalDistance ||
       routes.reduce((sum, r) => sum + (r.totalDistance || 0), 0),
-    totalDuration:
+    ),
+    totalDuration: Math.round(
       metrics.totalDuration ||
       routes.reduce((sum, r) => sum + (r.totalDuration || 0), 0),
+    ),
     averageUtilizationRate,
     maxUtilizationRate,
     minUtilizationRate,
@@ -169,7 +171,7 @@ export function calculatePlanMetrics(
     unassignedOrders:
       summary.unassignedOrders || result.unassignedOrders?.length || 0,
     objective: result.summary?.objective,
-    processingTimeMs: result.summary?.processingTimeMs || 0,
+    processingTimeMs: Math.round(result.summary?.processingTimeMs || 0),
   };
 }
 
