@@ -1,9 +1,12 @@
 "use client";
 
+import { useMemo, useState as useLocalState } from "react";
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Clock,
   Loader2,
   MapPin,
@@ -436,8 +439,42 @@ export function OrderStep() {
   );
 }
 
+// Ray-casting point-in-polygon check
+function pointInPolygon(lng: number, lat: number, polygon: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+    if ((yi > lat) !== (yj > lat) && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function isOrderInAnyZone(
+  order: { latitude: string | null; longitude: string | null },
+  zones: Array<{ geometry: { coordinates: number[][][] } }>,
+): boolean {
+  if (!order.latitude || !order.longitude) return false;
+  const lng = parseFloat(order.longitude);
+  const lat = parseFloat(order.latitude);
+  if (isNaN(lng) || isNaN(lat)) return false;
+  return zones.some((zone) => pointInPolygon(lng, lat, zone.geometry.coordinates[0]));
+}
+
 export function ConfigStep() {
   const { state, actions } = usePlanificacion();
+  const [showOutsideDetails, setShowOutsideDetails] = useLocalState(false);
+
+  // Calculate orders outside zones (only when zones exist)
+  const ordersOutsideZones = useMemo(() => {
+    const activeZones = state.zones.filter((z) => z.active);
+    if (activeZones.length === 0) return [];
+
+    const selectedOrders = state.orders.filter((o) => state.selectedOrderIds.includes(o.id));
+    return selectedOrders.filter((order) => !isOrderInAnyZone(order, activeZones));
+  }, [state.zones, state.orders, state.selectedOrderIds]);
 
   return (
     <div className="h-full flex flex-col">
@@ -630,6 +667,37 @@ export function ConfigStep() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Zone Warning */}
+      {ordersOutsideZones.length > 0 && (
+        <div className="px-4">
+          <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-900">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-orange-600 flex-shrink-0" />
+              <p className="text-sm text-orange-800 dark:text-orange-400 flex-1">
+                <span className="font-medium">{ordersOutsideZones.length}</span> pedido{ordersOutsideZones.length > 1 ? "s" : ""} fuera de las zonas configuradas.
+                No ser{ordersOutsideZones.length > 1 ? "án" : "á"} incluido{ordersOutsideZones.length > 1 ? "s" : ""} en la optimización.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowOutsideDetails(!showOutsideDetails)}
+                className="text-orange-600 hover:text-orange-800 dark:text-orange-400"
+              >
+                {showOutsideDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+            </div>
+            {showOutsideDetails && (
+              <ul className="mt-2 space-y-1 text-xs text-orange-700 dark:text-orange-500 pl-6 max-h-32 overflow-y-auto">
+                {ordersOutsideZones.map((order) => (
+                  <li key={order.id} className="list-disc">
+                    {order.trackingId} — {order.address}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Action buttons */}
       <div className="p-4 border-t bg-background space-y-2">
