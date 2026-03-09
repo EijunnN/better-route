@@ -85,6 +85,7 @@ interface ValidationResult {
   };
   alreadyConfirmed?: boolean;
   message?: string;
+  configurationName?: string;
   result?: {
     routes: RouteData[];
     summary: {
@@ -202,16 +203,21 @@ export function PlanConfirmationDialog({
 
       // Set default values
       if (data.result?.summary?.optimizedAt) {
-        const date = new Date(data.result.summary.optimizedAt);
         const dateStr = formatDateInput(data.result.summary.optimizedAt);
-        setPlanName(date.toLocaleString("es-PE", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }));
+        // Use configuration name if available, otherwise generate from date
+        if (data.configurationName) {
+          setPlanName(data.configurationName);
+        } else {
+          const date = new Date(data.result.summary.optimizedAt);
+          setPlanName(date.toLocaleString("es-PE", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }));
+        }
         setStartDate(dateStr);
         setEndDate(dateStr);
       }
@@ -379,6 +385,13 @@ export function PlanConfirmationDialog({
           </div>
         ) : validationResult ? (
           <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Confirm Error */}
+            {error && (
+              <div className="flex items-center gap-3 p-3 mx-4 mt-4 bg-destructive/10 text-destructive rounded-md">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
             {/* Plan Info Section */}
             <div className="p-4 space-y-4 border-b">
               {/* Plan Name */}

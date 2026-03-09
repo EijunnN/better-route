@@ -671,7 +671,7 @@ export function OptimizationResults({
           {onConfirm && jobId && !isPlanConfirmed && (
             <Button
               onClick={() => setConfirmDialogOpen(true)}
-              disabled={result.unassignedOrders.length > 0}
+              disabled={false}
             >
               Confirm Plan
             </Button>

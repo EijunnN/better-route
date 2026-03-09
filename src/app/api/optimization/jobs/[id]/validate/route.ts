@@ -66,6 +66,7 @@ export async function GET(
         result: optimizationJobs.result,
         configuration: {
           id: optimizationConfigurations.id,
+          name: optimizationConfigurations.name,
           status: optimizationConfigurations.status,
         },
       })
@@ -163,6 +164,7 @@ export async function GET(
       issuesBySeverity: getIssuesBySeverity(validationResult.issues),
       summaryText: getValidationSummaryText(validationResult),
       // Include result for confirmation dialog display
+      configurationName: job.configuration?.name || undefined,
       result: {
         routes: result.routes,
         summary: result.summary,
