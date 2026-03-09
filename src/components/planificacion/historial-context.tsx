@@ -17,6 +17,7 @@ export interface OptimizationJob {
   id: string;
   configurationId: string;
   status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  configurationStatus?: string | null;
   progress: number;
   startedAt: string | null;
   completedAt: string | null;

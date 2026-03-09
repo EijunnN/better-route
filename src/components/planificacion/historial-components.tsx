@@ -34,6 +34,11 @@ import { useHistorial, type OptimizationJob, type JobStatus } from "./historial-
 
 // Status Configuration
 const STATUS_CONFIG = {
+  CONFIRMED: {
+    label: "Confirmado",
+    color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
+    icon: "check-circle",
+  },
   COMPLETED: {
     label: "Completado",
     color: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
@@ -214,7 +219,11 @@ export function HistorialEmpty() {
 
 export function HistorialJobCard({ job }: { job: OptimizationJob }) {
   const { actions } = useHistorial();
-  const statusConfig = getStatusConfig(job.status);
+  // Show "Confirmado" when job is COMPLETED and configuration was confirmed
+  const effectiveStatus = job.status === "COMPLETED" && job.configurationStatus === "CONFIRMED"
+    ? "CONFIRMED"
+    : job.status;
+  const statusConfig = getStatusConfig(effectiveStatus);
 
   return (
     <Card
