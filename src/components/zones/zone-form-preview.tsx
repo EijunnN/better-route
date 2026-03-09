@@ -152,7 +152,7 @@ export function ZoneFormPreview({
     mapInstance.once("style.load", () => {
       addZoneLayer(mapInstance);
     });
-    mapInstance.setStyle(getMapStyle(isDark));
+    mapInstance.setStyle(getMapStyle(isDark), { diff: false });
   }, [isDark]);
 
   // Update zone color

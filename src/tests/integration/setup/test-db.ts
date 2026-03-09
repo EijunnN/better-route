@@ -5,17 +5,57 @@
  * The preload file mocks `@/db` to use this instance, so all route
  * handlers automatically operate against the test DB.
  */
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@/db/schema";
 
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+function loadTestEnvFile() {
+  const envTestPath = resolve(process.cwd(), ".env.test");
+
+  if (!existsSync(envTestPath)) {
+    return;
+  }
+
+  const content = readFileSync(envTestPath, "utf8");
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const separatorIndex = line.indexOf("=");
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1).trim();
+
+    if (!process.env[key]) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadTestEnvFile();
+
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
 if (!TEST_DATABASE_URL) {
   throw new Error(
-    "TEST_DATABASE_URL or DATABASE_URL must be set to run integration tests",
+    "TEST_DATABASE_URL must be set to run integration tests. Configure it in .env.test.",
+  );
+}
+
+if (
+  process.env.DATABASE_URL &&
+  process.env.DATABASE_URL === TEST_DATABASE_URL
+) {
+  throw new Error(
+    "TEST_DATABASE_URL must point to a dedicated test database and cannot match DATABASE_URL.",
   );
 }
 

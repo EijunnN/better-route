@@ -1108,6 +1108,7 @@ describe("User Detail, Roles & Sessions", () => {
       const data = await response.json();
       expect(data.success).toBe(true);
       expect(data.created).toBe(2);
+      expect(data.errors).toHaveLength(0);
 
       // Verify in DB
       const [alice] = await testDb
@@ -1129,8 +1130,8 @@ describe("User Detail, Roles & Sessions", () => {
 
     test("imports CSV with CONDUCTOR including driver fields", async () => {
       const csv = [
-        "name,email,username,password,role,identification,licenseNumber,driverStatus",
-        "Driver One,driver1@import.com,driver1_import,Password123!,CONDUCTOR,DNI-111,LIC-001,AVAILABLE",
+        "name,email,username,password,role,identification,licenseNumber,licenseExpiry,driverStatus",
+        "Driver One,driver1@import.com,driver1_import,Password123!,CONDUCTOR,DNI-111,LIC-001,2027-12-31,AVAILABLE",
       ].join("\n");
 
       const formData = buildCsvFormData(csv);
@@ -1146,6 +1147,7 @@ describe("User Detail, Roles & Sessions", () => {
       const data = await response.json();
       expect(data.success).toBe(true);
       expect(data.created).toBe(1);
+      expect(data.errors).toHaveLength(0);
 
       const [driver] = await testDb
         .select()
@@ -1155,6 +1157,7 @@ describe("User Detail, Roles & Sessions", () => {
       expect(driver.identification).toBe("DNI-111");
       expect(driver.licenseNumber).toBe("LIC-001");
       expect(driver.driverStatus).toBe("AVAILABLE");
+      expect(driver.licenseExpiry).toBeDefined();
     });
 
     test("supports semicolon-separated CSV", async () => {
@@ -1176,6 +1179,7 @@ describe("User Detail, Roles & Sessions", () => {
       const data = await response.json();
       expect(data.success).toBe(true);
       expect(data.created).toBe(1);
+      expect(data.errors).toHaveLength(0);
     });
 
     test("returns 400 when no file is attached", async () => {
@@ -1230,7 +1234,7 @@ describe("User Detail, Roles & Sessions", () => {
 
       const data = await response.json();
       expect(data.error).toBe("Validation failed");
-      expect(data.details.length).toBeGreaterThan(0);
+      expect(data.errors.length).toBeGreaterThan(0);
     });
 
     test("returns 400 for duplicate emails within CSV", async () => {
@@ -1251,7 +1255,7 @@ describe("User Detail, Roles & Sessions", () => {
       expect(response.status).toBe(400);
 
       const data = await response.json();
-      expect(data.details.some((d: { field: string }) => d.field === "email")).toBe(true);
+      expect(data.errors.some((d: { field: string }) => d.field === "email")).toBe(true);
     });
 
     test("returns 400 for duplicate usernames within CSV", async () => {
@@ -1273,7 +1277,80 @@ describe("User Detail, Roles & Sessions", () => {
 
       const data = await response.json();
       expect(
-        data.details.some((d: { field: string }) => d.field === "username"),
+        data.errors.some((d: { field: string }) => d.field === "username"),
+      ).toBe(true);
+    });
+
+    test("returns 400 when CONDUCTOR is missing required driver fields", async () => {
+      const csv = [
+        "name,email,username,password,role",
+        "Driver Missing,driver-missing@import.com,driver_missing,Password123!,CONDUCTOR",
+      ].join("\n");
+
+      const formData = buildCsvFormData(csv);
+      const request = await buildImportRequest(formData, {
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+      });
+
+      const response = await POST_IMPORT(request as any);
+      expect(response.status).toBe(400);
+
+      const data = await response.json();
+      expect(
+        data.errors.some((d: { field: string }) => d.field === "identification"),
+      ).toBe(true);
+      expect(
+        data.errors.some((d: { field: string }) => d.field === "licenseNumber"),
+      ).toBe(true);
+      expect(
+        data.errors.some((d: { field: string }) => d.field === "licenseExpiry"),
+      ).toBe(true);
+    });
+
+    test("returns 400 for invalid license categories", async () => {
+      const csv = [
+        "name,email,username,password,role,identification,licenseNumber,licenseExpiry,licenseCategories",
+        "Driver Invalid Categories,driver-cats@import.com,driver_cats,Password123!,CONDUCTOR,DNI-222,LIC-222,2027-12-31,\"A,Z\"",
+      ].join("\n");
+
+      const formData = buildCsvFormData(csv);
+      const request = await buildImportRequest(formData, {
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+      });
+
+      const response = await POST_IMPORT(request as any);
+      expect(response.status).toBe(400);
+
+      const data = await response.json();
+      expect(
+        data.errors.some((d: { field: string }) => d.field === "licenseCategories"),
+      ).toBe(true);
+    });
+
+    test("returns 400 for duplicate identifications within CSV", async () => {
+      const csv = [
+        "name,email,username,password,role,identification,licenseNumber,licenseExpiry",
+        "Driver A,driver-a@import.com,driver_a,Password123!,CONDUCTOR,DNI-SAME,LIC-A,2027-12-31",
+        "Driver B,driver-b@import.com,driver_b,Password123!,CONDUCTOR,DNI-SAME,LIC-B,2027-12-31",
+      ].join("\n");
+
+      const formData = buildCsvFormData(csv);
+      const request = await buildImportRequest(formData, {
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+      });
+
+      const response = await POST_IMPORT(request as any);
+      expect(response.status).toBe(400);
+
+      const data = await response.json();
+      expect(
+        data.errors.some((d: { field: string }) => d.field === "identification"),
       ).toBe(true);
     });
 
@@ -1305,7 +1382,41 @@ describe("User Detail, Roles & Sessions", () => {
 
       const data = await response.json();
       expect(data.created).toBe(1);
-      expect(data.details.length).toBeGreaterThan(0);
+      expect(data.errors.length).toBeGreaterThan(0);
+    });
+
+    test("returns 207 when identification already exists in company", async () => {
+      await createUser({
+        companyId: companyA.id,
+        role: "CONDUCTOR",
+        email: "existing-driver@test.com",
+        username: "existing_driver",
+        identification: "DNI-EXISTING",
+        licenseNumber: "LIC-OLD",
+        licenseExpiry: new Date("2027-12-31"),
+      });
+
+      const csv = [
+        "name,email,username,password,role,identification,licenseNumber,licenseExpiry",
+        "Driver Clash,driver-clash@import.com,driver_clash,Password123!,CONDUCTOR,DNI-EXISTING,LIC-NEW,2027-12-31",
+        "Driver Good,driver-good@import.com,driver_good,Password123!,CONDUCTOR,DNI-UNIQUE,LIC-GOOD,2027-12-31",
+      ].join("\n");
+
+      const formData = buildCsvFormData(csv);
+      const request = await buildImportRequest(formData, {
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+      });
+
+      const response = await POST_IMPORT(request as any);
+      expect(response.status).toBe(207);
+
+      const data = await response.json();
+      expect(data.created).toBe(1);
+      expect(
+        data.errors.some((d: { field: string }) => d.field === "identification"),
+      ).toBe(true);
     });
 
     test("returns 401 without authentication", async () => {

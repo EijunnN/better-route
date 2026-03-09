@@ -126,28 +126,35 @@ export const createUserSchema = z
       .max(255, "Contraseña demasiado larga"),
     ...driverFields,
   })
-  .refine(
-    (data) => {
-      // If role is CONDUCTOR, require driver-specific fields
-      if (data.role === "CONDUCTOR") {
-        if (!data.identification || data.identification.trim() === "") {
-          return false;
-        }
-        if (!data.licenseNumber || data.licenseNumber.trim() === "") {
-          return false;
-        }
-        if (!data.licenseExpiry) {
-          return false;
-        }
-      }
-      return true;
-    },
-    {
-      message:
-        "Para conductores, se requiere: identificación, número de licencia y fecha de vencimiento",
-      path: ["role"],
-    },
-  )
+  .superRefine((data, ctx) => {
+    if (data.role !== "CONDUCTOR") {
+      return;
+    }
+
+    if (!data.identification || data.identification.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["identification"],
+        message: "La identificación es requerida para conductores",
+      });
+    }
+
+    if (!data.licenseNumber || data.licenseNumber.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["licenseNumber"],
+        message: "El número de licencia es requerido para conductores",
+      });
+    }
+
+    if (!data.licenseExpiry) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["licenseExpiry"],
+        message: "La fecha de vencimiento es requerida para conductores",
+      });
+    }
+  })
   .refine(
     (data) => {
       // Validate license categories format if provided
@@ -219,27 +226,35 @@ export const userSchema = z
     ...baseUserFields,
     ...driverFields,
   })
-  .refine(
-    (data) => {
-      if (data.role === "CONDUCTOR") {
-        if (!data.identification || data.identification.trim() === "") {
-          return false;
-        }
-        if (!data.licenseNumber || data.licenseNumber.trim() === "") {
-          return false;
-        }
-        if (!data.licenseExpiry) {
-          return false;
-        }
-      }
-      return true;
-    },
-    {
-      message:
-        "Para conductores, se requiere: identificación, número de licencia y fecha de vencimiento",
-      path: ["role"],
-    },
-  );
+  .superRefine((data, ctx) => {
+    if (data.role !== "CONDUCTOR") {
+      return;
+    }
+
+    if (!data.identification || data.identification.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["identification"],
+        message: "La identificación es requerida para conductores",
+      });
+    }
+
+    if (!data.licenseNumber || data.licenseNumber.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["licenseNumber"],
+        message: "El número de licencia es requerido para conductores",
+      });
+    }
+
+    if (!data.licenseExpiry) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["licenseExpiry"],
+        message: "La fecha de vencimiento es requerida para conductores",
+      });
+    }
+  });
 
 // Types
 export type CreateUserInput = z.infer<typeof createUserSchema>;

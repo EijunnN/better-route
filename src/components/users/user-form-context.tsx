@@ -23,6 +23,17 @@ interface GroupedPermissions {
   [category: string]: RolePermission[];
 }
 
+interface FormErrorDetail {
+  path?: string[];
+  field?: string;
+  message: string;
+}
+
+interface FormSubmitError {
+  details?: FormErrorDetail[];
+  error?: string;
+}
+
 export interface CustomRole {
   id: string;
   name: string;
@@ -215,6 +226,16 @@ export function UserFormProvider({
   };
 
   const isConductor = formData.role === "CONDUCTOR";
+  const driverFields = new Set([
+    "identification",
+    "licenseNumber",
+    "licenseExpiry",
+    "licenseCategories",
+    "driverStatus",
+    "primaryFleetId",
+    "birthDate",
+    "certifications",
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,18 +296,25 @@ export function UserFormProvider({
 
     try {
       await onSubmit(submitData, selectedRoleIds);
-    } catch (error: unknown) {
-      const err = error as {
-        details?: Array<{ path?: string[]; field?: string; message: string }>;
-        error?: string;
-      };
+    } catch (error) {
+      const err: FormSubmitError =
+        error && typeof error === "object"
+          ? (error as FormSubmitError)
+          : { error: "Error al guardar el usuario" };
       if (err.details && Array.isArray(err.details)) {
         const fieldErrors: Record<string, string> = {};
+        let shouldOpenDriverTab = false;
         err.details.forEach((detail) => {
           const fieldName = detail.path?.[0] || detail.field || "form";
           fieldErrors[fieldName] = detail.message;
+          if (driverFields.has(fieldName)) {
+            shouldOpenDriverTab = true;
+          }
         });
         setErrors(fieldErrors);
+        if (shouldOpenDriverTab) {
+          setActiveTab("driver");
+        }
       } else {
         setErrors({ form: err.error || "Error al guardar el usuario" });
       }

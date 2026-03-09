@@ -201,7 +201,7 @@ export function PlanningMap({
     map.current.setStyle({
       ...style,
       glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-    });
+    }, { diff: false });
   }, [isDark, isLoaded]);
 
   // Update markers when data changes

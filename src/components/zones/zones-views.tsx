@@ -1,6 +1,7 @@
 "use client";
 
 import dynamicImport from "next/dynamic";
+import { useEffect } from "react";
 import {
   Calendar,
   ChevronRight,
@@ -28,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
+import { useLayoutContext } from "@/components/layout/layout-context";
 import { ZoneForm } from "@/components/zones/zone-form";
 import { ZONE_TYPE_LABELS, type ZoneInput } from "@/lib/validations/zone";
 import { useZones, DAY_LABELS } from "./zones-context";
@@ -473,6 +475,12 @@ export function ZonesFormView() {
 }
 
 export function ZonesMapEditorView() {
+  const { setFullWidth } = useLayoutContext();
+  useEffect(() => {
+    setFullWidth(true);
+    return () => setFullWidth(false);
+  }, [setFullWidth]);
+
   const { state, actions, derived } = useZones();
 
   const currentGeometry = state.pendingFormData?.geometry

@@ -3,34 +3,14 @@
 import maplibregl, {
   type Map as MapLibreMap,
   type Marker,
-  type StyleSpecification,
 } from "maplibre-gl";
 import { MapPin, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { useTheme } from "@/components/layout/theme-context";
 import { Button } from "./button";
 import { Input } from "./input";
-
-const DEFAULT_STYLE: StyleSpecification = {
-  version: 8 as const,
-  sources: {
-    osm: {
-      type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "&copy; OpenStreetMap Contributors",
-    },
-  },
-  layers: [
-    {
-      id: "osm",
-      type: "raster",
-      source: "osm",
-      minzoom: 0,
-      maxzoom: 19,
-    },
-  ],
-};
+import { getMapStyle } from "@/lib/map-styles";
 
 // Default center: Lima, Peru
 const DEFAULT_CENTER: [number, number] = [-77.0428, -12.0464];
@@ -57,6 +37,7 @@ export function LocationPicker({
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const { isDark } = useTheme();
 
   // Initialize map
   useEffect(() => {
@@ -69,7 +50,7 @@ export function LocationPicker({
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: DEFAULT_STYLE,
+      style: getMapStyle(isDark),
       center: initialCenter,
       zoom: value?.lng && value?.lat ? 15 : DEFAULT_ZOOM,
       attributionControl: false,

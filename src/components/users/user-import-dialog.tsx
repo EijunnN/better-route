@@ -25,6 +25,13 @@ interface ImportResult {
   errors: Array<{ row: number; field: string; message: string }>;
 }
 
+interface ImportApiResponse {
+  success?: boolean;
+  created?: number;
+  errors?: Array<{ row: number; field: string; message: string }>;
+  details?: Array<{ row: number; field: string; message: string }>;
+}
+
 interface UserImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,6 +56,12 @@ export function UserImportDialog({
   const [isUploading, setIsUploading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [dragActive, setDragActive] = useState(false);
+
+  const normalizeResult = (data: ImportApiResponse): ImportResult => ({
+    success: data.success ?? false,
+    created: data.created ?? 0,
+    errors: data.errors ?? data.details ?? [],
+  });
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -102,10 +115,10 @@ export function UserImportDialog({
         body: formData,
       });
 
-      const data = await response.json();
+      const data = normalizeResult(await response.json());
       setResult(data);
 
-      if (data.success && data.created > 0) {
+      if (data.created > 0) {
         onImportComplete();
       }
     } catch (error) {

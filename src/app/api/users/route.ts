@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { fleets, userFleetPermissions, users } from "@/db/schema";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
@@ -362,11 +363,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newUser, { status: 201 });
   } catch (error) {
     console.error("Error creating user:", error);
-    if (error instanceof Error && error.name === "ZodError") {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
           error: "Invalid input",
-          details: (error as { errors?: unknown }).errors,
+          details: error.issues,
         },
         { status: 400 },
       );

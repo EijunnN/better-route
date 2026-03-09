@@ -46,6 +46,17 @@ export interface CustomRole {
   isSystem: boolean;
 }
 
+interface ApiErrorDetail {
+  path?: string[];
+  field?: string;
+  message: string;
+}
+
+interface ApiErrorResponse {
+  error?: string;
+  details?: ApiErrorDetail[] | string;
+}
+
 export const ROLE_TABS = [
   { key: "all", label: "Todos" },
   { key: "ADMIN_SISTEMA", label: "Admin Sistema" },
@@ -134,6 +145,21 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   const [editingUserRoleIds, setEditingUserRoleIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const getApiErrorMessage = (
+    error: ApiErrorResponse,
+    fallback: string,
+  ): string => {
+    if (Array.isArray(error.details) && error.details.length > 0) {
+      return error.details.map((detail) => detail.message).join(" ");
+    }
+
+    if (typeof error.details === "string" && error.details.length > 0) {
+      return error.details;
+    }
+
+    return error.error || fallback;
+  };
 
   const fetchUsers = async () => {
     if (!effectiveCompanyId) return;
@@ -247,8 +273,10 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al crear usuario");
+        const error = (await response.json().catch(
+          () => ({ error: "Error al crear usuario" }) as ApiErrorResponse,
+        )) as ApiErrorResponse;
+        throw error;
       }
 
       const result = await response.json();
@@ -265,9 +293,16 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         description: `El usuario "${data.name}" ha sido creado exitosamente.`,
       });
     } catch (err) {
+      const apiError =
+        err && typeof err === "object"
+          ? (err as ApiErrorResponse)
+          : { error: "Ocurrió un error inesperado" };
       toast({
         title: "Error al crear usuario",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description: getApiErrorMessage(
+          apiError,
+          "Ocurrió un error inesperado",
+        ),
         variant: "destructive",
       });
       throw err;
@@ -293,8 +328,10 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al actualizar usuario");
+        const error = (await response.json().catch(
+          () => ({ error: "Error al actualizar usuario" }) as ApiErrorResponse,
+        )) as ApiErrorResponse;
+        throw error;
       }
 
       await assignRolesToUser(editingUser.id, selectedRoleIds, editingUserRoleIds);
@@ -307,9 +344,16 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         description: `El usuario "${data.name}" ha sido actualizado exitosamente.`,
       });
     } catch (err) {
+      const apiError =
+        err && typeof err === "object"
+          ? (err as ApiErrorResponse)
+          : { error: "Ocurrió un error inesperado" };
       toast({
         title: "Error al actualizar usuario",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description: getApiErrorMessage(
+          apiError,
+          "Ocurrió un error inesperado",
+        ),
         variant: "destructive",
       });
       throw err;

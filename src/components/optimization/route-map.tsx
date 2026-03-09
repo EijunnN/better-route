@@ -898,7 +898,7 @@ export function RouteMap({
     map.current.setStyle({
       ...style,
       glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-    });
+    }, { diff: false });
   }, [isDark, isLoading]);
 
   // Render zones as polygon layers

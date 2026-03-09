@@ -482,7 +482,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
     map.current.once("style.load", () => {
       loadMapDataRef.current(false);
     });
-    map.current.setStyle(getMapStyle(isDark));
+    map.current.setStyle(getMapStyle(isDark), { diff: false });
   }, [isDark, isLoading]);
 
   return (

@@ -189,7 +189,7 @@ export function ZonePreviewMap({
     mapInstance.once("style.load", () => {
       addZoneLayersRef.current(mapInstance);
     });
-    mapInstance.setStyle(getMapStyle(isDark));
+    mapInstance.setStyle(getMapStyle(isDark), { diff: false });
   }, [isDark]);
 
   // Fly to selected zone

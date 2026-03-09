@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -122,7 +122,7 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
   const [editingPreset, setEditingPreset] = useState<Partial<OptimizationPreset> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchPresets = async () => {
+  const fetchPresets = useCallback(async () => {
     if (!companyId || !isReady) return;
     setIsLoading(true);
     try {
@@ -138,10 +138,10 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId, isReady]);
 
   useEffect(() => {
-    fetchPresets();
+    void fetchPresets();
   }, [fetchPresets]);
 
   const handleCreate = () => {
@@ -175,7 +175,7 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         setDialogOpen(false);
         setEditingPreset(null);
-        fetchPresets();
+        await fetchPresets();
       } else {
         const data = await response.json().catch(() => null);
         toast({ title: "Error al guardar preset", description: data?.error || "Ocurrió un error inesperado", variant: "destructive" });
@@ -195,7 +195,7 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
         headers: { "x-company-id": companyId },
       });
       if (response.ok) {
-        fetchPresets();
+        await fetchPresets();
       } else {
         const data = await response.json().catch(() => null);
         toast({ title: "Error al eliminar preset", description: data?.error || "Ocurrió un error inesperado", variant: "destructive" });
@@ -217,7 +217,7 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ isDefault: true }),
       });
       if (response.ok) {
-        fetchPresets();
+        await fetchPresets();
       } else {
         const data = await response.json().catch(() => null);
         toast({ title: "Error al establecer preset predeterminado", description: data?.error || "Ocurrió un error inesperado", variant: "destructive" });
