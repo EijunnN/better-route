@@ -69,6 +69,8 @@ export interface VehicleForOptimization {
   originLongitude?: number;
   skills?: string[];
   speedFactor?: number;
+  timeWindowStart?: string; // Vehicle workday start (HH:MM)
+  timeWindowEnd?: string; // Vehicle workday end (HH:MM)
 }
 
 export interface DepotConfig {
@@ -404,8 +406,8 @@ async function optimizeWithVroom(
         description: vehicle.plate,
         capacity: capacityMapping.capacityArray,
         skills,
-        timeWindowStart: config.depot.timeWindowStart,
-        timeWindowEnd: config.depot.timeWindowEnd,
+        timeWindowStart: vehicle.timeWindowStart || config.depot.timeWindowStart,
+        timeWindowEnd: vehicle.timeWindowEnd || config.depot.timeWindowEnd,
         speedFactor: effectiveSpeedFactor,
         maxTasks: effectiveMaxOrders,
         maxTravelTime, // Maximum travel time per route

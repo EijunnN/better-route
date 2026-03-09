@@ -570,6 +570,8 @@ export async function runOptimization(
     maxOrders: vehicle.maxOrders ?? 30,
     originLatitude: vehicle.originLatitude,
     originLongitude: vehicle.originLongitude,
+    workdayStart: vehicle.workdayStart,
+    workdayEnd: vehicle.workdayEnd,
     zoneAssignments: zoneAssignmentsByVehicle.get(vehicle.id) || [],
   }));
 
@@ -831,6 +833,8 @@ export async function runOptimization(
           originLongitude: vehicle.originLongitude
             ? parseFloat(vehicle.originLongitude)
             : undefined,
+          timeWindowStart: vehicle.workdayStart ?? undefined,
+          timeWindowEnd: vehicle.workdayEnd ?? undefined,
         }));
 
       // Run optimization for this batch (VROOM or PyVRP via adapter)
@@ -1026,6 +1030,8 @@ export async function runOptimization(
         originLongitude: vehicle.originLongitude
           ? parseFloat(vehicle.originLongitude)
           : undefined,
+        timeWindowStart: vehicle.workdayStart ?? undefined,
+        timeWindowEnd: vehicle.workdayEnd ?? undefined,
       }),
     );
 
