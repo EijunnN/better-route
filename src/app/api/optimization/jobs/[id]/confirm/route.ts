@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs, orders, planMetrics, routeStops } from "@/db/schema";
@@ -258,6 +258,41 @@ export async function POST(
         { error: "Cannot confirm plan with no routes. Optimization produced no valid routes." },
         { status: 400 },
       );
+    }
+
+    // Validate vehicles don't have active route stops from other plans
+    const routeVehicleIds = [...new Set(result.routes.map((r) => r.vehicleId))];
+    if (routeVehicleIds.length > 0) {
+      const vehiclesWithActiveStops = await db
+        .select({
+          vehicleId: routeStops.vehicleId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(routeStops)
+        .where(
+          and(
+            eq(routeStops.companyId, tenantContext.companyId),
+            inArray(routeStops.vehicleId, routeVehicleIds),
+            inArray(routeStops.status, ["PENDING", "IN_PROGRESS"]),
+          ),
+        )
+        .groupBy(routeStops.vehicleId);
+
+      if (vehiclesWithActiveStops.length > 0) {
+        const busyList = vehiclesWithActiveStops
+          .map((v) => `${v.vehicleId} (${v.count} paradas activas)`)
+          .join(", ");
+        return NextResponse.json(
+          {
+            error: `No se puede confirmar: los siguientes vehículos tienen rutas activas sin completar: ${busyList}`,
+            vehiclesWithActiveStops: vehiclesWithActiveStops.map((v) => ({
+              vehicleId: v.vehicleId,
+              activeStopsCount: v.count,
+            })),
+          },
+          { status: 409 },
+        );
+      }
     }
 
     // Extract all order IDs from routes (including grouped orders)
