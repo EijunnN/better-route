@@ -1,7 +1,7 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { vehicleFleets, vehicles } from "@/db/schema";
+import { routeStops, vehicleFleets, vehicles } from "@/db/schema";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { EntityType, Action } from "@/lib/auth/authorization";
@@ -99,6 +99,30 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Check which vehicles have active (unfinished) route stops
+    const vehicleIds = availableVehicles.map((v) => v.id);
+    const activeStopsMap = new Map<string, number>();
+    if (vehicleIds.length > 0) {
+      const activeStops = await db
+        .select({
+          vehicleId: routeStops.vehicleId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(routeStops)
+        .where(
+          and(
+            eq(routeStops.companyId, tenantCtx.companyId),
+            inArray(routeStops.vehicleId, vehicleIds),
+            inArray(routeStops.status, ["PENDING", "IN_PROGRESS"]),
+          ),
+        )
+        .groupBy(routeStops.vehicleId);
+
+      for (const row of activeStops) {
+        activeStopsMap.set(row.vehicleId, row.count);
+      }
+    }
+
     // Transform to include fleet info
     const vehiclesWithFleets = availableVehicles.map((vehicle) => ({
       id: vehicle.id,
@@ -135,6 +159,7 @@ export async function GET(request: NextRequest) {
             name: vehicle.assignedDriver.name,
           }
         : null,
+      activeStopsCount: activeStopsMap.get(vehicle.id) ?? 0,
     }));
 
     // Get total count

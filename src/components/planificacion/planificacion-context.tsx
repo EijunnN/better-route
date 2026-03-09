@@ -531,12 +531,14 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
   };
 
   const selectAllVehicles = () => {
-    const allSelected = filteredVehicles.every((v) => selectedVehicleIdsSet.has(v.id));
+    // Exclude vehicles with active route stops from selection
+    const selectableVehicles = filteredVehicles.filter((v) => !(v.activeStopsCount && v.activeStopsCount > 0));
+    const allSelected = selectableVehicles.every((v) => selectedVehicleIdsSet.has(v.id));
     if (allSelected) {
-      const filteredSet = new Set(filteredVehicles.map((v) => v.id));
+      const filteredSet = new Set(selectableVehicles.map((v) => v.id));
       setSelectedVehicleIds((prev) => prev.filter((id) => !filteredSet.has(id)));
     } else {
-      const newIds = filteredVehicles.map((v) => v.id);
+      const newIds = selectableVehicles.map((v) => v.id);
       setSelectedVehicleIds((prev) => [...new Set([...prev, ...newIds])]);
     }
   };

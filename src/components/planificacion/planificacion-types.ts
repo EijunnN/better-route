@@ -18,6 +18,7 @@ export interface Vehicle {
     name: string;
   } | null;
   fleets: Array<{ id: string; name: string }>;
+  activeStopsCount?: number;
 }
 
 export interface Fleet {

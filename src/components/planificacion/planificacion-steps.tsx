@@ -190,27 +190,37 @@ export function VehicleStep() {
               <p className="text-sm">No hay vehículos disponibles</p>
             </div>
           ) : (
-            derived.filteredVehicles.map((vehicle) => (
+            derived.filteredVehicles.map((vehicle) => {
+              const hasActivePlan = (vehicle.activeStopsCount ?? 0) > 0;
+              return (
               <label
                 key={vehicle.id}
                 htmlFor={`vehicle-${vehicle.id}`}
-                className={`block p-2 rounded-md border cursor-pointer transition-colors ${
-                  derived.selectedVehicleIdsSet.has(vehicle.id)
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50 hover:bg-muted/50"
+                className={`block p-2 rounded-md border transition-colors ${
+                  hasActivePlan
+                    ? "border-orange-300 bg-orange-50/50 dark:bg-orange-950/10 cursor-not-allowed opacity-70"
+                    : derived.selectedVehicleIdsSet.has(vehicle.id)
+                      ? "border-primary bg-primary/5 cursor-pointer"
+                      : "border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id={`vehicle-${vehicle.id}`}
                     checked={derived.selectedVehicleIdsSet.has(vehicle.id)}
-                    onCheckedChange={() => actions.toggleVehicle(vehicle.id)}
+                    onCheckedChange={() => !hasActivePlan && actions.toggleVehicle(vehicle.id)}
+                    disabled={hasActivePlan}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm">
                         {vehicle.plate || vehicle.name}
                       </span>
+                      {hasActivePlan && (
+                        <Badge className="text-[10px] px-1.5 py-0 bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20">
+                          En ruta ({vehicle.activeStopsCount} paradas)
+                        </Badge>
+                      )}
                       {vehicle.type && (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                           {vehicle.type}
@@ -239,7 +249,8 @@ export function VehicleStep() {
                   </div>
                 </div>
               </label>
-            ))
+              );
+            })
           )}
         </div>
       </div>
