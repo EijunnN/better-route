@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -6,9 +7,14 @@ import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { EntityType, Action } from "@/lib/auth/authorization";
-import { createUserSchema, isExpired } from "@/lib/validations/user";
+import {
+  createUserSchema,
+  isExpired,
+  type CreateUserInput,
+} from "@/lib/validations/user";
 
 import { extractTenantContext } from "@/lib/routing/route-helpers";
+
 interface CSVRow {
   name: string;
   email: string;
@@ -30,6 +36,55 @@ interface ImportError {
   message: string;
 }
 
+interface ImportResponse {
+  success: boolean;
+  created: number;
+  errors: ImportError[];
+  error?: string;
+  details?: ImportError[];
+}
+
+interface ValidatedImportRow {
+  rowNumber: number;
+  csvRow: CSVRow;
+  data: CreateUserInput;
+}
+
+type ImportRole = "ADMIN_FLOTA" | "PLANIFICADOR" | "MONITOR" | "CONDUCTOR";
+type ImportDriverStatus =
+  | "AVAILABLE"
+  | "ASSIGNED"
+  | "IN_ROUTE"
+  | "ON_PAUSE"
+  | "COMPLETED"
+  | "UNAVAILABLE"
+  | "ABSENT";
+
+const VALID_ROLES: ImportRole[] = [
+  "ADMIN_FLOTA",
+  "PLANIFICADOR",
+  "MONITOR",
+  "CONDUCTOR",
+];
+
+const VALID_DRIVER_STATUS: ImportDriverStatus[] = [
+  "AVAILABLE",
+  "ASSIGNED",
+  "IN_ROUTE",
+  "ON_PAUSE",
+  "COMPLETED",
+  "UNAVAILABLE",
+  "ABSENT",
+];
+
+function buildImportResponse(
+  data: Omit<ImportResponse, "details">,
+): ImportResponse {
+  return {
+    ...data,
+    details: data.errors,
+  };
+}
 
 function detectSeparator(headerLine: string): string {
   // Count occurrences of common separators
@@ -105,17 +160,6 @@ function parseCSVLine(line: string, separator: string): string[] {
   return result;
 }
 
-const VALID_ROLES = ["ADMIN_FLOTA", "PLANIFICADOR", "MONITOR", "CONDUCTOR"];
-const VALID_DRIVER_STATUS = [
-  "AVAILABLE",
-  "ASSIGNED",
-  "IN_ROUTE",
-  "ON_PAUSE",
-  "COMPLETED",
-  "UNAVAILABLE",
-  "ABSENT",
-];
-
 // Parse date in various formats: DD/MM/YYYY, YYYY-MM-DD, DD-MM-YYYY
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
@@ -143,47 +187,55 @@ function parseDate(dateStr: string): Date | null {
   return null;
 }
 
-function validateRow(row: CSVRow, rowNumber: number): ImportError[] {
+function normalizeOptional(value: string | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeDateToIso(value: string | undefined): string | null {
+  const trimmed = normalizeOptional(value);
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = parseDate(trimmed);
+  return parsed ? parsed.toISOString() : null;
+}
+
+function normalizeLicenseCategories(value: string | undefined): string | null {
+  const trimmed = normalizeOptional(value);
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed
+    .split(",")
+    .map((category) => category.trim().toUpperCase())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function validateRow(
+  row: CSVRow,
+  rowNumber: number,
+): { errors: ImportError[]; data: CreateUserInput | null } {
   const errors: ImportError[] = [];
 
-  if (!row.name || row.name.length < 2) {
-    errors.push({
-      row: rowNumber,
-      field: "name",
-      message: "Nombre requerido (mín. 2 caracteres)",
-    });
-  }
-
-  if (!row.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
-    errors.push({ row: rowNumber, field: "email", message: "Email inválido" });
-  }
-
-  if (!row.username || row.username.length < 3) {
-    errors.push({
-      row: rowNumber,
-      field: "username",
-      message: "Username requerido (mín. 3 caracteres)",
-    });
-  }
-
-  if (!row.password || row.password.length < 8) {
-    errors.push({
-      row: rowNumber,
-      field: "password",
-      message: "Contraseña requerida (mín. 8 caracteres)",
-    });
-  }
-
-  if (!row.role || !VALID_ROLES.includes(row.role)) {
+  if (!row.role || !VALID_ROLES.includes(row.role as ImportRole)) {
     errors.push({
       row: rowNumber,
       field: "role",
       message: `Rol inválido. Usar: ${VALID_ROLES.join(", ")}`,
     });
+    return { errors, data: null };
   }
 
   if (row.role === "CONDUCTOR") {
-    if (row.driverStatus && !VALID_DRIVER_STATUS.includes(row.driverStatus)) {
+    if (row.driverStatus && !VALID_DRIVER_STATUS.includes(row.driverStatus as ImportDriverStatus)) {
       errors.push({
         row: rowNumber,
         field: "driverStatus",
@@ -192,7 +244,52 @@ function validateRow(row: CSVRow, rowNumber: number): ImportError[] {
     }
   }
 
-  return errors;
+  const normalized: CreateUserInput = {
+    name: row.name.trim(),
+    email: row.email.trim().toLowerCase(),
+    username: row.username.trim().toLowerCase(),
+    password: row.password,
+    role: row.role as CreateUserInput["role"],
+    phone: normalizeOptional(row.phone),
+    identification:
+      row.role === "CONDUCTOR" ? normalizeOptional(row.identification) : null,
+    birthDate: null,
+    photo: null,
+    licenseNumber:
+      row.role === "CONDUCTOR" ? normalizeOptional(row.licenseNumber) : null,
+    licenseExpiry:
+      row.role === "CONDUCTOR" ? normalizeDateToIso(row.licenseExpiry) : null,
+    licenseCategories:
+      row.role === "CONDUCTOR"
+        ? normalizeLicenseCategories(row.licenseCategories)
+        : null,
+    certifications: null,
+    driverStatus:
+      row.role === "CONDUCTOR"
+        ? ((normalizeOptional(row.driverStatus) ?? "AVAILABLE") as CreateUserInput["driverStatus"])
+        : null,
+    primaryFleetId:
+      row.role === "CONDUCTOR" ? normalizeOptional(row.primaryFleetId) : null,
+    active: true,
+  };
+
+  const validation = createUserSchema.safeParse(normalized);
+  if (!validation.success) {
+    return {
+      data: null,
+      errors: [
+        ...errors,
+        ...validation.error.issues.map((issue) => ({
+          row: rowNumber,
+          field:
+            typeof issue.path[0] === "string" ? issue.path[0] : "general",
+          message: issue.message,
+        })),
+      ],
+    };
+  }
+
+  return { errors, data: validation.data };
 }
 
 export async function POST(request: NextRequest) {
@@ -215,11 +312,12 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        {
+        buildImportResponse({
+          success: false,
           error: "No se recibió archivo",
           created: 0,
-          details: [{ row: 0, field: "file", message: "No se recibió archivo" }],
-        },
+          errors: [{ row: 0, field: "file", message: "No se recibió archivo" }],
+        }),
         { status: 400 },
       );
     }
@@ -237,115 +335,217 @@ export async function POST(request: NextRequest) {
 
     if (rows.length === 0) {
       return NextResponse.json(
-        {
+        buildImportResponse({
+          success: false,
           error: "Archivo vacío o formato inválido",
           created: 0,
-          details: [
+          errors: [
             {
               row: 0,
               field: "file",
               message: "Archivo vacío o formato inválido",
             },
           ],
-        },
+        }),
         { status: 400 },
       );
     }
 
     const allErrors: ImportError[] = [];
-    const validRows: { row: CSVRow; rowNumber: number }[] = [];
+    const validRows: ValidatedImportRow[] = [];
 
     // Validate all rows first
     for (let i = 0; i < rows.length; i++) {
       const rowNumber = i + 2; // +2 because row 1 is header and arrays are 0-indexed
-      const errors = validateRow(rows[i], rowNumber);
+      const { errors, data } = validateRow(rows[i], rowNumber);
 
       if (errors.length > 0) {
         allErrors.push(...errors);
-      } else {
-        validRows.push({ row: rows[i], rowNumber });
+      } else if (data) {
+        validRows.push({ rowNumber, csvRow: rows[i], data });
       }
     }
 
-    // Check for duplicate emails/usernames within the file
+    // Check for duplicate emails/usernames/identifications within the file
     const emails = new Set<string>();
     const usernames = new Set<string>();
+    const identifications = new Set<string>();
 
-    for (const { row, rowNumber } of validRows) {
-      if (emails.has(row.email.toLowerCase())) {
+    for (const { data, rowNumber } of validRows) {
+      if (emails.has(data.email)) {
         allErrors.push({
           row: rowNumber,
           field: "email",
           message: "Email duplicado en el archivo",
         });
       } else {
-        emails.add(row.email.toLowerCase());
+        emails.add(data.email);
       }
 
-      if (usernames.has(row.username.toLowerCase())) {
+      if (usernames.has(data.username)) {
         allErrors.push({
           row: rowNumber,
           field: "username",
           message: "Username duplicado en el archivo",
         });
       } else {
-        usernames.add(row.username.toLowerCase());
+        usernames.add(data.username);
+      }
+
+      if (data.role === "CONDUCTOR" && data.identification) {
+        const normalizedIdentification = data.identification.toLowerCase();
+        if (identifications.has(normalizedIdentification)) {
+          allErrors.push({
+            row: rowNumber,
+            field: "identification",
+            message: "Identificación duplicada en el archivo",
+          });
+        } else {
+          identifications.add(normalizedIdentification);
+        }
       }
     }
 
     // If there are validation errors, return them
     if (allErrors.length > 0) {
       return NextResponse.json(
-        {
+        buildImportResponse({
+          success: false,
           error: "Validation failed",
           created: 0,
-          details: allErrors,
-        },
+          errors: allErrors,
+        }),
         { status: 400 },
       );
     }
 
+    const emailsToCheck = validRows.map(({ data }) => data.email);
+    const usernamesToCheck = validRows.map(({ data }) => data.username);
+    const identificationsToCheck = validRows
+      .map(({ data }) =>
+        data.role === "CONDUCTOR" ? data.identification : null,
+      )
+      .filter((identification): identification is string => Boolean(identification));
+
+    const [existingEmails, existingUsernames, existingIdentifications] =
+      await Promise.all([
+        emailsToCheck.length > 0
+          ? db
+              .select({ value: users.email })
+              .from(users)
+              .where(
+                and(
+                  eq(users.companyId, tenantCtx.companyId),
+                  inArray(users.email, emailsToCheck),
+                ),
+              )
+          : Promise.resolve([]),
+        usernamesToCheck.length > 0
+          ? db
+              .select({ value: users.username })
+              .from(users)
+              .where(
+                and(
+                  eq(users.companyId, tenantCtx.companyId),
+                  inArray(users.username, usernamesToCheck),
+                ),
+              )
+          : Promise.resolve([]),
+        identificationsToCheck.length > 0
+          ? db
+              .select({ value: users.identification })
+              .from(users)
+              .where(
+                and(
+                  eq(users.companyId, tenantCtx.companyId),
+                  inArray(users.identification, identificationsToCheck),
+                ),
+              )
+          : Promise.resolve([]),
+      ]);
+
+    const existingEmailSet = new Set(
+      existingEmails.map(({ value }) => value.toLowerCase()),
+    );
+    const existingUsernameSet = new Set(
+      existingUsernames.map(({ value }) => value.toLowerCase()),
+    );
+    const existingIdentificationSet = new Set(
+      existingIdentifications
+        .map(({ value }) => value)
+        .filter((value): value is string => Boolean(value))
+        .map((value) => value.toLowerCase()),
+    );
+
     // Create users
     let created = 0;
     const createErrors: ImportError[] = [];
+    const rowsToCreate = validRows.filter(({ data, rowNumber }) => {
+      let hasConflict = false;
 
-    for (const { row, rowNumber } of validRows) {
+      if (existingEmailSet.has(data.email)) {
+        createErrors.push({
+          row: rowNumber,
+          field: "email",
+          message: "Email ya existe en el sistema",
+        });
+        hasConflict = true;
+      }
+
+      if (existingUsernameSet.has(data.username)) {
+        createErrors.push({
+          row: rowNumber,
+          field: "username",
+          message: "Username ya existe en el sistema",
+        });
+        hasConflict = true;
+      }
+
+      if (
+        data.role === "CONDUCTOR" &&
+        data.identification &&
+        existingIdentificationSet.has(data.identification.toLowerCase())
+      ) {
+        createErrors.push({
+          row: rowNumber,
+          field: "identification",
+          message: "Identificación ya existe en la empresa",
+        });
+        hasConflict = true;
+      }
+
+      return !hasConflict;
+    });
+
+    for (const { data, rowNumber } of rowsToCreate) {
       try {
-        const hashedPassword = await bcrypt.hash(row.password, 10);
-        const isConductor = row.role === "CONDUCTOR";
+        const hashedPassword = await bcrypt.hash(data.password, 10);
+        const isConductor = data.role === "CONDUCTOR";
 
         const userData = {
-          name: row.name,
-          email: row.email.toLowerCase(),
-          username: row.username.toLowerCase(),
+          name: data.name,
+          email: data.email,
+          username: data.username,
           password: hashedPassword,
-          role: row.role as
-            | "ADMIN_FLOTA"
-            | "PLANIFICADOR"
-            | "MONITOR"
-            | "CONDUCTOR",
-          phone: row.phone || null,
+          role: data.role as ImportRole,
+          phone: data.phone,
           companyId: tenantCtx.companyId,
           // Driver fields
-          identification: isConductor ? row.identification || null : null,
-          licenseNumber: isConductor ? row.licenseNumber || null : null,
+          identification: isConductor ? data.identification : null,
+          birthDate: data.birthDate ? new Date(data.birthDate) : null,
+          photo: data.photo,
+          licenseNumber: isConductor ? data.licenseNumber : null,
           licenseExpiry:
-            isConductor && row.licenseExpiry
-              ? parseDate(row.licenseExpiry)
+            isConductor && data.licenseExpiry
+              ? new Date(data.licenseExpiry)
               : null,
-          licenseCategories: isConductor ? row.licenseCategories || null : null,
+          licenseCategories: isConductor ? data.licenseCategories : null,
+          certifications: data.certifications,
           driverStatus: isConductor
-            ? ((row.driverStatus || "AVAILABLE") as
-                | "AVAILABLE"
-                | "ASSIGNED"
-                | "IN_ROUTE"
-                | "ON_PAUSE"
-                | "COMPLETED"
-                | "UNAVAILABLE"
-                | "ABSENT")
+            ? ((data.driverStatus || "AVAILABLE") as ImportDriverStatus)
             : null,
-          primaryFleetId: isConductor ? row.primaryFleetId || null : null,
-          active: true,
+          primaryFleetId: isConductor ? data.primaryFleetId : null,
+          active: data.active,
         };
 
         // Check for license expiry and set status accordingly
@@ -361,12 +561,26 @@ export async function POST(request: NextRequest) {
 
         await logCreate("users", newUser.id, newUser);
         created++;
-      } catch (error: unknown) {
-        const err = error as {
-          code?: string;
-          constraint?: string;
-          message?: string;
-        };
+      } catch (error) {
+        const err =
+          error instanceof Error
+            ? ({
+                code:
+                  "code" in error && typeof error.code === "string"
+                    ? error.code
+                    : undefined,
+                constraint:
+                  "constraint" in error &&
+                  typeof error.constraint === "string"
+                    ? error.constraint
+                    : undefined,
+                message: error.message,
+              } as {
+                code?: string;
+                constraint?: string;
+                message?: string;
+              })
+            : {};
 
         if (err.code === "23505") {
           if (err.constraint?.includes("email")) {
@@ -400,29 +614,34 @@ export async function POST(request: NextRequest) {
 
     if (createErrors.length > 0) {
       return NextResponse.json(
-        {
+        buildImportResponse({
+          success: false,
           error: "Algunos usuarios no pudieron ser creados",
           created,
-          details: createErrors,
-        },
+          errors: createErrors,
+        }),
         { status: 207 },
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      created,
-    });
+    return NextResponse.json(
+      buildImportResponse({
+        success: true,
+        created,
+        errors: [],
+      }),
+    );
   } catch (error) {
     console.error("Error importing users:", error);
     return NextResponse.json(
-      {
+      buildImportResponse({
+        success: false,
         error: "Error interno del servidor",
         created: 0,
-        details: [
+        errors: [
           { row: 0, field: "general", message: "Error interno del servidor" },
         ],
-      },
+      }),
       { status: 500 },
     );
   }

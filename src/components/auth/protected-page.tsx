@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -38,6 +39,31 @@ export function ProtectedPage({
 }: ProtectedPageProps) {
   const router = useRouter();
   const { user, permissions, isLoading, error } = useAuth();
+  const shouldRedirectToLogin = !isLoading && (Boolean(error) || !user);
+
+  // Admin has access to everything
+  const hasAccess =
+    shouldRedirectToLogin ||
+    permissions.includes("*") ||
+    (requiredPermission
+      ? permissions.includes(requiredPermission)
+      : requiredPermissions && requiredPermissions.length > 0
+        ? requiredPermissions.some((perm) => permissions.includes(perm))
+        : true);
+
+  const shouldRedirectNoAccess =
+    !isLoading && !shouldRedirectToLogin && !hasAccess && !showAccessDenied;
+
+  useEffect(() => {
+    if (shouldRedirectToLogin) {
+      router.replace("/login");
+      return;
+    }
+
+    if (shouldRedirectNoAccess) {
+      router.replace(redirectTo);
+    }
+  }, [redirectTo, router, shouldRedirectNoAccess, shouldRedirectToLogin]);
 
   // Loading state
   if (isLoading) {
@@ -49,8 +75,7 @@ export function ProtectedPage({
   }
 
   // Not authenticated - redirect to login
-  if (error || !user) {
-    router.push("/login");
+  if (shouldRedirectToLogin) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
@@ -58,28 +83,14 @@ export function ProtectedPage({
     );
   }
 
-  // Check permissions
-  let hasAccess = true;
-
-  // Admin has access to everything
-  if (!permissions.includes("*")) {
-    // Verificar permiso único
-    if (requiredPermission) {
-      hasAccess = permissions.includes(requiredPermission);
-    }
-    // Verificar múltiples permisos (necesita al menos uno)
-    else if (requiredPermissions && requiredPermissions.length > 0) {
-      hasAccess = requiredPermissions.some((perm) =>
-        permissions.includes(perm),
-      );
-    }
-  }
-
   // No access - redirect or show denied
   if (!hasAccess) {
-    if (!showAccessDenied) {
-      router.push(redirectTo);
-      return null;
+    if (shouldRedirectNoAccess) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+        </div>
+      );
     }
 
     return (
@@ -105,7 +116,7 @@ export function ProtectedPage({
         <p className="text-muted-foreground max-w-md mb-4">
           No tienes permisos para acceder a esta página.
           <span className="block mt-2 text-sm">
-            Tu rol actual: <strong>{user.role}</strong>
+            Tu rol actual: <strong>{user!.role}</strong>
           </span>
         </p>
         <button
