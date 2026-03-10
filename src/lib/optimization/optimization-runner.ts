@@ -90,6 +90,8 @@ async function runViaAdapter(
     maxOrders: v.maxOrders,
     originLatitude: v.originLatitude,
     originLongitude: v.originLongitude,
+    timeWindowStart: v.timeWindowStart,
+    timeWindowEnd: v.timeWindowEnd,
   }));
 
   const adapterConfig: OptimizerConfig = {

@@ -50,6 +50,9 @@ export interface OptimizerVehicle {
   // Capabilities
   skills?: string[];
   speedFactor?: number;
+  // Time windows (HH:mm format)
+  timeWindowStart?: string;
+  timeWindowEnd?: string;
 }
 
 export interface OptimizerDepot {

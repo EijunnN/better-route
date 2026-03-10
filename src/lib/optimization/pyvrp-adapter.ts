@@ -103,6 +103,8 @@ export class PyVRPAdapter implements IOptimizer {
         origin_lng: v.originLongitude,
         skills: v.skills,
         speed_factor: v.speedFactor,
+        time_window_start: v.timeWindowStart || config.depot.timeWindowStart,
+        time_window_end: v.timeWindowEnd || config.depot.timeWindowEnd,
       })),
       config: {
         depot: {
