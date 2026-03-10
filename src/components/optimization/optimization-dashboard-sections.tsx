@@ -59,6 +59,14 @@ import {
   type RouteData,
 } from "./optimization-dashboard-context";
 
+/** Format a time window value that may be HH:mm, HH:mm:ss, or an ISO date string */
+function formatTimeWindow(value: string): string {
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(value)) return value.slice(0, 5);
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 // KPI Badge Component
 export function KpiBadge({
   icon: Icon,
@@ -343,13 +351,7 @@ export function CompactRouteCard({
                         </span>
                         {stop.timeWindow && subIndex === 0 && (
                           <span className="text-muted-foreground text-[10px] shrink-0">
-                            {new Date(stop.timeWindow.start).toLocaleTimeString(
-                              [],
-                              {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              },
-                            )}
+                            {formatTimeWindow(stop.timeWindow.start)}
                           </span>
                         )}
                       </div>
@@ -399,10 +401,7 @@ export function CompactRouteCard({
                     </span>
                     {stop.timeWindow && (
                       <span className="text-muted-foreground text-[10px] shrink-0">
-                        {new Date(stop.timeWindow.start).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatTimeWindow(stop.timeWindow.start)}
                       </span>
                     )}
                   </div>

@@ -75,6 +75,24 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
   x: "longitude",
   coord_x: "longitude",
 
+  // Time window start variations
+  time_window_start: "timeWindowStart",
+  "time window start": "timeWindowStart",
+  timewindowstart: "timeWindowStart",
+  "ventana horaria inicio": "timeWindowStart",
+  "ventana inicio": "timeWindowStart",
+  ventana_inicio: "timeWindowStart",
+  "hora inicio": "timeWindowStart",
+
+  // Time window end variations
+  time_window_end: "timeWindowEnd",
+  "time window end": "timeWindowEnd",
+  timewindowend: "timeWindowEnd",
+  "ventana horaria fin": "timeWindowEnd",
+  "ventana fin": "timeWindowEnd",
+  ventana_fin: "timeWindowEnd",
+  "hora fin": "timeWindowEnd",
+
   // Time window preset variations
   time_window_preset_id: "timeWindowPresetId",
   "time window preset id": "timeWindowPresetId",

@@ -545,13 +545,29 @@ export async function runOptimization(
 
   // Orders with invalid coordinates are added to unassigned list below
 
-  // Create lookup map for order details (used when populating unassigned orders)
+  // Create lookup map for order details (used when populating unassigned orders and time windows)
   const orderDetailsMap = new Map(
     ordersWithLocation.map((o) => [
       o.id,
-      { latitude: o.latitude, longitude: o.longitude, address: o.address },
+      {
+        latitude: o.latitude,
+        longitude: o.longitude,
+        address: o.address,
+        timeWindowStart: o.timeWindowStart,
+        timeWindowEnd: o.timeWindowEnd,
+      },
     ]),
   );
+
+  // Helper: build timeWindow object from order's HH:mm strings
+  function buildTimeWindow(orderId: string): { start: string; end: string } | undefined {
+    const details = orderDetailsMap.get(orderId);
+    if (!details?.timeWindowStart || !details?.timeWindowEnd) return undefined;
+    return {
+      start: String(details.timeWindowStart),
+      end: String(details.timeWindowEnd),
+    };
+  }
 
   // === Engine Selection ===
   const requestedEngine = (config.optimizerType as OptimizerType) || "VROOM";
@@ -885,7 +901,6 @@ export async function runOptimization(
           if (grouped && grouped.orderIds.length > 1) {
             if (groupSameLocation) {
               // Keep as single stop with grouped order info
-              const orderCount = grouped.orderIds.length;
               routeStops.push({
                 orderId: grouped.orderIds[0], // Use first order as representative
                 trackingId: grouped.trackingIds[0], // Use first tracking ID
@@ -896,6 +911,7 @@ export async function runOptimization(
                 estimatedArrival: stop.arrivalTime
                   ? new Date(stop.arrivalTime * 1000).toISOString()
                   : undefined,
+                timeWindow: buildTimeWindow(grouped.orderIds[0]),
                 groupedOrderIds: grouped.orderIds,
                 groupedTrackingIds: grouped.trackingIds,
               });
@@ -912,6 +928,7 @@ export async function runOptimization(
                   estimatedArrival: stop.arrivalTime
                     ? new Date(stop.arrivalTime * 1000).toISOString()
                     : undefined,
+                  timeWindow: buildTimeWindow(grouped.orderIds[i]),
                 });
               }
             }
@@ -926,6 +943,7 @@ export async function runOptimization(
               estimatedArrival: stop.arrivalTime
                 ? new Date(stop.arrivalTime * 1000).toISOString()
                 : undefined,
+              timeWindow: buildTimeWindow(stop.orderId),
             });
           }
         }
@@ -1095,6 +1113,7 @@ export async function runOptimization(
               estimatedArrival: stop.arrivalTime
                 ? new Date(stop.arrivalTime * 1000).toISOString()
                 : undefined,
+              timeWindow: buildTimeWindow(grouped.orderIds[0]),
               groupedOrderIds: grouped.orderIds,
               groupedTrackingIds: grouped.trackingIds,
             });
@@ -1111,6 +1130,7 @@ export async function runOptimization(
                 estimatedArrival: stop.arrivalTime
                   ? new Date(stop.arrivalTime * 1000).toISOString()
                   : undefined,
+                timeWindow: buildTimeWindow(grouped.orderIds[i]),
               });
             }
           }
@@ -1125,6 +1145,7 @@ export async function runOptimization(
             estimatedArrival: stop.arrivalTime
               ? new Date(stop.arrivalTime * 1000).toISOString()
               : undefined,
+            timeWindow: buildTimeWindow(stop.orderId),
           });
         }
       }

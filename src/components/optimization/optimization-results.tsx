@@ -36,6 +36,14 @@ import { ManualDriverAssignmentDialog } from "./manual-driver-assignment-dialog"
 import { PlanConfirmationDialog } from "./plan-confirmation-dialog";
 import { RouteMap } from "./route-map";
 
+/** Format a time window value that may be HH:mm, HH:mm:ss, or an ISO date string */
+function formatTimeWindow(value: string): string {
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(value)) return value.slice(0, 5);
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 // Re-export types from optimization-runner
 export type {
   OptimizationResult,
@@ -331,21 +339,9 @@ function RouteCard({
                       {stop.timeWindow && (
                         <Badge variant="outline" className="text-xs">
                           <Clock className="h-2 w-2 mr-1" />
-                          {new Date(stop.timeWindow.start).toLocaleTimeString(
-                            [],
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
+                          {formatTimeWindow(stop.timeWindow.start)}
                           {" - "}
-                          {new Date(stop.timeWindow.end).toLocaleTimeString(
-                            [],
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
+                          {formatTimeWindow(stop.timeWindow.end)}
                         </Badge>
                       )}
                     </div>

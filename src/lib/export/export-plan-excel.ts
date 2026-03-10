@@ -45,8 +45,14 @@ interface ExportData {
 
 function formatTime(dateStr?: string): string {
   if (!dateStr) return "-";
+  // Handle HH:mm or HH:mm:ss format directly
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(dateStr)) {
+    return dateStr.slice(0, 5); // Return HH:mm
+  }
   try {
-    return new Date(dateStr).toLocaleTimeString("es-PE", {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "-";
+    return d.toLocaleTimeString("es-PE", {
       hour: "2-digit",
       minute: "2-digit",
     });
