@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs, orders } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
+import { forceReleaseCompanyLock } from "@/lib/infra/job-queue";
 import { setTenantContext } from "@/lib/infra/tenant";
 import type { OptimizationResult } from "@/lib/optimization/optimization-runner";
 import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-config";
@@ -283,6 +284,9 @@ export async function DELETE(
     await db
       .delete(optimizationConfigurations)
       .where(eq(optimizationConfigurations.id, id));
+
+    // Release any optimization lock held for this company
+    forceReleaseCompanyLock(tenantCtx.companyId);
 
     // Log deletion
     await logDelete("optimization_configuration", id, {

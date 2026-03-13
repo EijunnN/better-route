@@ -77,8 +77,17 @@ export function acquireCompanyLock(companyId: string, jobId: string): boolean {
       activeJobs.delete(existing.jobId);
     }
 
+    // If the locked job is no longer tracked in activeJobs, it's orphaned
+    // (e.g., configuration was deleted, server restarted, etc.)
+    if (!existingJob) {
+      console.warn(`[JobQueue] Orphaned lock detected for company ${companyId}, job ${existing.jobId}. Releasing.`);
+      companyOptimizationLocks.delete(companyId);
+      companyOptimizationLocks.set(companyId, { jobId, acquiredAt: new Date() });
+      return true;
+    }
+
     // If the job completed but lock is still held (awaiting confirmation),
-    // check if it's been more than 30 minutes (stale fallback)
+    // check if it's been more than 5 minutes (stale fallback)
     if (existing.completedAt) {
       const elapsed = now - existing.completedAt.getTime();
       if (elapsed < 5 * 60 * 1000) {
@@ -101,6 +110,14 @@ export function releaseCompanyLock(companyId: string, jobId: string): void {
   if (current?.jobId === jobId) {
     companyOptimizationLocks.delete(companyId);
   }
+}
+
+/**
+ * Force-release a per-company optimization lock regardless of jobId.
+ * Use when deleting optimization history or when lock is stuck.
+ */
+export function forceReleaseCompanyLock(companyId: string): void {
+  companyOptimizationLocks.delete(companyId);
 }
 
 /**
