@@ -298,6 +298,10 @@ export function createVroomVehicle(
     maxTravelTime?: number; // Maximum travel time in seconds
     openStart?: boolean; // Don't set start location
     openEnd?: boolean; // Don't set end location
+    // Break / lunch configuration
+    breakDuration?: number; // minutes
+    breakTimeStart?: string; // HH:MM or HH:MM:SS
+    breakTimeEnd?: string; // HH:MM or HH:MM:SS
   },
 ): VroomVehicle {
   const vehicle: VroomVehicle = {
@@ -346,6 +350,21 @@ export function createVroomVehicle(
     // Only set time_window if both values are valid
     if (start !== null && end !== null && start <= end) {
       vehicle.time_window = [start, end];
+    }
+  }
+
+  // Add break/lunch if configured
+  if (options?.breakDuration && options?.breakTimeStart && options?.breakTimeEnd) {
+    const breakStart = parseTimeWindow(options.breakTimeStart);
+    const breakEnd = parseTimeWindow(options.breakTimeEnd);
+    if (breakStart !== null && breakEnd !== null && breakStart < breakEnd) {
+      vehicle.breaks = [
+        {
+          id: id * 1000, // unique break ID per vehicle
+          time_windows: [[breakStart, breakEnd]],
+          service: options.breakDuration * 60, // convert minutes to seconds
+        },
+      ];
     }
   }
 

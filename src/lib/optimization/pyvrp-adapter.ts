@@ -105,6 +105,11 @@ export class PyVRPAdapter implements IOptimizer {
         speed_factor: v.speedFactor,
         time_window_start: v.timeWindowStart || config.depot.timeWindowStart,
         time_window_end: v.timeWindowEnd || config.depot.timeWindowEnd,
+        // Break / lunch configuration
+        has_break: v.hasBreakTime ?? false,
+        break_duration: v.breakDuration,
+        break_time_start: v.breakTimeStart,
+        break_time_end: v.breakTimeEnd,
       })),
       config: {
         depot: {

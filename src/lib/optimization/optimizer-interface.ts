@@ -53,6 +53,11 @@ export interface OptimizerVehicle {
   // Time windows (HH:mm format)
   timeWindowStart?: string;
   timeWindowEnd?: string;
+  // Break / lunch configuration
+  hasBreakTime?: boolean;
+  breakDuration?: number; // minutes
+  breakTimeStart?: string; // HH:MM or HH:MM:SS
+  breakTimeEnd?: string; // HH:MM or HH:MM:SS
 }
 
 export interface OptimizerDepot {

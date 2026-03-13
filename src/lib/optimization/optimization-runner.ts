@@ -92,6 +92,10 @@ async function runViaAdapter(
     originLongitude: v.originLongitude,
     timeWindowStart: v.timeWindowStart,
     timeWindowEnd: v.timeWindowEnd,
+    hasBreakTime: v.hasBreakTime,
+    breakDuration: v.breakDuration,
+    breakTimeStart: v.breakTimeStart,
+    breakTimeEnd: v.breakTimeEnd,
   }));
 
   const adapterConfig: OptimizerConfig = {
@@ -234,6 +238,7 @@ export interface OptimizationStop {
   latitude: string;
   longitude: string;
   estimatedArrival?: string;
+  waitingTimeMinutes?: number; // Minutes the driver waits before time window opens
   timeWindow?: {
     start: string;
     end: string;
@@ -571,6 +576,32 @@ export async function runOptimization(
     };
   }
 
+  // Helper: parse HH:mm or HH:mm:ss string to seconds since midnight
+  function parseHHmmToSeconds(hhmm: string): number | null {
+    const match = hhmm.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) return null;
+    return parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + (match[3] ? parseInt(match[3]) : 0);
+  }
+
+  // Helper: convert seconds since midnight to HH:mm string
+  // Both VROOM and PyVRP return arrival times as seconds since midnight (local time).
+  // Using new Date(seconds * 1000) would create a UTC timestamp that shifts
+  // by the user's timezone offset (e.g., -5h for Peru), producing wrong times.
+  function formatArrivalTime(secondsSinceMidnight: number): string {
+    const hours = Math.floor(secondsSinceMidnight / 3600);
+    const minutes = Math.floor((secondsSinceMidnight % 3600) / 60);
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+
+  // Helper: calculate waiting time in minutes if vehicle arrives before time window
+  function calculateWaitingMinutes(arrivalSeconds: number, orderId: string): number | undefined {
+    const details = orderDetailsMap.get(orderId);
+    if (!details?.timeWindowStart) return undefined;
+    const twStart = parseHHmmToSeconds(String(details.timeWindowStart));
+    if (twStart === null || arrivalSeconds >= twStart) return undefined;
+    return Math.round((twStart - arrivalSeconds) / 60);
+  }
+
   // === Engine Selection ===
   const requestedEngine = (config.optimizerType as OptimizerType) || "VROOM";
   const selectedEngine = await selectOptimizer(ordersWithLocation.length, selectedVehicles.length, requestedEngine);
@@ -590,6 +621,10 @@ export async function runOptimization(
     originLongitude: vehicle.originLongitude,
     workdayStart: vehicle.workdayStart,
     workdayEnd: vehicle.workdayEnd,
+    hasBreakTime: vehicle.hasBreakTime,
+    breakDuration: vehicle.breakDuration,
+    breakTimeStart: vehicle.breakTimeStart,
+    breakTimeEnd: vehicle.breakTimeEnd,
     zoneAssignments: zoneAssignmentsByVehicle.get(vehicle.id) || [],
   }));
 
@@ -853,6 +888,10 @@ export async function runOptimization(
             : undefined,
           timeWindowStart: vehicle.workdayStart ?? undefined,
           timeWindowEnd: vehicle.workdayEnd ?? undefined,
+          hasBreakTime: vehicle.hasBreakTime,
+          breakDuration: vehicle.breakDuration ?? undefined,
+          breakTimeStart: vehicle.breakTimeStart ?? undefined,
+          breakTimeEnd: vehicle.breakTimeEnd ?? undefined,
         }));
 
       // Run optimization for this batch (VROOM or PyVRP via adapter)
@@ -904,14 +943,17 @@ export async function runOptimization(
             if (groupSameLocation) {
               // Keep as single stop with grouped order info
               routeStops.push({
-                orderId: grouped.orderIds[0], // Use first order as representative
-                trackingId: grouped.trackingIds[0], // Use first tracking ID
+                orderId: grouped.orderIds[0],
+                trackingId: grouped.trackingIds[0],
                 sequence: sequenceCounter++,
                 address: stop.address,
                 latitude: String(stop.latitude),
                 longitude: String(stop.longitude),
                 estimatedArrival: stop.arrivalTime
-                  ? new Date(stop.arrivalTime * 1000).toISOString()
+                  ? formatArrivalTime(stop.arrivalTime)
+                  : undefined,
+                waitingTimeMinutes: stop.arrivalTime
+                  ? calculateWaitingMinutes(stop.arrivalTime, grouped.orderIds[0])
                   : undefined,
                 timeWindow: buildTimeWindow(grouped.orderIds[0]),
                 groupedOrderIds: grouped.orderIds,
@@ -928,7 +970,10 @@ export async function runOptimization(
                   latitude: String(stop.latitude),
                   longitude: String(stop.longitude),
                   estimatedArrival: stop.arrivalTime
-                    ? new Date(stop.arrivalTime * 1000).toISOString()
+                    ? formatArrivalTime(stop.arrivalTime)
+                    : undefined,
+                  waitingTimeMinutes: stop.arrivalTime
+                    ? calculateWaitingMinutes(stop.arrivalTime, grouped.orderIds[i])
                     : undefined,
                   timeWindow: buildTimeWindow(grouped.orderIds[i]),
                 });
@@ -943,7 +988,10 @@ export async function runOptimization(
               latitude: String(stop.latitude),
               longitude: String(stop.longitude),
               estimatedArrival: stop.arrivalTime
-                ? new Date(stop.arrivalTime * 1000).toISOString()
+                ? formatArrivalTime(stop.arrivalTime)
+                : undefined,
+              waitingTimeMinutes: stop.arrivalTime
+                ? calculateWaitingMinutes(stop.arrivalTime, stop.orderId)
                 : undefined,
               timeWindow: buildTimeWindow(stop.orderId),
             });
@@ -1052,6 +1100,10 @@ export async function runOptimization(
           : undefined,
         timeWindowStart: vehicle.workdayStart ?? undefined,
         timeWindowEnd: vehicle.workdayEnd ?? undefined,
+        hasBreakTime: vehicle.hasBreakTime,
+        breakDuration: vehicle.breakDuration ?? undefined,
+        breakTimeStart: vehicle.breakTimeStart ?? undefined,
+        breakTimeEnd: vehicle.breakTimeEnd ?? undefined,
       }),
     );
 
@@ -1106,14 +1158,17 @@ export async function runOptimization(
           if (groupSameLocation) {
             // Keep as single stop with grouped order info
             routeStops.push({
-              orderId: grouped.orderIds[0], // Use first order as representative
-              trackingId: grouped.trackingIds[0], // Use first tracking ID
+              orderId: grouped.orderIds[0],
+              trackingId: grouped.trackingIds[0],
               sequence: sequenceCounter++,
               address: stop.address,
               latitude: String(stop.latitude),
               longitude: String(stop.longitude),
               estimatedArrival: stop.arrivalTime
-                ? new Date(stop.arrivalTime * 1000).toISOString()
+                ? formatArrivalTime(stop.arrivalTime)
+                : undefined,
+              waitingTimeMinutes: stop.arrivalTime
+                ? calculateWaitingMinutes(stop.arrivalTime, grouped.orderIds[0])
                 : undefined,
               timeWindow: buildTimeWindow(grouped.orderIds[0]),
               groupedOrderIds: grouped.orderIds,
@@ -1130,7 +1185,10 @@ export async function runOptimization(
                 latitude: String(stop.latitude),
                 longitude: String(stop.longitude),
                 estimatedArrival: stop.arrivalTime
-                  ? new Date(stop.arrivalTime * 1000).toISOString()
+                  ? formatArrivalTime(stop.arrivalTime)
+                  : undefined,
+                waitingTimeMinutes: stop.arrivalTime
+                  ? calculateWaitingMinutes(stop.arrivalTime, grouped.orderIds[i])
                   : undefined,
                 timeWindow: buildTimeWindow(grouped.orderIds[i]),
               });
@@ -1145,7 +1203,10 @@ export async function runOptimization(
             latitude: String(stop.latitude),
             longitude: String(stop.longitude),
             estimatedArrival: stop.arrivalTime
-              ? new Date(stop.arrivalTime * 1000).toISOString()
+              ? formatArrivalTime(stop.arrivalTime)
+              : undefined,
+            waitingTimeMinutes: stop.arrivalTime
+              ? calculateWaitingMinutes(stop.arrivalTime, stop.orderId)
               : undefined,
             timeWindow: buildTimeWindow(stop.orderId),
           });

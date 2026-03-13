@@ -40,6 +40,14 @@ class Vehicle(BaseModel):
     origin_lng: Optional[float] = None
     skills: Optional[List[str]] = None
     speed_factor: Optional[float] = 1.0
+    # Vehicle time windows
+    time_window_start: Optional[str] = None
+    time_window_end: Optional[str] = None
+    # Break / lunch configuration
+    has_break: bool = False
+    break_duration: Optional[int] = None  # minutes
+    break_time_start: Optional[str] = None  # HH:MM or HH:MM:SS
+    break_time_end: Optional[str] = None  # HH:MM or HH:MM:SS
 
 
 class Depot(BaseModel):

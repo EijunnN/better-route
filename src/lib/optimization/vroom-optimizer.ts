@@ -71,6 +71,11 @@ export interface VehicleForOptimization {
   speedFactor?: number;
   timeWindowStart?: string; // Vehicle workday start (HH:MM)
   timeWindowEnd?: string; // Vehicle workday end (HH:MM)
+  // Break / lunch configuration
+  hasBreakTime?: boolean;
+  breakDuration?: number; // minutes
+  breakTimeStart?: string; // HH:MM or HH:MM:SS
+  breakTimeEnd?: string; // HH:MM or HH:MM:SS
 }
 
 export interface DepotConfig {
@@ -415,6 +420,10 @@ async function optimizeWithVroom(
         endLatitude,
         openStart: config.openStart,
         openEnd,
+        // Break / lunch configuration
+        breakDuration: vehicle.breakDuration,
+        breakTimeStart: vehicle.breakTimeStart,
+        breakTimeEnd: vehicle.breakTimeEnd,
       },
     );
   });
