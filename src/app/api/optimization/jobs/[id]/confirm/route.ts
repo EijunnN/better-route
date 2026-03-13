@@ -343,6 +343,37 @@ export async function POST(
 
     // Build route stops data before transaction
     const now = new Date();
+
+    // Parse the plan's start date to combine with HH:mm times from the optimizer
+    // The optimizer returns times as HH:mm strings (e.g., "09:01"), which need
+    // to be combined with the actual planned date to form full timestamps.
+    let planDate: string | null = null;
+    if (data.startDate) {
+      // Extract just the date part (YYYY-MM-DD) from the startDate
+      const parsed = new Date(data.startDate);
+      if (!isNaN(parsed.getTime())) {
+        planDate = parsed.toISOString().split("T")[0];
+      }
+    }
+    if (!planDate) {
+      // Fallback to today's date
+      planDate = now.toISOString().split("T")[0];
+    }
+
+    // Helper: combine a date string with an HH:mm time string into a Date
+    function parseTimeWithDate(timeStr: string): Date | null {
+      // Handle HH:mm or HH:mm:ss format
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(timeStr)) {
+        const fullTime = timeStr.length <= 5 ? `${timeStr}:00` : timeStr;
+        // Create date in local timezone by using YYYY-MM-DDTHH:mm:ss without Z
+        const d = new Date(`${planDate}T${fullTime}`);
+        return isNaN(d.getTime()) ? null : d;
+      }
+      // Try as full ISO string
+      const d = new Date(timeStr);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
     const routeStopsToCreate: Array<{
       companyId: string;
       jobId: string;
@@ -365,31 +396,15 @@ export async function POST(
       if (!route.driverId) continue;
 
       for (const stop of route.stops) {
-        let timeWindowStart: Date | null = null;
-        let timeWindowEnd: Date | null = null;
-        let estimatedArrival: Date | null = null;
-
-        if (stop.timeWindow?.start) {
-          try {
-            timeWindowStart = new Date(stop.timeWindow.start);
-          } catch {
-            // Ignore invalid date
-          }
-        }
-        if (stop.timeWindow?.end) {
-          try {
-            timeWindowEnd = new Date(stop.timeWindow.end);
-          } catch {
-            // Ignore invalid date
-          }
-        }
-        if (stop.estimatedArrival) {
-          try {
-            estimatedArrival = new Date(stop.estimatedArrival);
-          } catch {
-            // Ignore invalid date
-          }
-        }
+        const timeWindowStart = stop.timeWindow?.start
+          ? parseTimeWithDate(stop.timeWindow.start)
+          : null;
+        const timeWindowEnd = stop.timeWindow?.end
+          ? parseTimeWithDate(stop.timeWindow.end)
+          : null;
+        const estimatedArrival = stop.estimatedArrival
+          ? parseTimeWithDate(stop.estimatedArrival)
+          : null;
 
         const orderIds =
           stop.groupedOrderIds && stop.groupedOrderIds.length > 0

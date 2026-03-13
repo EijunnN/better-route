@@ -9,6 +9,9 @@ export const planConfirmationSchema = z.object({
   overrideWarnings: z.boolean().default(false),
   confirmationNote: z.string().optional(),
   planName: z.string().min(1).max(255).optional(),
+  startDate: z.string().optional(), // ISO date string (YYYY-MM-DD or full datetime)
+  endDate: z.string().optional(),
+  driverAssignments: z.record(z.string(), z.string()).optional(),
 });
 
 export type PlanConfirmationSchema = z.infer<typeof planConfirmationSchema>;
