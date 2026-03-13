@@ -535,50 +535,103 @@ function validateOrderRow(
 }
 
 /**
- * Validate time window preset exists with enhanced error reporting
+ * Load all active time window presets for a company.
+ * Returns maps for lookup by ID and by name (case-insensitive).
  */
-async function validateTimeWindowPresets(
-  orderDataList: Array<{ timeWindowPresetId?: string }>,
-  companyId: string,
-): Promise<CSVValidationError[]> {
-  const errors: CSVValidationError[] = [];
-  const presetIds = orderDataList
-    .map((data) => data.timeWindowPresetId)
-    .filter((id): id is string => !!id);
-
-  if (presetIds.length === 0) {
-    return errors;
-  }
-
-  const uniquePresetIds = [...new Set(presetIds)];
+async function loadTimeWindowPresets(companyId: string) {
   const presets = await db
-    .select({ id: timeWindowPresets.id })
+    .select({
+      id: timeWindowPresets.id,
+      name: timeWindowPresets.name,
+      startTime: timeWindowPresets.startTime,
+      endTime: timeWindowPresets.endTime,
+      strictness: timeWindowPresets.strictness,
+    })
     .from(timeWindowPresets)
     .where(
       and(
         eq(timeWindowPresets.companyId, companyId),
         eq(timeWindowPresets.active, true),
-        inArray(timeWindowPresets.id, uniquePresetIds),
       ),
     );
 
-  const validPresetIds = new Set(presets.map((p) => p.id));
+  const byId = new Map(presets.map((p) => [p.id, p]));
+  const byName = new Map(presets.map((p) => [p.name.toUpperCase().trim(), p]));
+
+  return { byId, byName };
+}
+
+/**
+ * Resolve time window presets (by ID or by name) into direct time window fields.
+ * Priority: direct timeWindowStart/End > presetId > presetName.
+ * Mutates orderDataList in place to set timeWindowStart, timeWindowEnd, timeWindowPresetId, strictness.
+ */
+async function resolveTimeWindowPresets(
+  orderDataList: Array<Record<string, string>>,
+  companyId: string,
+): Promise<CSVValidationError[]> {
+  const errors: CSVValidationError[] = [];
+  const { byId, byName } = await loadTimeWindowPresets(companyId);
 
   orderDataList.forEach((data, index) => {
-    if (
-      data.timeWindowPresetId &&
-      !validPresetIds.has(data.timeWindowPresetId)
-    ) {
-      errors.push(
-        createValidationError(
-          index + 2, // +2 because index 0 is row 2 (after header)
-          "timeWindowPresetId",
-          `Time window preset not found or inactive: ${data.timeWindowPresetId}`,
-          "critical",
-          ERROR_TYPES.REFERENCE,
-          data.timeWindowPresetId,
-        ),
-      );
+    // Skip if direct time windows are already set
+    if (data.timeWindowStart && data.timeWindowEnd) {
+      return;
+    }
+
+    // Try to resolve by preset ID
+    if (data.timeWindowPresetId) {
+      const preset = byId.get(data.timeWindowPresetId);
+      if (!preset) {
+        errors.push(
+          createValidationError(
+            index + 2,
+            "timeWindowPresetId",
+            `Preset de ventana horaria no encontrado o inactivo: ${data.timeWindowPresetId}`,
+            "critical",
+            ERROR_TYPES.REFERENCE,
+            data.timeWindowPresetId,
+          ),
+        );
+        return;
+      }
+      // Populate time windows from preset
+      if (preset.startTime && preset.endTime) {
+        data.timeWindowStart = String(preset.startTime);
+        data.timeWindowEnd = String(preset.endTime);
+      }
+      if (preset.strictness && !data.strictness) {
+        data.strictness = preset.strictness;
+      }
+      return;
+    }
+
+    // Try to resolve by preset name (e.g., "TARDE", "MAÑANA")
+    if (data.timeWindowPresetName) {
+      const nameKey = data.timeWindowPresetName.toUpperCase().trim();
+      const preset = byName.get(nameKey);
+      if (!preset) {
+        errors.push(
+          createValidationError(
+            index + 2,
+            "timeWindowPresetName",
+            `Preset de ventana horaria "${data.timeWindowPresetName}" no encontrado. Presets disponibles: ${[...byName.keys()].join(", ")}`,
+            "critical",
+            ERROR_TYPES.REFERENCE,
+            data.timeWindowPresetName,
+          ),
+        );
+        return;
+      }
+      // Populate time windows and preset ID from resolved preset
+      data.timeWindowPresetId = preset.id;
+      if (preset.startTime && preset.endTime) {
+        data.timeWindowStart = String(preset.startTime);
+        data.timeWindowEnd = String(preset.endTime);
+      }
+      if (preset.strictness && !data.strictness) {
+        data.strictness = preset.strictness;
+      }
     }
   });
 
@@ -782,18 +835,23 @@ export async function POST(request: NextRequest) {
     });
 
     // Map valid rows to order data for further validation
-    const orderDataList = validRecords.map((record) => {
+    // Use a Map keyed by row number so we can retrieve resolved data later
+    const orderDataByRow = new Map<number, Record<string, string>>();
+    const orderDataList: Array<Record<string, string>> = [];
+    for (const record of validRecords) {
       const row = rows.find((_, i) => i + 2 === record.row);
       if (!row) {
         throw new Error(`Row not found for record at row ${record.row}`);
       }
-      return Object.keys(finalMapping).length > 0
+      const data = Object.keys(finalMapping).length > 0
         ? mapCSVRow(row, finalMapping)
         : mapCSVRowToOrder(row, validatedData.columnMapping);
-    });
+      orderDataList.push(data);
+      orderDataByRow.set(record.row, data);
+    }
 
-    // Validate time window presets (cross-field validation)
-    const presetErrors = await validateTimeWindowPresets(
+    // Resolve time window presets (by ID or name) into direct time windows
+    const presetErrors = await resolveTimeWindowPresets(
       orderDataList,
       context.companyId,
     );
@@ -934,18 +992,13 @@ export async function POST(request: NextRequest) {
     const importErrors: CSVValidationError[] = [];
 
     if (validRecords.length > 0 && criticalErrors.length === 0) {
-      // Re-derive order data from final valid records (after all validations)
+      // Use the already-resolved orderDataByRow (with time window presets resolved)
       const finalOrderDataList = validRecords.map((record) => {
-        const row = rows.find((_, i) => i + 2 === record.row);
-        if (!row) {
-          throw new Error(`Row not found for record at row ${record.row}`);
+        const data = orderDataByRow.get(record.row);
+        if (!data) {
+          throw new Error(`Order data not found for record at row ${record.row}`);
         }
-        return {
-          data: Object.keys(finalMapping).length > 0
-            ? mapCSVRow(row, finalMapping)
-            : mapCSVRowToOrder(row, validatedData.columnMapping),
-          rowNum: record.row,
-        };
+        return { data, rowNum: record.row };
       });
 
       // Use optimized batch insert for large datasets (Story 17.1)

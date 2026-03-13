@@ -10,6 +10,7 @@ export const CSV_SYSTEM_FIELDS = [
   "latitude",
   "longitude",
   "timeWindowPresetId",
+  "timeWindowPresetName",
   "timeWindowStart",
   "timeWindowEnd",
   "strictness",

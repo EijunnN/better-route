@@ -102,6 +102,16 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
   ventana_horaria_id: "timeWindowPresetId",
   "ventana horaria id": "timeWindowPresetId",
 
+  // Time window preset name variations (resolve by name, e.g., "TARDE", "MAÑANA")
+  time_window_preset: "timeWindowPresetName",
+  "time window preset": "timeWindowPresetName",
+  time_window: "timeWindowPresetName",
+  "time window": "timeWindowPresetName",
+  turno: "timeWindowPresetName",
+  ventana_horaria: "timeWindowPresetName",
+  "ventana horaria": "timeWindowPresetName",
+  jornada: "timeWindowPresetName",
+
   // Strictness variations
   strictness: "strictness",
   strict: "strictness",
@@ -119,6 +129,18 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
   "fecha entrega": "promisedDate",
   fecha_prometida: "promisedDate",
   "fecha prometida": "promisedDate",
+
+  // Units variations
+  units_required: "unitsRequired",
+  "units required": "unitsRequired",
+  unitsrequired: "unitsRequired",
+  units: "unitsRequired",
+  unidades: "unitsRequired",
+  unidades_requeridas: "unitsRequired",
+  "unidades requeridas": "unitsRequired",
+  cantidad: "unitsRequired",
+  qty: "unitsRequired",
+  quantity: "unitsRequired",
 
   // Weight variations
   weight_required: "weightRequired",
