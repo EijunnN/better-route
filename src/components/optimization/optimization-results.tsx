@@ -68,6 +68,7 @@ interface OptimizationResultsProps {
         latitude: string;
         longitude: string;
         estimatedArrival?: string;
+        waitingTimeMinutes?: number;
         timeWindow?: {
           start: string;
           end: string;
@@ -350,8 +351,12 @@ function RouteCard({
                     </p>
                     {stop.estimatedArrival && (
                       <p className="text-xs text-muted-foreground">
-                        ETA:{" "}
-                        {new Date(stop.estimatedArrival).toLocaleTimeString()}
+                        ETA: {stop.estimatedArrival}
+                        {stop.waitingTimeMinutes ? (
+                          <span className="text-orange-500 ml-1">
+                            (espera {stop.waitingTimeMinutes} min)
+                          </span>
+                        ) : null}
                       </p>
                     )}
                   </div>

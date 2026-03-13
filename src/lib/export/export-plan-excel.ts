@@ -8,6 +8,7 @@ interface RouteStop {
   latitude: string;
   longitude: string;
   estimatedArrival?: string;
+  waitingTimeMinutes?: number;
   timeWindow?: {
     start: string;
     end: string;
@@ -91,6 +92,7 @@ interface PlanRow {
   Vehículo: string;
   Dirección: string;
   "Hora Est. Llegada": string;
+  "Espera (min)": string;
   "Ventana Inicio": string;
   "Ventana Fin": string;
   Latitud: string;
@@ -102,6 +104,7 @@ interface DriverRow {
   "Código Track": string;
   Dirección: string;
   "Hora Est. Llegada": string;
+  "Espera (min)": string;
   "Ventana Inicio": string;
   "Ventana Fin": string;
   Latitud: string;
@@ -120,6 +123,7 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
   data.routes.forEach((route) => {
     route.stops.forEach((stop) => {
       // Handle grouped stops (multiple orders at same location)
+      const waitStr = stop.waitingTimeMinutes ? `${stop.waitingTimeMinutes}` : "-";
       if (stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1) {
         stop.groupedTrackingIds.forEach((trackingId) => {
           planRows.push({
@@ -129,6 +133,7 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
             Vehículo: route.vehiclePlate,
             Dirección: stop.address,
             "Hora Est. Llegada": formatTime(stop.estimatedArrival),
+            "Espera (min)": waitStr,
             "Ventana Inicio": formatTime(stop.timeWindow?.start),
             "Ventana Fin": formatTime(stop.timeWindow?.end),
             Latitud: stop.latitude,
@@ -143,6 +148,7 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
           Vehículo: route.vehiclePlate,
           Dirección: stop.address,
           "Hora Est. Llegada": formatTime(stop.estimatedArrival),
+          "Espera (min)": waitStr,
           "Ventana Inicio": formatTime(stop.timeWindow?.start),
           "Ventana Fin": formatTime(stop.timeWindow?.end),
           Latitud: stop.latitude,
@@ -162,6 +168,7 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
     { wch: 12 }, // Vehículo
     { wch: 50 }, // Dirección
     { wch: 15 }, // Hora Est. Llegada
+    { wch: 12 }, // Espera (min)
     { wch: 15 }, // Ventana Inicio
     { wch: 15 }, // Ventana Fin
     { wch: 12 }, // Latitud
@@ -177,6 +184,7 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
     const driverRows: DriverRow[] = [];
 
     route.stops.forEach((stop) => {
+      const waitStr = stop.waitingTimeMinutes ? `${stop.waitingTimeMinutes}` : "-";
       if (stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1) {
         stop.groupedTrackingIds.forEach((trackingId) => {
           driverRows.push({
@@ -184,6 +192,7 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
             "Código Track": trackingId,
             Dirección: stop.address,
             "Hora Est. Llegada": formatTime(stop.estimatedArrival),
+            "Espera (min)": waitStr,
             "Ventana Inicio": formatTime(stop.timeWindow?.start),
             "Ventana Fin": formatTime(stop.timeWindow?.end),
             Latitud: stop.latitude,
@@ -196,6 +205,7 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
           "Código Track": stop.trackingId,
           Dirección: stop.address,
           "Hora Est. Llegada": formatTime(stop.estimatedArrival),
+          "Espera (min)": waitStr,
           "Ventana Inicio": formatTime(stop.timeWindow?.start),
           "Ventana Fin": formatTime(stop.timeWindow?.end),
           Latitud: stop.latitude,
@@ -212,6 +222,7 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
       { wch: 18 }, // Código Track
       { wch: 50 }, // Dirección
       { wch: 15 }, // Hora Est. Llegada
+      { wch: 12 }, // Espera (min)
       { wch: 15 }, // Ventana Inicio
       { wch: 15 }, // Ventana Fin
       { wch: 12 }, // Latitud
