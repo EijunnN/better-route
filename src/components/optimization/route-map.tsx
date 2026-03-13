@@ -274,7 +274,7 @@ export function RouteMap({
         if (depot) {
           centerLat = depot.latitude;
           centerLng = depot.longitude;
-        } else if (routes.length > 0 && routes[0].stops.length > 0) {
+        } else if (routes.length > 0 && routes[0]?.stops?.length > 0) {
           const allStops = routes.flatMap((r) => r.stops);
           const avgLat =
             allStops.reduce((sum, s) => sum + parseFloat(s.latitude), 0) /
@@ -842,7 +842,7 @@ export function RouteMap({
               }
             });
 
-            if (allCoords.length > 0) {
+            if (allCoords.length > 0 && allCoords[0]) {
               const bounds = allCoords.reduce(
                 (bounds, coord) => bounds.extend(coord as [number, number]),
                 new maplibregl.LngLatBounds(allCoords[0], allCoords[0]),

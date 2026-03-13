@@ -48,6 +48,7 @@ interface PlanningMapProps {
   showVehicleOrigins?: boolean;
   showOrders?: boolean;
   selectedVehicleIds?: string[];
+  onOrderDragEnd?: (orderId: string, latitude: number, longitude: number) => void;
 }
 
 // Popup styles injected into the document
@@ -142,6 +143,7 @@ export function PlanningMap({
   showVehicleOrigins = true,
   showOrders = true,
   selectedVehicleIds,
+  onOrderDragEnd,
 }: PlanningMapProps) {
   const { isDark } = useTheme();
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -334,6 +336,8 @@ export function PlanningMap({
         hasPoints = true;
         bounds.extend([lng, lat]);
 
+        const isDraggable = !!onOrderDragEnd;
+
         // Create elegant order marker
         const el = document.createElement("div");
         el.className = "order-marker-wrapper";
@@ -351,7 +355,7 @@ export function PlanningMap({
             font-weight: 600;
             color: #ffffff;
             box-shadow: 0 3px 12px rgba(0,0,0,0.4);
-            cursor: pointer;
+            cursor: ${isDraggable ? "grab" : "pointer"};
             transition: transform 0.15s ease, box-shadow 0.15s ease;
             font-family: system-ui, -apple-system, sans-serif;
           ">${index + 1}</div>
@@ -385,10 +389,22 @@ export function PlanningMap({
           const marker = new maplibregl.Marker({
             element: el,
             anchor: "center",
+            draggable: isDraggable,
           })
             .setLngLat([lng, lat])
             .setPopup(popup)
             .addTo(map.current);
+
+          if (isDraggable) {
+            marker.on("dragstart", () => {
+              if (innerDiv) innerDiv.style.cursor = "grabbing";
+            });
+            marker.on("dragend", () => {
+              if (innerDiv) innerDiv.style.cursor = "grab";
+              const lngLat = marker.getLngLat();
+              onOrderDragEnd(order.id, lngLat.lat, lngLat.lng);
+            });
+          }
 
           markersRef.current.push(marker);
         }
@@ -410,6 +426,7 @@ export function PlanningMap({
     showOrders,
     isLoaded,
     selectedVehicleIds,
+    onOrderDragEnd,
   ]);
 
   // Render zones as polygon layers

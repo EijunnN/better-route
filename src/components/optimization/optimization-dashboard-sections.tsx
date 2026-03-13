@@ -804,19 +804,15 @@ export function ReassignmentDialog() {
     isReassigning,
     reassignmentError,
   } = state;
-  const { setSelectedVehicleForReassign, handleReassignment } = actions;
+  const { setSelectedVehicleForReassign, handleReassignment, clearSelection } = actions;
   const { availableVehicles } = derived;
-
-  const closeModal = () => {
-    // This is handled by the parent via onOpenChange
-  };
 
   return (
     <Dialog
       open={showReassignModal}
       onOpenChange={(open) => {
         if (!open) {
-          // Clear selection when closing
+          clearSelection();
         }
       }}
     >
@@ -906,7 +902,7 @@ export function ReassignmentDialog() {
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" disabled={isReassigning}>
+          <Button variant="outline" disabled={isReassigning} onClick={clearSelection}>
             Cancelar
           </Button>
           <Button

@@ -117,6 +117,7 @@ export interface PlanificacionActions {
   setEditOrderData: (data: { address: string; latitude: string; longitude: string }) => void;
   saveOrderChanges: () => Promise<void>;
   closeEditOrder: () => void;
+  updateOrderLocation: (orderId: string, latitude: string, longitude: string) => Promise<void>;
 }
 
 // Meta
@@ -1178,6 +1179,30 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     setEditingOrder(null);
   };
 
+  const updateOrderLocation = async (orderId: string, latitude: string, longitude: string) => {
+    if (!companyId) return;
+
+    const response = await fetch(`/api/orders/${orderId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": companyId,
+      },
+      body: JSON.stringify({ latitude, longitude }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || "Error al actualizar ubicación");
+    }
+
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, latitude, longitude } : o
+      )
+    );
+  };
+
   // Build context value
   const state: PlanificacionState = {
     currentStep,
@@ -1253,6 +1278,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     setEditOrderData,
     saveOrderChanges,
     closeEditOrder,
+    updateOrderLocation,
   };
 
   const meta: PlanificacionMeta = {

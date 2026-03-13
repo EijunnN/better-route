@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Eye, EyeOff, MapPin, Package, Truck } from "lucide-react";
+import { useCallback, useState } from "react";
+import { Eye, EyeOff, MapPin, Move, Package, Truck } from "lucide-react";
 import { usePlanificacion } from "./planificacion-context";
 
 const PlanningMap = dynamic(
@@ -14,9 +15,27 @@ const PlanningMap = dynamic(
 
 export function PlanificacionMapPanel() {
   const { state, actions, derived } = usePlanificacion();
+  const [editMode, setEditMode] = useState(false);
 
   const displayVehicles =
     state.currentStep === "vehiculos" ? derived.filteredVehicles : derived.selectedVehicles;
+
+  const showOrders = state.currentStep === "visitas" || state.currentStep === "configuracion";
+
+  const handleOrderDragEnd = useCallback(
+    async (orderId: string, latitude: number, longitude: number) => {
+      try {
+        await actions.updateOrderLocation(
+          orderId,
+          latitude.toFixed(6),
+          longitude.toFixed(6),
+        );
+      } catch (err) {
+        console.error("Failed to update order location:", err);
+      }
+    },
+    [actions],
+  );
 
   return (
     <div className="flex-1 relative">
@@ -25,14 +44,29 @@ export function PlanificacionMapPanel() {
         orders={derived.selectedOrders}
         zones={state.showZones ? state.zones : []}
         showVehicleOrigins={state.currentStep === "vehiculos"}
-        showOrders={state.currentStep === "visitas" || state.currentStep === "configuracion"}
+        showOrders={showOrders}
         selectedVehicleIds={
           state.currentStep === "vehiculos" ? state.selectedVehicleIds : undefined
         }
+        onOrderDragEnd={showOrders && editMode ? handleOrderDragEnd : undefined}
       />
 
       {/* Map controls */}
       <div className="absolute top-4 right-4 flex flex-col gap-2">
+        {showOrders && (
+          <button
+            type="button"
+            onClick={() => setEditMode(!editMode)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors ${
+              editMode
+                ? "bg-amber-500 text-white"
+                : "bg-background/95 backdrop-blur text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Move className="w-4 h-4" />
+            Mover puntos
+          </button>
+        )}
         {state.zones.length > 0 && (
           <button
             type="button"
@@ -48,6 +82,13 @@ export function PlanificacionMapPanel() {
           </button>
         )}
       </div>
+
+      {/* Edit mode banner */}
+      {editMode && (
+        <div className="absolute top-4 left-4 right-20 md:right-auto md:left-4 bg-amber-500/90 backdrop-blur text-white text-xs font-medium px-3 py-2 rounded-lg shadow-lg">
+          Arrastra los puntos para mover pedidos
+        </div>
+      )}
 
       {/* Map overlay stats */}
       <div className="absolute bottom-4 left-4 bg-background/95 backdrop-blur rounded-lg shadow-lg p-3 text-sm">
