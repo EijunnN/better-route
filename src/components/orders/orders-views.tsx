@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, Copy, ExternalLink, Link2, List, Loader2, Map as MapIcon, Trash2 } from "lucide-react";
-import dynamic from "next/dynamic";
+import { AlertTriangle, Check, Copy, ExternalLink, Link2, Loader2, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,15 +84,6 @@ function formatCustomFieldValue(val: unknown, fieldType: string): string {
   }
 }
 
-const OrderMap = dynamic(() => import("./order-map").then((mod) => mod.OrderMap), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[500px] bg-muted animate-pulse rounded-lg flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-    </div>
-  ),
-});
-
 export function OrdersListView() {
   const { state, actions, meta } = useOrders();
   const customFieldDefs = useListFieldDefinitions(meta.companyId);
@@ -162,24 +152,6 @@ export function OrdersListView() {
           <option value="FAILED">Fallido</option>
           <option value="CANCELLED">Cancelado</option>
         </select>
-        <div className="flex border rounded-md">
-          <Button
-            variant={state.viewMode === "list" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => actions.setViewMode("list")}
-            className="rounded-r-none"
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={state.viewMode === "map" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => actions.setViewMode("map")}
-            className="rounded-l-none"
-          >
-            <MapIcon className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
 
       <div className="flex items-center justify-between text-sm text-muted-foreground border-b pb-3">
@@ -200,17 +172,6 @@ export function OrdersListView() {
           <p className="text-muted-foreground">No se encontraron pedidos.</p>
           <p className="text-sm text-muted-foreground mt-1">Crea tu primer pedido para comenzar.</p>
         </div>
-      ) : state.viewMode === "map" && meta.companyId ? (
-        <OrderMap
-          companyId={meta.companyId}
-          statusFilter={state.filterStatus || "ALL"}
-          searchQuery={state.searchQuery}
-          onOrderClick={(orderId) => {
-            const order = state.orders.find((o) => o.id === orderId);
-            if (order) actions.handleEdit(order);
-          }}
-          height="600px"
-        />
       ) : (
         <div className="border rounded-lg overflow-hidden overflow-x-auto">
           <table className="w-full">

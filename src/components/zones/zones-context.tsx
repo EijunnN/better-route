@@ -329,11 +329,17 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
 
   const handleEdit = async (zone: Zone) => {
     setEditingZone(zone);
+    // zone.geometry comes from the API as an already-parsed object (DB column is jsonb).
+    // pendingFormData.geometry is typed as string, so normalize here.
+    const normalizedGeometry =
+      typeof zone.geometry === "string"
+        ? zone.geometry
+        : JSON.stringify(zone.geometry);
     setPendingFormData({
       name: zone.name,
       description: zone.description,
       type: zone.type as ZoneInput["type"],
-      geometry: zone.geometry,
+      geometry: normalizedGeometry,
       color: zone.color,
       isDefault: zone.isDefault,
       activeDays: zone.activeDays as ZoneInput["activeDays"],

@@ -43,3 +43,7 @@ next-env.d.ts
 # OSRM data files (large - download with docker/osrm/setup.sh)
 docker/osrm/*.osm.pbf
 docker/osrm/*.osrm*
+
+# Sample data and optimization results (not source)
+/example
+/results

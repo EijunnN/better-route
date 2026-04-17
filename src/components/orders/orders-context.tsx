@@ -52,7 +52,6 @@ export interface OrdersState {
   editingOrder: Order | null;
   filterStatus: string;
   searchQuery: string;
-  viewMode: "list" | "map";
   isDeleting: boolean;
   deletingId: string | null;
   trackingLink: { trackingId: string; url: string } | null;
@@ -69,7 +68,6 @@ export interface OrdersActions {
   setShowForm: (show: boolean) => void;
   setFilterStatus: (status: string) => void;
   setSearchQuery: (query: string) => void;
-  setViewMode: (mode: "list" | "map") => void;
   setCurrentPage: (page: number) => void;
   getStatusColor: (status: string) => string;
   handleGenerateTrackingLink: (orderId: string) => Promise<void>;
@@ -105,7 +103,6 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -318,7 +315,6 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     editingOrder,
     filterStatus,
     searchQuery,
-    viewMode,
     isDeleting,
     deletingId,
     trackingLink,
@@ -335,7 +331,6 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setShowForm,
     setFilterStatus,
     setSearchQuery,
-    setViewMode,
     setCurrentPage,
     getStatusColor,
     handleGenerateTrackingLink,

@@ -13,7 +13,9 @@ import {
 } from "@/lib/map-styles";
 
 interface ZoneFormPreviewProps {
-  geometry?: string;
+  // Geometry can arrive as a JSON string (from a form draft) or as an already-parsed
+  // object (when loaded from the API — DB column is jsonb, so Drizzle returns an object).
+  geometry?: string | { type: string; coordinates: unknown } | null;
   color: string;
   onEdit: () => void;
 }
@@ -30,12 +32,13 @@ export function ZoneFormPreview({
   const { isDark } = useTheme();
   const themeInitRef = useRef(false);
 
-  // Parse geometry
+  // Parse geometry — accept string or already-parsed object
   const parsedGeometry = (() => {
     if (!geometry) return null;
     try {
-      const parsed = JSON.parse(geometry);
-      if (parsed.type === "Polygon" && Array.isArray(parsed.coordinates)) {
+      const parsed =
+        typeof geometry === "string" ? JSON.parse(geometry) : geometry;
+      if (parsed?.type === "Polygon" && Array.isArray(parsed.coordinates)) {
         return parsed;
       }
       return null;
