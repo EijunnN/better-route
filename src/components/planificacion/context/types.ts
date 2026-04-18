@@ -53,6 +53,7 @@ export interface PlanificacionState {
   csvUploading: boolean;
   csvError: string | null;
   csvPreview: CsvRow[];
+  csvHeaders: string[];
   // Order edit
   editingOrder: Order | null;
   editOrderData: { address: string; latitude: string; longitude: string };

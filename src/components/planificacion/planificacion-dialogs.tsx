@@ -1,7 +1,6 @@
 "use client";
 
-import { Download, Loader2, Upload } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,47 +12,32 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CsvSchemaGuide } from "@/components/orders/csv-schema-guide";
 import { usePlanificacion } from "./planificacion-context";
 
 export function CsvUploadDialog() {
-  const { state, actions } = usePlanificacion();
+  const { state, actions, meta } = usePlanificacion();
 
   return (
     <Dialog open={state.showCsvUpload} onOpenChange={actions.setShowCsvUpload}>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Subir pedidos desde CSV</DialogTitle>
-          <DialogDescription className="space-y-1">
-            <span className="block">
-              Headers requeridos:{" "}
-              <span className="font-mono text-xs">
-                trackcode, nombre_cliente, direccion, referencia, departamento, provincia,
-                distrito, latitud, longitud, telefono
-                {state.companyProfile?.enableOrderValue && ", valorizado"}
-                {state.companyProfile?.enableWeight && ", peso"}
-                {state.companyProfile?.enableVolume && ", volumen"}
-                {state.companyProfile?.enableUnits && ", unidades"}
-                {state.companyProfile?.enableOrderType && ", tipo_pedido"}
-              </span>
-            </span>
-            <span className="block text-muted-foreground text-xs">
-              * referencia y telefono: header requerido, datos opcionales
-              {state.companyProfile?.enableOrderType && ". prioridad: opcional (0-100)"}
-            </span>
+          <DialogDescription>
+            Revisa el esquema esperado antes de subir el archivo. Las columnas
+            se validan en vivo al seleccionar el CSV.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
-          {/* Download template */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={actions.downloadCsvTemplate}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Descargar plantilla CSV
-          </Button>
+          {/* Schema preview (required + optional + custom fields, plus live
+              header validation when a file is picked). */}
+          {meta.companyId && (
+            <CsvSchemaGuide
+              companyId={meta.companyId}
+              csvHeaders={state.csvHeaders.length > 0 ? state.csvHeaders : undefined}
+            />
+          )}
 
           {/* File input */}
           <div className="space-y-2">
@@ -70,20 +54,6 @@ export function CsvUploadDialog() {
           {state.csvError && (
             <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm whitespace-pre-wrap">
               {state.csvError}
-            </div>
-          )}
-
-          {/* Custom field mappings indicator */}
-          {state.csvCustomFieldMappings.length > 0 && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Campos personalizados detectados</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {state.csvCustomFieldMappings.map((m) => (
-                  <Badge key={m.code} variant="secondary" className="text-xs">
-                    {m.csvHeader} → {m.label}
-                  </Badge>
-                ))}
-              </div>
             </div>
           )}
 

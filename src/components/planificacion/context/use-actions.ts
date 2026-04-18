@@ -49,6 +49,7 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     setShowCsvUpload,
     setCsvFile,
     setCsvPreview,
+    setCsvHeaders,
     setCsvError,
     setCsvUploading,
     setCsvCustomFieldMappings,
@@ -245,6 +246,11 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
       const originalHeaders = headerFields.map((h) => h.trim().toLowerCase());
       const rawHeaders = headerFields.map((h) => h.trim());
 
+      // Publish the headers BEFORE any required-field check so the
+      // CsvSchemaGuide can light up the matched/missing chips even if the
+      // file ultimately fails validation.
+      setCsvHeaders(rawHeaders);
+
       const requiredHeaders = [
         "trackcode", "nombre_cliente", "direccion", "referencia",
         "departamento", "provincia", "distrito", "latitud", "longitud", "telefono",
@@ -437,6 +443,8 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
       const data = parseCSV(text);
       setCsvPreview(data);
     } catch (err) {
+      // Don't wipe csvHeaders on error — the schema guide uses them to show
+      // which required columns are missing. Only the preview/error are reset.
       setCsvError(err instanceof Error ? err.message : "Error al leer el archivo");
       setCsvPreview([]);
     }
@@ -644,6 +652,7 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
           setShowCsvUpload(false);
           setCsvFile(null);
           setCsvPreview([]);
+          setCsvHeaders([]);
         }
       } else {
         let errorMsg = result.error || "Error al subir órdenes";
@@ -666,6 +675,7 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     setShowCsvUpload(false);
     setCsvFile(null);
     setCsvPreview([]);
+    setCsvHeaders([]);
     setCsvError(null);
     setCsvCustomFieldMappings([]);
   };

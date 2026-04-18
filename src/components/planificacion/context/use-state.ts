@@ -72,6 +72,8 @@ export function usePlanificacionState() {
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState<string | null>(null);
   const [csvPreview, setCsvPreview] = useState<CsvRow[]>([]);
+  /** Headers parsed from the picked CSV — fed into CsvSchemaGuide for live validation. */
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
 
   // Custom field definitions
   const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
@@ -164,6 +166,8 @@ export function usePlanificacionState() {
     setCsvError,
     csvPreview,
     setCsvPreview,
+    csvHeaders,
+    setCsvHeaders,
     // field definitions
     fieldDefinitions,
     setFieldDefinitions,
