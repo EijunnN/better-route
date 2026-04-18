@@ -471,10 +471,19 @@ def solve(request: SolveRequest) -> SolveResponse:
         delivery = _delivery_vector(o, active_dims)
         service_dur = o.service_time if o.service_time else 300
 
-        prize = 0
-        required = True
-        if o.priority is not None and o.priority > 0:
-            prize = o.priority * 1000
+        # required=False lets PyVRP leave orders unassigned when HARD constraints
+        # (capacity, time window, workday) cannot be satisfied. With required=True
+        # PyVRP was violating capacity silently instead of returning unassigned.
+        #
+        # Prize must dominate marginal cost of including a client (OSRM distances
+        # in meters + durations in seconds, both at cost=1). For Lima the typical
+        # cost to include an extra stop is ~20000. We make prize ~100x that so
+        # orders are always included when feasible.
+        base_prize = 2_000_000
+        priority_weight = o.priority if o.priority is not None else 50
+        prize = base_prize + priority_weight * 20_000
+        if o.order_type == "URGENT" or priority_weight >= 90:
+            prize = 200_000_000  # dominates any cost
 
         client = m.add_client(
             x=cx,
@@ -484,7 +493,7 @@ def solve(request: SolveRequest) -> SolveResponse:
             tw_early=tw_start,
             tw_late=tw_end,
             prize=prize,
-            required=required,
+            required=False,
             name=o.id,
         )
         clients.append(client)
@@ -602,6 +611,11 @@ def solve(request: SolveRequest) -> SolveResponse:
     # ── Build response ──────────────────────────────────────────────
     routes: List[Route] = []
     assigned_order_ids: set[str] = set()
+    # Post-solve skill enforcement: when PyVRP assigns an order to a vehicle
+    # that doesn't provide the required skill, we drop the stop and report it
+    # as unassigned with a skill reason. PyVRP 0.13 has no native per-client
+    # vehicle compatibility, so we enforce after the fact.
+    skill_mismatches: List[UnassignedOrder] = []
 
     model_data = m.data()
 
@@ -639,6 +653,29 @@ def solve(request: SolveRequest) -> SolveResponse:
             route_lngs = [origin_lng]
 
             prev_lat, prev_lng = origin_lat, origin_lng
+
+            # Filter out orders whose skills this vehicle does not cover.
+            vehicle_skill_set = vehicle_skills.get(vehicle.id, set())
+            filtered_client_indices: list[int] = []
+            for loc_idx in client_indices:
+                client_idx = loc_idx - num_depots
+                candidate_order = feasible_orders[client_idx]
+                if candidate_order.skills:
+                    required = set(candidate_order.skills)
+                    if not required <= vehicle_skill_set:
+                        skill_mismatches.append(
+                            UnassignedOrder(
+                                order_id=candidate_order.id,
+                                tracking_id=candidate_order.tracking_id,
+                                reason=(
+                                    f"Solver assigned to vehicle {vehicle.identifier} "
+                                    f"which lacks required skills: {', '.join(candidate_order.skills)}"
+                                ),
+                            )
+                        )
+                        continue
+                filtered_client_indices.append(loc_idx)
+            client_indices = filtered_client_indices
 
             for seq, loc_idx in enumerate(client_indices):
                 client_idx = loc_idx - num_depots  # offset by number of depots
@@ -740,15 +777,18 @@ def solve(request: SolveRequest) -> SolveResponse:
 
     # Unassigned orders
     unassigned: List[UnassignedOrder] = list(skill_unassigned)
+    unassigned.extend(skill_mismatches)
+    already_reported = {u.order_id for u in unassigned}
     for o in feasible_orders:
-        if o.id not in assigned_order_ids:
-            unassigned.append(
-                UnassignedOrder(
-                    order_id=o.id,
-                    tracking_id=o.tracking_id,
-                    reason="Could not fit in any vehicle route (capacity/time constraints)",
-                )
+        if o.id in assigned_order_ids or o.id in already_reported:
+            continue
+        unassigned.append(
+            UnassignedOrder(
+                order_id=o.id,
+                tracking_id=o.tracking_id,
+                reason="Could not fit in any vehicle route (capacity/time constraints)",
             )
+        )
 
     # Metrics
     total_dist = sum(r.total_distance for r in routes)

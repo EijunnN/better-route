@@ -67,6 +67,12 @@ export class VroomAdapter implements IOptimizer {
       originLongitude: v.originLongitude,
       skills: v.skills,
       speedFactor: v.speedFactor,
+      timeWindowStart: v.timeWindowStart,
+      timeWindowEnd: v.timeWindowEnd,
+      hasBreakTime: v.hasBreakTime,
+      breakDuration: v.breakDuration,
+      breakTimeStart: v.breakTimeStart,
+      breakTimeEnd: v.breakTimeEnd,
     }));
 
     const vroomConfig: VroomConfig = {
