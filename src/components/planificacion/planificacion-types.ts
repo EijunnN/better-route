@@ -55,25 +55,6 @@ export interface Zone {
   vehicles: Array<{ id: string; plate: string | null }>;
 }
 
-export interface OptimizerEngine {
-  type: string;
-  name: string;
-  displayName: string;
-  description: string;
-  available: boolean;
-  capabilities: {
-    supportsTimeWindows: boolean;
-    supportsSkills: boolean;
-    supportsMultiDimensionalCapacity: boolean;
-    supportsPriorities: boolean;
-    supportsBalancing: boolean;
-    maxOrders: number;
-    maxVehicles: number;
-    speed: string;
-    quality: string;
-  };
-}
-
 export interface CompanyProfile {
   enableOrderValue: boolean;
   enableWeight: boolean;

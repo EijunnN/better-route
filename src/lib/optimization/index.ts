@@ -19,15 +19,12 @@ export type {
   OptimizerInfo,
 } from "./optimizer-interface";
 
-// Adapters
+// Adapters (VROOM only — PyVRP was removed as a strategic decision)
 export { VroomAdapter, vroomAdapter } from "./vroom-adapter";
-export { PyVRPAdapter, pyvrpAdapter } from "./pyvrp-adapter";
 
-// Factory
+// Factory (thin pass-through over vroomAdapter)
 export {
-  getOptimizer,
   selectOptimizer,
   getAvailableOptimizers,
-  createOptimizer,
   optimize,
 } from "./optimizer-factory";

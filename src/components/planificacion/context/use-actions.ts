@@ -43,7 +43,6 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     setObjective,
     setServiceTime,
     setCapacityEnabled,
-    setOptimizerType,
     setShowZones,
     setError,
     setShowCsvUpload,
@@ -69,7 +68,6 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     objective,
     serviceTime,
     capacityEnabled,
-    optimizerType,
     csvPreview,
     csvRawText,
     fieldDefinitions,
@@ -202,7 +200,7 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
           serviceTimeMinutes: serviceTime,
           timeWindowStrictness: "SOFT",
           penaltyFactor: 5,
-          optimizerType,
+          optimizerType: "VROOM",
         }),
       });
 
@@ -513,7 +511,6 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     setObjective,
     setServiceTime,
     setCapacityEnabled,
-    setOptimizerType,
     setShowZones,
     handleSubmit,
     setError,

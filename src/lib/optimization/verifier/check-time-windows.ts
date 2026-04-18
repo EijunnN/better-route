@@ -2,13 +2,12 @@ import type { VerifierFn, Violation } from "./types";
 import { hhmmToSeconds, normalizeArrivalSeconds, orderById, secondsToHHMM, vehicleById } from "./utils";
 
 /**
- * When config.flexibleTimeWindows is true, VROOM and PyVRP widen order
- * time windows by ±30 min before solving. The verifier must match that
- * or it will report false-positive HARD violations for stops the solver
- * correctly placed inside the extended window.
+ * When config.flexibleTimeWindows is true, VROOM widens order time windows
+ * by ±30 min before solving. The verifier must match that or it will report
+ * false-positive HARD violations for stops the solver correctly placed
+ * inside the extended window.
  *
- * Kept in sync with vroom-optimizer.ts (timeWindowTolerance) and
- * pyvrp-service/solver.py (tw_tolerance).
+ * Kept in sync with vroom-optimizer.ts (timeWindowTolerance).
  */
 const FLEX_TOLERANCE_SEC = 30 * 60;
 
@@ -53,12 +52,12 @@ export const checkTimeWindows: VerifierFn = ({ orders, vehicles, config, result 
         continue;
       }
 
-      // Both VROOM and PyVRP semantics: `arrival` is when the vehicle reaches
-      // the location. If the vehicle arrives before the time window opens, it
-      // WAITS (waitingTime) until the window starts. The actual service begins
-      // at `arrival + waitingTime`. We validate against the service-start time,
-      // not the raw arrival — otherwise every "arrive early, wait, serve on time"
-      // plan falsely reports a violation.
+      // VROOM semantics: `arrival` is when the vehicle reaches the location.
+      // If the vehicle arrives before the time window opens, it WAITS
+      // (waitingTime) until the window starts. The actual service begins at
+      // `arrival + waitingTime`. We validate against the service-start time,
+      // not the raw arrival — otherwise every "arrive early, wait, serve on
+      // time" plan falsely reports a violation.
       const waiting = stop.waitingTime ?? 0;
       const serviceStart = arrival + waiting;
 

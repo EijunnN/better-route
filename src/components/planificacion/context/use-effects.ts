@@ -27,9 +27,6 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
     setSelectedOrderIds,
     setOrdersLoading,
     setZones,
-    setOptimizers,
-    setOptimizerType,
-    setOptimizersLoading,
     setCompanyProfile,
     setFieldDefinitions,
   } = state;
@@ -168,25 +165,6 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
     }
   };
 
-  const loadOptimizers = async (signal?: AbortSignal) => {
-    setOptimizersLoading(true);
-    try {
-      const response = await fetch("/api/optimization/engines", { signal });
-      if (response.ok) {
-        const data = await response.json();
-        setOptimizers(data.data?.optimizers || []);
-        if (data.data?.recommended) {
-          setOptimizerType(data.data.recommended);
-        }
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      console.error("Failed to fetch optimizers:", err);
-    } finally {
-      setOptimizersLoading(false);
-    }
-  };
-
   const loadCompanyProfile = async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
@@ -255,7 +233,6 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
       loadVehicles(controller.signal),
       loadOrders(controller.signal),
       loadZones(controller.signal),
-      loadOptimizers(controller.signal),
       loadCompanyProfile(controller.signal),
       loadFieldDefinitions(controller.signal),
     ]).catch(() => {

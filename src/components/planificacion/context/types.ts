@@ -3,7 +3,6 @@ import type {
   Fleet,
   Order,
   Zone,
-  OptimizerEngine,
   CompanyProfile,
   CsvRow,
   StepId,
@@ -36,9 +35,6 @@ export interface PlanificacionState {
   objective: string;
   serviceTime: number;
   capacityEnabled: boolean;
-  optimizerType: string;
-  optimizers: OptimizerEngine[];
-  optimizersLoading: boolean;
   // Zones
   zones: Zone[];
   showZones: boolean;
@@ -89,7 +85,6 @@ export interface PlanificacionActions {
   setObjective: (objective: string) => void;
   setServiceTime: (time: number) => void;
   setCapacityEnabled: (enabled: boolean) => void;
-  setOptimizerType: (type: string) => void;
   setShowZones: (show: boolean) => void;
   // Submit
   handleSubmit: () => Promise<void>;

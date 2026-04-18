@@ -27,8 +27,6 @@ import {
   type OptimizationConfig as VroomOptConfig,
   optimizeRoutes as vroomOptimizeRoutes,
 } from "../vroom-optimizer";
-import { selectOptimizer } from "../optimizer-factory";
-import type { OptimizerType } from "../optimizer-interface";
 import {
   createZoneBatches,
   getDayOfWeek,
@@ -44,7 +42,6 @@ import type {
   OptimizationStop,
 } from "./types";
 import { groupOrdersByLocation, type OrderGroupMap } from "./prepare";
-import { runViaAdapter } from "./adapter";
 import { formatArrivalTime, parseHHmmToSeconds } from "./postprocess";
 import { sleep } from "./utils";
 
@@ -291,10 +288,9 @@ export async function runOptimization(
     return Math.round((twStart - arrivalSeconds) / 60);
   }
 
-  // === Engine Selection ===
-  const requestedEngine = (config.optimizerType as OptimizerType) || "VROOM";
-  const selectedEngine = await selectOptimizer(ordersWithLocation.length, selectedVehicles.length, requestedEngine);
-  const engineUsed = selectedEngine.name;
+  // === Engine ===
+  // VROOM is the only supported engine after the PyVRP removal.
+  const engineUsed = "VROOM";
 
   // Prepare vehicles with zone assignments
   const vehiclesWithZones = selectedVehicles.map((vehicle) => ({
@@ -587,10 +583,12 @@ export async function runOptimization(
           breakTimeEnd: vehicle.breakTimeEnd ?? undefined,
         }));
 
-      // Run optimization for this batch (VROOM or PyVRP via adapter)
-      const batchResult = engineUsed === "VROOM"
-        ? await vroomOptimizeRoutes(batchOrdersForVroom, batchVehiclesForVroom, vroomConfig)
-        : await runViaAdapter(selectedEngine, batchOrdersForVroom, batchVehiclesForVroom, vroomConfig);
+      // Run optimization for this batch (VROOM — sole supported engine).
+      const batchResult = await vroomOptimizeRoutes(
+        batchOrdersForVroom,
+        batchVehiclesForVroom,
+        vroomConfig,
+      );
 
       // Add batch unassigned orders (expand grouped orders)
       for (const unassigned of batchResult.unassigned) {
@@ -803,10 +801,12 @@ export async function runOptimization(
     await updateJobProgress(jobId || input.configurationId, 30);
     checkAbort();
 
-    // Run optimization (VROOM or PyVRP via adapter)
-    const vroomResult = engineUsed === "VROOM"
-      ? await vroomOptimizeRoutes(ordersForVroom, vehiclesForVroom, vroomConfig)
-      : await runViaAdapter(selectedEngine, ordersForVroom, vehiclesForVroom, vroomConfig);
+    // Run optimization (VROOM — sole supported engine).
+    const vroomResult = await vroomOptimizeRoutes(
+      ordersForVroom,
+      vehiclesForVroom,
+      vroomConfig,
+    );
 
     // Add unassigned orders (expand grouped orders)
     for (const unassigned of vroomResult.unassigned) {

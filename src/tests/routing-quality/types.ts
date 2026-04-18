@@ -26,6 +26,4 @@ export interface Scenario {
   vehicles: OptimizerVehicle[];
   config: OptimizerConfig;
   expected: ScenarioExpectations;
-  /** Exercise only specific solvers. Defaults to both. */
-  solvers?: ("VROOM" | "PYVRP")[];
 }

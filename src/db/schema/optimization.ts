@@ -55,8 +55,8 @@ export const optimizationConfigurations = pgTable(
     // Strategy parameters
     penaltyFactor: integer("penalty_factor").notNull().default(3),
     maxRoutes: integer("max_routes"),
-    // Engine selection
-    optimizerType: varchar("optimizer_type", { length: 20 }).notNull().default("VROOM"), // VROOM, PYVRP, AUTO
+    // Engine selection — VROOM is the only supported value (legacy column kept for data).
+    optimizerType: varchar("optimizer_type", { length: 20 }).notNull().default("VROOM"),
     // Metadata
     status: varchar("status", { length: 50 }).notNull().default("DRAFT"), // DRAFT, CONFIGURED, CONFIRMED
     confirmedAt: timestamp("confirmed_at"),

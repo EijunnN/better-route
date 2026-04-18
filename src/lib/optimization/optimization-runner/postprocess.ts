@@ -6,7 +6,7 @@ export function parseHHmmToSeconds(hhmm: string): number | null {
 }
 
 // Helper: convert seconds since midnight to HH:mm string
-// Both VROOM and PyVRP return arrival times as seconds since midnight (local time).
+// VROOM returns arrival times as seconds since midnight (local time).
 // Using new Date(seconds * 1000) would create a UTC timestamp that shifts
 // by the user's timezone offset (e.g., -5h for Peru), producing wrong times.
 export function formatArrivalTime(secondsSinceMidnight: number): string {

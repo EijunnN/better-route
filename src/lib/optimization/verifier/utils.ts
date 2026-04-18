@@ -22,12 +22,11 @@ export function secondsToHHMM(seconds: number): string {
 }
 
 /**
- * Resolve arrival time from solver output. VROOM returns epoch seconds for a given
- * reference date; PyVRP returns seconds since start-of-day. Both are expressed in the
- * same numeric range (0..86400) when date is normalized, so we treat arrivalTime as
- * "seconds since 00:00" for verifier purposes.
+ * Resolve arrival time from solver output. VROOM returns epoch seconds for a
+ * given reference date; when the date is normalized this falls in 0..86400,
+ * so we treat arrivalTime as "seconds since 00:00" for verifier purposes.
  *
- * If a solver reports absolute timestamps > 86400 we modulo-normalize.
+ * If the solver ever reports absolute timestamps > 86400 we modulo-normalize.
  */
 export function normalizeArrivalSeconds(
   arrivalTime: number | undefined,

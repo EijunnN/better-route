@@ -1,8 +1,8 @@
 /**
- * Optimizer Interface - Common contract for route optimization engines
+ * Optimizer Interface - Contract for the route optimization engine.
  *
- * This interface allows swapping between different optimization backends
- * (VROOM, PyVRP, etc.) while maintaining a consistent API.
+ * VROOM is the only supported backend. The interface is preserved so the
+ * verifier and tests can continue to depend on stable input/output shapes.
  */
 
 import type { ProfileSchema } from "@/lib/orders/profile-schema";
@@ -197,7 +197,7 @@ export interface OptimizerCapabilities {
 // OPTIMIZER TYPE ENUM
 // ============================================
 
-export type OptimizerType = "VROOM" | "PYVRP" | "AUTO";
+export type OptimizerType = "VROOM";
 
 export interface OptimizerInfo {
   type: OptimizerType;

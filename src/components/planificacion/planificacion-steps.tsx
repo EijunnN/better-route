@@ -15,12 +15,10 @@ import {
   Route,
   Search,
   Settings2,
-  Target,
   Trash2,
   Truck,
   Upload,
   User,
-  Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -514,96 +512,6 @@ export function ConfigStep() {
                 <p className="font-semibold text-lg">{state.selectedOrderIds.length}</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Optimizer Engine */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Motor de optimización</CardTitle>
-            <CardDescription className="text-xs">
-              Selecciona el algoritmo de optimización
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {state.optimizersLoading ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-5 h-5 animate-spin" />
-              </div>
-            ) : state.optimizers.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-4">
-                No hay motores disponibles
-              </div>
-            ) : (
-              state.optimizers.map((opt) => (
-                <button
-                  key={opt.type}
-                  type="button"
-                  onClick={() => opt.available && actions.setOptimizerType(opt.type)}
-                  disabled={!opt.available}
-                  className={`w-full p-3 rounded-lg border text-left transition-colors ${
-                    state.optimizerType === opt.type
-                      ? "border-primary bg-primary/5"
-                      : opt.available
-                        ? "border-border hover:border-primary/50"
-                        : "border-border opacity-50 cursor-not-allowed"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {opt.type === "VROOM" ? (
-                      <Zap className="w-4 h-4 text-yellow-500" />
-                    ) : (
-                      <Target className="w-4 h-4 text-blue-500" />
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">
-                          {opt.type === "VROOM" ? "Optimización Rápida" : "Optimización Avanzada"}
-                        </span>
-                        {!opt.available && (
-                          <Badge variant="outline" className="text-[10px]">
-                            No disponible
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {opt.type === "VROOM"
-                          ? "Rutas en segundos - Ideal para planificación diaria"
-                          : "Máxima calidad - Para optimización a largo plazo"}
-                      </p>
-                    </div>
-                  </div>
-                  {opt.available && (
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      <Badge variant="secondary" className="text-[10px]">
-                        {opt.capabilities.speed}
-                      </Badge>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {opt.capabilities.quality}
-                      </Badge>
-                      {opt.capabilities.supportsTimeWindows && (
-                        <Badge variant="outline" className="text-[10px]">
-                          Ventanas horarias
-                        </Badge>
-                      )}
-                      {opt.capabilities.supportsSkills && (
-                        <Badge variant="outline" className="text-[10px]">
-                          Habilidades
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </button>
-              ))
-            )}
-            {state.optimizerType && state.optimizerType !== "VROOM" && (
-              <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800">
-                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Este motor no soporta horarios de descanso (refrigerio) de los vehículos. Si tus conductores tienen breaks configurados, usa <strong>Optimización Rápida</strong> para respetarlos.
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
 

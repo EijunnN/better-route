@@ -12,7 +12,7 @@ import {
   buildOptimizationResult,
 } from "../setup/test-data";
 
-// Mock for engines route — @/lib/optimization barrel
+// Mock for engines route — @/lib/optimization barrel (VROOM only)
 mock.module("@/lib/optimization", () => ({
   getAvailableOptimizers: async () => [
     {
@@ -31,24 +31,6 @@ mock.module("@/lib/optimization", () => ({
         maxVehicles: 200,
         typicalSpeed: "fast",
         qualityLevel: "good",
-      },
-    },
-    {
-      type: "PYVRP",
-      name: "PYVRP",
-      displayName: "PyVRP",
-      description: "Quality optimization",
-      available: false,
-      capabilities: {
-        supportsTimeWindows: true,
-        supportsSkills: true,
-        supportsMultiDimensionalCapacity: true,
-        supportsPriorities: true,
-        supportsBalancing: true,
-        maxOrders: -1,
-        maxVehicles: -1,
-        typicalSpeed: "slow",
-        qualityLevel: "excellent",
       },
     },
   ],

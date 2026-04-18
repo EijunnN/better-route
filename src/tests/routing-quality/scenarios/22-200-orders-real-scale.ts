@@ -3,10 +3,8 @@ import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
 
 /**
  * Realistic morning import size. 200 orders with mixed weights +
- * occasional time windows, 10 vehicles. Validates that both solvers
- * (VROOM especially) handle CLARO-scale inputs without timing out or
- * producing corrupt routes. PyVRP may run up against its default
- * timeout on this case — that's expected and documented.
+ * occasional time windows, 10 vehicles. Validates that VROOM handles
+ * CLARO-scale inputs without timing out or producing corrupt routes.
  */
 export const scenario: Scenario = {
   name: "22-200-orders-real-scale",
@@ -34,9 +32,10 @@ export const scenario: Scenario = {
   config: baseConfig({ timeoutMs: 120000 }),
   expected: {
     maxHardViolations: 0,
-    // At this scale we allow some unassigned — not every combo of
-    // window + capacity fits.
-    maxUnassigned: 40,
+    // VROOM handles this size comfortably; ~22 orders fall out of the
+    // feasible envelope due to capacity × time-window interactions on this
+    // fixture. Allow 25 as operational headroom without masking regressions.
+    maxUnassigned: 25,
     minRoutes: 3,
     maxRoutes: 10,
   },

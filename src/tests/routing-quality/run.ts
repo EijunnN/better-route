@@ -1,8 +1,8 @@
 /**
  * Routing quality test runner.
  *
- * Runs every scenario against VROOM and PyVRP, applies the constraint verifier,
- * and emits:
+ * Runs every scenario against VROOM (the only supported solver after PyVRP
+ * was removed), applies the constraint verifier, and emits:
  *  - Per-scenario JSON report in results/routing-quality/<name>.json
  *  - Aggregated markdown report in docs/routing-quality-report.md
  */
@@ -11,7 +11,6 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { vroomAdapter } from "@/lib/optimization/vroom-adapter";
-import { pyvrpAdapter } from "@/lib/optimization/pyvrp-adapter";
 import type {
   IOptimizer,
   OptimizationResult,
@@ -121,7 +120,7 @@ function formatSummary(entries: RunEntry[]): string {
   lines.push("");
   lines.push(`Generated: ${new Date().toISOString()}`);
   lines.push("");
-  lines.push(`Scenarios: ${SCENARIOS.length} × 2 solvers = ${entries.length} runs`);
+  lines.push(`Scenarios: ${SCENARIOS.length} × 1 solver = ${entries.length} runs`);
   lines.push("");
   const passCount = entries.filter((e) => e.ok).length;
   lines.push(`Passed: **${passCount}** / ${entries.length}`);
@@ -129,14 +128,11 @@ function formatSummary(entries: RunEntry[]): string {
 
   lines.push("## Summary table");
   lines.push("");
-  lines.push("| Scenario | VROOM | PyVRP |");
-  lines.push("|---|---|---|");
+  lines.push("| Scenario | VROOM |");
+  lines.push("|---|---|");
   for (const scenario of SCENARIOS) {
     const vroom = entries.find(
       (e) => e.scenario === scenario.name && e.solver === "VROOM",
-    );
-    const pyvrp = entries.find(
-      (e) => e.scenario === scenario.name && e.solver === "PYVRP",
     );
     const cell = (e: RunEntry | undefined) => {
       if (!e) return "skipped";
@@ -150,7 +146,7 @@ function formatSummary(entries: RunEntry[]): string {
       const un = e.report?.totals.ordersUnassigned ?? 0;
       return `✅ ${un}un ${e.durationMs}ms`;
     };
-    lines.push(`| ${scenario.name} | ${cell(vroom)} | ${cell(pyvrp)} |`);
+    lines.push(`| ${scenario.name} | ${cell(vroom)} |`);
   }
   lines.push("");
 
@@ -161,51 +157,49 @@ function formatSummary(entries: RunEntry[]): string {
     lines.push("");
     lines.push(scenario.description);
     lines.push("");
-    for (const solverName of ["VROOM", "PYVRP"]) {
-      const e = entries.find(
-        (x) => x.scenario === scenario.name && x.solver === solverName,
-      );
-      if (!e) continue;
-      lines.push(`**${solverName}** — ${e.ok ? "PASS" : "FAIL"} in ${e.durationMs}ms`);
+    const e = entries.find(
+      (x) => x.scenario === scenario.name && x.solver === "VROOM",
+    );
+    if (!e) continue;
+    lines.push(`**VROOM** — ${e.ok ? "PASS" : "FAIL"} in ${e.durationMs}ms`);
+    lines.push("");
+    if (e.error) {
+      lines.push(`Error: \`${e.error}\``);
       lines.push("");
-      if (e.error) {
-        lines.push(`Error: \`${e.error}\``);
-        lines.push("");
-        continue;
-      }
-      const r = e.report;
-      if (!r) continue;
-      lines.push(
-        `- routes=${r.totals.routes}, assigned=${r.totals.ordersAssigned}, unassigned=${r.totals.ordersUnassigned}`,
-      );
-      lines.push(
-        `- violations: HARD=${r.summary.hard}, SOFT=${r.summary.soft}, INFO=${r.summary.info}`,
-      );
-      if (Object.keys(r.summary.byCode).length > 0) {
-        lines.push("- breakdown:");
-        for (const [code, count] of Object.entries(r.summary.byCode)) {
-          lines.push(`  - \`${code}\`: ${count}`);
-        }
-      }
-      if (e.expectationFailures.length > 0) {
-        lines.push("- expectation failures:");
-        for (const f of e.expectationFailures) {
-          lines.push(`  - ${f}`);
-        }
-      }
-      // First few hard violations, for context
-      const firstHard = r.violations.filter((v) => v.severity === "HARD").slice(0, 3);
-      if (firstHard.length > 0) {
-        lines.push("- sample hard violations:");
-        for (const v of firstHard) {
-          const where = v.trackingId ? ` (order ${v.trackingId})` : v.vehicleIdentifier ? ` (veh ${v.vehicleIdentifier})` : "";
-          const exp = v.expected !== undefined ? ` expected=${v.expected}` : "";
-          const act = v.actual !== undefined ? ` actual=${v.actual}` : "";
-          lines.push(`  - [${v.code}]${where}${exp}${act}`);
-        }
-      }
-      lines.push("");
+      continue;
     }
+    const r = e.report;
+    if (!r) continue;
+    lines.push(
+      `- routes=${r.totals.routes}, assigned=${r.totals.ordersAssigned}, unassigned=${r.totals.ordersUnassigned}`,
+    );
+    lines.push(
+      `- violations: HARD=${r.summary.hard}, SOFT=${r.summary.soft}, INFO=${r.summary.info}`,
+    );
+    if (Object.keys(r.summary.byCode).length > 0) {
+      lines.push("- breakdown:");
+      for (const [code, count] of Object.entries(r.summary.byCode)) {
+        lines.push(`  - \`${code}\`: ${count}`);
+      }
+    }
+    if (e.expectationFailures.length > 0) {
+      lines.push("- expectation failures:");
+      for (const f of e.expectationFailures) {
+        lines.push(`  - ${f}`);
+      }
+    }
+    // First few hard violations, for context
+    const firstHard = r.violations.filter((v) => v.severity === "HARD").slice(0, 3);
+    if (firstHard.length > 0) {
+      lines.push("- sample hard violations:");
+      for (const v of firstHard) {
+        const where = v.trackingId ? ` (order ${v.trackingId})` : v.vehicleIdentifier ? ` (veh ${v.vehicleIdentifier})` : "";
+        const exp = v.expected !== undefined ? ` expected=${v.expected}` : "";
+        const act = v.actual !== undefined ? ` actual=${v.actual}` : "";
+        lines.push(`  - [${v.code}]${where}${exp}${act}`);
+      }
+    }
+    lines.push("");
   }
 
   return lines.join("\n");
@@ -217,21 +211,16 @@ async function main() {
   const entries: RunEntry[] = [];
 
   for (const scenario of SCENARIOS) {
-    const solvers = scenario.solvers ?? ["VROOM", "PYVRP"];
-    for (const solverName of solvers) {
-      const solver: IOptimizer =
-        solverName === "VROOM" ? vroomAdapter : pyvrpAdapter;
-      process.stdout.write(`  → ${scenario.name} / ${solverName} ...`);
-      const entry = await runScenarioOnSolver(scenario, solver);
-      entries.push(entry);
-      const status = entry.ok ? "✓" : entry.error ? "⚠" : "✗";
-      process.stdout.write(` ${status} (${entry.durationMs}ms)\n`);
-      if (entry.report) {
-        await writeFile(
-          resolve(OUT_DIR, `${scenario.name}.${solverName.toLowerCase()}.json`),
-          JSON.stringify(entry.report, null, 2),
-        );
-      }
+    process.stdout.write(`  → ${scenario.name} / VROOM ...`);
+    const entry = await runScenarioOnSolver(scenario, vroomAdapter);
+    entries.push(entry);
+    const status = entry.ok ? "✓" : entry.error ? "⚠" : "✗";
+    process.stdout.write(` ${status} (${entry.durationMs}ms)\n`);
+    if (entry.report) {
+      await writeFile(
+        resolve(OUT_DIR, `${scenario.name}.vroom.json`),
+        JSON.stringify(entry.report, null, 2),
+      );
     }
   }
 

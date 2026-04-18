@@ -6,7 +6,6 @@ import type {
   Fleet,
   Order,
   Zone,
-  OptimizerEngine,
   CompanyProfile,
   CsvRow,
   StepId,
@@ -51,9 +50,6 @@ export function usePlanificacionState() {
   const [objective, setObjective] = useState("BALANCED");
   const [serviceTime, setServiceTime] = useState(10);
   const [capacityEnabled, setCapacityEnabled] = useState(true);
-  const [optimizerType, setOptimizerType] = useState("VROOM");
-  const [optimizers, setOptimizers] = useState<OptimizerEngine[]>([]);
-  const [optimizersLoading, setOptimizersLoading] = useState(true);
 
   // Zones state
   const [zones, setZones] = useState<Zone[]>([]);
@@ -141,12 +137,6 @@ export function usePlanificacionState() {
     setServiceTime,
     capacityEnabled,
     setCapacityEnabled,
-    optimizerType,
-    setOptimizerType,
-    optimizers,
-    setOptimizers,
-    optimizersLoading,
-    setOptimizersLoading,
     // zones
     zones,
     setZones,

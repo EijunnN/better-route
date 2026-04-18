@@ -38,7 +38,6 @@ export type {
   Fleet,
   Order,
   Zone,
-  OptimizerEngine,
   CompanyProfile,
   CsvRow,
   StepId,

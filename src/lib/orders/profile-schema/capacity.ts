@@ -1,8 +1,8 @@
 /**
  * Build solver capacity vectors from a ProfileSchema.
  *
- * The solver (VROOM / PyVRP) takes a fixed-size delivery vector per order
- * and matching capacity vector per vehicle. Each slot corresponds to one
+ * The solver (VROOM) takes a fixed-size delivery vector per order and a
+ * matching capacity vector per vehicle. Each slot corresponds to one
  * dimension in `schema.activeDimensions`, in that exact order.
  */
 
