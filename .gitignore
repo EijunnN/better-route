@@ -47,3 +47,8 @@ docker/osrm/*.osrm*
 # Sample data and optimization results (not source)
 /example
 /results
+
+# Playwright MCP scratch artifacts
+/.playwright-mcp
+*.screenshot.png
+01-existing-plan.png
