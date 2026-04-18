@@ -1143,6 +1143,81 @@ export async function runOptimization(
     },
   };
 
+  // ── Constraint verification ───────────────────────────────────────
+  // Run the independent verifier over the final plan so the UI can surface
+  // any constraint the solver failed to respect (time windows, capacity,
+  // skills, workday, etc.). Never throws — pure function.
+  try {
+    const { verifyRunnerResult } = await import("../verifier");
+    const verification = verifyRunnerResult({
+      orders: ordersWithLocation.map((o) => ({
+        id: o.id,
+        trackingId: o.trackingId,
+        address: o.address,
+        latitude: o.latitude,
+        longitude: o.longitude,
+        weightRequired: o.weightRequired,
+        volumeRequired: o.volumeRequired,
+        orderValue: o.orderValue,
+        unitsRequired: o.unitsRequired,
+        orderType: o.orderType ?? null,
+        priority: o.priority ?? null,
+        timeWindowStart: o.timeWindowStart ?? null,
+        timeWindowEnd: o.timeWindowEnd ?? null,
+        serviceTime: o.serviceTime,
+      })),
+      vehicles: selectedVehicles.map((v) => ({
+        id: v.id,
+        plate: v.plate ?? v.name,
+        maxWeight: v.weightCapacity,
+        maxVolume: v.volumeCapacity,
+        maxValueCapacity: v.maxValueCapacity,
+        maxUnitsCapacity: v.maxUnitsCapacity,
+        maxOrders: v.maxOrders,
+        originLatitude: v.originLatitude,
+        originLongitude: v.originLongitude,
+        skills: [],
+        workdayStart: v.workdayStart ?? null,
+        workdayEnd: v.workdayEnd ?? null,
+        hasBreakTime: v.hasBreakTime,
+        breakDuration: v.breakDuration,
+        breakTimeStart: v.breakTimeStart,
+        breakTimeEnd: v.breakTimeEnd,
+      })),
+      config: {
+        depot: {
+          latitude: parseFloat(config.depotLatitude),
+          longitude: parseFloat(config.depotLongitude),
+          timeWindowStart: vroomConfig.depot.timeWindowStart ?? null,
+          timeWindowEnd: vroomConfig.depot.timeWindowEnd ?? null,
+        },
+        objective: vroomConfig.objective,
+        maxDistanceKm: vroomConfig.maxDistanceKm ?? null,
+        maxTravelTimeMinutes: vroomConfig.maxTravelTimeMinutes ?? null,
+      },
+      result,
+    });
+    result.verification = {
+      optimizer: verification.optimizer,
+      summary: verification.summary,
+      totals: verification.totals,
+      violations: verification.violations.map((v) => ({
+        code: v.code,
+        severity: v.severity,
+        message: v.message,
+        vehicleId: v.vehicleId,
+        vehicleIdentifier: v.vehicleIdentifier,
+        orderId: v.orderId,
+        trackingId: v.trackingId,
+        stopSequence: v.stopSequence,
+        expected: v.expected,
+        actual: v.actual,
+      })),
+    };
+  } catch (verifyErr) {
+    console.error("[Optimization] verifier failed (non-fatal):", verifyErr);
+  }
+
   await updateJobProgress(jobId || input.configurationId, 100);
   checkAbort();
 

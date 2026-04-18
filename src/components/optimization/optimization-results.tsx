@@ -120,6 +120,33 @@ interface OptimizationResultsProps {
       latitude: number;
       longitude: number;
     };
+    verification?: {
+      optimizer: string;
+      summary: {
+        hard: number;
+        soft: number;
+        info: number;
+        byCode: Record<string, number>;
+      };
+      totals: {
+        ordersInput: number;
+        ordersAssigned: number;
+        ordersUnassigned: number;
+        routes: number;
+      };
+      violations: Array<{
+        code: string;
+        severity: "HARD" | "SOFT" | "INFO";
+        message: string;
+        vehicleId?: string;
+        vehicleIdentifier?: string;
+        orderId?: string;
+        trackingId?: string;
+        stopSequence?: number;
+        expected?: string | number;
+        actual?: string | number;
+      }>;
+    };
   };
   onReoptimize?: () => void;
   onConfirm?: () => void;
@@ -574,6 +601,95 @@ export function OptimizationResults({
       {/* Assignment Quality Metrics */}
       {result.assignmentMetrics && (
         <AssignmentMetricsCard metrics={result.assignmentMetrics} />
+      )}
+
+      {/* Verification panel — only render when the verifier produced output */}
+      {result.verification && (
+        (result.verification.summary.hard > 0 ||
+          result.verification.summary.soft > 0) && (
+          <Card
+            className={
+              result.verification.summary.hard > 0
+                ? "border-red-300 bg-red-50/60 dark:bg-red-950/20"
+                : "border-orange-300 bg-orange-50/60 dark:bg-orange-950/20"
+            }
+          >
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle
+                  className={
+                    result.verification.summary.hard > 0
+                      ? "h-4 w-4 text-red-600"
+                      : "h-4 w-4 text-orange-600"
+                  }
+                />
+                Verificación de restricciones
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  {result.verification.summary.hard} críticas ·{" "}
+                  {result.verification.summary.soft} soft
+                </span>
+              </CardTitle>
+              <CardDescription>
+                {result.verification.summary.hard > 0
+                  ? "El plan viola restricciones definidas en el input. Revisar antes de confirmar."
+                  : "El plan respeta todas las restricciones duras pero tiene observaciones menores."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-1.5">
+              {result.verification.violations
+                .filter((v) => v.severity !== "INFO")
+                .slice(0, 8)
+                .map((v, i) => (
+                  <div
+                    key={`${v.code}-${v.orderId ?? v.vehicleId ?? i}`}
+                    className="text-xs flex items-start gap-2"
+                  >
+                    <span
+                      className={
+                        v.severity === "HARD"
+                          ? "inline-block px-1.5 py-0.5 rounded bg-red-200 text-red-900 text-[10px] font-medium"
+                          : "inline-block px-1.5 py-0.5 rounded bg-orange-200 text-orange-900 text-[10px] font-medium"
+                      }
+                    >
+                      {v.severity}
+                    </span>
+                    <span className="flex-1">
+                      <span className="font-mono text-[10px] text-muted-foreground mr-1">
+                        {v.code}
+                      </span>
+                      {v.message}
+                      {v.trackingId && (
+                        <span className="text-muted-foreground">
+                          {" "}· pedido {v.trackingId}
+                        </span>
+                      )}
+                      {v.vehicleIdentifier && !v.trackingId && (
+                        <span className="text-muted-foreground">
+                          {" "}· vehículo {v.vehicleIdentifier}
+                        </span>
+                      )}
+                      {v.expected !== undefined && (
+                        <span className="text-muted-foreground">
+                          {" "}(esperado {String(v.expected)}, real{" "}
+                          {String(v.actual)})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              {result.verification.violations.filter((v) => v.severity !== "INFO")
+                .length > 8 && (
+                <p className="text-xs text-muted-foreground pt-1">
+                  +{" "}
+                  {result.verification.violations.filter(
+                    (v) => v.severity !== "INFO",
+                  ).length - 8}{" "}
+                  violaciones adicionales
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )
       )}
 
       {/* Tabs */}

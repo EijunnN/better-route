@@ -573,6 +573,30 @@ export function DashboardHeader() {
             }
           />
         )}
+        {result.verification && (
+          <KpiBadge
+            icon={AlertTriangle}
+            label={
+              result.verification.summary.hard === 0 &&
+              result.verification.summary.soft === 0
+                ? "sin viol."
+                : "viol."
+            }
+            value={
+              result.verification.summary.hard === 0 &&
+              result.verification.summary.soft === 0
+                ? "0"
+                : `${result.verification.summary.hard}H ${result.verification.summary.soft}S`
+            }
+            status={
+              result.verification.summary.hard > 0
+                ? "error"
+                : result.verification.summary.soft > 0
+                  ? "warning"
+                  : "success"
+            }
+          />
+        )}
       </div>
 
       {/* Actions */}

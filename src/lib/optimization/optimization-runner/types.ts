@@ -45,6 +45,39 @@ export interface OptimizationRoute {
   };
 }
 
+/**
+ * Output of the constraint verifier — attached to every completed job so the
+ * UI and consumers can see which constraints the solver respected vs. violated.
+ * Keep this shape stable; it's persisted in optimizationJobs.result (jsonb).
+ */
+export interface OptimizationVerification {
+  optimizer: string;
+  summary: {
+    hard: number;
+    soft: number;
+    info: number;
+    byCode: Record<string, number>;
+  };
+  totals: {
+    ordersInput: number;
+    ordersAssigned: number;
+    ordersUnassigned: number;
+    routes: number;
+  };
+  violations: Array<{
+    code: string;
+    severity: "HARD" | "SOFT" | "INFO";
+    message: string;
+    vehicleId?: string;
+    vehicleIdentifier?: string;
+    orderId?: string;
+    trackingId?: string;
+    stopSequence?: number;
+    expected?: string | number;
+    actual?: string | number;
+  }>;
+}
+
 export interface OptimizationResult {
   routes: OptimizationRoute[];
   unassignedOrders: Array<{
@@ -96,6 +129,7 @@ export interface OptimizationResult {
     latitude: number;
     longitude: number;
   };
+  verification?: OptimizationVerification;
 }
 
 export interface OptimizationInput {

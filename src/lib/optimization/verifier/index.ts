@@ -16,3 +16,9 @@ export { checkPriority } from "./check-priority";
 export { checkTravelLimits } from "./check-travel-limits";
 export { checkUnassigned } from "./check-unassigned";
 export { hhmmToSeconds, secondsToHHMM } from "./utils";
+export {
+  verifyRunnerResult,
+  type RunnerOrderInput,
+  type RunnerVehicleInput,
+  type RunnerConfigInput,
+} from "./verify-runner";

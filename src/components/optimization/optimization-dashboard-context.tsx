@@ -112,6 +112,33 @@ export interface OptimizationResult {
     latitude: number;
     longitude: number;
   };
+  verification?: {
+    optimizer: string;
+    summary: {
+      hard: number;
+      soft: number;
+      info: number;
+      byCode: Record<string, number>;
+    };
+    totals: {
+      ordersInput: number;
+      ordersAssigned: number;
+      ordersUnassigned: number;
+      routes: number;
+    };
+    violations: Array<{
+      code: string;
+      severity: "HARD" | "SOFT" | "INFO";
+      message: string;
+      vehicleId?: string;
+      vehicleIdentifier?: string;
+      orderId?: string;
+      trackingId?: string;
+      stopSequence?: number;
+      expected?: string | number;
+      actual?: string | number;
+    }>;
+  };
 }
 
 export interface SelectableOrder {
