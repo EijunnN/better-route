@@ -30,6 +30,27 @@ const DEFAULT_PRIORITY_MAPPING: PriorityMap = {
 };
 
 /**
+ * Synthesize a ProfileSchema without hitting the database. Useful as a fallback
+ * when legacy callers pass `undefined` as the profile (so the solver still has
+ * a vector layout) and inside tests that don't need a real company.
+ */
+export function defaultProfileSchema(
+  companyId = "__default__",
+): ProfileSchema {
+  return {
+    companyId,
+    profileId: "default",
+    activeDimensions: DEFAULT_DIMENSIONS,
+    priorityMapping: DEFAULT_PRIORITY_MAPPING,
+    requireOrderType: false,
+    fields: [],
+    timeWindowPresets: [],
+    defaults: {},
+    resolvedAt: new Date().toISOString(),
+  };
+}
+
+/**
  * Resolve the full CSV / domain profile schema for one company.
  * One DB round trip per resource (profile, custom fields, TW presets), in parallel.
  *

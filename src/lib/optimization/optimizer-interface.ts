@@ -5,7 +5,7 @@
  * (VROOM, PyVRP, etc.) while maintaining a consistent API.
  */
 
-import type { CompanyOptimizationProfile } from "./capacity-mapper";
+import type { ProfileSchema } from "@/lib/orders/profile-schema";
 
 // ============================================
 // INPUT TYPES
@@ -71,7 +71,7 @@ export interface OptimizerDepot {
 export interface OptimizerConfig {
   depot: OptimizerDepot;
   objective: "DISTANCE" | "TIME" | "BALANCED";
-  profile?: CompanyOptimizationProfile;
+  profile?: ProfileSchema;
   // Balancing
   balanceVisits?: boolean;
   // Constraints

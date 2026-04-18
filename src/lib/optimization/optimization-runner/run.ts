@@ -1,7 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  companyOptimizationProfiles,
   optimizationConfigurations,
   optimizationPresets,
   orders,
@@ -37,7 +36,7 @@ import {
   type VehicleZoneAssignment,
   type ZoneData,
 } from "../../geo/zone-utils";
-import { parseProfile } from "../capacity-mapper";
+import { resolveProfileSchema } from "@/lib/orders/profile-schema";
 import type {
   OptimizationInput,
   OptimizationResult,
@@ -380,18 +379,9 @@ export async function runOptimization(
   const globalGroupMap: OrderGroupMap = new Map();
 
   // Load company optimization profile for dynamic capacity mapping
-  const [companyProfileRow] = await db
-    .select()
-    .from(companyOptimizationProfiles)
-    .where(
-      and(
-        eq(companyOptimizationProfiles.companyId, input.companyId),
-        eq(companyOptimizationProfiles.active, true),
-      ),
-    )
-    .limit(1);
-
-  const companyProfile = parseProfile(companyProfileRow ?? null);
+  // Resolve the unified ProfileSchema for this company (capacity dimensions,
+  // priority mapping, custom field defs, TW presets — one round trip).
+  const companyProfile = await resolveProfileSchema(input.companyId);
 
   // Optimization config with preset values
   const vroomConfig: VroomOptConfig = {

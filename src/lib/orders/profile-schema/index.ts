@@ -9,7 +9,7 @@ export type {
   RowValidationResult,
 } from "./types";
 
-export { resolveProfileSchema } from "./resolve";
+export { resolveProfileSchema, defaultProfileSchema } from "./resolve";
 export {
   validateCsvHeaders,
   validateCsvRow,

@@ -28,12 +28,12 @@ import {
   type BalanceableStop,
 } from "./balance-utils";
 import {
-  type CompanyOptimizationProfile,
-  DEFAULT_PROFILE,
-  mapOrderCapacities,
-  mapVehicleCapacities,
-  getDimensionInfo,
-} from "./capacity-mapper";
+  buildOrderCapacityVector,
+  buildVehicleCapacityVector,
+  defaultProfileSchema,
+  resolveOrderPriority,
+  type ProfileSchema,
+} from "@/lib/orders/profile-schema";
 
 // Our domain types
 export interface OrderForOptimization {
@@ -91,7 +91,7 @@ export interface OptimizationConfig {
   maxRoutes?: number;
   balanceFactor?: number;
   // Company-specific optimization profile (optional, defaults to weight+volume)
-  profile?: CompanyOptimizationProfile;
+  profile?: ProfileSchema;
   // New options for balancing and limits
   balanceVisits?: boolean; // Enable post-optimization balancing
   maxDistanceKm?: number; // Maximum distance per route (km)
@@ -240,12 +240,12 @@ async function optimizeWithVroom(
   const orderIdToIndex = new Map<number, string>();
   const vehicleIdToIndex = new Map<number, string>();
 
-  // Get optimization profile (use default if not specified)
-  let profile = config.profile || DEFAULT_PROFILE;
+  // Get optimization profile (use default if not specified).
+  let profile: ProfileSchema = config.profile || defaultProfileSchema();
 
-  // Safeguard: If no active dimensions, fall back to default profile
+  // Safeguard: a schema without dimensions can't produce valid capacity vectors.
   if (!profile.activeDimensions || profile.activeDimensions.length === 0) {
-    profile = DEFAULT_PROFILE;
+    profile = defaultProfileSchema(profile.companyId);
   }
 
   // Calculate balanced maxOrders if balancing is enabled (pre-balancing)
@@ -284,24 +284,23 @@ async function optimizeWithVroom(
       : order.timeWindowEnd;
 
     // Map order capacities dynamically based on profile
-    const capacityMapping = mapOrderCapacities(
-      {
-        weightRequired: order.weightRequired,
-        volumeRequired: order.volumeRequired,
-        orderValue: order.orderValue,
-        unitsRequired: order.unitsRequired,
-        orderType: order.orderType,
-        priority: order.priority,
-      },
-      profile,
-    );
+    const capacityInput = {
+      weightRequired: order.weightRequired,
+      volumeRequired: order.volumeRequired,
+      orderValue: order.orderValue,
+      unitsRequired: order.unitsRequired,
+      orderType: order.orderType,
+      priority: order.priority,
+    };
+    const capacityVector = buildOrderCapacityVector(capacityInput, profile);
+    const resolvedPriority = resolveOrderPriority(capacityInput, profile);
 
     return createVroomJob(jobId, order.longitude, order.latitude, {
       description: order.trackingId,
       service: order.serviceTime || 300, // 5 min default
-      delivery: capacityMapping.capacityArray,
+      delivery: capacityVector.values,
       skills,
-      priority: capacityMapping.priority ?? order.priority,
+      priority: resolvedPriority ?? order.priority,
       timeWindowStart: adjustedTimeWindowStart,
       timeWindowEnd: adjustedTimeWindowEnd,
     });
@@ -393,7 +392,7 @@ async function optimizeWithVroom(
     }
 
     // Map vehicle capacities dynamically based on profile
-    const capacityMapping = mapVehicleCapacities(
+    const vehicleCapacityVector = buildVehicleCapacityVector(
       {
         weightCapacity: vehicle.maxWeight,
         volumeCapacity: vehicle.maxVolume,
@@ -409,7 +408,7 @@ async function optimizeWithVroom(
       config.openStart ? undefined : startLatitude,
       {
         description: vehicle.plate,
-        capacity: capacityMapping.capacityArray,
+        capacity: vehicleCapacityVector.values,
         skills,
         timeWindowStart: vehicle.timeWindowStart || config.depot.timeWindowStart,
         timeWindowEnd: vehicle.timeWindowEnd || config.depot.timeWindowEnd,
