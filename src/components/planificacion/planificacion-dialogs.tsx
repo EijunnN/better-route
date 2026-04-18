@@ -58,54 +58,13 @@ export function CsvUploadDialog() {
             </div>
           )}
 
-          {/* Preview table */}
+          {/* Row-count summary. Detailed per-column validation lives in the
+              CsvSchemaGuide above — no second preview table needed. */}
           {state.csvPreview.length > 0 && (
-            <div className="space-y-2">
-              <Label>Vista previa ({state.csvPreview.length} filas)</Label>
-              <div className="border rounded-lg overflow-hidden">
-                <div className="max-h-[300px] overflow-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted sticky top-0">
-                      <tr>
-                        <th className="px-2 py-2 text-left font-medium">Trackcode</th>
-                        <th className="px-2 py-2 text-left font-medium">Cliente</th>
-                        <th className="px-2 py-2 text-left font-medium">Dirección</th>
-                        <th className="px-2 py-2 text-left font-medium">Distrito</th>
-                        <th className="px-2 py-2 text-left font-medium">Coords</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {state.csvPreview.slice(0, 10).map((row, index) => (
-                        <tr key={index} className="border-t">
-                          <td className="px-2 py-1.5 font-mono text-xs">{row.trackcode}</td>
-                          <td className="px-2 py-1.5 truncate max-w-[120px] text-xs">
-                            {row.nombre_cliente || (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                            {row.telefono && (
-                              <span className="block text-muted-foreground">{row.telefono}</span>
-                            )}
-                          </td>
-                          <td className="px-2 py-1.5 truncate max-w-[150px]">{row.direccion}</td>
-                          <td className="px-2 py-1.5">{row.distrito}</td>
-                          <td className="px-2 py-1.5 text-xs text-muted-foreground">
-                            {row.latitud && row.longitud ? (
-                              <span className="text-green-600">OK</span>
-                            ) : (
-                              <span className="text-orange-600">Sin coords</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {state.csvPreview.length > 10 && (
-                  <div className="px-2 py-1.5 bg-muted text-xs text-muted-foreground text-center">
-                    Y {state.csvPreview.length - 10} filas más...
-                  </div>
-                )}
-              </div>
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              Se detectaron <span className="font-medium">{state.csvPreview.length}</span>{" "}
+              fila{state.csvPreview.length === 1 ? "" : "s"} de datos. La validación
+              completa se ejecuta al subir.
             </div>
           )}
         </div>

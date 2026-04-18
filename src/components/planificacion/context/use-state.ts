@@ -74,6 +74,11 @@ export function usePlanificacionState() {
   const [csvPreview, setCsvPreview] = useState<CsvRow[]>([]);
   /** Headers parsed from the picked CSV — fed into CsvSchemaGuide for live validation. */
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  /**
+   * Raw decoded CSV text kept in state so handleCsvUpload can base64-encode it
+   * and POST to /api/orders/import without re-reading the File.
+   */
+  const [csvRawText, setCsvRawText] = useState<string>("");
 
   // Custom field definitions
   const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
@@ -168,6 +173,8 @@ export function usePlanificacionState() {
     setCsvPreview,
     csvHeaders,
     setCsvHeaders,
+    csvRawText,
+    setCsvRawText,
     // field definitions
     fieldDefinitions,
     setFieldDefinitions,

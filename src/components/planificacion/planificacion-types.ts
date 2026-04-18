@@ -82,27 +82,12 @@ export interface CompanyProfile {
   enableOrderType: boolean;
 }
 
-export interface CsvRow {
-  trackcode: string;
-  nombre_cliente: string;
-  direccion: string;
-  referencia: string;
-  departamento: string;
-  provincia: string;
-  distrito: string;
-  latitud: string;
-  longitud: string;
-  telefono: string;
-  valorizado?: string;
-  peso?: string;
-  volumen?: string;
-  unidades?: string;
-  tipo_pedido?: string;
-  prioridad?: string;
-  ventana_horaria_inicio?: string;
-  ventana_horaria_fin?: string;
-  customFields?: Record<string, string>;
-}
+/**
+ * One parsed CSV row keyed by the raw header as it appeared in the file.
+ * The server (/api/orders/import) does the actual mapping + validation via
+ * profile-schema; the client only parses for a lightweight preview.
+ */
+export type CsvRow = Record<string, string>;
 
 export interface FieldDefinition {
   id: string;
