@@ -52,6 +52,14 @@ Los dos solvers están violando restricciones que **deberían** respetar. Esto c
 - Implementar el umbral del `optimizer-factory.ts` correctamente: `preferPyvrpAboveOrders: 500` parece invertido (PyVRP es más lento, no más rápido).
 - Considerar VROOM como default y PyVRP como "premium" para casos chicos donde importe calidad.
 
+### G7 — Órdenes "perdidas" cuando no hay vehículos disponibles
+**Contexto:** Encontrado en la primera corrida del integration-runner contra la DB real.
+**Escenario:** Empresa CLARO tiene 1 vehículo ocupado en un plan confirmado. 13 órdenes PENDING. Al correr `runOptimization()`, el runner loguea `Zone "unzoned" has no available vehicles for FRIDAY. 13 orders will be unassigned.` pero el resultado devuelto tiene `routes=0` Y `unassignedOrders=[]`. Las 13 órdenes no aparecen en ningún lado.
+**Evidencia:** el verifier las detecta como `MISSING_ORDER` HARD (13 violaciones).
+**Causa probable:** el path "no vehicles available for zone" omite el push a `unassignedOrders`.
+**Impacto:** sin el verifier, el usuario vería "plan exitoso con 0 rutas" y sus pedidos desaparecidos sin explicación. Con el verifier, la UI muestra "13 violaciones HARD: MISSING_ORDER" en rojo.
+**Acción:** en `run.ts`, el branch de "sin vehículos para zona" debe push las órdenes a `unassignedOrders` con razón `"No hay vehículos disponibles para la zona/día"`.
+
 ## Limitaciones conocidas del verificador (v0)
 
 ### L1 — Interpretación ambigua de `arrival_time`

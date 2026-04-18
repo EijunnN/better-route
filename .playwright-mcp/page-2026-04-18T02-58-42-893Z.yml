@@ -1,0 +1,202 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e43] [cursor=pointer]:
+    - img [ref=e44]
+  - alert [ref=e47]
+  - generic [ref=e48]:
+    - complementary [ref=e49]:
+      - generic [ref=e50]:
+        - link "BetterRoute" [ref=e51] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e52]
+          - generic [ref=e64]: BetterRoute
+        - button "Colapsar menu" [ref=e65] [cursor=pointer]:
+          - img
+      - button "CLARO" [ref=e67]:
+        - img [ref=e69]
+        - generic [ref=e73]: CLARO
+        - img [ref=e74]
+      - navigation [ref=e77]:
+        - generic [ref=e78]:
+          - paragraph [ref=e79]: Operaciones
+          - link "Dashboard" [ref=e80] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e81]
+            - generic [ref=e83]: Dashboard
+          - link "Pedidos" [ref=e84] [cursor=pointer]:
+            - /url: /orders
+            - img [ref=e85]
+            - generic [ref=e89]: Pedidos
+          - button "Planificación" [ref=e91]:
+            - img [ref=e92]
+            - generic [ref=e96]: Planificación
+            - img [ref=e97]
+          - link "Monitoreo" [ref=e99] [cursor=pointer]:
+            - /url: /monitoring
+            - img [ref=e100]
+            - generic [ref=e102]: Monitoreo
+        - generic [ref=e103]:
+          - paragraph [ref=e104]: Recursos
+          - link "Vehículos" [ref=e105] [cursor=pointer]:
+            - /url: /vehicles
+            - img [ref=e106]
+            - generic [ref=e111]: Vehículos
+          - link "Flotas" [ref=e112] [cursor=pointer]:
+            - /url: /fleets
+            - img [ref=e113]
+            - generic [ref=e116]: Flotas
+          - link "Zonas" [ref=e117] [cursor=pointer]:
+            - /url: /zones
+            - img [ref=e118]
+            - generic [ref=e121]: Zonas
+        - generic [ref=e122]:
+          - paragraph [ref=e123]: Administración
+          - link "Usuarios" [ref=e124] [cursor=pointer]:
+            - /url: /users
+            - img [ref=e125]
+            - generic [ref=e130]: Usuarios
+          - link "Roles" [ref=e131] [cursor=pointer]:
+            - /url: /roles
+            - img [ref=e132]
+            - generic [ref=e134]: Roles
+          - link "Empresas" [ref=e135] [cursor=pointer]:
+            - /url: /companies
+            - img [ref=e136]
+            - generic [ref=e140]: Empresas
+        - generic [ref=e141]:
+          - paragraph [ref=e142]: Configuración
+          - link "Perfil Empresa" [ref=e143] [cursor=pointer]:
+            - /url: /configuracion
+            - img [ref=e144]
+            - generic [ref=e147]: Perfil Empresa
+          - link "Presets Optimización" [ref=e148] [cursor=pointer]:
+            - /url: /optimization-presets
+            - img [ref=e149]
+            - generic [ref=e152]: Presets Optimización
+          - link "Ventanas de Tiempo" [ref=e153] [cursor=pointer]:
+            - /url: /time-window-presets
+            - img [ref=e154]
+            - generic [ref=e157]: Ventanas de Tiempo
+          - link "Habilidades Vehículos" [ref=e158] [cursor=pointer]:
+            - /url: /vehicle-skills
+            - img [ref=e159]
+            - generic [ref=e162]: Habilidades Vehículos
+          - link "Estados de entrega" [ref=e163] [cursor=pointer]:
+            - /url: /workflow
+            - img [ref=e164]
+            - generic [ref=e168]: Estados de entrega
+          - link "Campos personalizados" [ref=e169] [cursor=pointer]:
+            - /url: /custom-fields
+            - img [ref=e170]
+            - generic [ref=e173]: Campos personalizados
+      - generic [ref=e174]:
+        - button "Modo Oscuro" [ref=e175] [cursor=pointer]:
+          - img
+          - generic [ref=e176]: Modo Oscuro
+        - button "Cerrar Sesion" [ref=e177] [cursor=pointer]:
+          - img
+          - generic [ref=e178]: Cerrar Sesion
+    - main [ref=e180]:
+      - generic [ref=e181]:
+        - generic [ref=e182]:
+          - generic [ref=e183]:
+            - generic [ref=e184]:
+              - heading "Pedidos Totales" [level=3] [ref=e185]
+              - img [ref=e187]
+            - generic [ref=e191]:
+              - generic [ref=e192]: "0"
+              - generic [ref=e194]: 0 pendientes
+          - generic [ref=e195]:
+            - generic [ref=e196]:
+              - heading "Conductores Activos" [level=3] [ref=e197]
+              - img [ref=e199]
+            - generic [ref=e204]:
+              - generic [ref=e205]: "0"
+              - generic [ref=e207]: de 0 disponibles
+          - generic [ref=e208]:
+            - generic [ref=e209]:
+              - heading "Vehículos Asignados" [level=3] [ref=e210]
+              - img [ref=e212]
+            - generic [ref=e217]:
+              - generic [ref=e218]: "0"
+              - generic [ref=e220]: de 0 operativos
+          - generic [ref=e221]:
+            - generic [ref=e222]:
+              - heading "Tasa de Cumplimiento" [level=3] [ref=e223]
+              - img [ref=e225]
+            - generic [ref=e228]:
+              - generic [ref=e229]: 0%
+              - generic [ref=e231]: 0 completados
+        - generic [ref=e232]:
+          - link "Gestionar Pedidos Crear y editar pedidos" [ref=e233] [cursor=pointer]:
+            - /url: /orders
+            - generic [ref=e235]:
+              - img [ref=e237]
+              - generic [ref=e241]:
+                - heading "Gestionar Pedidos" [level=3] [ref=e242]
+                - paragraph [ref=e243]: Crear y editar pedidos
+          - link "Planificación Optimizar rutas de entrega" [ref=e244] [cursor=pointer]:
+            - /url: /planificacion
+            - generic [ref=e246]:
+              - img [ref=e248]
+              - generic [ref=e252]:
+                - heading "Planificación" [level=3] [ref=e253]
+                - paragraph [ref=e254]: Optimizar rutas de entrega
+          - link "Monitorear Ver estado en tiempo real" [ref=e255] [cursor=pointer]:
+            - /url: /monitoring
+            - generic [ref=e257]:
+              - img [ref=e259]
+              - generic [ref=e262]:
+                - heading "Monitorear" [level=3] [ref=e263]
+                - paragraph [ref=e264]: Ver estado en tiempo real
+        - generic [ref=e265]:
+          - generic [ref=e266]:
+            - generic [ref=e267]:
+              - generic [ref=e268]:
+                - heading "Pedidos Recientes" [level=3] [ref=e269]
+                - paragraph [ref=e270]: Últimos pedidos ingresados
+              - link "Ver todos" [ref=e271] [cursor=pointer]:
+                - /url: /orders
+                - button "Ver todos" [ref=e272]
+            - generic [ref=e274]:
+              - img [ref=e275]
+              - paragraph [ref=e279]: No hay pedidos registrados
+              - link "Crear primer pedido" [ref=e280] [cursor=pointer]:
+                - /url: /orders
+                - button "Crear primer pedido" [ref=e281]
+          - generic [ref=e282]:
+            - generic [ref=e283]:
+              - generic [ref=e284]:
+                - heading "Conductores" [level=3] [ref=e285]
+                - paragraph [ref=e286]: Estado actual del equipo
+              - link "Ver todos" [ref=e287] [cursor=pointer]:
+                - /url: /users
+                - button "Ver todos" [ref=e288]
+            - generic [ref=e290]:
+              - img [ref=e291]
+              - paragraph [ref=e296]: No hay conductores registrados
+              - link "Agregar conductor" [ref=e297] [cursor=pointer]:
+                - /url: /users
+                - button "Agregar conductor" [ref=e298]
+        - generic [ref=e299]:
+          - generic [ref=e301]:
+            - img [ref=e302]
+            - heading "Primeros pasos" [level=3] [ref=e304]
+          - generic [ref=e306]:
+            - link "1. Crear flotas Organiza tus vehículos" [ref=e307] [cursor=pointer]:
+              - /url: /fleets
+              - img [ref=e308]
+              - generic [ref=e313]:
+                - paragraph [ref=e314]: 1. Crear flotas
+                - paragraph [ref=e315]: Organiza tus vehículos
+            - link "2. Agregar vehículos Registra tu flota" [ref=e316] [cursor=pointer]:
+              - /url: /vehicles
+              - img [ref=e317]
+              - generic [ref=e322]:
+                - paragraph [ref=e323]: 2. Agregar vehículos
+                - paragraph [ref=e324]: Registra tu flota
+            - link "3. Agregar conductores Asigna tu equipo" [ref=e325] [cursor=pointer]:
+              - /url: /users
+              - img [ref=e326]
+              - generic [ref=e331]:
+                - paragraph [ref=e332]: 3. Agregar conductores
+                - paragraph [ref=e333]: Asigna tu equipo
