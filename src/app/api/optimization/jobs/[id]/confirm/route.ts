@@ -19,7 +19,7 @@ import {
   planConfirmationSchema,
 } from "@/lib/validations/plan-confirmation";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContext, extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { EntityType, Action } from "@/lib/auth/authorization";
 
@@ -702,17 +702,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: jobId } = await params;
-    const tenantContext = extractTenantContext(request);
-
-    if (!tenantContext?.companyId) {
-      return NextResponse.json(
-        { error: "Company context required" },
-        { status: 400 },
-      );
-    }
-
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.PLAN,
+      Action.READ,
+    );
+    if (authResult instanceof NextResponse) return authResult;
+    const tenantContext = extractTenantContextAuthed(request, authResult);
+    if (tenantContext instanceof NextResponse) return tenantContext;
     setTenantContext(tenantContext);
+
+    const { id: jobId } = await params;
 
     // Fetch the job with configuration
     const [job] = await db

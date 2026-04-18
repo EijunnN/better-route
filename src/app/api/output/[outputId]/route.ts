@@ -23,6 +23,7 @@ import type {
 import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { EntityType, Action } from "@/lib/auth/authorization";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 interface RouteParams {
   params: Promise<{ outputId: string }>;
@@ -293,20 +294,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    // Extract tenant context from headers
-    const tenantCtx = getTenantContext();
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
+    // Auth + RBAC first — this handler regenerates plan outputs.
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OUTPUT,
+      Action.UPDATE,
+    );
+    if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     const { companyId, userId } = tenantCtx;
     const { outputId } = await params;
-
-    // Set tenant context for database operations
-    setTenantContext({ companyId, userId: userId || "" });
 
     // Parse request body
     const body = await request.json();
@@ -374,23 +374,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
  * DELETE /api/output/[outputId]
  * Delete an output record (soft delete by marking as inactive)
  */
-export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    // Extract tenant context from headers
-    const tenantCtx = getTenantContext();
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
+    // Auth + RBAC first.
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OUTPUT,
+      Action.DELETE,
+    );
+    if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     const { companyId } = tenantCtx;
-    // Await params to satisfy the function signature
     await params;
-
-    // Set tenant context for database operations
-    setTenantContext({ companyId, userId: "" });
 
     // Note: The output_history table doesn't have an 'active' field
     // For now, we'll just return success. In production, you might want to:

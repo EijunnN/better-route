@@ -5,7 +5,7 @@ import { optimizationJobs, vehicles } from "@/db/schema";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContext, extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
@@ -152,14 +152,14 @@ export async function GET(
   { params }: { params: Promise<{ routeId: string; vehicleId: string }> },
 ) {
   try {
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
-
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.READ,
+    );
+    if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
 
     const { routeId, vehicleId } = await params;

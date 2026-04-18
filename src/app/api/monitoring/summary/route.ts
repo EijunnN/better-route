@@ -9,29 +9,29 @@ import {
   users,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { optionalRoutePermission } from "@/lib/infra/api-middleware";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { EntityType, Action } from "@/lib/auth/authorization";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - Get monitoring summary for confirmed plans
 export async function GET(request: NextRequest) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-
   try {
-    // Optional auth - if authenticated, enforce permissions
-    const authResult = await optionalRoutePermission(request, EntityType.METRICS, Action.READ);
+    // Auth required — this endpoint exposes real-time operational data
+    // (active alerts, driver counts, route progress). Previously it used
+    // optionalRoutePermission which allowed anonymous cross-tenant reads
+    // via a forged x-company-id header (security-audit.md Finding #4).
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.METRICS,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
     // Accept optional jobId parameter
     const jobId = request.nextUrl.searchParams.get("jobId");
 

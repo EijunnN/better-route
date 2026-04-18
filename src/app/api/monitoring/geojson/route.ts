@@ -3,11 +3,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { driverLocations, optimizationJobs, routeStops } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { optionalRoutePermission } from "@/lib/infra/api-middleware";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { EntityType, Action } from "@/lib/auth/authorization";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
 
@@ -53,20 +53,19 @@ function decodePolyline(encoded: string, precision = 5): [number, number][] {
 
 // GET - Get GeoJSON data for monitoring map visualization
 export async function GET(request: NextRequest) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-
   try {
-    // Optional auth - if authenticated, enforce permissions
-    const authResult = await optionalRoutePermission(request, EntityType.ROUTE, Action.READ);
+    // Auth required — exposes route geometry, driver positions, vehicle plates.
+    // Previously optional, which allowed anonymous cross-tenant reads
+    // (security-audit.md Finding #4).
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     // Accept optional jobId parameter, otherwise use most recent completed job
     const jobId = request.nextUrl.searchParams.get("jobId");

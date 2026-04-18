@@ -15,9 +15,15 @@ import {
 import { setTenantContext } from "../infra/tenant";
 
 /**
- * Extract tenant context (companyId + userId) from request headers.
- * Returns null if x-company-id header is missing.
- * Used by legacy routes that rely on header-based tenant identification.
+ * @deprecated Use `extractTenantContextAuthed(request, user)` instead.
+ *
+ * This helper trusts the `x-company-id` header without cross-validating against
+ * the authenticated user's JWT companyId. Calling it alone is an IDOR vector:
+ * any authenticated non-admin user can read another tenant's data by forging
+ * the header. See docs/security-audit.md Finding #1.
+ *
+ * Kept temporarily to avoid breaking the ~90 call sites during the retrofit.
+ * Every caller MUST be migrated to `extractTenantContextAuthed`.
  */
 export function extractTenantContext(request: NextRequest): {
   companyId: string;
@@ -30,27 +36,70 @@ export function extractTenantContext(request: NextRequest): {
 }
 
 /**
- * Extract user context from request headers or JWT token
- * This is a bridge function for routes that still use header-based auth
+ * Derive the tenant context for an already-authenticated request.
+ *
+ * Security contract:
+ * - For ADMIN_SISTEMA (no JWT companyId): the `x-company-id` header is
+ *   required and used as the target tenant.
+ * - For every other role: the JWT's `companyId` is authoritative. If the
+ *   caller sends an `x-company-id` header that disagrees, the request is
+ *   rejected with 403 (defense-in-depth against forged headers).
+ *
+ * Returns either the resolved tenant or a NextResponse error to return
+ * directly from the route handler. Callers MUST have validated the user
+ * first via `requireRoutePermission` / `getAuthenticatedUser`.
  */
-export function extractUserContext(request: NextRequest): {
+export function extractTenantContextAuthed(
+  request: NextRequest,
+  user: AuthenticatedUser,
+): { companyId: string; userId: string } | NextResponse {
+  const headerCompanyId = request.headers.get("x-company-id");
+
+  if (user.role === "ADMIN_SISTEMA") {
+    if (!headerCompanyId) {
+      return NextResponse.json(
+        {
+          error: "x-company-id header required for ADMIN_SISTEMA",
+          code: "COMPANY_REQUIRED",
+        },
+        { status: 400 },
+      );
+    }
+    return { companyId: headerCompanyId, userId: user.userId };
+  }
+
+  if (!user.companyId) {
+    return NextResponse.json(
+      { error: "User has no company", code: "NO_COMPANY" },
+      { status: 403 },
+    );
+  }
+
+  if (headerCompanyId && headerCompanyId !== user.companyId) {
+    return NextResponse.json(
+      { error: "Tenant mismatch", code: "TENANT_MISMATCH" },
+      { status: 403 },
+    );
+  }
+
+  return { companyId: user.companyId, userId: user.userId };
+}
+
+/**
+ * @deprecated Use `extractTenantContextAuthed` together with `requireRoutePermission`.
+ *
+ * Previously returned a user object built from the `x-*` headers without a JWT
+ * check — an unauthenticated attacker could set `x-user-role: ADMIN_SISTEMA`
+ * and bypass RBAC. Now forced to always validate the JWT first.
+ */
+export function extractUserContext(_request: NextRequest): {
   companyId: string | null;
   userId: string | null;
   email: string | null;
   role: string | null;
 } {
-  // Try to get from headers first (existing pattern)
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  const email = request.headers.get("x-user-email");
-  const role = request.headers.get("x-user-role");
-
-  // If we have all the context from headers, use it
-  if (companyId && userId && email && role) {
-    return { companyId, userId, email, role };
-  }
-
-  // Return null context - JWT token verification will be done in async setupAuthContext
+  // Never trust headers for identity. Routes that used the header short-circuit
+  // must migrate to setupAuthContext (JWT-only) or requireRoutePermission.
   return {
     companyId: null,
     userId: null,
@@ -60,50 +109,38 @@ export function extractUserContext(request: NextRequest): {
 }
 
 /**
- * Set up tenant context from request and check authentication
- * Returns user info or null if not authenticated
+ * Set up authenticated context for a request.
+ *
+ * Validates the JWT and derives the tenant via `extractTenantContextAuthed`.
+ * Returns { authenticated: false } if the JWT is missing or invalid, or if
+ * the header/JWT tenant mismatch is detected.
+ *
+ * CRITICAL CHANGE: this function no longer honours header-supplied identity.
+ * Any attacker relying on `x-user-role: ADMIN_SISTEMA` via headers will be
+ * treated as unauthenticated.
  */
 export async function setupAuthContext(request: NextRequest): Promise<{
   authenticated: boolean;
   user: AuthenticatedUser | null;
+  response?: NextResponse;
 }> {
-  const context = extractUserContext(request);
-
-  // If we have context from headers, use it
-  if (context.companyId) {
-    const user: AuthenticatedUser = {
-      userId: context.userId || "",
-      companyId: context.companyId,
-      email: context.email || "",
-      role: context.role || "",
-    };
-
-    // Set tenant context
-    setTenantContext({
-      companyId: context.companyId,
-      userId: context.userId || undefined,
-    });
-
-    return { authenticated: true, user };
-  }
-
-  // Fallback: try JWT token verification
+  let user: AuthenticatedUser;
   try {
-    const user = await getAuthenticatedUser(request);
-
-    // Set tenant context from JWT (only if companyId exists)
-    // ADMIN_SISTEMA may have null companyId and must select a company via header
-    if (user.companyId) {
-      setTenantContext({
-        companyId: user.companyId,
-        userId: user.userId,
-      });
-    }
-
-    return { authenticated: true, user };
+    user = await getAuthenticatedUser(request);
   } catch {
     return { authenticated: false, user: null };
   }
+
+  const tenant = extractTenantContextAuthed(request, user);
+  if (tenant instanceof NextResponse) {
+    return { authenticated: false, user: null, response: tenant };
+  }
+
+  setTenantContext({ companyId: tenant.companyId, userId: tenant.userId });
+  return {
+    authenticated: true,
+    user: { ...user, companyId: tenant.companyId },
+  };
 }
 
 /**
