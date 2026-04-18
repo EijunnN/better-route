@@ -3,7 +3,6 @@ import { db } from "@/db";
 import {
   companyOptimizationProfiles,
   optimizationConfigurations,
-  optimizationJobs,
   optimizationPresets,
   orders,
   USER_ROLES,
@@ -18,329 +17,37 @@ import {
   type DriverAssignmentRequest,
   type DriverAssignmentResult,
   getAssignmentQualityMetrics,
-} from "../routing/driver-assignment";
+} from "../../routing/driver-assignment";
 import {
-  acquireCompanyLock,
-  calculateInputHash,
-  cancelJob,
-  canStartJob,
-  completeJob,
-  failJob,
-  getCachedResult,
-  isJobAborting,
-  markCompanyLockCompleted,
-  registerJob,
-  releaseCompanyLock,
-  setJobTimeout,
   updateJobProgress,
-} from "../infra/job-queue";
+} from "../../infra/job-queue";
 import {
   type DepotConfig,
   type OrderForOptimization,
   type VehicleForOptimization,
   type OptimizationConfig as VroomOptConfig,
   optimizeRoutes as vroomOptimizeRoutes,
-} from "./vroom-optimizer";
-import { selectOptimizer } from "./optimizer-factory";
-import type { IOptimizer, OptimizerType, OptimizerOrder, OptimizerVehicle, OptimizerConfig } from "./optimizer-interface";
+} from "../vroom-optimizer";
+import { selectOptimizer } from "../optimizer-factory";
+import type { OptimizerType } from "../optimizer-interface";
 import {
   createZoneBatches,
   getDayOfWeek,
   type DayOfWeek,
   type VehicleZoneAssignment,
   type ZoneData,
-} from "../geo/zone-utils";
-import { parseProfile } from "./capacity-mapper";
-
-/**
- * Run optimization via the abstract adapter (PyVRP or fallback).
- * Bridges between the runner's VROOM-style types and the adapter's common types.
- */
-async function runViaAdapter(
-  adapter: IOptimizer,
-  ordersForVroom: OrderForOptimization[],
-  vehiclesForVroom: VehicleForOptimization[],
-  vroomConfig: VroomOptConfig,
-) {
-  const adapterOrders: OptimizerOrder[] = ordersForVroom.map((o) => ({
-    id: o.id,
-    trackingId: o.trackingId,
-    address: o.address,
-    latitude: o.latitude,
-    longitude: o.longitude,
-    weightRequired: o.weightRequired,
-    volumeRequired: o.volumeRequired,
-    orderValue: o.orderValue,
-    unitsRequired: o.unitsRequired,
-    orderType: o.orderType,
-    priority: o.priority,
-    timeWindowStart: o.timeWindowStart,
-    timeWindowEnd: o.timeWindowEnd,
-    serviceTime: o.serviceTime,
-    zoneId: o.zoneId,
-  }));
-
-  const adapterVehicles: OptimizerVehicle[] = vehiclesForVroom.map((v) => ({
-    id: v.id,
-    identifier: v.plate,
-    maxWeight: v.maxWeight,
-    maxVolume: v.maxVolume,
-    maxValueCapacity: v.maxValueCapacity,
-    maxUnitsCapacity: v.maxUnitsCapacity,
-    maxOrders: v.maxOrders,
-    originLatitude: v.originLatitude,
-    originLongitude: v.originLongitude,
-    timeWindowStart: v.timeWindowStart,
-    timeWindowEnd: v.timeWindowEnd,
-    hasBreakTime: v.hasBreakTime,
-    breakDuration: v.breakDuration,
-    breakTimeStart: v.breakTimeStart,
-    breakTimeEnd: v.breakTimeEnd,
-  }));
-
-  const adapterConfig: OptimizerConfig = {
-    depot: {
-      latitude: vroomConfig.depot.latitude,
-      longitude: vroomConfig.depot.longitude,
-      timeWindowStart: vroomConfig.depot.timeWindowStart,
-      timeWindowEnd: vroomConfig.depot.timeWindowEnd,
-    },
-    objective: vroomConfig.objective,
-    profile: vroomConfig.profile,
-    balanceVisits: vroomConfig.balanceVisits,
-    maxDistanceKm: vroomConfig.maxDistanceKm,
-    maxTravelTimeMinutes: vroomConfig.maxTravelTimeMinutes,
-    trafficFactor: vroomConfig.trafficFactor,
-    routeEndMode: vroomConfig.routeEndMode,
-    minimizeVehicles: vroomConfig.minimizeVehicles,
-    openStart: vroomConfig.openStart,
-    flexibleTimeWindows: vroomConfig.flexibleTimeWindows,
-    timeoutMs: 120000,
-  };
-
-  const result = await adapter.optimize(adapterOrders, adapterVehicles, adapterConfig);
-
-  // Convert back to runner's VROOM-style result format
-  return {
-    routes: result.routes.map((r) => ({
-      vehicleId: r.vehicleId,
-      stops: r.stops.map((s) => ({
-        orderId: s.orderId,
-        trackingId: s.trackingId,
-        address: s.address,
-        latitude: s.latitude,
-        longitude: s.longitude,
-        sequence: s.sequence,
-        arrivalTime: s.arrivalTime,
-        serviceTime: s.serviceTime,
-        waitingTime: s.waitingTime,
-      })),
-      totalDistance: r.totalDistance,
-      totalDuration: r.totalDuration,
-      totalServiceTime: r.totalServiceTime,
-      totalTravelTime: r.totalTravelTime,
-      totalWeight: r.totalWeight,
-      totalVolume: r.totalVolume,
-      geometry: r.geometry,
-    })),
-    unassigned: result.unassigned.map((u) => ({
-      orderId: u.orderId,
-      trackingId: u.trackingId,
-      reason: u.reason,
-    })),
-  };
-}
-
-// Type for grouped orders (multiple orders at same location)
-interface GroupedOrder {
-  // Representative order (first one in the group)
-  id: string;
-  trackingId: string;
-  address: string;
-  latitude: string | number;
-  longitude: string | number;
-  weightRequired: number;
-  volumeRequired: number;
-  promisedDate: Date | null;
-  serviceTime: number;
-  // All orders in this group (including the representative)
-  groupedOrderIds: string[];
-  groupedTrackingIds: string[];
-}
-
-// Map to track grouped orders for ungrouping later
-type OrderGroupMap = Map<string, { orderIds: string[]; trackingIds: string[] }>;
-
-/**
- * Group orders that share the same coordinates
- * Returns grouped orders and a map to ungroup later
- */
-function groupOrdersByLocation<
-  T extends {
-    id: string;
-    trackingId: string;
-    latitude: string | number;
-    longitude: string | number;
-  },
->(
-  orders: T[],
-): {
-  groupedOrders: (T & {
-    groupedOrderIds: string[];
-    groupedTrackingIds: string[];
-  })[];
-  groupMap: OrderGroupMap;
-} {
-  const locationMap = new Map<string, T[]>();
-
-  // Group by coordinates (rounded to 6 decimal places for precision)
-  for (const order of orders) {
-    const lat = parseFloat(String(order.latitude)).toFixed(6);
-    const lng = parseFloat(String(order.longitude)).toFixed(6);
-    const key = `${lat},${lng}`;
-
-    const existing = locationMap.get(key) || [];
-    existing.push(order);
-    locationMap.set(key, existing);
-  }
-
-  const groupedOrders: (T & {
-    groupedOrderIds: string[];
-    groupedTrackingIds: string[];
-  })[] = [];
-  const groupMap: OrderGroupMap = new Map();
-
-  for (const [, ordersAtLocation] of locationMap) {
-    // Use first order as representative
-    const representative = ordersAtLocation[0];
-    const orderIds = ordersAtLocation.map((o) => o.id);
-    const trackingIds = ordersAtLocation.map((o) => o.trackingId);
-
-    groupedOrders.push({
-      ...representative,
-      groupedOrderIds: orderIds,
-      groupedTrackingIds: trackingIds,
-    });
-
-    // Store mapping for ungrouping
-    groupMap.set(representative.id, { orderIds, trackingIds });
-  }
-
-  return { groupedOrders, groupMap };
-}
-
-// Optimization result types
-export interface OptimizationStop {
-  orderId: string;
-  trackingId: string;
-  sequence: number;
-  address: string;
-  latitude: string;
-  longitude: string;
-  estimatedArrival?: string;
-  waitingTimeMinutes?: number; // Minutes the driver waits before time window opens
-  timeWindow?: {
-    start: string;
-    end: string;
-  };
-  // For grouped stops (multiple orders at same location)
-  groupedOrderIds?: string[];
-  groupedTrackingIds?: string[];
-}
-
-export interface OptimizationRoute {
-  routeId: string;
-  vehicleId: string;
-  vehiclePlate: string;
-  driverId?: string;
-  driverName?: string;
-  driverOrigin?: {
-    latitude: string;
-    longitude: string;
-    address?: string;
-  };
-  stops: OptimizationStop[];
-  totalDistance: number;
-  totalDuration: number; // Total time (travel + service + waiting)
-  totalServiceTime: number; // Time spent at stops (service)
-  totalTravelTime: number; // Time spent traveling between stops
-  totalWeight: number;
-  totalVolume: number;
-  utilizationPercentage: number;
-  timeWindowViolations: number;
-  geometry?: string; // Encoded polyline from VROOM/OSRM
-  assignmentQuality?: {
-    score: number;
-    warnings: string[];
-    errors: string[];
-  };
-}
-
-export interface OptimizationResult {
-  routes: OptimizationRoute[];
-  unassignedOrders: Array<{
-    orderId: string;
-    trackingId: string;
-    reason: string;
-    latitude?: string;
-    longitude?: string;
-    address?: string;
-  }>;
-  driversWithoutRoutes?: Array<{
-    id: string;
-    name: string;
-    originLatitude?: string;
-    originLongitude?: string;
-  }>;
-  vehiclesWithoutRoutes?: Array<{
-    id: string;
-    plate: string;
-    originLatitude?: string;
-    originLongitude?: string;
-  }>;
-  metrics: {
-    totalDistance: number;
-    totalDuration: number;
-    totalRoutes: number;
-    totalStops: number;
-    utilizationRate: number;
-    timeWindowComplianceRate: number;
-  };
-  assignmentMetrics?: {
-    totalAssignments: number;
-    assignmentsWithWarnings: number;
-    assignmentsWithErrors: number;
-    averageScore: number;
-    skillCoverage: number;
-    licenseCompliance: number;
-    fleetAlignment: number;
-    workloadBalance: number;
-  };
-  warnings?: string[];
-  summary: {
-    optimizedAt: string;
-    objective: string;
-    processingTimeMs: number;
-    engineUsed?: string;
-  };
-  depot?: {
-    latitude: number;
-    longitude: number;
-  };
-}
-
-export interface OptimizationInput {
-  configurationId: string;
-  companyId: string;
-  vehicleIds: string[];
-  driverIds: string[];
-}
-
-// Global state for partial optimization results during cancellation
-declare global {
-  // eslint-disable-next-line no-var
-  var __partialOptimizationResult: OptimizationResult | undefined;
-}
+} from "../../geo/zone-utils";
+import { parseProfile } from "../capacity-mapper";
+import type {
+  OptimizationInput,
+  OptimizationResult,
+  OptimizationRoute,
+  OptimizationStop,
+} from "./types";
+import { groupOrdersByLocation, type OrderGroupMap } from "./prepare";
+import { runViaAdapter } from "./adapter";
+import { formatArrivalTime, parseHHmmToSeconds } from "./postprocess";
+import { sleep } from "./utils";
 
 /**
  * Run optimization with mock algorithm (placeholder for actual VRP solver)
@@ -574,23 +281,6 @@ export async function runOptimization(
       start: String(details.timeWindowStart),
       end: String(details.timeWindowEnd),
     };
-  }
-
-  // Helper: parse HH:mm or HH:mm:ss string to seconds since midnight
-  function parseHHmmToSeconds(hhmm: string): number | null {
-    const match = hhmm.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-    if (!match) return null;
-    return parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + (match[3] ? parseInt(match[3]) : 0);
-  }
-
-  // Helper: convert seconds since midnight to HH:mm string
-  // Both VROOM and PyVRP return arrival times as seconds since midnight (local time).
-  // Using new Date(seconds * 1000) would create a UTC timestamp that shifts
-  // by the user's timezone offset (e.g., -5h for Peru), producing wrong times.
-  function formatArrivalTime(secondsSinceMidnight: number): string {
-    const hours = Math.floor(secondsSinceMidnight / 3600);
-    const minutes = Math.floor((secondsSinceMidnight % 3600) / 60);
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   }
 
   // Helper: calculate waiting time in minutes if vehicle arrives before time window
@@ -1457,135 +1147,4 @@ export async function runOptimization(
   checkAbort();
 
   return result;
-}
-
-/**
- * Sleep utility for simulating async work
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Create and execute an optimization job
- */
-export async function createAndExecuteJob(
-  input: OptimizationInput,
-  timeoutMs: number = 300000, // 5 minutes default
-): Promise<{ jobId: string; cached: boolean }> {
-  // Calculate input hash for caching
-  const pendingOrders = await db.query.orders.findMany({
-    where: and(
-      eq(orders.companyId, input.companyId),
-      eq(orders.status, "PENDING"),
-      eq(orders.active, true),
-    ),
-  });
-
-  const inputHash = calculateInputHash(
-    input.configurationId,
-    input.vehicleIds,
-    input.driverIds,
-    pendingOrders.map((o) => o.id),
-  );
-
-  // Check for cached results
-  const cachedResult = await getCachedResult(inputHash, input.companyId);
-  if (cachedResult) {
-    // Return cached job without creating a new one
-    // The caller should look up the cached job by inputHash
-    const cachedJob = await db.query.optimizationJobs.findFirst({
-      where: and(
-        eq(optimizationJobs.inputHash, inputHash),
-        eq(optimizationJobs.companyId, input.companyId),
-        eq(optimizationJobs.status, "COMPLETED"),
-      ),
-      orderBy: (jobs, { desc }) => [desc(jobs.createdAt)],
-    });
-
-    if (cachedJob) {
-      return { jobId: cachedJob.id, cached: true };
-    }
-  }
-
-  // Check concurrency limit
-  if (!canStartJob()) {
-    throw new Error("Maximum concurrent jobs reached. Please try again later.");
-  }
-
-  // Create abort controller for this job
-  const abortController = new AbortController();
-
-  // Create new job in database
-  const [newJob] = await db
-    .insert(optimizationJobs)
-    .values({
-      companyId: input.companyId,
-      configurationId: input.configurationId,
-      status: "PENDING",
-      inputHash,
-      timeoutMs,
-    })
-    .returning();
-
-  const jobId = newJob.id;
-
-  // Acquire per-company lock to prevent concurrent optimizations
-  // using the same PENDING orders
-  if (!acquireCompanyLock(input.companyId, jobId)) {
-    // Another optimization is running for this company - fail this job
-    await db
-      .update(optimizationJobs)
-      .set({ status: "FAILED", error: "Another optimization is already running for this company. Please wait for it to finish.", updatedAt: new Date() })
-      .where(eq(optimizationJobs.id, jobId));
-    throw new Error("Ya hay una optimización en ejecución para esta empresa. Espera a que termine.");
-  }
-
-  // Register job in queue
-  registerJob(jobId, abortController);
-
-  // Set timeout
-  setJobTimeout(jobId, timeoutMs, async () => {
-    releaseCompanyLock(input.companyId, jobId);
-    await failJob(jobId, "Optimization timed out");
-  });
-
-  // Execute optimization asynchronously
-  (async () => {
-    try {
-      // Update job status to running
-      await db
-        .update(optimizationJobs)
-        .set({ status: "RUNNING", startedAt: new Date(), updatedAt: new Date() })
-        .where(eq(optimizationJobs.id, jobId));
-
-      // Run optimization
-      const result = await runOptimization(
-        input,
-        abortController.signal,
-        jobId,
-      );
-
-      // Complete job - mark lock as completed (awaiting confirmation)
-      // Lock will be released on confirmation or after 30 min stale fallback
-      await completeJob(jobId, result);
-      markCompanyLockCompleted(input.companyId, jobId);
-    } catch (error) {
-      releaseCompanyLock(input.companyId, jobId);
-      if (isJobAborting(jobId)) {
-        // Get partial results if available
-        const partialResults = globalThis.__partialOptimizationResult;
-        await cancelJob(jobId, partialResults);
-        // Clean up global state
-        globalThis.__partialOptimizationResult = undefined;
-      } else {
-        await failJob(
-          jobId,
-          error instanceof Error ? error.message : "Unknown error",
-        );
-      }
-    }
-  })();
-
-  return { jobId, cached: false };
 }
