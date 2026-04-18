@@ -459,13 +459,26 @@ export async function runOptimization(
 
   if (hasZones) {
     // Zone-aware optimization: run optimization per zone batch
-    const { batches: zoneBatches, warnings: zoneWarnings } = createZoneBatches(
+    const { batches: zoneBatches, warnings: zoneWarnings, unroutable } = createZoneBatches(
       ordersWithLocation,
       vehiclesWithZones,
       zonesData,
       dayOfWeek,
     );
     optimizationWarnings.push(...zoneWarnings);
+
+    // Fix G7: orders whose zone has no eligible vehicles must be surfaced as
+    // unassigned with a clear reason. Without this they silently disappear.
+    for (const { order, reason } of unroutable) {
+      unassignedOrders.push({
+        orderId: order.id,
+        trackingId: order.trackingId,
+        reason,
+        latitude: orderDetailsMap.get(order.id)?.latitude,
+        longitude: orderDetailsMap.get(order.id)?.longitude,
+        address: orderDetailsMap.get(order.id)?.address,
+      });
+    }
 
     // IMPORTANT: Sort batches to process "unzoned" (Sin Zona) FIRST
     // This ensures unrestricted vehicles serve orders that ONLY they can handle

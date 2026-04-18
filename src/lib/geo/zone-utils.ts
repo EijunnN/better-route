@@ -331,6 +331,16 @@ export interface ZoneBatchResult<
 > {
   batches: ZoneBatch<TOrder, TVehicle>[];
   warnings: string[];
+  /**
+   * Orders that have no batch because their zone has no eligible vehicles for
+   * the planning day. The caller is responsible for pushing these into the
+   * final unassignedOrders list with a descriptive reason — otherwise they
+   * silently disappear from the plan (see routing-quality-findings.md G7).
+   */
+  unroutable: Array<{
+    order: TOrder;
+    reason: string;
+  }>;
 }
 
 export function createZoneBatches<
@@ -344,6 +354,7 @@ export function createZoneBatches<
 ): ZoneBatchResult<TOrder, TVehicle> {
   const batches: ZoneBatch<TOrder, TVehicle>[] = [];
   const warnings: string[] = [];
+  const unroutable: Array<{ order: TOrder; reason: string }> = [];
 
   // Group orders by zone
   const ordersByZone = groupOrdersByZone(orders, zones);
@@ -353,6 +364,7 @@ export function createZoneBatches<
     if (zoneOrders.length === 0) continue;
 
     const zone = zones.find((z) => z.id === zoneId);
+    const zoneLabel = zone?.name || (zoneId === "unzoned" ? "Sin Zona" : zoneId);
     const eligibleVehicles = filterVehiclesForZone(vehicles, zoneId, day);
 
     // Only create batch if there are vehicles available
@@ -364,14 +376,20 @@ export function createZoneBatches<
         vehicles: eligibleVehicles,
       });
     } else {
-      // No vehicles for this zone - orders will be unassigned
-      const warning = `Zone "${zone?.name || zoneId}" has no available vehicles for ${day}. ${zoneOrders.length} orders will be unassigned.`;
+      // No vehicles for this zone - report each order so the caller can surface
+      // them as unassigned with a clear reason. Without this the orders would
+      // silently disappear from the plan.
+      const reason = `Zona "${zoneLabel}" no tiene vehículos disponibles para ${day}`;
+      const warning = `Zone "${zoneLabel}" has no available vehicles for ${day}. ${zoneOrders.length} orders will be unassigned.`;
       console.warn(warning);
       warnings.push(warning);
+      for (const order of zoneOrders) {
+        unroutable.push({ order, reason });
+      }
     }
   }
 
-  return { batches, warnings };
+  return { batches, warnings, unroutable };
 }
 
 /**
