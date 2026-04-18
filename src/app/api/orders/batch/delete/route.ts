@@ -6,9 +6,8 @@ import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { EntityType, Action } from "@/lib/auth/authorization";
 import {
-  extractTenantContext,
+  extractTenantContextAuthed,
   handleError,
-  unauthorizedResponse,
 } from "@/lib/routing/route-helpers";
 
 // DELETE - Delete all orders for a company (soft delete by setting active=false)
@@ -16,12 +15,8 @@ export async function DELETE(request: NextRequest) {
   try {
     const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.BULK_DELETE);
     if (authResult instanceof NextResponse) return authResult;
-
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return unauthorizedResponse("Missing tenant context");
-    }
-
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
     const context = requireTenantContext();
 

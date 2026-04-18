@@ -5,25 +5,18 @@ import { alerts } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { EntityType, Action } from "@/lib/auth/authorization";
 
 // GET - List alerts with filters
 export async function GET(request: NextRequest) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.ALERT, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // ACTIVE, ACKNOWLEDGED, RESOLVED, DISMISSED
@@ -105,19 +98,12 @@ export async function GET(request: NextRequest) {
 
 // POST - Create manual alert (for testing or manual triggers)
 export async function POST(request: NextRequest) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.ALERT, Action.CREATE);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     const body = await request.json();
     const {

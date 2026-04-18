@@ -13,7 +13,7 @@ import {
   type CreateUserInput,
 } from "@/lib/validations/user";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 interface CSVRow {
   name: string;
@@ -296,15 +296,8 @@ export async function POST(request: NextRequest) {
   try {
     const authResult = await requireRoutePermission(request, EntityType.USER, Action.IMPORT);
     if (authResult instanceof NextResponse) return authResult;
-
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
-
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
 
     const formData = await request.formData();

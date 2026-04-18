@@ -7,7 +7,7 @@ import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { EntityType, Action } from "@/lib/auth/authorization";
 import { z } from "zod";
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // GET - Get skills assigned to a vehicle
 export async function GET(
@@ -17,15 +17,8 @@ export async function GET(
   try {
     const authResult = await requireRoutePermission(request, EntityType.VEHICLE_SKILL, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
-
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 }
-      );
-    }
-
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
     const { id: vehicleId } = await params;
 
@@ -98,15 +91,8 @@ export async function PUT(
   try {
     const authResult = await requireRoutePermission(request, EntityType.VEHICLE_SKILL, Action.UPDATE);
     if (authResult instanceof NextResponse) return authResult;
-
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 }
-      );
-    }
-
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
     const { id: vehicleId } = await params;
 

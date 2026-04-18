@@ -14,7 +14,7 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed, extractTenantContext } from "@/lib/routing/route-helpers";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { EntityType, Action } from "@/lib/auth/authorization";
 
@@ -61,19 +61,12 @@ function isValidLongitude(lng: number): boolean {
  * - savedAt: string (timestamp del servidor)
  */
 export async function POST(request: NextRequest) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Contexto de tenant faltante" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.UPDATE);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     // Autenticar usuario
     const authUser = await getAuthenticatedUser(request);
@@ -312,6 +305,7 @@ export async function POST(request: NextRequest) {
  * Respuesta:
  * - location: Última ubicación o null si no hay registros
  */
+// TODO(security-S3): add requireRoutePermission — handler has no RBAC gate
 export async function GET(request: NextRequest) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {

@@ -16,7 +16,7 @@ import {
   vehicleStatusTransitionSchema,
 } from "@/lib/validations/vehicle-status";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 async function getVehicle(id: string, companyId: string) {
   const [vehicle] = await db
@@ -39,15 +39,8 @@ export async function POST(
   try {
     const authResult = await requireRoutePermission(request, EntityType.VEHICLE, Action.CHANGE_STATUS);
     if (authResult instanceof NextResponse) return authResult;
-
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
-
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
 
     const { id } = await params;

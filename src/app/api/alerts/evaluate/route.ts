@@ -3,23 +3,16 @@ import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { EntityType, Action } from "@/lib/auth/authorization";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // POST - Trigger alert evaluation (typically called by background job)
 export async function POST(request: NextRequest) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.ALERT, Action.CREATE);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     // Dynamically import the alert engine to avoid circular dependencies
     const { runAllAlertEvaluations } = await import("@/lib/alerts/engine");

@@ -4,25 +4,18 @@ import { db } from "@/db";
 import { routeStops, routeStopHistory, users, vehicles, optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { EntityType, Action } from "@/lib/auth/authorization";
 
 // GET - Get recent stop events (completed, failed, skipped) in last 24 hours
 export async function GET(request: NextRequest) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     // Get the most recent confirmed job
     const confirmedJob = await db.query.optimizationJobs.findFirst({

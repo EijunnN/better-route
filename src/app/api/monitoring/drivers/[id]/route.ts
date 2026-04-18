@@ -5,7 +5,7 @@ import { driverLocations, optimizationJobs, orders, routeStops, userSecondaryFle
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
@@ -15,20 +15,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Contexto de tenant faltante" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-  const { id: driverId } = await params;
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.DRIVER, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
+    const { id: driverId } = await params;
 
     // Get driver info
     const driver = await db.query.users.findFirst({

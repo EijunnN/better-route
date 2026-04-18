@@ -8,7 +8,7 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { EntityType, Action } from "@/lib/auth/authorization";
 import { ORDER_STATUS } from "@/lib/validations/order";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 /**
  * GeoJSON API endpoint for order visualization on map
  * Returns orders as GeoJSON FeatureCollection for map rendering
@@ -43,16 +43,8 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
-
-    // Extract tenant context
-    const tenantContext = extractTenantContext(request);
-    if (!tenantContext) {
-      return NextResponse.json(
-        { error: "Tenant context required" },
-        { status: 401 },
-      );
-    }
-
+    const tenantContext = extractTenantContextAuthed(request, authResult);
+    if (tenantContext instanceof NextResponse) return tenantContext;
     setTenantContext(tenantContext);
 
     // Parse and validate query parameters

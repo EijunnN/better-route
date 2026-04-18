@@ -17,7 +17,7 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser, getOptionalUser } from "@/lib/auth/auth-api";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed, extractTenantContext } from "@/lib/routing/route-helpers";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { EntityType, Action } from "@/lib/auth/authorization";
 // Map route_stop status to order status
@@ -35,20 +35,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-  const { id: stopId } = await params;
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
+    const { id: stopId } = await params;
 
     const stop = await db.query.routeStops.findFirst({
       where: and(
@@ -104,20 +97,13 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-  const { id: stopId } = await params;
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.UPDATE);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
+    const { id: stopId } = await params;
 
     const body = await request.json();
     const { workflowStateId, notes, failureReason, evidenceUrls } = body;
@@ -450,6 +436,7 @@ export async function PATCH(
 }
 
 // DELETE - Delete a route stop (should be rare, mainly for cleanup)
+// TODO(security-S3): add requireRoutePermission — handler has no RBAC gate
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

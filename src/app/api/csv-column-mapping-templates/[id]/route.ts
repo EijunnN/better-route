@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { updateCsvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
@@ -17,17 +17,11 @@ export async function GET(
   try {
     const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     const { id } = await params;
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
-
-    setTenantContext(tenantCtx);
 
     const template = await db
       .select()
@@ -71,17 +65,11 @@ export async function PATCH(
   try {
     const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.UPDATE);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     const { id } = await params;
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
-
-    setTenantContext(tenantCtx);
     const context = requireTenantContext();
 
     // Check if template exists
@@ -187,17 +175,11 @@ export async function DELETE(
   try {
     const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.DELETE);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     const { id } = await params;
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
-
-    setTenantContext(tenantCtx);
     const context = requireTenantContext();
 
     // Check if template exists

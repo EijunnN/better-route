@@ -14,7 +14,7 @@ import {
   userQuerySchema,
 } from "@/lib/validations/user";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 function getLicenseStatusFilter(licenseStatus: string) {
   const today = new Date();
@@ -37,15 +37,8 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await requireRoutePermission(request, EntityType.USER, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
-
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
-
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
 
     const { searchParams } = new URL(request.url);
@@ -214,15 +207,8 @@ export async function POST(request: NextRequest) {
   try {
     const authResult = await requireRoutePermission(request, EntityType.USER, Action.CREATE);
     if (authResult instanceof NextResponse) return authResult;
-
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
-
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
 
     const body = await request.json();

@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { optimizationJobs, planMetrics } from "@/db/schema";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
@@ -19,15 +19,8 @@ export async function GET(
   try {
     const authResult = await requireRoutePermission(request, EntityType.PLAN, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
-
-    const tenantCtx = extractTenantContext(request);
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
-
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
 
     const { id } = await params;

@@ -9,7 +9,7 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import type { OptimizationResult } from "@/lib/optimization/optimization-runner";
 import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-config";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
@@ -19,20 +19,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-  const { id } = await params;
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
+    const { id } = await params;
 
     const [config] = await db
       .select()
@@ -69,15 +62,8 @@ export async function PATCH(
 ) {
   const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.UPDATE);
   if (authResult instanceof NextResponse) return authResult;
-
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
+  const tenantCtx = extractTenantContextAuthed(request, authResult);
+  if (tenantCtx instanceof NextResponse) return tenantCtx;
   setTenantContext(tenantCtx);
   const { id } = await params;
 
@@ -186,20 +172,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-  const { id } = await params;
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.DELETE);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
+    const { id } = await params;
 
     // Check if configuration exists
     const [existing] = await db

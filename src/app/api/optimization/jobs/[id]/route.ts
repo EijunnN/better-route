@@ -6,7 +6,7 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { cancelJob as cancelJobQueue, releaseCompanyLock } from "@/lib/infra/job-queue";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
@@ -16,20 +16,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-  const { id } = await params;
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_JOB, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
+    const { id } = await params;
 
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
@@ -83,20 +76,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-  const { id } = await params;
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_JOB, Action.DELETE);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
+    const { id } = await params;
 
     // Check if job exists and belongs to tenant
     const job = await db.query.optimizationJobs.findFirst({

@@ -5,7 +5,7 @@ import { routeStops } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 
-import { extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { EntityType, Action } from "@/lib/auth/authorization";
 
@@ -13,15 +13,8 @@ import { EntityType, Action } from "@/lib/auth/authorization";
 export async function POST(request: NextRequest) {
   const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.CREATE);
   if (authResult instanceof NextResponse) return authResult;
-
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
+  const tenantCtx = extractTenantContextAuthed(request, authResult);
+  if (tenantCtx instanceof NextResponse) return tenantCtx;
   setTenantContext(tenantCtx);
 
   try {
@@ -106,19 +99,12 @@ export async function POST(request: NextRequest) {
 
 // GET - List route stops with filters
 export async function GET(request: NextRequest) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Missing tenant context" },
-      { status: 401 },
-    );
-  }
-
-  setTenantContext(tenantCtx);
-
   try {
     const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.READ);
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get("jobId");
