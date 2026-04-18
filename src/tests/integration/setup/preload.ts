@@ -216,7 +216,6 @@ mock.module("@/lib/infra/cache", () => ({
     metrics: { hits: 850, misses: 150, sets: 200, deletes: 10, errors: 0 },
   }),
   invalidateAllCache: async () => {},
-  warmupCache: async (_companyId: string) => {},
   cacheGet: async () => null,
   cacheSet: async () => {},
   cacheDelete: async () => {},

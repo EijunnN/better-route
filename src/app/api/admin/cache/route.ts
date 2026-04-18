@@ -1,18 +1,18 @@
 /**
  * Cache Metrics API Endpoint
  *
- * GET /api/admin/cache - Get cache statistics
- * DELETE /api/admin/cache - Invalidate all cache (admin only)
- * POST /api/admin/cache/warmup - Warm up cache for a company
+ * GET /api/admin/cache    — cache statistics (hit rate, key counts, availability).
+ * DELETE /api/admin/cache — invalidate all cache (emergency, admin only).
  *
- * Implements Story 17.2 - Cache metrics monitoring
+ * The legacy POST /api/admin/cache "warmup" endpoint was removed along with
+ * the dead warmupCache() stub. See docs/cache-audit.md.
  */
 
 import { NextResponse } from "next/server";
 import type { AuthenticatedRequest } from "@/lib/infra/api-middleware";
 import { withAuthAndAudit } from "@/lib/infra/api-middleware";
 import { Action, EntityType, isAdmin } from "@/lib/auth/authorization";
-import { getCacheStats, invalidateAllCache, warmupCache } from "@/lib/infra/cache";
+import { getCacheStats, invalidateAllCache } from "@/lib/infra/cache";
 
 /**
  * GET /api/admin/cache
@@ -61,39 +61,3 @@ export const DELETE = withAuthAndAudit(
   },
 );
 
-/**
- * POST /api/admin/cache/warmup
- *
- * Warm up cache for a company
- */
-export const POST = withAuthAndAudit(
-  EntityType.CACHE,
-  Action.WARMUP,
-  async (request: AuthenticatedRequest) => {
-    try {
-      const body = await request.json();
-      const { companyId } = body;
-
-      if (!companyId) {
-        return NextResponse.json(
-          { error: "companyId is required" },
-          { status: 400 },
-        );
-      }
-
-      await warmupCache(companyId);
-
-      return NextResponse.json({
-        success: true,
-        message: `Cache warmed up for company ${companyId}`,
-        companyId,
-        timestamp: Date.now(),
-      });
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 },
-      );
-    }
-  },
-);

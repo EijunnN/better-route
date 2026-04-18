@@ -32,10 +32,11 @@ import {
 import { setTenantContext } from "@/lib/infra/tenant";
 
 // Route handler imports
+// POST /api/admin/cache (warmup) was removed with the dead warmupCache stub —
+// see docs/cache-audit.md.
 import {
   GET as cacheGET,
   DELETE as cacheDELETE,
-  POST as cachePOST,
 } from "@/app/api/admin/cache/route";
 import { GET as metricsHistoryGET } from "@/app/api/metrics/history/route";
 import { GET as presignedUrlGET } from "@/app/api/upload/presigned-url/route";
@@ -142,50 +143,7 @@ describe("Misc Routes", () => {
       expect(response.status).toBe(401);
     });
 
-    test("POST warms up cache for a given companyId", async () => {
-      const request = await createTestRequest("/api/admin/cache", {
-        method: "POST",
-        token: adminToken,
-        companyId: company.id,
-        userId: admin.id,
-        body: { companyId: company.id },
-      });
-
-      const response = await cachePOST(request);
-      expect(response.status).toBe(200);
-
-      const body = await response.json();
-      expect(body.success).toBe(true);
-      expect(body.message).toContain("warmed up");
-      expect(body.companyId).toBe(company.id);
-      expect(body.timestamp).toBeDefined();
-    });
-
-    test("POST returns 400 when companyId is missing", async () => {
-      const request = await createTestRequest("/api/admin/cache", {
-        method: "POST",
-        token: adminToken,
-        companyId: company.id,
-        userId: admin.id,
-        body: {},
-      });
-
-      const response = await cachePOST(request);
-      expect(response.status).toBe(400);
-
-      const body = await response.json();
-      expect(body.error).toContain("companyId");
-    });
-
-    test("POST returns 401 without authentication", async () => {
-      const request = await createTestRequest("/api/admin/cache", {
-        method: "POST",
-        body: { companyId: "some-id" },
-      });
-
-      const response = await cachePOST(request);
-      expect(response.status).toBe(401);
-    });
+    // POST /api/admin/cache (warmup) was removed — tests deleted.
   });
 
   // ===========================================================================
