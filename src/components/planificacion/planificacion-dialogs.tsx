@@ -47,6 +47,7 @@ export function CsvUploadDialog() {
               type="file"
               accept=".csv"
               onChange={actions.handleCsvFileChange}
+              className="border border-input rounded-md bg-background px-3 py-2 file:mr-3 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1 file:text-sm file:font-medium hover:border-ring focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 cursor-pointer"
             />
           </div>
 
