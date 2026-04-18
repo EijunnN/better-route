@@ -2,6 +2,17 @@ import type { VerifierFn, Violation } from "./types";
 import { hhmmToSeconds, normalizeArrivalSeconds, orderById, secondsToHHMM, vehicleById } from "./utils";
 
 /**
+ * When config.flexibleTimeWindows is true, VROOM and PyVRP widen order
+ * time windows by ±30 min before solving. The verifier must match that
+ * or it will report false-positive HARD violations for stops the solver
+ * correctly placed inside the extended window.
+ *
+ * Kept in sync with vroom-optimizer.ts (timeWindowTolerance) and
+ * pyvrp-service/solver.py (tw_tolerance).
+ */
+const FLEX_TOLERANCE_SEC = 30 * 60;
+
+/**
  * For each stop with a defined order time-window, verify arrival is inside the window.
  * Severity follows the order's strictness (defaulting to HARD if unknown — the order
  * passed a time window, so we treat violations as real unless told otherwise).
@@ -9,10 +20,11 @@ import { hhmmToSeconds, normalizeArrivalSeconds, orderById, secondsToHHMM, vehic
  * Also checks vehicle workday windows (HARD): every stop arrival must be inside the
  * vehicle's [timeWindowStart, timeWindowEnd] if those are set.
  */
-export const checkTimeWindows: VerifierFn = ({ orders, vehicles, result }) => {
+export const checkTimeWindows: VerifierFn = ({ orders, vehicles, config, result }) => {
   const violations: Violation[] = [];
   const orderMap = orderById(orders);
   const vehicleMap = vehicleById(vehicles);
+  const flex = config.flexibleTimeWindows ? FLEX_TOLERANCE_SEC : 0;
 
   for (const route of result.routes) {
     const vehicle = vehicleMap.get(route.vehicleId);
@@ -50,8 +62,11 @@ export const checkTimeWindows: VerifierFn = ({ orders, vehicles, result }) => {
       const waiting = stop.waitingTime ?? 0;
       const serviceStart = arrival + waiting;
 
-      const orderStart = hhmmToSeconds(order?.timeWindowStart);
-      const orderEnd = hhmmToSeconds(order?.timeWindowEnd);
+      const orderStartRaw = hhmmToSeconds(order?.timeWindowStart);
+      const orderEndRaw = hhmmToSeconds(order?.timeWindowEnd);
+      // Widen by flex if the caller asked the solver to accept ±30 min.
+      const orderStart = orderStartRaw !== null ? orderStartRaw - flex : null;
+      const orderEnd = orderEndRaw !== null ? orderEndRaw + flex : null;
 
       if (orderStart !== null && serviceStart < orderStart - 60) {
         violations.push({
