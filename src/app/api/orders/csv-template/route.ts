@@ -1,113 +1,63 @@
-import { and, asc, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { companyFieldDefinitions, companyOptimizationProfiles } from "@/db/schema";
-import { parseProfile } from "@/lib/optimization/capacity-mapper";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   generateCsvTemplate,
-  getFieldDocumentation,
-  CSV_TEMPLATES,
-  type CsvCustomFieldInfo,
-} from "@/lib/orders/dynamic-csv-fields";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
-
+  resolveProfileSchema,
+} from "@/lib/orders/profile-schema";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // GET - Download CSV template based on company profile
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
-    const context = requireTenantContext();
 
-    // Get URL parameters
     const { searchParams } = new URL(request.url);
-    const format = searchParams.get("format") || "csv"; // csv or json
+    const format = searchParams.get("format") || "csv"; // csv | json
     const locale = (searchParams.get("locale") || "es") as "en" | "es";
-    const templateType = searchParams.get("template"); // LOGISTICS, HIGH_VALUE, SIMPLE, or null for company profile
 
-    // Get company profile
-    let profile = null;
+    const schema = await resolveProfileSchema(tenantCtx.companyId);
 
-    if (!templateType) {
-      const profiles = await db
-        .select()
-        .from(companyOptimizationProfiles)
-        .where(
-          and(
-            eq(companyOptimizationProfiles.companyId, context.companyId),
-            eq(companyOptimizationProfiles.active, true),
-          ),
-        );
-
-      if (profiles.length > 0) {
-        profile = parseProfile(profiles[0]);
-      }
-    }
-
-    // Fetch custom field definitions for this company (showInCsv + active)
-    const customFieldDefs = await db
-      .select({
-        code: companyFieldDefinitions.code,
-        label: companyFieldDefinitions.label,
-        fieldType: companyFieldDefinitions.fieldType,
-        required: companyFieldDefinitions.required,
-      })
-      .from(companyFieldDefinitions)
-      .where(
-        and(
-          eq(companyFieldDefinitions.companyId, context.companyId),
-          eq(companyFieldDefinitions.entity, "orders"),
-          eq(companyFieldDefinitions.showInCsv, true),
-          eq(companyFieldDefinitions.active, true),
-        ),
-      )
-      .orderBy(asc(companyFieldDefinitions.position));
-
-    const customFields: CsvCustomFieldInfo[] = customFieldDefs;
-
-    // Generate template based on format
     if (format === "json") {
-      // Return field documentation for UI
-      const fields = getFieldDocumentation(profile, locale);
-      const templates = Object.entries(CSV_TEMPLATES).map(([key, value]) => ({
-        id: key,
-        ...value,
-      }));
-
+      // UI consumes this to render the "what the CSV expects" preview.
       return NextResponse.json({
         data: {
-          fields,
-          templates,
-          customFields,
-          profile: profile
-            ? {
-                activeDimensions: profile.activeDimensions,
-                enableOrderType: profile.enableOrderType,
-              }
-            : null,
+          fields: schema.fields.map((f) => ({
+            key: f.key,
+            label: locale === "en" && f.labelEn ? f.labelEn : f.label,
+            required: f.required,
+            kind: f.kind,
+            description: f.description,
+            example: f.example,
+            origin: f.origin,
+          })),
+          activeDimensions: schema.activeDimensions,
+          requireOrderType: schema.requireOrderType,
+          timeWindowPresets: schema.timeWindowPresets.map((p) => ({
+            id: p.id,
+            name: p.name,
+            type: p.type,
+          })),
         },
       });
     }
 
-    // Generate CSV content
-    const csvContent = generateCsvTemplate(profile, locale, customFields);
-
-    // Return as downloadable CSV file
-    const filename = templateType
-      ? `ordenes_template_${templateType.toLowerCase()}.csv`
-      : "ordenes_template.csv";
+    const csvContent = generateCsvTemplate(schema, { locale });
 
     return new NextResponse(csvContent, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `attachment; filename="ordenes_template.csv"`,
       },
     });
   } catch (error) {

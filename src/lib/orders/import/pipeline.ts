@@ -1,119 +1,172 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  companyFieldDefinitions,
-  csvColumnMappingTemplates,
-  orders,
-} from "@/db/schema";
+import { csvColumnMappingTemplates, orders } from "@/db/schema";
 import {
   batchInsertOrders,
   updateTableStatistics,
 } from "@/lib/orders/batch-operations";
 import {
-  type FieldDefinition,
-  applyDefaults,
-  validateCustomFields,
-} from "@/lib/custom-fields/validation";
-import { mapCSVRow, suggestColumnMapping } from "@/lib/orders/csv-column-mapping";
+  resolveProfileSchema,
+  validateCsvHeaders,
+  validateCsvRow,
+  type ProfileSchema,
+  type TimeWindowPresetRef,
+} from "@/lib/orders/profile-schema";
 import { safeParseJson } from "@/lib/utils/safe-json";
-import { createValidationError, calculateErrorSummary } from "./errors";
-import { mapCSVRowToOrder } from "./mapping";
+import { calculateErrorSummary, createValidationError } from "./errors";
 import { decodeCsvBase64, detectCSVDelimiter, parseCSV } from "./parse";
-import { resolveTimeWindowPresets } from "./presets";
 import {
-  type CsvImportRequest,
+  ERROR_TYPES,
   type CSVRecordValidationResult,
   type CSVValidationError,
-  ERROR_TYPES,
+  type CsvImportRequest,
 } from "./types";
-import { validateOrderRow } from "./validation";
 
 export interface ProcessCsvImportContext {
   companyId: string;
 }
 
-/**
- * Discriminated result of the CSV import pipeline. Error cases carry
- * the exact status code the route handler should use, preserving the
- * original HTTP behavior.
- */
 export type ProcessCsvImportResult =
   | { kind: "error"; status: number; body: Record<string, unknown> }
   | { kind: "success"; status: number; body: Record<string, unknown> };
 
+// ── internal helpers ────────────────────────────────────────────────────────
+
 /**
- * Orchestrate the full CSV import flow:
- * optional template lookup -> base64 decode -> parse -> validate -> preset resolution ->
- * custom fields -> either return preview (validate-only) or run batch insert.
+ * Load a saved column-mapping template when the caller passes a templateId.
+ * Returns the mapping or an error discriminated result.
+ */
+async function loadTemplateMapping(
+  templateId: string,
+  companyId: string,
+): Promise<
+  | { ok: true; mapping: Record<string, string> }
+  | { ok: false; response: ProcessCsvImportResult }
+> {
+  const rows = await db
+    .select()
+    .from(csvColumnMappingTemplates)
+    .where(
+      and(
+        eq(csvColumnMappingTemplates.id, templateId),
+        eq(csvColumnMappingTemplates.companyId, companyId),
+        eq(csvColumnMappingTemplates.active, true),
+      ),
+    );
+  if (rows.length === 0) {
+    return {
+      ok: false,
+      response: {
+        kind: "error",
+        status: 404,
+        body: { error: "Template not found or inactive" },
+      },
+    };
+  }
+  return { ok: true, mapping: safeParseJson(rows[0].columnMapping) ?? {} };
+}
+
+/**
+ * Rewrite a raw CSV row (keyed by original headers) using the header→fieldKey
+ * mapping decided upfront. Headers not in the mapping are dropped.
+ */
+function remapRow(
+  row: Record<string, string>,
+  mapping: Record<string, string>,
+): Record<string, string> {
+  const mapped: Record<string, string> = {};
+  for (const [header, fieldKey] of Object.entries(mapping)) {
+    const value = row[header];
+    if (value !== undefined) mapped[fieldKey] = value;
+  }
+  return mapped;
+}
+
+/**
+ * Resolve timeWindowPresetId (either a UUID or a preset name) against the
+ * schema's bundled presets, in place. No DB call — the schema already carries
+ * the presets. Returns any validation errors it encounters.
+ */
+function resolvePresetsInPlace(
+  normalized: Record<string, unknown>,
+  rowIndex: number,
+  presets: TimeWindowPresetRef[],
+): CSVValidationError[] {
+  const errors: CSVValidationError[] = [];
+
+  // Direct time windows take precedence.
+  if (normalized.timeWindowStart && normalized.timeWindowEnd) return errors;
+
+  const rawRef = normalized.timeWindowPresetId;
+  if (typeof rawRef !== "string" || rawRef.trim() === "") return errors;
+  const ref = rawRef.trim();
+
+  const preset =
+    presets.find((p) => p.id === ref) ||
+    presets.find((p) => p.name.toUpperCase() === ref.toUpperCase());
+
+  if (!preset) {
+    errors.push(
+      createValidationError(
+        rowIndex,
+        "timeWindowPresetId",
+        `Preset de ventana horaria no encontrado: ${ref}. ` +
+          `Disponibles: ${presets.map((p) => p.name).join(", ") || "(ninguno)"}`,
+        "critical",
+        ERROR_TYPES.REFERENCE,
+        ref,
+      ),
+    );
+    return errors;
+  }
+
+  normalized.timeWindowPresetId = preset.id;
+  if (preset.startTime && preset.endTime) {
+    normalized.timeWindowStart = String(preset.startTime);
+    normalized.timeWindowEnd = String(preset.endTime);
+  }
+  if (!normalized.strictness && preset.strictness) {
+    normalized.strictness = preset.strictness;
+  }
+  return errors;
+}
+
+// ── main pipeline ───────────────────────────────────────────────────────────
+
+/**
+ * Orchestrate the full CSV import flow against the unified ProfileSchema.
  *
- * Mirrors the original route handler exactly, including response shapes
- * and HTTP status codes.
+ * Phases:
+ *   1. Resolve the company's ProfileSchema (one DB round trip, parallel queries).
+ *   2. Decode + parse the base64 CSV payload.
+ *   3. Decide the header → fieldKey mapping (explicit request > saved template
+ *      > schema auto-resolution).
+ *   4. Validate each row against the schema (types, rules, required).
+ *   5. Check tracking_id uniqueness within the file + against the database.
+ *   6. Resolve time-window preset references in memory.
+ *   7. Either return a validation preview OR run the batch insert.
  */
 export async function processCsvImport(
   input: CsvImportRequest,
   context: ProcessCsvImportContext,
 ): Promise<ProcessCsvImportResult> {
-  // Load template mapping if templateId is provided
-  let templateMapping: Record<string, string> | undefined;
-  if (input.templateId) {
-    const template = await db
-      .select()
-      .from(csvColumnMappingTemplates)
-      .where(
-        and(
-          eq(csvColumnMappingTemplates.id, input.templateId),
-          eq(csvColumnMappingTemplates.companyId, context.companyId),
-          eq(csvColumnMappingTemplates.active, true),
-        ),
-      );
+  // 1 — Load the schema up front. Everything downstream reads from it.
+  const schema: ProfileSchema = await resolveProfileSchema(context.companyId);
 
-    if (template.length === 0) {
-      return {
-        kind: "error",
-        status: 404,
-        body: { error: "Template not found or inactive" },
-      };
-    }
-
-    templateMapping = safeParseJson(template[0].columnMapping);
-  }
-
-  // Merge custom mapping with template mapping (custom takes precedence)
-  const effectiveMapping = {
-    ...templateMapping,
-    ...input.columnMapping,
-  };
-
-  // Decode + validate base64 CSV payload
+  // 2 — Decode + parse.
   const decoded = decodeCsvBase64(input.csvContent);
   if (!decoded.ok) {
-    if (decoded.error === "too_large") {
-      return {
-        kind: "error",
-        status: 400,
-        body: { error: "CSV file is too large. Maximum size is 10MB." },
-      };
-    }
-    if (decoded.error === "invalid_base64") {
-      return {
-        kind: "error",
-        status: 400,
-        body: { error: "Invalid base64 encoding" },
-      };
-    }
-    // empty
-    return {
-      kind: "error",
-      status: 400,
-      body: { error: "CSV file is empty" },
-    };
+    const msg =
+      decoded.error === "too_large"
+        ? "CSV file is too large. Maximum size is 10MB."
+        : decoded.error === "invalid_base64"
+          ? "Invalid base64 encoding"
+          : "CSV file is empty";
+    return { kind: "error", status: 400, body: { error: msg } };
   }
   const csvContent = decoded.content;
-
-  // Detect delimiter and parse CSV
   const delimiter = detectCSVDelimiter(csvContent);
   const rows = parseCSV(csvContent, delimiter);
-
   if (rows.length === 0) {
     return {
       kind: "error",
@@ -122,243 +175,168 @@ export async function processCsvImport(
     };
   }
 
-  // Generate column mapping suggestions if no mapping provided
   const csvHeaders = Object.keys(rows[0]);
-  let finalMapping = effectiveMapping;
 
-  if (Object.keys(finalMapping).length === 0) {
-    // Auto-generate mapping using similarity algorithm
-    const suggestions = suggestColumnMapping(csvHeaders);
-    finalMapping = suggestions.suggestedMapping;
+  // 3 — Decide the header mapping. Caller may pass a templateId or an explicit
+  // columnMapping; otherwise we auto-resolve via the schema.
+  let templateMapping: Record<string, string> | undefined;
+  if (input.templateId) {
+    const templateResult = await loadTemplateMapping(
+      input.templateId,
+      context.companyId,
+    );
+    if (!templateResult.ok) return templateResult.response;
+    templateMapping = templateResult.mapping;
   }
 
-  // Check for required headers after mapping
-  const normalizedHeaders = Object.keys(rows[0]).map((h) =>
-    h.toLowerCase().trim(),
-  );
-  const hasTrackingId = normalizedHeaders.some((h) =>
-    ["tracking_id", "tracking id", "trackingid", "trackingid"].includes(h),
-  );
+  const explicit: Record<string, string> = {
+    ...(templateMapping ?? {}),
+    ...(input.columnMapping ?? {}),
+  };
 
-  if (!hasTrackingId) {
+  const autoValidation = validateCsvHeaders(csvHeaders, schema);
+  // Caller overrides win, then schema auto-resolution fills the rest.
+  const headerMapping: Record<string, string> = {
+    ...autoValidation.mapping,
+    ...explicit,
+  };
+
+  if (autoValidation.missing.length > 0 && Object.keys(explicit).length === 0) {
     return {
       kind: "error",
       status: 400,
       body: {
         error: "Missing required field",
-        details: "CSV must contain a tracking ID column",
-        requiredFields: ["tracking_id", "address", "latitude", "longitude"],
-        foundHeaders: Object.keys(rows[0]),
-        suggestedMapping: finalMapping,
+        details: `Required columns missing: ${autoValidation.missing.join(", ")}`,
+        requiredFields: schema.fields
+          .filter((f) => f.required)
+          .map((f) => f.key),
+        foundHeaders: csvHeaders,
+        suggestedMapping: headerMapping,
       },
     };
   }
 
-  // Validate all rows and collect errors with record separation
+  // 4 + 5 — Validate each row and check for duplicates.
   const allErrors: CSVValidationError[] = [];
   const validRecords: CSVRecordValidationResult[] = [];
   const invalidRecords: CSVRecordValidationResult[] = [];
   const seenTrackingIds = new Set<string>();
+  const normalizedByRow = new Map<number, Record<string, unknown>>();
 
-  // Check for existing tracking IDs in database BEFORE any validation
-  const trackingIdsInCSV = rows
-    .map((row) => {
-      const mapped =
-        Object.keys(finalMapping).length > 0
-          ? mapCSVRow(row, finalMapping)
-          : mapCSVRowToOrder(row);
-      return mapped.trackingId;
-    })
-    .filter((id): id is string => !!id);
+  // Pre-fetch existing tracking IDs in the DB so we can flag duplicates.
+  const trackingIdsInCsv: string[] = [];
+  const tentativeByRow: Array<{
+    rowIndex: number;
+    normalized: Record<string, unknown>;
+    rowErrors: CSVValidationError[];
+  }> = [];
 
-  const existingOrders = await db
-    .select({ trackingId: orders.trackingId })
-    .from(orders)
-    .where(
-      and(
-        eq(orders.companyId, context.companyId),
-        eq(orders.active, true),
-        inArray(orders.trackingId, trackingIdsInCSV),
+  rows.forEach((rawRow, i) => {
+    const rowIndex = i + 2; // human row number (1 = header)
+    const remapped = remapRow(rawRow, headerMapping);
+    const result = validateCsvRow(remapped, schema);
+
+    const rowErrors: CSVValidationError[] = result.errors.map((e) =>
+      createValidationError(
+        rowIndex,
+        e.fieldKey,
+        e.message,
+        "critical",
+        ERROR_TYPES.VALIDATION,
       ),
     );
 
+    const trackingId = String(result.normalized.trackingId ?? "");
+    if (trackingId) {
+      if (seenTrackingIds.has(trackingId)) {
+        rowErrors.push(
+          createValidationError(
+            rowIndex,
+            "trackingId",
+            `Duplicate trackingId within CSV: ${trackingId}`,
+            "critical",
+            ERROR_TYPES.DUPLICATE,
+            trackingId,
+          ),
+        );
+      } else {
+        seenTrackingIds.add(trackingId);
+        trackingIdsInCsv.push(trackingId);
+      }
+    }
+
+    tentativeByRow.push({
+      rowIndex,
+      normalized: result.normalized,
+      rowErrors,
+    });
+  });
+
+  const existingOrders = trackingIdsInCsv.length
+    ? await db
+        .select({ trackingId: orders.trackingId })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.companyId, context.companyId),
+            eq(orders.active, true),
+            inArray(orders.trackingId, trackingIdsInCsv),
+          ),
+        )
+    : [];
   const existingTrackingIds = new Set(
     existingOrders.map((o) => o.trackingId),
   );
 
-  // Validate each row and separate valid/invalid records
-  rows.forEach((row, index) => {
-    const rowIndex = index + 2; // +1 for 0-based index, +1 for header row
-    const rowErrors = validateOrderRow(
-      row,
-      rowIndex,
-      seenTrackingIds,
-      finalMapping,
-    );
-    const orderData =
-      Object.keys(finalMapping).length > 0
-        ? mapCSVRow(row, finalMapping)
-        : mapCSVRowToOrder(row);
-
-    // Check for duplicate with existing orders in database
-    if (existingTrackingIds.has(orderData.trackingId)) {
+  for (const { rowIndex, normalized, rowErrors } of tentativeByRow) {
+    const trackingId = String(normalized.trackingId ?? "");
+    if (trackingId && existingTrackingIds.has(trackingId)) {
       rowErrors.push(
         createValidationError(
           rowIndex,
           "trackingId",
-          `Tracking ID already exists in database: ${orderData.trackingId}`,
+          `Tracking ID already exists in database: ${trackingId}`,
           "critical",
           ERROR_TYPES.DUPLICATE,
-          orderData.trackingId,
+          trackingId,
         ),
       );
     }
 
-    // Create record validation result
-    const recordResult: CSVRecordValidationResult = {
+    // 6 — Resolve time-window preset references against schema (no DB call).
+    const presetErrors = resolvePresetsInPlace(
+      normalized,
+      rowIndex,
+      schema.timeWindowPresets,
+    );
+    rowErrors.push(...presetErrors);
+
+    const record: CSVRecordValidationResult = {
       row: rowIndex,
       valid: rowErrors.length === 0,
-      trackingId: orderData.trackingId,
+      trackingId: trackingId || undefined,
       errors: rowErrors,
     };
 
     if (rowErrors.length > 0) {
-      invalidRecords.push(recordResult);
+      invalidRecords.push(record);
       allErrors.push(...rowErrors);
     } else {
-      validRecords.push(recordResult);
+      validRecords.push(record);
+      normalizedByRow.set(rowIndex, normalized);
     }
+  }
+
+  // Preview of first 10 rows (regardless of validity).
+  const preview = rows.slice(0, 10).map((rawRow, i) => {
+    const remapped = remapRow(rawRow, headerMapping);
+    const r = validateCsvRow(remapped, schema);
+    return { row: i + 2, ...r.normalized };
   });
 
-  // Map valid rows to order data for further validation
-  // Use a Map keyed by row number so we can retrieve resolved data later
-  const orderDataByRow = new Map<number, Record<string, string>>();
-  const orderDataList: Array<Record<string, string>> = [];
-  for (const record of validRecords) {
-    const row = rows.find((_, i) => i + 2 === record.row);
-    if (!row) {
-      throw new Error(`Row not found for record at row ${record.row}`);
-    }
-    const data = Object.keys(finalMapping).length > 0
-      ? mapCSVRow(row, finalMapping)
-      : mapCSVRowToOrder(row, input.columnMapping);
-    orderDataList.push(data);
-    orderDataByRow.set(record.row, data);
-  }
-
-  // Resolve time window presets (by ID or name) into direct time windows
-  const presetErrors = await resolveTimeWindowPresets(
-    orderDataList,
-    context.companyId,
-  );
-
-  // Add preset errors to both allErrors and update affected records
-  if (presetErrors.length > 0) {
-    allErrors.push(...presetErrors);
-
-    // Move records with preset errors from valid to invalid
-    presetErrors.forEach((error) => {
-      const validRecordIndex = validRecords.findIndex(
-        (r) => r.row === error.row,
-      );
-      if (validRecordIndex !== -1) {
-        const record = validRecords.splice(validRecordIndex, 1)[0];
-        record.valid = false;
-        record.errors.push(error);
-        invalidRecords.push(record);
-      }
-    });
-  }
-
-  // Validate custom fields from CSV columns matching field definitions
-  const fieldDefs = await db
-    .select({
-      id: companyFieldDefinitions.id,
-      code: companyFieldDefinitions.code,
-      label: companyFieldDefinitions.label,
-      fieldType: companyFieldDefinitions.fieldType,
-      required: companyFieldDefinitions.required,
-      options: companyFieldDefinitions.options,
-      defaultValue: companyFieldDefinitions.defaultValue,
-      validationRules: companyFieldDefinitions.validationRules,
-    })
-    .from(companyFieldDefinitions)
-    .where(
-      and(
-        eq(companyFieldDefinitions.companyId, context.companyId),
-        eq(companyFieldDefinitions.entity, "orders"),
-        eq(companyFieldDefinitions.showInCsv, true),
-        eq(companyFieldDefinitions.active, true),
-      ),
-    )
-    .orderBy(asc(companyFieldDefinitions.position));
-
-  const typedFieldDefs: FieldDefinition[] = fieldDefs.map((d) => ({
-    ...d,
-    options: d.options as string[] | null,
-    validationRules: d.validationRules as FieldDefinition["validationRules"],
-  }));
-
-  // Extract and validate custom field values per valid record
-  const customFieldsByRow = new Map<number, Record<string, unknown>>();
-  const fieldCodes = new Set(typedFieldDefs.map((d) => d.code));
-
-  if (typedFieldDefs.length > 0) {
-    // Check which valid records have custom field data in CSV columns
-    for (let i = validRecords.length - 1; i >= 0; i--) {
-      const record = validRecords[i];
-      const row = rows.find((_, idx) => idx + 2 === record.row);
-      if (!row) continue;
-
-      // Extract custom field values from CSV columns matching definition codes
-      const customValues: Record<string, unknown> = {};
-      for (const [csvKey, csvValue] of Object.entries(row)) {
-        const normalizedKey = csvKey.trim();
-        if (fieldCodes.has(normalizedKey) && csvValue !== "") {
-          customValues[normalizedKey] = csvValue;
-        }
-      }
-
-      // Apply defaults for missing fields
-      const withDefaults = applyDefaults(typedFieldDefs, customValues);
-
-      // Validate custom fields
-      const cfErrors = validateCustomFields(typedFieldDefs, withDefaults);
-      if (cfErrors.length > 0) {
-        const csvErrors: CSVValidationError[] = cfErrors.map((e) =>
-          createValidationError(
-            record.row,
-            e.code,
-            e.message,
-            "critical",
-            ERROR_TYPES.VALIDATION,
-          ),
-        );
-        allErrors.push(...csvErrors);
-
-        // Move from valid to invalid
-        const [removed] = validRecords.splice(i, 1);
-        removed.valid = false;
-        removed.errors.push(...csvErrors);
-        invalidRecords.push(removed);
-      } else {
-        customFieldsByRow.set(record.row, withDefaults);
-      }
-    }
-  }
-
-  // Calculate summary statistics
   const summary = calculateErrorSummary(allErrors);
 
-  // Generate preview (first 10 rows with mapped field names)
-  const preview = rows.slice(0, 10).map((row, index) => ({
-    row: index + 2,
-    ...(Object.keys(finalMapping).length > 0
-      ? mapCSVRow(row, finalMapping)
-      : mapCSVRowToOrder(row, input.columnMapping)),
-  }));
-
-  // If not processing, return complete validation results
   if (!input.process) {
     return {
       kind: "success",
@@ -375,110 +353,89 @@ export async function processCsvImport(
         preview,
         duplicateTrackingIds: Array.from(existingTrackingIds),
         summary,
-        // Include column mapping information in response
-        columnMapping: finalMapping,
+        columnMapping: headerMapping,
         csvHeaders,
         templateId: input.templateId,
       },
     };
   }
 
-  // Process and import valid rows (only if no critical errors)
-  const criticalErrors = allErrors.filter((e) => e.severity === "critical");
+  // 7 — Insert valid rows.
+  const customFieldKeys = new Set(
+    schema.fields.filter((f) => f.origin === "custom").map((f) => f.key),
+  );
+
   let importedCount = 0;
   const importErrors: CSVValidationError[] = [];
 
-  if (validRecords.length > 0 && criticalErrors.length === 0) {
-    // Use the already-resolved orderDataByRow (with time window presets resolved)
-    const finalOrderDataList = validRecords.map((record) => {
-      const data = orderDataByRow.get(record.row);
-      if (!data) {
-        throw new Error(`Order data not found for record at row ${record.row}`);
+  if (validRecords.length > 0) {
+    const insertPayload = validRecords.map((record) => {
+      const data = normalizedByRow.get(record.row) ?? {};
+      const customFields: Record<string, unknown> = {};
+      for (const key of customFieldKeys) {
+        if (data[key] !== undefined) customFields[key] = data[key];
       }
-      return { data, rowNum: record.row };
+      const num = (v: unknown): number | null => {
+        if (v === null || v === undefined || v === "") return null;
+        const n = typeof v === "number" ? v : Number(v);
+        return Number.isFinite(n) ? Math.round(n) : null;
+      };
+      const str = (v: unknown): string | null =>
+        v === null || v === undefined || v === "" ? null : String(v);
+
+      return {
+        trackingId: String(data.trackingId),
+        customerName: str(data.customerName),
+        customerPhone: str(data.customerPhone),
+        customerEmail: str(data.customerEmail),
+        address: String(data.address),
+        latitude: String(data.latitude),
+        longitude: String(data.longitude),
+        timeWindowPresetId: str(data.timeWindowPresetId),
+        strictness: (data.strictness === "HARD" || data.strictness === "SOFT"
+          ? data.strictness
+          : null) as "HARD" | "SOFT" | null,
+        promisedDate: data.promisedDate
+          ? new Date(String(data.promisedDate))
+          : null,
+        weightRequired: num(data.weightRequired),
+        volumeRequired: num(data.volumeRequired),
+        orderValue: num(data.orderValue),
+        unitsRequired: num(data.unitsRequired),
+        orderType: (data.orderType === "NEW" ||
+        data.orderType === "RESCHEDULED" ||
+        data.orderType === "URGENT"
+          ? data.orderType
+          : null) as "NEW" | "RESCHEDULED" | "URGENT" | null,
+        priority: num(data.priority),
+        timeWindowStart: str(data.timeWindowStart),
+        timeWindowEnd: str(data.timeWindowEnd),
+        requiredSkills: str(data.requiredSkills),
+        notes: str(data.notes),
+        customFields: Object.keys(customFields).length > 0 ? customFields : null,
+      };
     });
 
-    // Use optimized batch insert for large datasets (Story 17.1)
     try {
       const batchResult = await batchInsertOrders(
-        finalOrderDataList.map(({ data, rowNum }) => ({
-          trackingId: String(data.trackingId),
-          customerName: data.customerName ? String(data.customerName) : null,
-          customerPhone: data.customerPhone
-            ? String(data.customerPhone)
-            : null,
-          customerEmail: data.customerEmail
-            ? String(data.customerEmail)
-            : null,
-          address: String(data.address),
-          latitude: String(data.latitude),
-          longitude: String(data.longitude),
-          timeWindowPresetId: data.timeWindowPresetId || null,
-          strictness: (data.strictness === "HARD" ||
-          data.strictness === "SOFT"
-            ? data.strictness
-            : null) as "HARD" | "SOFT" | null,
-          promisedDate: data.promisedDate
-            ? new Date(data.promisedDate)
-            : null,
-          weightRequired: data.weightRequired
-            ? parseInt(String(data.weightRequired), 10)
-            : null,
-          volumeRequired: data.volumeRequired
-            ? parseInt(String(data.volumeRequired), 10)
-            : null,
-          // New fields for multi-company support
-          orderValue: data.orderValue
-            ? parseInt(String(data.orderValue), 10)
-            : null,
-          unitsRequired: data.unitsRequired
-            ? parseInt(String(data.unitsRequired), 10)
-            : null,
-          orderType: (data.orderType === "NEW" ||
-          data.orderType === "RESCHEDULED" ||
-          data.orderType === "URGENT"
-            ? data.orderType
-            : null) as "NEW" | "RESCHEDULED" | "URGENT" | null,
-          priority: data.priority
-            ? parseInt(String(data.priority), 10)
-            : null,
-          timeWindowStart: data.timeWindowStart
-            ? String(data.timeWindowStart)
-            : null,
-          timeWindowEnd: data.timeWindowEnd
-            ? String(data.timeWindowEnd)
-            : null,
-          requiredSkills: data.requiredSkills
-            ? String(data.requiredSkills)
-            : null,
-          notes: data.notes ? String(data.notes) : null,
-          customFields: customFieldsByRow.get(rowNum) || null,
-        })),
+        insertPayload,
         context.companyId,
-        {
-          batchSize: 500, // Optimized for PostgreSQL
-          timeout: 300000, // 5 minutes timeout
-        },
+        { batchSize: 500, timeout: 300000 },
       );
-
       importedCount = batchResult.inserted;
 
-      // Add batch errors to import errors
-      if (batchResult.errors.length > 0) {
-        for (const err of batchResult.errors) {
-          importErrors.push(
-            createValidationError(
-              0,
-              "batch",
-              `Batch ${err.batch}: ${err.error}`,
-              "critical",
-              ERROR_TYPES.VALIDATION,
-            ),
-          );
-        }
+      for (const err of batchResult.errors) {
+        importErrors.push(
+          createValidationError(
+            0,
+            "batch",
+            `Batch ${err.batch}: ${err.error}`,
+            "critical",
+            ERROR_TYPES.VALIDATION,
+          ),
+        );
       }
 
-      // Update table statistics for improved query performance (Story 17.1)
       if (batchResult.inserted > 100) {
         await updateTableStatistics("orders");
       }
@@ -510,8 +467,7 @@ export async function processCsvImport(
       preview,
       duplicateTrackingIds: Array.from(existingTrackingIds),
       summary,
-      // Include column mapping information in response
-      columnMapping: finalMapping,
+      columnMapping: headerMapping,
       csvHeaders,
       templateId: input.templateId,
     },

@@ -10,7 +10,12 @@ export type {
 } from "./types";
 
 export { resolveProfileSchema } from "./resolve";
-export { validateCsvHeaders, validateCsvRow } from "./validate";
+export {
+  validateCsvHeaders,
+  validateCsvRow,
+  validateCustomFieldValues,
+  applyCustomFieldDefaults,
+} from "./validate";
 export {
   buildOrderCapacityVector,
   buildVehicleCapacityVector,

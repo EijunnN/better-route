@@ -1,9 +1,12 @@
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { companyFieldDefinitions, orders, timeWindowPresets } from "@/db/schema";
+import { orders, timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { type FieldDefinition, validateCustomFields } from "@/lib/custom-fields/validation";
+import {
+  resolveProfileSchema,
+  validateCustomFieldValues,
+} from "@/lib/orders/profile-schema";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
@@ -163,27 +166,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate custom fields against definitions if provided
+    // Validate custom fields against schema if provided
     if (validatedData.customFields && Object.keys(validatedData.customFields).length > 0) {
-      const definitions = await db
-        .select()
-        .from(companyFieldDefinitions)
-        .where(
-          and(
-            eq(companyFieldDefinitions.companyId, context.companyId),
-            eq(companyFieldDefinitions.entity, "orders"),
-            eq(companyFieldDefinitions.active, true),
-          ),
+      const schema = await resolveProfileSchema(context.companyId);
+      const errors = validateCustomFieldValues(
+        validatedData.customFields,
+        schema,
+      );
+      if (errors.length > 0) {
+        return NextResponse.json(
+          { error: "Custom field validation failed", details: errors },
+          { status: 400 },
         );
-
-      if (definitions.length > 0) {
-        const errors = validateCustomFields(definitions as FieldDefinition[], validatedData.customFields);
-        if (errors.length > 0) {
-          return NextResponse.json(
-            { error: "Custom field validation failed", details: errors },
-            { status: 400 },
-          );
-        }
       }
     }
 

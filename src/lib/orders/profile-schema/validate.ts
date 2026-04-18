@@ -170,6 +170,63 @@ function applyRules(
 }
 
 /**
+ * Validate ONLY the custom-field subset of a pre-typed value map against the
+ * schema — useful when orders are created via the JSON API (not CSV) and the
+ * caller already has typed values. Returns per-field error list mirroring the
+ * row validator output for custom-field definitions.
+ */
+export function validateCustomFieldValues(
+  values: Record<string, unknown>,
+  schema: ProfileSchema,
+): RowValidationResult["errors"] {
+  const errors: RowValidationResult["errors"] = [];
+  for (const field of schema.fields) {
+    if (field.origin !== "custom") continue;
+    const raw = values[field.key];
+    const empty = isEmpty(raw);
+    if (empty) {
+      if (field.required) {
+        errors.push({
+          fieldKey: field.key,
+          label: field.label,
+          message: `${field.label} es requerido`,
+        });
+      }
+      continue;
+    }
+    const { value, error } = coerce(String(raw), field);
+    if (error) {
+      errors.push({ fieldKey: field.key, label: field.label, message: error });
+      continue;
+    }
+    const ruleError = applyRules(value, field);
+    if (ruleError) {
+      errors.push({ fieldKey: field.key, label: field.label, message: ruleError });
+    }
+  }
+  return errors;
+}
+
+/**
+ * Apply default values (from schema custom-field definitions) to a map.
+ * Only fills fields that are missing/empty. Pure — does not validate.
+ */
+export function applyCustomFieldDefaults(
+  values: Record<string, unknown>,
+  schema: ProfileSchema,
+): Record<string, unknown> {
+  const out = { ...values };
+  for (const field of schema.fields) {
+    if (field.origin !== "custom") continue;
+    if (field.defaultValue === undefined) continue;
+    if (out[field.key] === undefined || out[field.key] === "") {
+      out[field.key] = field.defaultValue;
+    }
+  }
+  return out;
+}
+
+/**
  * Validate one CSV row (keyed by field.key after mapping) against the schema.
  * Applies defaults, type coercion, and per-field rules.
  */
