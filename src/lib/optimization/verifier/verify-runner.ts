@@ -26,6 +26,7 @@ import type {
 import { verify } from "./verify";
 import type { VerifierReport } from "./types";
 import { hhmmToSeconds } from "./utils";
+import { checkDriverAssignments } from "./check-assignments";
 
 /**
  * Shape of the DB-derived order we need. Matches the subset of fields on
@@ -216,10 +217,42 @@ export function verifyRunnerResult(args: {
   const adapterVehicles = args.vehicles.map(toOptimizerVehicle);
   const adapterConfig = toOptimizerConfig(args.config);
   const adapterResult = toOptimizerResult(args.result, args.result.summary.engineUsed || "UNKNOWN");
-  return verify({
+
+  // Solver-level verification (time windows, capacity, skills, etc.).
+  const base = verify({
     orders: adapterOrders,
     vehicles: adapterVehicles,
     config: adapterConfig,
     result: adapterResult,
   });
+
+  // Driver-assignment layer: hoist per-route assignmentQuality errors/warnings
+  // (produced by assignDriversToRoutes + validateDriverAssignment in the
+  // runner) into the same Violation[] feed so the UI + CI treat them uniformly.
+  const assignmentViolations = checkDriverAssignments(
+    args.result.routes.map((r) => ({
+      vehicleId: r.vehicleId,
+      vehicleIdentifier: r.vehiclePlate,
+      driverId: r.driverId,
+      driverName: r.driverName,
+      stopCount: r.stops.length,
+      assignmentQuality: r.assignmentQuality,
+    })),
+  );
+
+  const violations = [...base.violations, ...assignmentViolations];
+  const summary = { hard: 0, soft: 0, info: 0, byCode: {} as Record<string, number> };
+  for (const v of violations) {
+    if (v.severity === "HARD") summary.hard++;
+    else if (v.severity === "SOFT") summary.soft++;
+    else summary.info++;
+    summary.byCode[v.code] = (summary.byCode[v.code] ?? 0) + 1;
+  }
+
+  return {
+    optimizer: base.optimizer,
+    violations,
+    summary,
+    totals: base.totals,
+  };
 }

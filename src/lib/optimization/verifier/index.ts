@@ -15,6 +15,10 @@ export { checkCapacity } from "./check-capacity";
 export { checkPriority } from "./check-priority";
 export { checkTravelLimits } from "./check-travel-limits";
 export { checkUnassigned } from "./check-unassigned";
+export {
+  checkDriverAssignments,
+  type AssignmentRouteInput,
+} from "./check-assignments";
 export { hhmmToSeconds, secondsToHHMM } from "./utils";
 export {
   verifyRunnerResult,

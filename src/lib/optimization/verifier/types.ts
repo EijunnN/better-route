@@ -26,7 +26,15 @@ export type ViolationCode =
   | "MISSING_ORDER"
   | "INVALID_SEQUENCE"
   | "UNKNOWN_ORDER_ID"
-  | "UNKNOWN_VEHICLE_ID";
+  | "UNKNOWN_VEHICLE_ID"
+  // Driver-assignment concerns (validated against the runner's per-route
+  // assignmentQuality output produced by assignDriversToRoutes + validateDriverAssignment).
+  | "DRIVER_ASSIGNMENT_ERROR"
+  | "DRIVER_ASSIGNMENT_WARNING"
+  | "ROUTE_WITHOUT_DRIVER"
+  | "DRIVER_LICENSE_MISMATCH"
+  | "DRIVER_SKILL_MISSING"
+  | "DRIVER_UNAVAILABLE";
 
 export interface Violation {
   code: ViolationCode;

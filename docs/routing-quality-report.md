@@ -1,6 +1,6 @@
 # Routing Quality Report
 
-Generated: 2026-04-18T14:35:19.204Z
+Generated: 2026-04-18T15:12:46.843Z
 
 Scenarios: 12 × 2 solvers = 24 runs
 
@@ -10,18 +10,18 @@ Passed: **22** / 24
 
 | Scenario | VROOM | PyVRP |
 |---|---|---|
-| 01-basic-10-orders | ✅ 0un 110ms | ✅ 0un 15145ms |
-| 02-tight-time-windows | ✅ 0un 96ms | ✅ 0un 30098ms |
-| 03-skills-scarce | ✅ 0un 68ms | ❌ 0H 0S 4un |
-| 04-capacity-at-limit | ✅ 0un 66ms | ✅ 0un 15075ms |
-| 05-urgent-priority | ✅ 5un 78ms | ✅ 5un 30104ms |
-| 06-vehicle-workday | ✅ 6un 102ms | ✅ 6un 30092ms |
-| 07-multi-dimensional-capacity | ✅ 0un 107ms | ✅ 0un 30107ms |
-| 08-max-orders-per-vehicle | ✅ 0un 101ms | ✅ 0un 30116ms |
-| 09-break-time | ✅ 0un 77ms | ✅ 0un 30079ms |
-| 10-infeasible-skill | ✅ 5un 59ms | ✅ 5un 15094ms |
-| 11-mixed-priorities | ✅ 0un 79ms | ✅ 0un 30079ms |
-| 12-stress-50-orders | ✅ 0un 102ms | ⚠️ error |
+| 01-basic-10-orders | ✅ 0un 81ms | ✅ 0un 15080ms |
+| 02-tight-time-windows | ✅ 0un 96ms | ✅ 0un 30092ms |
+| 03-skills-scarce | ✅ 0un 74ms | ❌ 0H 0S 4un |
+| 04-capacity-at-limit | ✅ 0un 70ms | ✅ 0un 15075ms |
+| 05-urgent-priority | ✅ 5un 76ms | ✅ 5un 30090ms |
+| 06-vehicle-workday | ✅ 6un 102ms | ✅ 6un 30086ms |
+| 07-multi-dimensional-capacity | ✅ 0un 111ms | ✅ 0un 30114ms |
+| 08-max-orders-per-vehicle | ✅ 0un 107ms | ✅ 0un 30114ms |
+| 09-break-time | ✅ 0un 76ms | ✅ 0un 30086ms |
+| 10-infeasible-skill | ✅ 5un 58ms | ✅ 5un 15091ms |
+| 11-mixed-priorities | ✅ 0un 96ms | ✅ 0un 30087ms |
+| 12-stress-50-orders | ✅ 0un 107ms | ⚠️ error |
 
 ## Per-scenario detail
 
@@ -29,12 +29,12 @@ Passed: **22** / 24
 
 10 orders, 2 vehicles, no constraints — smoke test
 
-**VROOM** — PASS in 110ms
+**VROOM** — PASS in 81ms
 
 - routes=1, assigned=10, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
 
-**PYVRP** — PASS in 15145ms
+**PYVRP** — PASS in 15080ms
 
 - routes=1, assigned=10, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
@@ -48,7 +48,7 @@ Passed: **22** / 24
 - routes=1, assigned=16, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
 
-**PYVRP** — PASS in 30098ms
+**PYVRP** — PASS in 30092ms
 
 - routes=1, assigned=16, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
@@ -57,12 +57,12 @@ Passed: **22** / 24
 
 Skill-gated orders with limited capable vehicles
 
-**VROOM** — PASS in 68ms
+**VROOM** — PASS in 74ms
 
 - routes=1, assigned=12, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
 
-**PYVRP** — FAIL in 30080ms
+**PYVRP** — FAIL in 30077ms
 
 - routes=1, assigned=8, unassigned=4
 - violations: HARD=0, SOFT=0, INFO=4
@@ -75,7 +75,7 @@ Skill-gated orders with limited capable vehicles
 
 10 orders × 100kg, 2 vehicles × 500kg — exactly at limit
 
-**VROOM** — PASS in 66ms
+**VROOM** — PASS in 70ms
 
 - routes=2, assigned=10, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
@@ -89,14 +89,14 @@ Skill-gated orders with limited capable vehicles
 
 Capacity-constrained: URGENT orders must prevail
 
-**VROOM** — PASS in 78ms
+**VROOM** — PASS in 76ms
 
 - routes=1, assigned=10, unassigned=5
 - violations: HARD=0, SOFT=0, INFO=5
 - breakdown:
   - `UNASSIGNED_ORDER`: 5
 
-**PYVRP** — PASS in 30104ms
+**PYVRP** — PASS in 30090ms
 
 - routes=1, assigned=10, unassigned=5
 - violations: HARD=0, SOFT=0, INFO=5
@@ -114,7 +114,7 @@ Narrow vehicle workday — stops must not spill past window
 - breakdown:
   - `UNASSIGNED_ORDER`: 6
 
-**PYVRP** — PASS in 30092ms
+**PYVRP** — PASS in 30086ms
 
 - routes=1, assigned=14, unassigned=6
 - violations: HARD=0, SOFT=0, INFO=6
@@ -125,12 +125,12 @@ Narrow vehicle workday — stops must not spill past window
 
 Mixed weight/volume demands — both dimensions matter
 
-**VROOM** — PASS in 107ms
+**VROOM** — PASS in 111ms
 
 - routes=2, assigned=20, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
 
-**PYVRP** — PASS in 30107ms
+**PYVRP** — PASS in 30114ms
 
 - routes=2, assigned=20, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
@@ -139,12 +139,12 @@ Mixed weight/volume demands — both dimensions matter
 
 maxOrders limit forces distribution across vehicles
 
-**VROOM** — PASS in 101ms
+**VROOM** — PASS in 107ms
 
 - routes=3, assigned=20, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
 
-**PYVRP** — PASS in 30116ms
+**PYVRP** — PASS in 30114ms
 
 - routes=3, assigned=20, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
@@ -153,12 +153,12 @@ maxOrders limit forces distribution across vehicles
 
 Mandatory lunch break 12:00-13:00 inside 08:00-18:00 workday
 
-**VROOM** — PASS in 77ms
+**VROOM** — PASS in 76ms
 
 - routes=1, assigned=15, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
 
-**PYVRP** — PASS in 30079ms
+**PYVRP** — PASS in 30086ms
 
 - routes=1, assigned=15, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
@@ -167,14 +167,14 @@ Mandatory lunch break 12:00-13:00 inside 08:00-18:00 workday
 
 Orders require skill no vehicle provides — must unassign
 
-**VROOM** — PASS in 59ms
+**VROOM** — PASS in 58ms
 
 - routes=1, assigned=5, unassigned=5
 - violations: HARD=0, SOFT=0, INFO=5
 - breakdown:
   - `UNASSIGNED_ORDER`: 5
 
-**PYVRP** — PASS in 15094ms
+**PYVRP** — PASS in 15091ms
 
 - routes=1, assigned=5, unassigned=5
 - violations: HARD=0, SOFT=0, INFO=5
@@ -185,12 +185,12 @@ Orders require skill no vehicle provides — must unassign
 
 Mixed orderTypes — all must be assigned when capacity suffices
 
-**VROOM** — PASS in 79ms
+**VROOM** — PASS in 96ms
 
 - routes=1, assigned=16, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
 
-**PYVRP** — PASS in 30079ms
+**PYVRP** — PASS in 30087ms
 
 - routes=1, assigned=16, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
@@ -199,11 +199,11 @@ Mixed orderTypes — all must be assigned when capacity suffices
 
 Scale test — 50 orders, 5 vehicles
 
-**VROOM** — PASS in 102ms
+**VROOM** — PASS in 107ms
 
 - routes=1, assigned=50, unassigned=0
 - violations: HARD=0, SOFT=0, INFO=0
 
-**PYVRP** — FAIL in 60016ms
+**PYVRP** — FAIL in 60005ms
 
 Error: `The operation timed out.`
