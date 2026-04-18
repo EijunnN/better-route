@@ -15,27 +15,6 @@ import {
 import { setTenantContext } from "../infra/tenant";
 
 /**
- * @deprecated Use `extractTenantContextAuthed(request, user)` instead.
- *
- * This helper trusts the `x-company-id` header without cross-validating against
- * the authenticated user's JWT companyId. Calling it alone is an IDOR vector:
- * any authenticated non-admin user can read another tenant's data by forging
- * the header. See docs/security-audit.md Finding #1.
- *
- * Kept temporarily to avoid breaking the ~90 call sites during the retrofit.
- * Every caller MUST be migrated to `extractTenantContextAuthed`.
- */
-export function extractTenantContext(request: NextRequest): {
-  companyId: string;
-  userId: string | undefined;
-} | null {
-  const companyId = request.headers.get("x-company-id");
-  const userId = request.headers.get("x-user-id");
-  if (!companyId) return null;
-  return { companyId, userId: userId || undefined };
-}
-
-/**
  * Derive the tenant context for an already-authenticated request.
  *
  * Security contract:

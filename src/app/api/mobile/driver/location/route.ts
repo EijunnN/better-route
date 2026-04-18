@@ -14,7 +14,7 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 
-import { extractTenantContextAuthed, extractTenantContext } from "@/lib/routing/route-helpers";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { EntityType, Action } from "@/lib/auth/authorization";
 
@@ -305,29 +305,28 @@ export async function POST(request: NextRequest) {
  * Respuesta:
  * - location: Última ubicación o null si no hay registros
  */
-// TODO(security-S3): add requireRoutePermission — handler has no RBAC gate
 export async function GET(request: NextRequest) {
-  const tenantCtx = extractTenantContext(request);
-  if (!tenantCtx) {
-    return NextResponse.json(
-      { error: "Contexto de tenant faltante" },
-      { status: 401 },
-    );
-  }
-
+  const authResult = await requireRoutePermission(
+    request,
+    EntityType.DRIVER,
+    Action.READ,
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const tenantCtx = extractTenantContextAuthed(request, authResult);
+  if (tenantCtx instanceof NextResponse) return tenantCtx;
   setTenantContext(tenantCtx);
 
   try {
-    const authUser = await getAuthenticatedUser(request);
-
-    if (authUser.role !== USER_ROLES.CONDUCTOR) {
+    // Defense-in-depth: this endpoint returns ONLY the authenticated driver's
+    // own location. Any other role is rejected even if they hold driver:read.
+    if (authResult.role !== USER_ROLES.CONDUCTOR) {
       return NextResponse.json(
         { error: "Este endpoint es solo para conductores" },
         { status: 403 },
       );
     }
 
-    const driverId = authUser.userId;
+    const driverId = authResult.userId;
     const companyId = tenantCtx.companyId;
 
     // Obtener última ubicación
