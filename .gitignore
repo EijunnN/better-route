@@ -52,3 +52,6 @@ docker/osrm/*.osrm*
 /.playwright-mcp
 *.screenshot.png
 01-existing-plan.png
+
+# Claude Code harness scratch files
+/.claude
