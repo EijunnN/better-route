@@ -390,9 +390,27 @@ def solve(request: SolveRequest) -> SolveResponse:
     print(f"[PyVRP] route_end_mode={cfg.route_end_mode}, drivers return to {end_label}")
 
     # open_start: when True, vehicles can depart at any time (tw_early=0)
-    vehicle_tw_early = 0 if cfg.open_start else depot_tw_start
+    default_vehicle_tw_early = 0 if cfg.open_start else depot_tw_start
     if cfg.open_start:
         print("[PyVRP] Open start: vehicles can depart at any time")
+
+    # When no vehicle AND no depot has an explicit time window, but orders do,
+    # anchor the planning horizon to the earliest order window. Without this,
+    # the solver starts at t=0 (midnight) and schedules first stops at 00:0X
+    # even though orders' windows don't open until hours later. (Gap G3.)
+    min_order_tw_start = None
+    if depot_tw_start == 0 and not cfg.open_start:
+        starts = [
+            _parse_tw(o.time_window_start, o.time_window_end)[0]
+            for o in feasible_orders
+            if o.time_window_start
+        ]
+        starts = [s for s in starts if s > 0]
+        if starts:
+            min_order_tw_start = min(starts)
+            print(
+                f"[PyVRP] No workday set; anchoring horizon to earliest order tw_start = {min_order_tw_start}s"
+            )
 
     for v_idx, v in enumerate(vehicles):
         # Use balanced max or vehicle's own max_orders (whichever is smaller)
@@ -411,13 +429,26 @@ def solve(request: SolveRequest) -> SolveResponse:
         else:
             end_depot = main_depot
 
+        # Respect per-vehicle workday if set, else depot default, else order-derived anchor.
+        if v.time_window_start and not cfg.open_start:
+            v_tw_early, _ = _parse_tw(v.time_window_start, v.time_window_end)
+        elif min_order_tw_start is not None:
+            v_tw_early = min_order_tw_start
+        else:
+            v_tw_early = default_vehicle_tw_early
+
+        if v.time_window_end:
+            _, v_tw_late = _parse_tw(v.time_window_start, v.time_window_end)
+        else:
+            v_tw_late = depot_tw_end
+
         vtype_kwargs = dict(
             num_available=1,
             capacity=caps,
             start_depot=start_depot,
             end_depot=end_depot,
-            tw_early=vehicle_tw_early,
-            tw_late=depot_tw_end,
+            tw_early=v_tw_early,
+            tw_late=v_tw_late,
             name=f"{v_idx}:{v.identifier}",
         )
         # max_duration / max_distance not natively supported in PyVRP <=0.13.x.
@@ -638,9 +669,18 @@ def solve(request: SolveRequest) -> SolveResponse:
             route_weight = 0.0
             route_volume = 0.0
 
-            # Absolute clock time tracking (seconds from midnight)
-            # Vehicle departs at depot time window start
-            clock = depot_tw_start  # e.g., 09:00 = 32400
+            # Absolute clock time tracking (seconds from midnight).
+            # Vehicle departs at its own workday start (falling back to the
+            # order-anchored horizon when no explicit workday is set, and
+            # finally to depot_tw_start). This must match the tw_early we
+            # passed to m.add_vehicle_type(...) for this vehicle, otherwise
+            # reported arrival times drift from PyVRP's internal schedule.
+            if vehicle.time_window_start and not cfg.open_start:
+                clock, _ = _parse_tw(vehicle.time_window_start, vehicle.time_window_end)
+            elif min_order_tw_start is not None:
+                clock = min_order_tw_start
+            else:
+                clock = depot_tw_start
 
             # trip.visits() returns location indices; depots occupy
             # indices 0..num_depots-1, clients start at num_depots

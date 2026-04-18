@@ -41,10 +41,19 @@ export const checkTimeWindows: VerifierFn = ({ orders, vehicles, result }) => {
         continue;
       }
 
+      // Both VROOM and PyVRP semantics: `arrival` is when the vehicle reaches
+      // the location. If the vehicle arrives before the time window opens, it
+      // WAITS (waitingTime) until the window starts. The actual service begins
+      // at `arrival + waitingTime`. We validate against the service-start time,
+      // not the raw arrival — otherwise every "arrive early, wait, serve on time"
+      // plan falsely reports a violation.
+      const waiting = stop.waitingTime ?? 0;
+      const serviceStart = arrival + waiting;
+
       const orderStart = hhmmToSeconds(order?.timeWindowStart);
       const orderEnd = hhmmToSeconds(order?.timeWindowEnd);
 
-      if (orderStart !== null && arrival < orderStart - 60) {
+      if (orderStart !== null && serviceStart < orderStart - 60) {
         violations.push({
           code: "TIME_WINDOW_VIOLATED",
           severity: "HARD",
@@ -54,11 +63,11 @@ export const checkTimeWindows: VerifierFn = ({ orders, vehicles, result }) => {
           trackingId: stop.trackingId,
           stopSequence: stop.sequence,
           expected: `>= ${order?.timeWindowStart}`,
-          actual: secondsToHHMM(arrival),
-          message: `Arrived before time window starts`,
+          actual: secondsToHHMM(serviceStart),
+          message: `Service started before time window opens`,
         });
       }
-      if (orderEnd !== null && arrival > orderEnd + 60) {
+      if (orderEnd !== null && serviceStart > orderEnd + 60) {
         violations.push({
           code: "TIME_WINDOW_VIOLATED",
           severity: "HARD",
@@ -68,8 +77,8 @@ export const checkTimeWindows: VerifierFn = ({ orders, vehicles, result }) => {
           trackingId: stop.trackingId,
           stopSequence: stop.sequence,
           expected: `<= ${order?.timeWindowEnd}`,
-          actual: secondsToHHMM(arrival),
-          message: `Arrived after time window ends`,
+          actual: secondsToHHMM(serviceStart),
+          message: `Service started after time window ends`,
         });
       }
 

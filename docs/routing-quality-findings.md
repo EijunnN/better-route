@@ -52,6 +52,12 @@ Los dos solvers están violando restricciones que **deberían** respetar. Esto c
 - Implementar el umbral del `optimizer-factory.ts` correctamente: `preferPyvrpAboveOrders: 500` parece invertido (PyVRP es más lento, no más rápido).
 - Considerar VROOM como default y PyVRP como "premium" para casos chicos donde importe calidad.
 
+### G1 — RESUELTO (era bug del verificador, no del solver)
+Falso positivo del verificador. VROOM devuelve `arrival` (cuándo el vehículo llega al punto) + `waiting_time` (cuánto espera a que abra la ventana). El servicio real empieza en `arrival + waiting_time`. Mi verifier comparaba `arrival` crudo contra la ventana, ignorando el `waiting_time`. Fix: comparar `serviceStart = arrival + waiting` contra la ventana.
+
+### G3 — RESUELTO (solver.py no usaba workday por vehículo)
+PyVRP descartaba `v.time_window_start` del input: todas las vehicle types usaban `depot_tw_start` (= 0 cuando no había depot workday). Fix: respetar `v.time_window_start/end` per-vehículo, y cuando ningún vehículo ni depot tiene workday pero las órdenes sí, anclar el horizonte a `min(order.time_window_start)`. Además corregido el loop de output que reconstruía tiempos absolutos con `depot_tw_start` en lugar del workday real del vehículo.
+
 ### G7 — Órdenes "perdidas" cuando no hay vehículos disponibles
 **Contexto:** Encontrado en la primera corrida del integration-runner contra la DB real.
 **Escenario:** Empresa CLARO tiene 1 vehículo ocupado en un plan confirmado. 13 órdenes PENDING. Al correr `runOptimization()`, el runner loguea `Zone "unzoned" has no available vehicles for FRIDAY. 13 orders will be unassigned.` pero el resultado devuelto tiene `routes=0` Y `unassignedOrders=[]`. Las 13 órdenes no aparecen en ningún lado.
