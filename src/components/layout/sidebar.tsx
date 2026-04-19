@@ -93,7 +93,7 @@ const defaultNavSections: NavSection[] = [
       { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2, requiredPermission: "optimization_preset:read" },
       { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock, requiredPermission: "time_window_preset:read" },
       { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award, requiredPermission: "vehicle_skill:read" },
-      { title: "Estados de entrega", href: "/workflow", icon: GitBranch, requiredPermission: "order:read" },
+      { title: "Estados de entrega", href: "/workflow", icon: GitBranch, requiredPermission: "company:read" },
       { title: "Campos personalizados", href: "/custom-fields", icon: ListChecks, requiredPermission: "order:read" },
     ],
   },
