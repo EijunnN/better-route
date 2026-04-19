@@ -2,8 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users, roles, userRoles } from "@/db/schema";
-import { requireTenantContext } from "@/lib/infra/tenant";
-import { Action, EntityType } from "@/lib/auth/authorization";
+import { Action, EntityType } from "@/lib/auth/permissions";
 import {
   checkPermissionOrError,
   handleError,
@@ -31,14 +30,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     );
     if (permError) return permError;
 
-    const tenantCtx = requireTenantContext();
+    const companyId = authResult.user.companyId;
+    if (!companyId) {
+      return NextResponse.json(
+        { error: "No company context", code: "NO_COMPANY" },
+        { status: 400 },
+      );
+    }
     const { id } = await params;
 
     // Verify user exists and belongs to company
     const [user] = await db
       .select()
       .from(users)
-      .where(and(eq(users.id, id), eq(users.companyId, tenantCtx.companyId)))
+      .where(and(eq(users.id, id), eq(users.companyId, companyId)))
       .limit(1);
 
     if (!user) {
@@ -86,7 +91,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
     if (permError) return permError;
 
-    const tenantCtx = requireTenantContext();
+    const companyId = authResult.user.companyId;
+    if (!companyId) {
+      return NextResponse.json(
+        { error: "No company context", code: "NO_COMPANY" },
+        { status: 400 },
+      );
+    }
     const { id } = await params;
     const body = await request.json();
     const { roleId, isPrimary = false } = body as {
@@ -105,7 +116,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const [user] = await db
       .select()
       .from(users)
-      .where(and(eq(users.id, id), eq(users.companyId, tenantCtx.companyId)))
+      .where(and(eq(users.id, id), eq(users.companyId, companyId)))
       .limit(1);
 
     if (!user) {
@@ -117,7 +128,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .select()
       .from(roles)
       .where(
-        and(eq(roles.id, roleId), eq(roles.companyId, tenantCtx.companyId)),
+        and(eq(roles.id, roleId), eq(roles.companyId, companyId)),
       )
       .limit(1);
 
@@ -199,7 +210,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
     if (permError) return permError;
 
-    const tenantCtx = requireTenantContext();
+    const companyId = authResult.user.companyId;
+    if (!companyId) {
+      return NextResponse.json(
+        { error: "No company context", code: "NO_COMPANY" },
+        { status: 400 },
+      );
+    }
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const roleId = searchParams.get("roleId");
@@ -215,7 +232,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const [user] = await db
       .select()
       .from(users)
-      .where(and(eq(users.id, id), eq(users.companyId, tenantCtx.companyId)))
+      .where(and(eq(users.id, id), eq(users.companyId, companyId)))
       .limit(1);
 
     if (!user) {

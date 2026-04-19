@@ -2,8 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { roles, rolePermissions, permissions } from "@/db/schema";
-import { requireTenantContext } from "@/lib/infra/tenant";
-import { Action, EntityType } from "@/lib/auth/authorization";
+import { Action, EntityType } from "@/lib/auth/permissions";
 import {
   checkPermissionOrError,
   handleError,
@@ -32,14 +31,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     );
     if (permError) return permError;
 
-    const tenantCtx = requireTenantContext();
+    const companyId = authResult.user.companyId;
+    if (!companyId) {
+      return NextResponse.json(
+        { error: "No company context", code: "NO_COMPANY" },
+        { status: 400 },
+      );
+    }
     const { id } = await params;
 
     // Verify role exists and belongs to company
     const [role] = await db
       .select()
       .from(roles)
-      .where(and(eq(roles.id, id), eq(roles.companyId, tenantCtx.companyId)))
+      .where(and(eq(roles.id, id), eq(roles.companyId, companyId)))
       .limit(1);
 
     if (!role) {
@@ -115,7 +120,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     );
     if (permError) return permError;
 
-    const tenantCtx = requireTenantContext();
+    const companyId = authResult.user.companyId;
+    if (!companyId) {
+      return NextResponse.json(
+        { error: "No company context", code: "NO_COMPANY" },
+        { status: 400 },
+      );
+    }
     const { id } = await params;
     const body = await request.json();
     const validatedData = rolePermissionsSchema.parse(body);
@@ -124,7 +135,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const [role] = await db
       .select()
       .from(roles)
-      .where(and(eq(roles.id, id), eq(roles.companyId, tenantCtx.companyId)))
+      .where(and(eq(roles.id, id), eq(roles.companyId, companyId)))
       .limit(1);
 
     if (!role) {
@@ -208,7 +219,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     );
     if (permError) return permError;
 
-    const tenantCtx = requireTenantContext();
+    const companyId = authResult.user.companyId;
+    if (!companyId) {
+      return NextResponse.json(
+        { error: "No company context", code: "NO_COMPANY" },
+        { status: 400 },
+      );
+    }
     const { id } = await params;
     const body = await request.json();
 
@@ -228,7 +245,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const [role] = await db
       .select()
       .from(roles)
-      .where(and(eq(roles.id, id), eq(roles.companyId, tenantCtx.companyId)))
+      .where(and(eq(roles.id, id), eq(roles.companyId, companyId)))
       .limit(1);
 
     if (!role) {

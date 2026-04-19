@@ -2,8 +2,7 @@ import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { roles, rolePermissions, permissions } from "@/db/schema";
-import { requireTenantContext } from "@/lib/infra/tenant";
-import { Action, EntityType } from "@/lib/auth/authorization";
+import { Action, EntityType } from "@/lib/auth/permissions";
 import {
   checkPermissionOrError,
   handleError,
@@ -27,11 +26,20 @@ export async function GET(request: NextRequest) {
     );
     if (permError) return permError;
 
-    const tenantCtx = requireTenantContext();
+    // Use companyId from setupAuthContext (already resolved from JWT +
+    // x-company-id header). AsyncLocalStorage-based requireTenantContext
+    // is unreliable in App Router handlers.
+    const companyId = authResult.user.companyId;
+    if (!companyId) {
+      return NextResponse.json(
+        { error: "No company context", code: "NO_COMPANY" },
+        { status: 400 },
+      );
+    }
     const { searchParams } = new URL(request.url);
     const query = roleQuerySchema.parse(Object.fromEntries(searchParams));
 
-    const conditions = [eq(roles.companyId, tenantCtx.companyId)];
+    const conditions = [eq(roles.companyId, companyId)];
 
     if (query.active !== undefined) {
       conditions.push(eq(roles.active, query.active));
@@ -103,7 +111,13 @@ export async function POST(request: NextRequest) {
     );
     if (permError) return permError;
 
-    const tenantCtx = requireTenantContext();
+    const companyId = authResult.user.companyId;
+    if (!companyId) {
+      return NextResponse.json(
+        { error: "No company context", code: "NO_COMPANY" },
+        { status: 400 },
+      );
+    }
     const body = await request.json();
     const validatedData = roleSchema.parse(body);
 
@@ -113,7 +127,7 @@ export async function POST(request: NextRequest) {
       .from(roles)
       .where(
         and(
-          eq(roles.companyId, tenantCtx.companyId),
+          eq(roles.companyId, companyId),
           eq(roles.name, validatedData.name),
           eq(roles.active, true),
         ),
@@ -131,7 +145,7 @@ export async function POST(request: NextRequest) {
     const [newRole] = await db
       .insert(roles)
       .values({
-        companyId: tenantCtx.companyId,
+        companyId,
         name: validatedData.name,
         description: validatedData.description,
         code: validatedData.code,
