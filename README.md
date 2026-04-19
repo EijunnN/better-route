@@ -8,7 +8,6 @@ Una alternativa open-source a SimpliRoute, OptimoRoute y LogiNext — sin costos
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
 ![VROOM](https://img.shields.io/badge/VROOM-1.14-green)
-![PyVRP](https://img.shields.io/badge/PyVRP-0.13-orange?logo=python)
 ![License](https://img.shields.io/badge/License-MIT-yellow?logo=opensourceinitiative)
 
 ---
@@ -56,11 +55,10 @@ Las empresas de logistica y distribucion enfrentan un problema critico: las solu
 ## Caracteristicas
 
 ### Optimizacion de Rutas
-- **Dual Engine: VROOM + PyVRP** — Dos motores de optimizacion de clase mundial, seleccionables por el usuario
-- **VROOM + OSRM** — Rapido, ideal para operaciones de ultima milla con muchas paradas
-- **PyVRP (Python)** — Avanzado, soporta restricciones complejas, multi-depot, multi-start solving
-- **Multi-start solving** — PyVRP ejecuta 3 corridas con distintas semillas y conserva la mejor solucion
+- **Motor VROOM + OSRM** — Rapido y escalable, ideal para operaciones de ultima milla con 1000+ paradas por plan
 - **Distancias reales** — Calculo basado en red vial via OSRM, no linea recta
+- **Zonas con isolation hard** — La planificacion se particiona por zona (`createZoneBatches`) para que un vehiculo no cruce limites de servicio
+- **Verifier independiente del solver** — Capa de validacion HARD/SOFT/INFO que confirma que las rutas cumplen las restricciones antes de confirmarse
 - **Presets de optimizacion** — Configuraciones reutilizables (factor de trafico, distancia maxima, ventanas flexibles, rutas abiertas, balance de carga, etc.)
 - **Intercambio de vehiculos** — Swap completo de rutas entre vehiculos con reoptimizacion automatica
 - **Restricciones avanzadas:**
@@ -102,9 +100,17 @@ Las empresas de logistica y distribucion enfrentan un problema critico: las solu
 - Integrado con app movil Flutter
 
 ### Multi-Empresa (SaaS-ready)
-- Aislamiento completo de datos por empresa
-- Roles y permisos personalizables
+- Aislamiento completo de datos por empresa (JWT-cross-validated)
+- Sistema RBAC end-to-end con permisos tipados (TypeScript template literal)
+- Roles legacy predefinidos + roles personalizables por empresa via UI `/roles`
 - Perfiles de optimizacion por empresa
+
+### RBAC Tipado
+- **Contrato unificado server/cliente** — `EntityType`, `Action` y `Permission` en `src/lib/auth/permissions/` son la unica fuente de verdad
+- **Gating UI declarativo** — `<Can perm="order:update">` esconde botones segun permiso
+- **Fail-closed por defecto** — `<ProtectedPage>` deniega si olvidas declarar `requiredPermission`
+- **Custom roles dinamicos** — Los permisos adicionales asignados via DB se aplican tanto en UI como en enforcement server
+- **Imposible typear mal** — `<Can perm="order:edit">` es error de compilacion (`Action.EDIT` no existe)
 
 ### Monitoreo en Tiempo Real
 - Mapa con ubicacion de conductores
@@ -153,12 +159,11 @@ Las empresas de logistica y distribucion enfrentan un problema critico: las solu
            v
 +------------------------------------------------------------------+
 |                    ROUTING ENGINES                                |
-|  +------------------+  +------------------+  +----------------+  |
-|  |      VROOM       |  |      PyVRP       |  |     OSRM       |  |
-|  |  (Fast VRP,      |  |  (Advanced VRP,  |  |  (Road network |  |
-|  |   last-mile)     |  |   multi-start,   |  |   distances)   |  |
-|  |                  |  |   multi-depot)   |  |                |  |
-|  +------------------+  +------------------+  +----------------+  |
+|  +-------------------------------+  +--------------------------+ |
+|  |            VROOM              |  |           OSRM           | |
+|  |  (Fast VRP, zone-batched,     |  |  (Road network distance  | |
+|  |   1000+ orders per plan)      |  |   and duration matrix)   | |
+|  +-------------------------------+  +--------------------------+ |
 +------------------------------------------------------------------+
 ```
 
@@ -168,9 +173,8 @@ Las empresas de logistica y distribucion enfrentan un problema critico: las solu
 
 ### Minimos (Desarrollo)
 - **Bun** 1.0+ (recomendado) o **Node.js** 20+
-- **Python** 3.11+ (para motor PyVRP)
 - **PostgreSQL** 15+
-- **Docker** (para VROOM/OSRM/PyVRP)
+- **Docker** (para VROOM + OSRM)
 - 4GB RAM, 2 CPU cores
 
 ### Recomendados (Produccion)
@@ -222,7 +226,6 @@ UPSTASH_REDIS_REST_TOKEN=tu-token
 # Motores de rutas
 VROOM_URL=http://localhost:5000
 OSRM_URL=http://localhost:5001
-PYVRP_URL=http://localhost:8000
 
 # Cloudflare R2 para almacenamiento (fotos de evidencia)
 R2_ACCOUNT_ID=tu-account-id
@@ -262,8 +265,7 @@ docker compose --profile routing up -d
 
 Esto inicia:
 - **OSRM** en `http://localhost:5001` — calculo de distancias/tiempos
-- **VROOM** en `http://localhost:5000` — optimizacion de rutas (motor rapido)
-- **PyVRP** en `http://localhost:8000` — optimizacion avanzada (motor Python)
+- **VROOM** en `http://localhost:5000` — optimizacion de rutas
 
 ### 6. Configurar base de datos
 
@@ -290,15 +292,35 @@ La aplicacion estara disponible en `http://localhost:3000`
 
 ### 8. Credenciales por defecto
 
-Despues de ejecutar el seed:
+Despues de `bun run db:seed`:
 
-| Rol | Usuario | Contrasena |
-|-----|---------|------------|
-| Admin Sistema | `admin` | `admin123` |
-| Admin Flota | `jgarcia` | `test123` |
-| Planificador | `mlopez` | `test123` |
-| Monitor | `aruiz` | `test123` |
-| Conductor | `carlos.mendoza` | `test123` |
+| Rol | Email | Contrasena |
+|-----|-------|------------|
+| Admin Sistema | `admin@planeamiento.com` | `admin123` |
+
+Para crear un set completo de usuarios de prueba (uno por rol legacy,
+todos sobre una empresa `TestCo RBAC`), usa el script de verificacion:
+
+```bash
+bun run scripts/create-test-users.ts
+```
+
+Eso provisiona:
+
+| Rol | Email | Contrasena |
+|-----|-------|------------|
+| ADMIN_SISTEMA | `admin@test.local` | `test123` |
+| ADMIN_FLOTA | `adminflota@test.local` | `test123` |
+| PLANIFICADOR | `planificador@test.local` | `test123` |
+| MONITOR | `monitor@test.local` | `test123` |
+| CONDUCTOR | `conductor@test.local` | `test123` |
+
+Para verificar que el camino de custom roles (roles dinamicos via DB)
+funciona correctamente end-to-end:
+
+```bash
+bun run scripts/verify-custom-role.ts
+```
 
 > **Importante:** Cambia estas contrasenas en produccion.
 
@@ -319,13 +341,19 @@ Cada empresa puede configurar:
 
 | Rol | Descripcion |
 |-----|-------------|
-| `ADMIN_SISTEMA` | Acceso total, gestion multi-empresa |
-| `ADMIN_FLOTA` | Gestion completa de una empresa |
-| `PLANIFICADOR` | Crear y optimizar rutas |
-| `MONITOR` | Ver monitoreo y reportes |
-| `CONDUCTOR` | Solo app movil |
+| `ADMIN_SISTEMA` | Acceso total (wildcard), gestion multi-empresa |
+| `ADMIN_FLOTA` | Flota, vehiculos, conductores, skills, zonas + configuracion de empresa (workflow, custom fields, presets) |
+| `PLANIFICADOR` | Pedidos (CRUD + import + bulk delete), planes (create/update/confirm/cancel), asignacion de rutas |
+| `MONITOR` | Lectura + accionar alertas + actualizar status de paradas desde la web |
+| `CONDUCTOR` | Solo sus rutas asignadas, update de status de paradas desde la app movil |
 
-Los permisos son personalizables desde la interfaz de administracion.
+Ademas de los roles legacy, cada empresa puede crear **roles personalizados**
+desde `/roles` con permisos toggleables por entidad x accion. Los permisos
+resultantes son la **union** del rol legacy base + los custom roles asignados.
+El enforcement server-side aplica ambos en una sola consulta.
+
+Para el patron completo (como agregar una feature con RBAC, anti-patterns,
+convenciones), ver [`src/lib/auth/permissions/README.md`](./src/lib/auth/permissions/README.md).
 
 ---
 
@@ -365,18 +393,19 @@ planeamiento/
 │   ├── tests/                 # Tests de integracion
 │   │   └── integration/      # 170+ tests, real PostgreSQL
 │   └── lib/                   # Logica de negocio
-│       ├── auth/             # Autenticacion, RBAC, autorizacion
-│       ├── optimization/     # VROOM optimizer + PyVRP adapter + runner
+│       ├── auth/             # Autenticacion + RBAC
+│       │   ├── permissions/  # Contrato tipado (EntityType, Action, Permission)
+│       │   └── authorization.ts  # Role permissions matrix + DB checks
+│       ├── optimization/     # VROOM adapter, runner, verifier
+│       ├── orders/           # Profile schema, CSV import pipeline
+│       ├── geo/              # Zone batching, OSRM matrix helpers
 │       ├── custom-fields/    # Validacion y seed de campos custom
 │       ├── workflow/         # Seed de workflow states
-│       ├── infra/            # Infraestructura (cache, tenant)
+│       ├── infra/            # Infraestructura (cache, tenant, api-middleware)
 │       └── services/         # Servicios externos (VROOM, S3)
-├── pyvrp-service/             # Microservicio Python (PyVRP)
-│   ├── solver.py             # Motor VRP con multi-start
-│   ├── models.py             # Modelos Pydantic
-│   ├── main.py               # FastAPI server
-│   ├── requirements.txt      # PyVRP==0.13.3, FastAPI, etc.
-│   └── Dockerfile
+├── scripts/                   # Scripts operativos
+│   ├── create-test-users.ts  # Seed idempotente de users por rol
+│   └── verify-custom-role.ts # E2E verification del merge legacy + custom roles
 ├── drizzle/                   # Migraciones SQL
 ├── docker/                    # Configuracion Docker
 │   ├── osrm/                 # Datos de mapas
@@ -477,7 +506,6 @@ X-Company-Id: <uuid>  # Para endpoints multi-tenant
 | GET | `/api/optimization/jobs/:id` | Estado de optimizacion |
 | POST | `/api/optimization/jobs/:id/confirm` | Confirmar plan |
 | POST | `/api/optimization/jobs/:id/swap-vehicles` | Intercambiar rutas entre vehiculos |
-| GET | `/api/optimization/engines` | Motores disponibles (VROOM, PyVRP) |
 | GET | `/api/optimization-presets` | Presets de optimizacion |
 | POST | `/api/driver-assignment/manual` | Asignacion manual de conductor |
 | POST | `/api/driver-assignment/suggestions` | Sugerencias de conductor |
@@ -536,14 +564,14 @@ flutter build apk --release
 
 ## Roadmap
 
-### ~~Integracion PyVRP~~ ✅ Completado
-Motor PyVRP integrado como microservicio Python. Multi-start solving (3 corridas), soporte completo de presets, multi-depot, restricciones avanzadas. Seleccionable junto a VROOM desde la configuracion de optimizacion.
+### ~~RBAC tipado end-to-end~~ ✅ Completado
+Sistema de autorizacion con contrato TypeScript unico entre server y cliente. `<Can>` component + `useCan` hook tipados, `<ProtectedPage>` fail-closed, custom roles via DB con merge automatico legacy + dinamico, enforcement server-side garantizado para ambos.
 
 ### ~~Personalizacion de pedidos~~ ✅ Completado
 Cada empresa puede definir campos personalizados en sus pedidos desde la UI de admin. Los campos se renderizan dinamicamente en formularios, tablas, CSV import y la app movil.
 
 ### ~~Presets de optimizacion~~ ✅ Completado
-Configuraciones reutilizables que fluyen desde la UI hasta ambos motores (VROOM y PyVRP): factor de trafico, distancia maxima, ventanas flexibles, rutas abiertas, balance de carga, minimizacion de vehiculos, etc.
+Configuraciones reutilizables que fluyen desde la UI hasta el motor VROOM: factor de trafico, distancia maxima, ventanas flexibles, rutas abiertas, balance de carga, minimizacion de vehiculos, etc.
 
 ### ~~Intercambio de vehiculos~~ ✅ Completado
 Swap completo de rutas entre vehiculos con reoptimizacion automatica via VROOM desde la interfaz de planificacion.
@@ -576,8 +604,7 @@ Evolucionar la app Flutter con nuevas funcionalidades: tracking GPS en tiempo re
 | Cache | Upstash Redis |
 | Storage | Cloudflare R2 (S3) |
 | Auth | JWT (jose) |
-| Routing Engine | VROOM + PyVRP + OSRM |
-| PyVRP Service | Python 3.11, FastAPI, PyVRP 0.13 |
+| Routing Engine | VROOM + OSRM |
 | Mobile | Flutter + Riverpod |
 | Testing | Bun Test (integration), Playwright (e2e) |
 | Linting | Biome |
@@ -586,8 +613,7 @@ Evolucionar la app Flutter con nuevas funcionalidades: tracking GPS en tiempo re
 
 ## Agradecimientos
 
-- [VROOM Project](https://github.com/VROOM-Project/vroom) — Motor de optimizacion rapido
-- [PyVRP](https://github.com/PyVRP/PyVRP) — Motor de optimizacion avanzado
+- [VROOM Project](https://github.com/VROOM-Project/vroom) — Motor de optimizacion
 - [OSRM](https://project-osrm.org/) — Calculo de rutas
 - [Next.js](https://nextjs.org/) — Framework web
 - [Drizzle ORM](https://orm.drizzle.team/) — ORM TypeScript
