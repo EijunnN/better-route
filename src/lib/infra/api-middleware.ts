@@ -10,11 +10,40 @@ import { logCreate, logDelete, logUpdate } from "./audit";
 import { type AuthenticatedUser, getAuthenticatedUser } from "../auth/auth-api";
 import {
   Action,
+  AuthorizationError,
   checkPermission,
   type EntityType,
+  getUserPermissionsFromDB,
+  hasPermission,
   type PermissionCheckResult,
   requirePermission,
 } from "../auth/authorization";
+
+/**
+ * Check permission against the legacy ROLE_PERMISSIONS matrix first (sync,
+ * fast — covers the 5 base roles), then fall back to the DB-backed custom
+ * roles (cached, ~1 min TTL inside getUserPermissionsFromDB). Returns true
+ * if either grants access; throws AuthorizationError otherwise.
+ *
+ * This is the contract that ties /api/auth/me (which the client trusts)
+ * to actual server enforcement: both surfaces consult the same union of
+ * legacy + custom permissions.
+ */
+async function assertMergedPermission(
+  user: AuthenticatedUser,
+  entity: EntityType,
+  action: Action,
+): Promise<void> {
+  // Fast path: legacy matrix (covers ADMIN_SISTEMA wildcard + base roles)
+  if (hasPermission(user, entity, action)) return;
+  // Slow path: custom roles from DB. Only attempt if we have a tenant.
+  if (user.companyId) {
+    const merged = await getUserPermissionsFromDB(user.userId, user.companyId);
+    const desired = `${entity}:${action}`;
+    if (merged.includes("*") || merged.includes(desired)) return;
+  }
+  throw new AuthorizationError(user, entity, action);
+}
 
 /**
  * Middleware result type
@@ -76,7 +105,7 @@ export function withPermission(
 ): (request: NextRequest) => Promise<NextResponse> {
   return withAuth(async (request: AuthenticatedRequest) => {
     try {
-      requirePermission(request.user, entity, action);
+      await assertMergedPermission(request.user, entity, action);
       return await handler(request);
     } catch (error: unknown) {
       const err = error as { name?: string; toJSON?: () => unknown };
@@ -100,7 +129,7 @@ export async function requireRoutePermission(
 ): Promise<AuthenticatedUser | NextResponse> {
   try {
     const user = await getAuthenticatedUser(request);
-    requirePermission(user, entity, action);
+    await assertMergedPermission(user, entity, action);
     return user;
   } catch (error: unknown) {
     const err = error as { name?: string; toJSON?: () => unknown };
@@ -125,7 +154,7 @@ export async function optionalRoutePermission(
 ): Promise<AuthenticatedUser | null | NextResponse> {
   try {
     const user = await getAuthenticatedUser(request);
-    requirePermission(user, entity, action);
+    await assertMergedPermission(user, entity, action);
     return user;
   } catch (error: unknown) {
     const err = error as { name?: string; toJSON?: () => unknown };

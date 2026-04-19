@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return unauthorizedResponse();
     }
 
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.ROLE,
       Action.READ,
@@ -108,7 +108,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return unauthorizedResponse();
     }
 
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.ROLE,
       Action.UPDATE,
@@ -201,7 +201,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return unauthorizedResponse();
     }
 
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.ROLE,
       Action.UPDATE,

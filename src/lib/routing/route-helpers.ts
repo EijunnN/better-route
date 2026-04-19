@@ -9,8 +9,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { type AuthenticatedUser, getAuthenticatedUser } from "../auth/auth-api";
 import {
   type Action,
+  AuthorizationError,
   type EntityType,
-  requirePermission,
+  getUserPermissionsFromDB,
+  hasPermission,
 } from "../auth/authorization";
 import { setTenantContext } from "../infra/tenant";
 
@@ -123,16 +125,33 @@ export async function setupAuthContext(request: NextRequest): Promise<{
 }
 
 /**
- * Check permission and return appropriate error response if denied
+ * Check permission and return appropriate error response if denied.
+ *
+ * Consults legacy ROLE_PERMISSIONS first (sync), then falls back to
+ * DB-backed custom roles via getUserPermissionsFromDB. Returns null on
+ * grant, a 403 NextResponse on denial.
+ *
+ * Now async — every call site must `await`. Search for `checkPermissionOrError(`
+ * in the codebase if you change its signature.
  */
-export function checkPermissionOrError(
+export async function checkPermissionOrError(
   user: AuthenticatedUser,
   entity: EntityType,
   action: Action,
-): NextResponse | null {
+): Promise<NextResponse | null> {
   try {
-    requirePermission(user, entity, action);
-    return null; // Permission granted
+    // Fast path: legacy matrix
+    if (hasPermission(user, entity, action)) return null;
+    // Slow path: custom roles in DB
+    if (user.companyId) {
+      const merged = await getUserPermissionsFromDB(
+        user.userId,
+        user.companyId,
+      );
+      const desired = `${entity}:${action}`;
+      if (merged.includes("*") || merged.includes(desired)) return null;
+    }
+    throw new AuthorizationError(user, entity, action);
   } catch (error: unknown) {
     const err = error as { name?: string; toJSON?: () => unknown };
     if (err.name === "AuthorizationError" && err.toJSON) {

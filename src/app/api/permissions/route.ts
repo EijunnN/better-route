@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return unauthorizedResponse();
     }
 
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.PERMISSION,
       Action.READ,

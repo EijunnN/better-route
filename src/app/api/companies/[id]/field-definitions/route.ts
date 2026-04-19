@@ -28,7 +28,7 @@ export async function GET(
       return unauthorizedResponse();
     }
 
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.COMPANY,
       Action.READ,
@@ -72,7 +72,7 @@ export async function POST(
       return unauthorizedResponse();
     }
 
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.COMPANY,
       Action.UPDATE,

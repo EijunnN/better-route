@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user can read companies
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.COMPANY,
       Action.READ,
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user can create companies
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.COMPANY,
       Action.CREATE,

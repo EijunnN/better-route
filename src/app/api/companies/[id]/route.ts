@@ -33,7 +33,7 @@ export async function GET(
     }
 
     // Check if user can read companies
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.COMPANY,
       Action.READ,
@@ -74,7 +74,7 @@ export async function PATCH(
     }
 
     // Check if user can update companies
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.COMPANY,
       Action.UPDATE,
@@ -175,7 +175,7 @@ export async function DELETE(
     }
 
     // Check if user can delete companies (sensitive action)
-    const permError = checkPermissionOrError(
+    const permError = await checkPermissionOrError(
       authResult.user,
       EntityType.COMPANY,
       Action.DELETE,
