@@ -45,13 +45,18 @@ export async function GET(request: NextRequest) {
       conditions.push(lte(companies.createdAt, new Date(query.endDate)));
     }
 
-    // ADMIN_SISTEMA can see all companies, others can only see their own
+    // ADMIN_SISTEMA can see all companies, others can only see their own.
+    // Pass companyId explicitly — withTenantFilter's AsyncLocalStorage
+    // fallback isn't reliable in App Router handlers.
     const isSystemAdmin = authResult.user.role === "ADMIN_SISTEMA";
+    if (!isSystemAdmin && !authResult.user.companyId) {
+      return unauthorizedResponse();
+    }
     const whereClause = isSystemAdmin
       ? conditions.length > 0
         ? and(...conditions)
         : undefined
-      : withTenantFilter(companies, conditions);
+      : withTenantFilter(companies, conditions, authResult.user.companyId);
 
     const [data, [{ count: total }]] = await Promise.all([
       db

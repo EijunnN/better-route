@@ -42,8 +42,13 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(userSkills.skillId, query.skillId));
     }
 
-    // Apply tenant filtering
-    const whereClause = withTenantFilter(userSkills, conditions);
+    // Apply tenant filtering — pass companyId explicitly (AsyncLocalStorage
+    // fallback is unreliable in App Router handlers).
+    const whereClause = withTenantFilter(
+      userSkills,
+      conditions,
+      tenantCtx.companyId,
+    );
 
     const [userSkillsData, totalResult] = await Promise.all([
       db
