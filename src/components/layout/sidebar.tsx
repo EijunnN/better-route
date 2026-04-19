@@ -80,7 +80,10 @@ const defaultNavSections: NavSection[] = [
     items: [
       { title: "Usuarios", href: "/users", icon: Users, requiredPermission: "user:read" },
       { title: "Roles", href: "/roles", icon: Shield, requiredPermission: "role:read" },
-      { title: "Empresas", href: "/companies", icon: Building2, requiredPermission: "company:read" },
+      // company:create only granted by the wildcard (ADMIN_SISTEMA). Using
+      // it as the gate for the cross-tenant Empresas page keeps it admin-only,
+      // while ADMIN_FLOTA still gets company:read/update for own-tenant config.
+      { title: "Empresas", href: "/companies", icon: Building2, requiredPermission: "company:create" },
     ],
   },
   {
