@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
@@ -34,7 +35,9 @@ export function VehicleSkillsListView() {
           <h1 className="text-2xl font-bold text-foreground">Catálogo de Habilidades de Vehículos</h1>
           <p className="mt-1 text-sm text-muted-foreground">Gestione las capacidades especiales de los vehículos</p>
         </div>
-        <Button onClick={() => actions.setShowForm(true)}>Nueva Habilidad</Button>
+        <Can perm="vehicle_skill:create">
+          <Button onClick={() => actions.setShowForm(true)}>Nueva Habilidad</Button>
+        </Can>
       </div>
 
       <Card>
@@ -140,51 +143,70 @@ function VehicleSkillRow({ skill }: { skill: VehicleSkill }) {
       </TableCell>
       <TableCell className="text-muted-foreground max-w-xs truncate">{skill.description || "-"}</TableCell>
       <TableCell>
-        <Button variant="ghost" size="sm" onClick={() => actions.handleToggleActive(skill)} className="p-0 h-auto">
-          <Badge
-            className={
-              skill.active
-                ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
-                : "bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-900/30 dark:text-gray-400"
-            }
-          >
-            {skill.active ? "Activo" : "Inactivo"}
-          </Badge>
-        </Button>
+        <Can
+          perm="vehicle_skill:update"
+          fallback={
+            <Badge
+              className={
+                skill.active
+                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                  : "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+              }
+            >
+              {skill.active ? "Activo" : "Inactivo"}
+            </Badge>
+          }
+        >
+          <Button variant="ghost" size="sm" onClick={() => actions.handleToggleActive(skill)} className="p-0 h-auto">
+            <Badge
+              className={
+                skill.active
+                  ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
+                  : "bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-900/30 dark:text-gray-400"
+              }
+            >
+              {skill.active ? "Activo" : "Inactivo"}
+            </Badge>
+          </Button>
+        </Can>
       </TableCell>
       <TableCell className="text-right">
-        <Button variant="ghost" size="sm" onClick={() => actions.setEditingSkill(skill)} disabled={state.deletingId === skill.id}>
-          Editar
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              disabled={state.deletingId === skill.id}
-            >
-              {state.deletingId === skill.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>¿Eliminar habilidad?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta acción eliminará permanentemente la habilidad <strong>{skill.name}</strong>. Esta acción no se puede deshacer.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => actions.handleDelete(skill.id)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        <Can perm="vehicle_skill:update">
+          <Button variant="ghost" size="sm" onClick={() => actions.setEditingSkill(skill)} disabled={state.deletingId === skill.id}>
+            Editar
+          </Button>
+        </Can>
+        <Can perm="vehicle_skill:delete">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                disabled={state.deletingId === skill.id}
               >
-                Eliminar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                {state.deletingId === skill.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar habilidad?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción eliminará permanentemente la habilidad <strong>{skill.name}</strong>. Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => actions.handleDelete(skill.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Eliminar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </Can>
       </TableCell>
     </TableRow>
   );

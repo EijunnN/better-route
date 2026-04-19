@@ -3,6 +3,7 @@
 import { Edit, Plus, Settings2, Star, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import {
@@ -62,10 +63,12 @@ export function PresetsListView() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={actions.handleCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Preset
-          </Button>
+          <Can perm="optimization_preset:create">
+            <Button onClick={actions.handleCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Preset
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -100,10 +103,12 @@ export function PresetsListView() {
             <p className="text-muted-foreground mt-2">
               Crea tu primer preset para personalizar la optimización de rutas
             </p>
-            <Button className="mt-4" onClick={actions.handleCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Preset
-            </Button>
+            <Can perm="optimization_preset:create">
+              <Button className="mt-4" onClick={actions.handleCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Crear Preset
+              </Button>
+            </Can>
           </CardContent>
         </Card>
       ) : (
@@ -192,23 +197,29 @@ function PresetCard({ preset }: { preset: OptimizationPreset }) {
         </div>
 
         <div className="flex items-center gap-2 pt-2 border-t">
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => actions.handleEdit(preset)}>
-            <Edit className="h-4 w-4 mr-1" />
-            Editar
-          </Button>
-          {!preset.isDefault && (
-            <Button variant="outline" size="sm" onClick={() => actions.handleSetDefault(preset)} title="Usar como predeterminado">
-              <Star className="h-4 w-4" />
+          <Can perm="optimization_preset:update">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => actions.handleEdit(preset)}>
+              <Edit className="h-4 w-4 mr-1" />
+              Editar
             </Button>
+          </Can>
+          {!preset.isDefault && (
+            <Can perm="optimization_preset:update">
+              <Button variant="outline" size="sm" onClick={() => actions.handleSetDefault(preset)} title="Usar como predeterminado">
+                <Star className="h-4 w-4" />
+              </Button>
+            </Can>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={() => actions.handleDelete(preset.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <Can perm="optimization_preset:delete">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => actions.handleDelete(preset.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </Can>
         </div>
       </CardContent>
     </Card>

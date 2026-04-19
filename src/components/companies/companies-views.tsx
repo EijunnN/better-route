@@ -13,6 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import { CompanyForm } from "./company-form";
 import { useCompanies, type Company } from "./companies-context";
 
@@ -48,7 +49,9 @@ export function CompaniesListView() {
             <h1 className="text-2xl font-bold text-foreground">Gestión de Empresas</h1>
             <p className="mt-1 text-sm text-muted-foreground">Administre las empresas inquilinas del sistema</p>
           </div>
-          <Button onClick={() => actions.setShowForm(true)}>Nueva Empresa</Button>
+          <Can perm="company:create">
+            <Button onClick={() => actions.setShowForm(true)}>Nueva Empresa</Button>
+          </Can>
         </div>
 
         {state.companies.length === 0 ? (
@@ -109,35 +112,39 @@ function CompanyRow({ company }: { company: Company }) {
         </span>
       </td>
       <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
-        <Button variant="ghost" size="sm" onClick={() => actions.setEditingCompany(company)} disabled={isDeleting}>
-          Editar
-        </Button>
+        <Can perm="company:update">
+          <Button variant="ghost" size="sm" onClick={() => actions.setEditingCompany(company)} disabled={isDeleting}>
+            Editar
+          </Button>
+        </Can>
         {company.active && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={isDeleting}>
-                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Desactivar empresa?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta acción desactivará la empresa <strong>{company.commercialName}</strong>. Los usuarios de esta empresa no
-                  podrán acceder al sistema.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => actions.handleDelete(company.id)}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Desactivar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <Can perm="company:delete">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={isDeleting}>
+                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Desactivar empresa?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción desactivará la empresa <strong>{company.commercialName}</strong>. Los usuarios de esta empresa no
+                    podrán acceder al sistema.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => actions.handleDelete(company.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Desactivar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </Can>
         )}
       </td>
     </tr>

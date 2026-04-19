@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Can } from "@/components/auth/can";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,7 +37,9 @@ export function VehiclesListView() {
           <h1 className="text-2xl font-bold text-foreground">Gestión de Vehículos</h1>
           <p className="mt-1 text-sm text-muted-foreground">Administre los vehículos de la flota</p>
         </div>
-        <Button onClick={() => actions.setShowForm(true)}>Nuevo Vehículo</Button>
+        <Can perm="vehicle:create">
+          <Button onClick={() => actions.setShowForm(true)}>Nuevo Vehículo</Button>
+        </Can>
       </div>
 
       {state.isLoading ? (
@@ -141,56 +144,62 @@ function VehicleRow({ vehicle }: { vehicle: Vehicle }) {
         </Badge>
       </TableCell>
       <TableCell className="text-right">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => actions.handleEditVehicle(vehicle)}
-          disabled={state.deletingId === vehicle.id}
-        >
-          Editar
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => actions.setStatusModalVehicle(vehicle)}
-          disabled={state.deletingId === vehicle.id}
-        >
-          Cambiar Estado
-        </Button>
+        <Can perm="vehicle:update">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.handleEditVehicle(vehicle)}
+            disabled={state.deletingId === vehicle.id}
+          >
+            Editar
+          </Button>
+        </Can>
+        <Can perm="vehicle:change_status">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.setStatusModalVehicle(vehicle)}
+            disabled={state.deletingId === vehicle.id}
+          >
+            Cambiar Estado
+          </Button>
+        </Can>
         {vehicle.active && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive"
-                disabled={state.deletingId === vehicle.id}
-              >
-                {state.deletingId === vehicle.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Desactivar vehículo?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta acción desactivará el vehículo <strong>{vehicle.name}</strong>. No podrá ser asignado a rutas.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => actions.handleDelete(vehicle.id)}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          <Can perm="vehicle:delete">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  disabled={state.deletingId === vehicle.id}
                 >
-                  Desactivar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  {state.deletingId === vehicle.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Desactivar vehículo?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción desactivará el vehículo <strong>{vehicle.name}</strong>. No podrá ser asignado a rutas.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => actions.handleDelete(vehicle.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Desactivar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </Can>
         )}
       </TableCell>
     </TableRow>

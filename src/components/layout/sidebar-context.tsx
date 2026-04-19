@@ -9,6 +9,7 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { usePermissions } from "@/hooks/use-permissions";
+import type { Permission } from "@/lib/auth/permissions";
 
 // Types
 export interface NavItem {
@@ -17,8 +18,11 @@ export interface NavItem {
   icon: React.ElementType;
   badge?: number;
   children?: NavItem[];
-  /** Permission required to see this item (format: "entity:action") */
-  requiredPermission?: string;
+  /**
+   * Permission required to see this item. Typed — TS rejects typos like
+   * `"order:edit"` (should be `"order:update"`).
+   */
+  requiredPermission?: Permission;
 }
 
 export interface NavSection {
@@ -70,25 +74,20 @@ export interface SidebarProviderProps {
  */
 function filterNavItemsByPermissions(
   sections: NavSection[],
-  checkPermission: (permission: string) => boolean
+  checkPermission: (permission: Permission) => boolean,
 ): NavSection[] {
   return sections
     .map((section) => {
       const filteredItems = section.items
         .filter((item) => {
-          // If no permission required, show the item
           if (!item.requiredPermission) return true;
-          // Check if user has the required permission
-          const [entity, action] = item.requiredPermission.split(":");
-          return checkPermission(`${entity}:${action}`);
+          return checkPermission(item.requiredPermission);
         })
         .map((item) => {
-          // Also filter children if they exist
           if (item.children) {
             const filteredChildren = item.children.filter((child) => {
               if (!child.requiredPermission) return true;
-              const [entity, action] = child.requiredPermission.split(":");
-              return checkPermission(`${entity}:${action}`);
+              return checkPermission(child.requiredPermission);
             });
             return { ...item, children: filteredChildren };
           }
@@ -97,7 +96,6 @@ function filterNavItemsByPermissions(
 
       return { ...section, items: filteredItems };
     })
-    // Remove empty sections
     .filter((section) => section.items.length > 0);
 }
 
@@ -107,16 +105,12 @@ export function SidebarProvider({
   defaultCollapsed = false,
 }: SidebarProviderProps) {
   const pathname = usePathname();
-  const { hasPermission, isLoading: isLoadingPermissions, permissions } = usePermissions();
+  const { hasPermission, isLoading: isLoadingPermissions } = usePermissions();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
-  // Check permission including wildcard for admins
-  const checkPermission = (permission: string): boolean => {
-    if (permissions.includes("*")) return true;
-    const [entity, action] = permission.split(":");
-    return hasPermission(entity, action);
-  };
+  // Wildcard handling lives inside hasPermission already.
+  const checkPermission = (perm: Permission): boolean => hasPermission(perm);
 
   // Filter navigation sections based on permissions
   const filteredNavSections = isLoadingPermissions

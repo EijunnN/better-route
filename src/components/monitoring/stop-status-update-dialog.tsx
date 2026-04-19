@@ -12,6 +12,7 @@ import {
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import {
   Dialog,
   DialogContent,
@@ -357,20 +358,22 @@ export function StopStatusUpdateDialog({
           >
             Cancelar
           </Button>
-          <Button
-            type="button"
-            onClick={handleUpdate}
-            disabled={
-              updating ||
-              !stop ||
-              (hasWorkflowStates
-                ? !selectedWorkflowStateId || !!(selectedWorkflowState?.requiresNotes && !notes.trim()) || !!(selectedWorkflowState?.requiresReason && selectedWorkflowState.reasonOptions && !selectedReason)
-                : selectedStatus === stop.status)
-            }
-          >
-            {updating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Actualizar estado
-          </Button>
+          <Can perm="route_stop:update">
+            <Button
+              type="button"
+              onClick={handleUpdate}
+              disabled={
+                updating ||
+                !stop ||
+                (hasWorkflowStates
+                  ? !selectedWorkflowStateId || !!(selectedWorkflowState?.requiresNotes && !notes.trim()) || !!(selectedWorkflowState?.requiresReason && selectedWorkflowState.reasonOptions && !selectedReason)
+                  : selectedStatus === stop.status)
+              }
+            >
+              {updating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Actualizar estado
+            </Button>
+          </Can>
         </DialogFooter>
       </DialogContent>
     </Dialog>

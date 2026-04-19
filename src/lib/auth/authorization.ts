@@ -1,85 +1,23 @@
 /**
- * Role-Based Access Control (RBAC) System
+ * Role-Based Access Control (RBAC) System — server side.
  *
- * This module provides granular permission checking for all entities and actions
- * following the requirements of Story 14.2.
+ * Type contracts (EntityType, Action, Permission) live in
+ * `./permissions/types.ts` so the client can reuse the exact same enums
+ * without pulling in DB code. This file owns server-only concerns:
+ *   - Static role → permission matrix (legacy)
+ *   - Database-backed permission lookups (custom roles)
+ *   - AuthorizationError + sensitive-action policy
  */
 
-import { type AuthenticatedUser, USER_ROLES } from "./auth-api";
+import { type AuthenticatedUser } from "./auth-api";
+import { USER_ROLES, EntityType, Action } from "./permissions/types";
+import type { Permission } from "./permissions/types";
 
-/**
- * Entity types in the system
- */
-export enum EntityType {
-  COMPANY = "company",
-  FLEET = "fleet",
-  VEHICLE = "vehicle",
-  VEHICLE_SKILL = "vehicle_skill",
-  DRIVER = "driver",
-  DRIVER_SKILL = "driver_skill",
-  ORDER = "order",
-  OPTIMIZATION_JOB = "optimization_job",
-  OPTIMIZATION_CONFIG = "optimization_config",
-  OPTIMIZATION_PRESET = "optimization_preset",
-  PLAN = "plan",
-  ROUTE = "route",
-  ROUTE_STOP = "route_stop",
-  ALERT = "alert",
-  ALERT_RULE = "alert_rule",
-  REASSIGNMENT = "reassignment",
-  OUTPUT = "output",
-  TIME_WINDOW_PRESET = "time_window_preset",
-  USER = "user",
-  AUDIT_LOG = "audit_log",
-  METRICS = "metrics",
-  SESSION = "session",
-  CACHE = "cache",
-  // RBAC entities
-  ROLE = "role",
-  PERMISSION = "permission",
-}
-
-/**
- * Action types for permissions
- */
-export enum Action {
-  // CRUD operations
-  CREATE = "create",
-  READ = "read",
-  UPDATE = "update",
-  DELETE = "delete",
-
-  // Special actions
-  LIST = "list",
-  CONFIRM = "confirm",
-  CANCEL = "cancel",
-  EXECUTE = "execute",
-  IMPORT = "import",
-  EXPORT = "export",
-  ASSIGN = "assign",
-  REASSIGN = "reassign",
-  ACKNOWLEDGE = "acknowledge",
-  DISMISS = "dismiss",
-  MONITOR = "monitor",
-  VALIDATE = "validate",
-
-  // Sensitive actions (require confirmation)
-  FORCE_DELETE = "force_delete",
-  BULK_DELETE = "bulk_delete",
-  BULK_UPDATE = "bulk_update",
-  CHANGE_STATUS = "change_status",
-  INVALIDATE_SESSIONS = "invalidate_sessions",
-  INVALIDATE_ALL = "invalidate_all",
-
-  // Cache actions (Story 17.2)
-  WARMUP = "warmup",
-  DELETE_ALL = "delete_all",
-}
-
-/**
- * Permission resource in format "entity:action" or wildcard "*"
- */
-export type Permission = `${EntityType}:${Action}` | "*";
+// Re-exported for backward compat — many existing routes/tests import
+// these from "@/lib/auth/authorization". New code should import from
+// "@/lib/auth/permissions".
+export { EntityType, Action };
+export type { Permission };
 
 /**
  * Sensitive actions that require additional confirmation
@@ -100,23 +38,32 @@ export const SENSITIVE_ACTIONS = new Set<Action>([
  */
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   [USER_ROLES.PLANIFICADOR]: [
-    // Can manage planning entities
+    // Order management — full CRUD + import/bulk delete
     `${EntityType.ORDER}:${Action.READ}`,
     `${EntityType.ORDER}:${Action.CREATE}`,
     `${EntityType.ORDER}:${Action.UPDATE}`,
+    `${EntityType.ORDER}:${Action.DELETE}`,
+    `${EntityType.ORDER}:${Action.BULK_DELETE}`,
     `${EntityType.ORDER}:${Action.VALIDATE}`,
     `${EntityType.ORDER}:${Action.IMPORT}`,
+    // Optimization
     `${EntityType.OPTIMIZATION_JOB}:${Action.READ}`,
     `${EntityType.OPTIMIZATION_JOB}:${Action.CREATE}`,
     `${EntityType.OPTIMIZATION_JOB}:${Action.CANCEL}`,
     `${EntityType.OPTIMIZATION_CONFIG}:${Action.READ}`,
     `${EntityType.OPTIMIZATION_CONFIG}:${Action.CREATE}`,
     `${EntityType.OPTIMIZATION_PRESET}:${Action.READ}`,
+    // Plans — CRUD + lifecycle (confirm/cancel)
     `${EntityType.PLAN}:${Action.READ}`,
     `${EntityType.PLAN}:${Action.CREATE}`,
+    `${EntityType.PLAN}:${Action.UPDATE}`,
     `${EntityType.PLAN}:${Action.CONFIRM}`,
+    `${EntityType.PLAN}:${Action.CANCEL}`,
+    // Routes (assignments + zones used during planning)
     `${EntityType.ROUTE}:${Action.READ}`,
+    `${EntityType.ROUTE}:${Action.UPDATE}`,
     `${EntityType.ROUTE}:${Action.ASSIGN}`,
+    // Read-only on fleet resources
     `${EntityType.DRIVER}:${Action.READ}`,
     `${EntityType.VEHICLE}:${Action.READ}`,
     `${EntityType.FLEET}:${Action.READ}`,
@@ -127,11 +74,13 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
 
   [USER_ROLES.MONITOR]: [
-    // Can view monitoring information
+    // Observability + can act on alerts and stop status from the web
     `${EntityType.DRIVER}:${Action.READ}`,
     `${EntityType.VEHICLE}:${Action.READ}`,
     `${EntityType.ROUTE}:${Action.READ}`,
     `${EntityType.ROUTE_STOP}:${Action.READ}`,
+    `${EntityType.ROUTE_STOP}:${Action.UPDATE}`, // Marcar paradas como FAILED/SKIPPED desde web
+    `${EntityType.ROUTE_STOP}:${Action.CHANGE_STATUS}`,
     `${EntityType.ALERT}:${Action.READ}`,
     `${EntityType.ALERT}:${Action.ACKNOWLEDGE}`,
     `${EntityType.ALERT}:${Action.DISMISS}`,
@@ -143,7 +92,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
 
   [USER_ROLES.ADMIN_FLOTA]: [
-    // Can manage fleets, vehicles, and drivers
+    // Fleet, vehicles, drivers — full CRUD
     `${EntityType.FLEET}:${Action.CREATE}`,
     `${EntityType.FLEET}:${Action.READ}`,
     `${EntityType.FLEET}:${Action.UPDATE}`,
@@ -153,14 +102,36 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     `${EntityType.VEHICLE}:${Action.UPDATE}`,
     `${EntityType.VEHICLE}:${Action.DELETE}`,
     `${EntityType.VEHICLE}:${Action.CHANGE_STATUS}`,
+    // Vehicle skills catalog — full CRUD
     `${EntityType.VEHICLE_SKILL}:${Action.READ}`,
+    `${EntityType.VEHICLE_SKILL}:${Action.CREATE}`,
+    `${EntityType.VEHICLE_SKILL}:${Action.UPDATE}`,
+    `${EntityType.VEHICLE_SKILL}:${Action.DELETE}`,
     `${EntityType.DRIVER}:${Action.CREATE}`,
     `${EntityType.DRIVER}:${Action.READ}`,
     `${EntityType.DRIVER}:${Action.UPDATE}`,
     `${EntityType.DRIVER}:${Action.DELETE}`,
     `${EntityType.DRIVER}:${Action.CHANGE_STATUS}`,
+    // Driver skills — full CRUD + assignment
     `${EntityType.DRIVER_SKILL}:${Action.READ}`,
+    `${EntityType.DRIVER_SKILL}:${Action.CREATE}`,
+    `${EntityType.DRIVER_SKILL}:${Action.UPDATE}`,
+    `${EntityType.DRIVER_SKILL}:${Action.DELETE}`,
+    `${EntityType.DRIVER_SKILL}:${Action.ASSIGN}`,
+    // Zones (modeled as ROUTE entity in the permission system)
+    `${EntityType.ROUTE}:${Action.READ}`,
+    `${EntityType.ROUTE}:${Action.CREATE}`,
+    `${EntityType.ROUTE}:${Action.UPDATE}`,
+    `${EntityType.ROUTE}:${Action.DELETE}`,
     `${EntityType.TIME_WINDOW_PRESET}:${Action.READ}`,
+    // Company-level configuration (workflow states, custom field definitions,
+    // optimization presets) lives behind company:update by convention.
+    `${EntityType.COMPANY}:${Action.READ}`,
+    `${EntityType.COMPANY}:${Action.UPDATE}`,
+    `${EntityType.OPTIMIZATION_PRESET}:${Action.READ}`,
+    `${EntityType.OPTIMIZATION_PRESET}:${Action.CREATE}`,
+    `${EntityType.OPTIMIZATION_PRESET}:${Action.UPDATE}`,
+    `${EntityType.OPTIMIZATION_PRESET}:${Action.DELETE}`,
     `${EntityType.METRICS}:${Action.READ}`,
   ],
 

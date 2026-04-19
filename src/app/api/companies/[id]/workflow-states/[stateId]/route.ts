@@ -7,19 +7,19 @@ import {
   routeStops,
   SYSTEM_STATES,
 } from "@/db/schema";
-import {
-  handleError,
-  setupAuthContext,
-  unauthorizedResponse,
-  notFoundResponse,
-} from "@/lib/routing/route-helpers";
+import { handleError, notFoundResponse } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/permissions";
 
-function canAccessCompany(
+function assertSameTenant(
   user: { role: string; companyId: string | null },
   companyId: string,
-): boolean {
-  if (user.role === "ADMIN_SISTEMA") return true;
-  return user.companyId === companyId;
+): NextResponse | null {
+  if (user.role === "ADMIN_SISTEMA") return null;
+  if (user.companyId !== companyId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
 }
 
 // GET - Single state with transitions
@@ -28,16 +28,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string; stateId: string }> },
 ) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.COMPANY,
+      Action.READ,
+    );
+    if (authResult instanceof NextResponse) return authResult;
 
     const { id: companyId, stateId } = await params;
-
-    if (!canAccessCompany(authResult.user, companyId)) {
-      return unauthorizedResponse();
-    }
+    const tenantError = assertSameTenant(authResult, companyId);
+    if (tenantError) return tenantError;
 
     const state = await db.query.companyWorkflowStates.findFirst({
       where: and(
@@ -73,16 +73,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; stateId: string }> },
 ) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.COMPANY,
+      Action.UPDATE,
+    );
+    if (authResult instanceof NextResponse) return authResult;
 
     const { id: companyId, stateId } = await params;
-
-    if (!canAccessCompany(authResult.user, companyId)) {
-      return unauthorizedResponse();
-    }
+    const tenantError = assertSameTenant(authResult, companyId);
+    if (tenantError) return tenantError;
 
     // Check state exists and belongs to company
     const existing = await db.query.companyWorkflowStates.findFirst({
@@ -157,16 +157,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; stateId: string }> },
 ) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.COMPANY,
+      Action.UPDATE,
+    );
+    if (authResult instanceof NextResponse) return authResult;
 
     const { id: companyId, stateId } = await params;
-
-    if (!canAccessCompany(authResult.user, companyId)) {
-      return unauthorizedResponse();
-    }
+    const tenantError = assertSameTenant(authResult, companyId);
+    if (tenantError) return tenantError;
 
     // Check state exists and belongs to company
     const existing = await db.query.companyWorkflowStates.findFirst({

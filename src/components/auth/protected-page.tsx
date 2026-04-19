@@ -3,37 +3,48 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  type Permission,
+  WILDCARD_PERMISSION,
+} from "@/lib/auth/permissions";
 
 interface ProtectedPageProps {
   children: React.ReactNode;
-  /** Permiso requerido en formato "entity:action" */
-  requiredPermission?: string;
-  /** Múltiples permisos - usuario necesita AL MENOS UNO */
-  requiredPermissions?: string[];
-  /** Página a redirigir si no tiene permiso */
+  /** Required permission. Typed — TS rejects typos and unknown entities. */
+  requiredPermission?: Permission;
+  /** Multiple permissions — user needs AT LEAST ONE. */
+  requiredPermissions?: Permission[];
+  /**
+   * Escape hatch for pages that any authenticated user may see (e.g. the
+   * dashboard home). Must be set explicitly — there is no permissive
+   * default. If neither this nor a permission is provided, access is denied.
+   */
+  authenticatedOnly?: boolean;
+  /** Page to redirect to when access is denied. */
   redirectTo?: string;
-  /** Mostrar mensaje de acceso denegado en lugar de redirigir */
+  /** Show in-page denial instead of redirecting. */
   showAccessDenied?: boolean;
 }
 
 /**
- * Componente que protege una página completa según permisos
- * Úsalo envolviendo el contenido de tu página:
+ * Page-level access guard.
  *
- * ```tsx
- * export default function RolesPage() {
- *   return (
- *     <ProtectedPage requiredPermission="roles:VIEW">
- *       <div>Contenido de la página...</div>
- *     </ProtectedPage>
- *   );
- * }
- * ```
+ * **Fail-closed by default**: a page without `requiredPermission` /
+ * `requiredPermissions` / `authenticatedOnly` denies access. This prevents
+ * the historical bug where a developer wrapping a new page in
+ * `<ProtectedPage>` and forgetting to pass a permission would still let
+ * everyone in.
+ *
+ * Examples:
+ *   <ProtectedPage requiredPermission="role:read">...</ProtectedPage>
+ *   <ProtectedPage requiredPermissions={["plan:update", "plan:confirm"]}>...</ProtectedPage>
+ *   <ProtectedPage authenticatedOnly>...</ProtectedPage>  // dashboard-style pages
  */
 export function ProtectedPage({
   children,
   requiredPermission,
   requiredPermissions,
+  authenticatedOnly = false,
   redirectTo = "/dashboard",
   showAccessDenied = true,
 }: ProtectedPageProps) {
@@ -41,15 +52,14 @@ export function ProtectedPage({
   const { user, permissions, isLoading, error } = useAuth();
   const shouldRedirectToLogin = !isLoading && (Boolean(error) || !user);
 
-  // Admin has access to everything
   const hasAccess =
     shouldRedirectToLogin ||
-    permissions.includes("*") ||
+    permissions.includes(WILDCARD_PERMISSION) ||
     (requiredPermission
       ? permissions.includes(requiredPermission)
       : requiredPermissions && requiredPermissions.length > 0
         ? requiredPermissions.some((perm) => permissions.includes(perm))
-        : true);
+        : authenticatedOnly);
 
   const shouldRedirectNoAccess =
     !isLoading && !shouldRedirectToLogin && !hasAccess && !showAccessDenied;
@@ -65,7 +75,6 @@ export function ProtectedPage({
     }
   }, [redirectTo, router, shouldRedirectNoAccess, shouldRedirectToLogin]);
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -74,7 +83,6 @@ export function ProtectedPage({
     );
   }
 
-  // Not authenticated - redirect to login
   if (shouldRedirectToLogin) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -83,7 +91,6 @@ export function ProtectedPage({
     );
   }
 
-  // No access - redirect or show denied
   if (!hasAccess) {
     if (shouldRedirectNoAccess) {
       return (
@@ -101,7 +108,10 @@ export function ProtectedPage({
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
+            role="img"
+            aria-label="Acceso denegado"
           >
+            <title>Acceso denegado</title>
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -116,7 +126,7 @@ export function ProtectedPage({
         <p className="text-muted-foreground max-w-md mb-4">
           No tienes permisos para acceder a esta página.
           <span className="block mt-2 text-sm">
-            Tu rol actual: <strong>{user!.role}</strong>
+            Tu rol actual: <strong>{user?.role}</strong>
           </span>
         </p>
         <button
@@ -130,6 +140,5 @@ export function ProtectedPage({
     );
   }
 
-  // Has access - render children
   return <>{children}</>;
 }

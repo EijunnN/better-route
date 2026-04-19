@@ -2,18 +2,19 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companyWorkflowTransitions } from "@/db/schema";
-import {
-  handleError,
-  setupAuthContext,
-  unauthorizedResponse,
-} from "@/lib/routing/route-helpers";
+import { handleError } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { EntityType, Action } from "@/lib/auth/permissions";
 
-function canAccessCompany(
+function assertSameTenant(
   user: { role: string; companyId: string | null },
   companyId: string,
-): boolean {
-  if (user.role === "ADMIN_SISTEMA") return true;
-  return user.companyId === companyId;
+): NextResponse | null {
+  if (user.role === "ADMIN_SISTEMA") return null;
+  if (user.companyId !== companyId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
 }
 
 // DELETE - Delete a specific workflow transition by ID
@@ -22,16 +23,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; transitionId: string }> },
 ) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.COMPANY,
+      Action.UPDATE,
+    );
+    if (authResult instanceof NextResponse) return authResult;
 
     const { id: companyId, transitionId } = await params;
-
-    if (!canAccessCompany(authResult.user, companyId)) {
-      return unauthorizedResponse();
-    }
+    const tenantError = assertSameTenant(authResult, companyId);
+    if (tenantError) return tenantError;
 
     const existing = await db.query.companyWorkflowTransitions.findFirst({
       where: and(

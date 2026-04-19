@@ -2,6 +2,7 @@
 
 import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import {
   Dialog,
   DialogContent,
@@ -73,22 +74,24 @@ export function CsvUploadDialog() {
           <Button variant="outline" onClick={actions.resetCsvState}>
             Cancelar
           </Button>
-          <Button
-            onClick={actions.handleCsvUpload}
-            disabled={state.csvUploading || state.csvPreview.length === 0}
-          >
-            {state.csvUploading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Subiendo...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 mr-2" />
-                Subir {state.csvPreview.length} pedidos
-              </>
-            )}
-          </Button>
+          <Can perm="order:import">
+            <Button
+              onClick={actions.handleCsvUpload}
+              disabled={state.csvUploading || state.csvPreview.length === 0}
+            >
+              {state.csvUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Subiendo...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Subir {state.csvPreview.length} pedidos
+                </>
+              )}
+            </Button>
+          </Can>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -179,19 +182,21 @@ export function EditOrderDialog() {
           >
             Cancelar
           </Button>
-          <Button
-            onClick={actions.saveOrderChanges}
-            disabled={state.isUpdatingOrder || !state.editOrderData.address}
-          >
-            {state.isUpdatingOrder ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              "Guardar cambios"
-            )}
-          </Button>
+          <Can perm="order:update">
+            <Button
+              onClick={actions.saveOrderChanges}
+              disabled={state.isUpdatingOrder || !state.editOrderData.address}
+            >
+              {state.isUpdatingOrder ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar cambios"
+              )}
+            </Button>
+          </Can>
         </DialogFooter>
       </DialogContent>
     </Dialog>

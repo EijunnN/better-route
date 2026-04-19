@@ -13,12 +13,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Can, useCan } from "@/components/auth/can";
 import { ErrorState } from "@/components/ui/error-state";
 import { Switch } from "@/components/ui/switch";
 import { useRoles, CATEGORY_LABELS } from "./roles-context";
 
 export function RolesListView() {
   const { state, actions, meta } = useRoles();
+  const canUpdateRole = useCan("role:update");
 
   return (
     <div className="space-y-6">
@@ -29,9 +31,11 @@ export function RolesListView() {
             Configure roles y permisos personalizados para su empresa
           </p>
         </div>
-        <Button onClick={() => actions.setShowForm(true)} disabled={meta.isSystemAdmin && !meta.effectiveCompanyId}>
-          Nuevo Rol
-        </Button>
+        <Can perm="role:create">
+          <Button onClick={() => actions.setShowForm(true)} disabled={meta.isSystemAdmin && !meta.effectiveCompanyId}>
+            Nuevo Rol
+          </Button>
+        </Can>
       </div>
 
       {state.error ? (
@@ -72,41 +76,43 @@ export function RolesListView() {
                         <p className="text-xs text-muted-foreground mt-1">{role.enabledPermissionsCount} permisos activos</p>
                       </div>
                       {!role.isSystem && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              disabled={state.deletingId === role.id}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {state.deletingId === role.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>¿Eliminar rol?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción eliminará el rol <strong>{role.name}</strong>. Los usuarios con este rol
-                                perderán los permisos asociados.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => actions.handleDeleteRole(role.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        <Can perm="role:delete">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                disabled={state.deletingId === role.id}
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                Eliminar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                {state.deletingId === role.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar rol?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acción eliminará el rol <strong>{role.name}</strong>. Los usuarios con este rol
+                                  perderán los permisos asociados.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => actions.handleDeleteRole(role.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </Can>
                       )}
                     </div>
                   </div>
@@ -141,7 +147,7 @@ export function RolesListView() {
                   <div key={category} className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-medium text-foreground">{CATEGORY_LABELS[category] || category}</h3>
-                      {!state.selectedRole?.isSystem && (
+                      {!state.selectedRole?.isSystem && canUpdateRole && (
                         <div className="flex gap-2">
                           <button
                             type="button"
@@ -171,7 +177,7 @@ export function RolesListView() {
                           <Switch
                             checked={perm.enabled}
                             onCheckedChange={(checked) => actions.handleTogglePermission(perm.id, checked)}
-                            disabled={state.selectedRole?.isSystem || state.savingPermission === perm.id}
+                            disabled={state.selectedRole?.isSystem || state.savingPermission === perm.id || !canUpdateRole}
                           />
                         </div>
                       ))}

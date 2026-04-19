@@ -13,6 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import { ErrorState } from "@/components/ui/error-state";
 import { Pagination } from "@/components/ui/pagination";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -56,20 +57,24 @@ export function UsersListView() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => actions.setShowImportDialog(true)}
-            disabled={meta.isSystemAdmin && !meta.effectiveCompanyId}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Importar CSV
-          </Button>
-          <Button
-            onClick={() => actions.setShowForm(true)}
-            disabled={meta.isSystemAdmin && !meta.effectiveCompanyId}
-          >
-            Nuevo Usuario
-          </Button>
+          <Can perm="user:create">
+            <Button
+              variant="outline"
+              onClick={() => actions.setShowImportDialog(true)}
+              disabled={meta.isSystemAdmin && !meta.effectiveCompanyId}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Importar CSV
+            </Button>
+          </Can>
+          <Can perm="user:create">
+            <Button
+              onClick={() => actions.setShowForm(true)}
+              disabled={meta.isSystemAdmin && !meta.effectiveCompanyId}
+            >
+              Nuevo Usuario
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -247,49 +252,53 @@ function UserRow({ user }: { user: User }) {
         )}
       </td>
       <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => actions.handleEditUser(user)}
-          disabled={state.deletingId === user.id}
-        >
-          Editar
-        </Button>
+        <Can perm="user:update">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.handleEditUser(user)}
+            disabled={state.deletingId === user.id}
+          >
+            Editar
+          </Button>
+        </Can>
         {user.active && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive"
-                disabled={state.deletingId === user.id}
-              >
-                {state.deletingId === user.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Desactivar usuario?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta acción desactivará al usuario <strong>{user.name}</strong>. No podrá
-                  acceder al sistema.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => actions.handleDelete(user.id)}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          <Can perm="user:delete">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  disabled={state.deletingId === user.id}
                 >
-                  Desactivar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  {state.deletingId === user.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Desactivar usuario?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción desactivará al usuario <strong>{user.name}</strong>. No podrá
+                    acceder al sistema.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => actions.handleDelete(user.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Desactivar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </Can>
         )}
       </td>
     </tr>

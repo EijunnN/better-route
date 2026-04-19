@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Can, useCan } from "@/components/auth/can";
 import { ErrorState } from "@/components/ui/error-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -229,21 +230,23 @@ function TemplatePicker({
                         .join(" \u2192 ")}
                     </div>
 
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      disabled={isDisabled}
-                      onClick={() => handleApplyTemplate(type)}
-                    >
-                      {isApplying ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                          Aplicando...
-                        </>
-                      ) : (
-                        "Usar esta plantilla"
-                      )}
-                    </Button>
+                    <Can perm="company:update">
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        disabled={isDisabled}
+                        onClick={() => handleApplyTemplate(type)}
+                      >
+                        {isApplying ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                            Aplicando...
+                          </>
+                        ) : (
+                          "Usar esta plantilla"
+                        )}
+                      </Button>
+                    </Can>
                   </CardContent>
                 </Card>
               );
@@ -262,15 +265,17 @@ function TemplatePicker({
                   Crea tu propio flujo desde cero
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full"
-                disabled={applying !== null}
-                onClick={() => setDialogOpen(true)}
-              >
-                Comenzar desde cero
-              </Button>
+              <Can perm="company:update">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  disabled={applying !== null}
+                  onClick={() => setDialogOpen(true)}
+                >
+                  Comenzar desde cero
+                </Button>
+              </Can>
             </CardContent>
           </Card>
         </div>
@@ -309,13 +314,17 @@ function PipelineView({ onChangeTemplate }: { onChangeTemplate: () => void }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onChangeTemplate}>
-              Cambiar plantilla
-            </Button>
-            <Button size="sm" onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-1.5" />
-              Agregar estado
-            </Button>
+            <Can perm="company:update">
+              <Button variant="ghost" size="sm" onClick={onChangeTemplate}>
+                Cambiar plantilla
+              </Button>
+            </Can>
+            <Can perm="company:update">
+              <Button size="sm" onClick={() => setDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Agregar estado
+              </Button>
+            </Can>
           </div>
         </div>
 
@@ -606,42 +615,44 @@ function StateCard({
 
           {/* Action buttons */}
           <div className="flex items-center justify-between pt-1">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive"
-                  disabled={isSaving || isDeleting}
-                >
-                  {isDeleting ? (
-                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                  )}
-                  Eliminar
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Eliminar estado</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta accion eliminara el estado{" "}
-                    <strong>{workflowState.label}</strong> y todas sus
-                    transiciones asociadas. Esta accion no se puede deshacer.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            <Can perm="company:update" fallback={<div />}>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    disabled={isSaving || isDeleting}
                   >
+                    {isDeleting ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    )}
                     Eliminar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Eliminar estado</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta accion eliminara el estado{" "}
+                      <strong>{workflowState.label}</strong> y todas sus
+                      transiciones asociadas. Esta accion no se puede deshacer.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Eliminar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </Can>
 
             <div className="flex items-center gap-2">
               <Button
@@ -652,10 +663,12 @@ function StateCard({
               >
                 Cancelar
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                {isSaving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                Guardar
-              </Button>
+              <Can perm="company:update">
+                <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                  {isSaving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  Guardar
+                </Button>
+              </Can>
             </div>
           </div>
         </div>
@@ -674,6 +687,7 @@ function TransitionsSection({
   onToggle: () => void;
 }) {
   const { state, actions } = useWorkflow();
+  const canEditTransitions = useCan("company:update");
   const [updatingCells, setUpdatingCells] = useState<Set<string>>(new Set());
 
   // Build a summary of transitions
@@ -795,6 +809,7 @@ function TransitionsSection({
                               <Checkbox
                                 checked={!!transition}
                                 onCheckedChange={() => handleToggle(fromState.id, toState.id)}
+                                disabled={!canEditTransitions}
                                 className="mx-auto"
                               />
                             )}

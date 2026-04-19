@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -277,15 +278,17 @@ export function OrderStep() {
         {/* Header with upload button */}
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-muted-foreground">Pedidos pendientes</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8"
-            onClick={() => actions.setShowCsvUpload(true)}
-          >
-            <Upload className="w-3.5 h-3.5 mr-1.5" />
-            CSV
-          </Button>
+          <Can perm="order:import">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => actions.setShowCsvUpload(true)}
+            >
+              <Upload className="w-3.5 h-3.5 mr-1.5" />
+              CSV
+            </Button>
+          </Can>
         </div>
 
         {/* Tabs */}
@@ -390,37 +393,41 @@ export function OrderStep() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          actions.openEditOrder(order);
-                        }}
-                        title="Editar coordenadas"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-red-500 hover:bg-destructive hover:text-destructive-foreground"
-                        disabled={state.deletingOrderId === order.id}
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          await actions.deleteOrder(order.id);
-                        }}
-                        title="Eliminar pedido"
-                      >
-                        {state.deletingOrderId === order.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-3.5 h-3.5" />
-                        )}
-                      </Button>
+                      <Can perm="order:update">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            actions.openEditOrder(order);
+                          }}
+                          title="Editar coordenadas"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </Button>
+                      </Can>
+                      <Can perm="order:delete">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-red-500 hover:bg-destructive hover:text-destructive-foreground"
+                          disabled={state.deletingOrderId === order.id}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            await actions.deleteOrder(order.id);
+                          }}
+                          title="Eliminar pedido"
+                        >
+                          {state.deletingOrderId === order.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                      </Can>
                     </div>
                   </div>
                 </label>
@@ -628,24 +635,26 @@ export function ConfigStep() {
 
       {/* Action buttons */}
       <div className="p-4 border-t bg-background space-y-2">
-        <Button
-          className="w-full"
-          size="lg"
-          onClick={actions.handleSubmit}
-          disabled={state.isSubmitting}
-        >
-          {state.isSubmitting ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Optimizando...
-            </>
-          ) : (
-            <>
-              <Route className="w-4 h-4 mr-2" />
-              Optimizar rutas
-            </>
-          )}
-        </Button>
+        <Can perm="plan:create">
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={actions.handleSubmit}
+            disabled={state.isSubmitting}
+          >
+            {state.isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Optimizando...
+              </>
+            ) : (
+              <>
+                <Route className="w-4 h-4 mr-2" />
+                Optimizar rutas
+              </>
+            )}
+          </Button>
+        </Can>
         <Button variant="outline" onClick={actions.prevStep} className="w-full">
           Volver
         </Button>

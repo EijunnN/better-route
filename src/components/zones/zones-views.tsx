@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { useLayoutContext } from "@/components/layout/layout-context";
@@ -88,10 +89,12 @@ export function ZonesListView() {
                 <span className="text-muted-foreground">{state.zones.length} total</span>
               </div>
             </div>
-            <Button onClick={actions.handleStartNew}>
-              <Plus className="w-4 h-4 mr-2" />
-              Nueva Zona
-            </Button>
+            <Can perm="route:create">
+              <Button onClick={actions.handleStartNew}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nueva Zona
+              </Button>
+            </Can>
           </div>
         </div>
       </div>
@@ -128,9 +131,11 @@ export function ZonesListView() {
                   {state.searchQuery ? "Sin resultados" : "No hay zonas configuradas"}
                 </p>
                 {!state.searchQuery && (
-                  <Button variant="link" onClick={actions.handleStartNew} className="mt-2">
-                    Crear primera zona
-                  </Button>
+                  <Can perm="route:create">
+                    <Button variant="link" onClick={actions.handleStartNew} className="mt-2">
+                      Crear primera zona
+                    </Button>
+                  </Can>
                 )}
               </div>
             ) : (
@@ -255,50 +260,54 @@ function ZoneDetails() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => actions.handleEdit(zone)}
-            disabled={state.deletingId === zone.id}
-          >
-            <Edit3 className="w-4 h-4 mr-1" />
-            Editar
-          </Button>
+          <Can perm="route:update">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => actions.handleEdit(zone)}
+              disabled={state.deletingId === zone.id}
+            >
+              <Edit3 className="w-4 h-4 mr-1" />
+              Editar
+            </Button>
+          </Can>
           {zone.active && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-destructive hover:text-destructive"
-                  disabled={state.deletingId === zone.id}
-                >
-                  {state.deletingId === zone.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>¿Desactivar zona?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta acción desactivará la zona <strong>{zone.name}</strong>. Los vehículos
-                    asignados serán desvinculados.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => actions.handleDelete(zone.id)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            <Can perm="route:delete">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    disabled={state.deletingId === zone.id}
                   >
-                    Desactivar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    {state.deletingId === zone.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Desactivar zona?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta acción desactivará la zona <strong>{zone.name}</strong>. Los vehículos
+                      asignados serán desvinculados.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => actions.handleDelete(zone.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Desactivar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </Can>
           )}
         </div>
       </div>

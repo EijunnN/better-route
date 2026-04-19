@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import { Pagination } from "@/components/ui/pagination";
 import { OrderForm } from "./order-form";
 import { useOrders, type Order } from "./orders-context";
@@ -96,36 +97,40 @@ export function OrdersListView() {
           <p className="text-muted-foreground mt-1">Gestiona los pedidos de entrega con restricciones de ventana de tiempo</p>
         </div>
         <div className="flex items-center gap-4">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={state.totalOrders === 0}>
-                <Trash2 className="w-4 h-4 mr-2" />
-                Eliminar todos
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-destructive" />
-                  ¿Eliminar todos los pedidos?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta acción eliminará permanentemente <strong>{state.totalOrders} pedidos</strong>. Esta acción no se puede deshacer.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={actions.handleDeleteAll}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={state.isDeleting}
-                >
-                  {state.isDeleting ? "Eliminando..." : "Sí, eliminar todos"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <Button onClick={() => actions.setShowForm(true)}>Crear Pedido</Button>
+          <Can perm="order:bulk_delete">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={state.totalOrders === 0}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Eliminar todos
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-destructive" />
+                    ¿Eliminar todos los pedidos?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción eliminará permanentemente <strong>{state.totalOrders} pedidos</strong>. Esta acción no se puede deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={actions.handleDeleteAll}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    disabled={state.isDeleting}
+                  >
+                    {state.isDeleting ? "Eliminando..." : "Sí, eliminar todos"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </Can>
+          <Can perm="order:create">
+            <Button onClick={() => actions.setShowForm(true)}>Crear Pedido</Button>
+          </Can>
         </div>
       </div>
 
@@ -256,42 +261,48 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
         );
       })}
       <td className="p-4 text-right">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => actions.handleGenerateTrackingLink(order.id)}
-          disabled={state.isGeneratingLink}
-          title="Generar enlace de seguimiento"
-        >
-          <Link2 className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => actions.handleEdit(order)} disabled={state.deletingId === order.id}>
-          Editar
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={state.deletingId === order.id}>
-              {state.deletingId === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>¿Eliminar pedido?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta acción eliminará el pedido <strong>{order.trackingId}</strong>. Esta acción no se puede deshacer.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => actions.handleDelete(order.id)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Eliminar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <Can perm="order:read">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.handleGenerateTrackingLink(order.id)}
+            disabled={state.isGeneratingLink}
+            title="Generar enlace de seguimiento"
+          >
+            <Link2 className="h-4 w-4" />
+          </Button>
+        </Can>
+        <Can perm="order:update">
+          <Button variant="ghost" size="sm" onClick={() => actions.handleEdit(order)} disabled={state.deletingId === order.id}>
+            Editar
+          </Button>
+        </Can>
+        <Can perm="order:delete">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={state.deletingId === order.id}>
+                {state.deletingId === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar pedido?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción eliminará el pedido <strong>{order.trackingId}</strong>. Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => actions.handleDelete(order.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Eliminar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </Can>
       </td>
     </tr>
   );

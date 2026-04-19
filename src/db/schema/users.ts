@@ -12,16 +12,11 @@ import {
 import { companies } from "./companies";
 import { fleets } from "./fleets";
 
-// User roles - Unified with system roles
-// These are the legacy role codes stored in users.role field
-// New system uses roles table with dynamic permissions
-export const USER_ROLES = {
-  ADMIN_SISTEMA: "ADMIN_SISTEMA",
-  ADMIN_FLOTA: "ADMIN_FLOTA",
-  PLANIFICADOR: "PLANIFICADOR",
-  MONITOR: "MONITOR",
-  CONDUCTOR: "CONDUCTOR",
-} as const;
+// User roles — single source of truth in the browser-safe permissions module.
+// Re-exported here so existing schema consumers (drizzle queries, seeds) keep
+// importing from "@/db/schema" without breaking.
+import { USER_ROLES, type UserRole } from "@/lib/auth/permissions";
+export { USER_ROLES, type UserRole };
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),

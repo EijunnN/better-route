@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,7 +40,9 @@ export function UserSkillsListView() {
             Asigne y administre las habilidades y certificaciones de los usuarios (conductores)
           </p>
         </div>
-        <Button onClick={() => actions.setShowForm(true)}>Asignar Habilidad</Button>
+        <Can perm="driver_skill:create">
+          <Button onClick={() => actions.setShowForm(true)}>Asignar Habilidad</Button>
+        </Can>
       </div>
 
       <Card>
@@ -178,53 +181,72 @@ function UserSkillRow({ userSkill }: { userSkill: UserSkill }) {
         )}
       </TableCell>
       <TableCell>
-        <Button variant="ghost" size="sm" onClick={() => actions.handleToggleActive(userSkill.id, userSkill.active)} className="p-0 h-auto">
-          <Badge
-            className={
-              userSkill.active
-                ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
-                : "bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-900/30 dark:text-gray-400"
-            }
-          >
-            {userSkill.active ? "Activo" : "Inactivo"}
-          </Badge>
-        </Button>
+        <Can
+          perm="driver_skill:update"
+          fallback={
+            <Badge
+              className={
+                userSkill.active
+                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                  : "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+              }
+            >
+              {userSkill.active ? "Activo" : "Inactivo"}
+            </Badge>
+          }
+        >
+          <Button variant="ghost" size="sm" onClick={() => actions.handleToggleActive(userSkill.id, userSkill.active)} className="p-0 h-auto">
+            <Badge
+              className={
+                userSkill.active
+                  ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
+                  : "bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-900/30 dark:text-gray-400"
+              }
+            >
+              {userSkill.active ? "Activo" : "Inactivo"}
+            </Badge>
+          </Button>
+        </Can>
       </TableCell>
       <TableCell className="text-right">
-        <Button variant="ghost" size="sm" onClick={() => actions.setEditingUserSkill(userSkill)} disabled={state.deletingId === userSkill.id}>
-          Editar
-        </Button>
+        <Can perm="driver_skill:update">
+          <Button variant="ghost" size="sm" onClick={() => actions.setEditingUserSkill(userSkill)} disabled={state.deletingId === userSkill.id}>
+            Editar
+          </Button>
+        </Can>
         {userSkill.active && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive"
-                disabled={state.deletingId === userSkill.id}
-              >
-                {state.deletingId === userSkill.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Desactivar habilidad?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta acción desactivará la habilidad <strong>{userSkill.skill.name}</strong> del usuario{" "}
-                  <strong>{userSkill.user.name}</strong>.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => actions.handleDelete(userSkill.id)}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          <Can perm="driver_skill:delete">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  disabled={state.deletingId === userSkill.id}
                 >
-                  Desactivar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  {state.deletingId === userSkill.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Desactivar habilidad?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción desactivará la habilidad <strong>{userSkill.skill.name}</strong> del usuario{" "}
+                    <strong>{userSkill.user.name}</strong>.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => actions.handleDelete(userSkill.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Desactivar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </Can>
         )}
       </TableCell>
     </TableRow>

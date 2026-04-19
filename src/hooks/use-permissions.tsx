@@ -2,48 +2,93 @@
 
 import { createContext, use, type ReactNode } from "react";
 import { useAuth } from "./use-auth";
+import {
+  type Permission,
+  WILDCARD_PERMISSION,
+} from "@/lib/auth/permissions";
 
 interface PermissionsContextValue {
   permissions: string[];
   isLoading: boolean;
   error: string | null;
-  hasPermission: (entity: string, action: string) => boolean;
+  /**
+   * Check a single permission. Accepts either the typed `Permission`
+   * (preferred) or the legacy `(entity, action)` pair. New code should use
+   * `useCan(perm)` from `@/components/auth/can` instead.
+   */
+  hasPermission: ((perm: Permission) => boolean) &
+    ((entity: string, action: string) => boolean);
   hasAnyPermission: (
-    checks: Array<{ entity: string; action: string }>,
+    checks:
+      | Permission[]
+      | Array<{ entity: string; action: string }>,
   ) => boolean;
   refetch: () => Promise<void>;
 }
 
-// Context to share permissions across components
 const PermissionsContext = createContext<PermissionsContextValue | null>(null);
 
 /**
- * Provider component that uses useAuth for permissions (SWR deduplication)
+ * Provider component — fetches permissions once via `useAuth` (SWR
+ * deduplication) and shares them with every descendant.
  */
 export function PermissionsProvider({ children }: { children: ReactNode }) {
   const { permissions, isLoading, error, refetch } = useAuth();
+  const value = buildContextValue(permissions, isLoading, error, refetch);
+  return <PermissionsContext value={value}>{children}</PermissionsContext>;
+}
 
-  // Create Set for O(1) lookups - React Compiler handles memoization automatically
+/**
+ * Access permissions from context. Falls back to a fresh `useAuth` call when
+ * no provider is mounted (e.g. unit tests rendering a single component).
+ *
+ * Both hooks (`use(context)` and `useAuth()`) are called unconditionally on
+ * every render to satisfy the rules of hooks; we then pick which result to
+ * return. The fallback path costs an SWR cache hit, no extra fetch.
+ */
+export function usePermissions(): PermissionsContextValue {
+  const context = use(PermissionsContext);
+  const fallback = useAuth();
+  if (context) return context;
+  return buildContextValue(
+    fallback.permissions,
+    fallback.isLoading,
+    fallback.error,
+    fallback.refetch,
+  );
+}
+
+function buildContextValue(
+  permissions: string[],
+  isLoading: boolean,
+  error: string | null,
+  refetch: () => Promise<void>,
+): PermissionsContextValue {
   const permissionsSet = new Set(permissions);
+  const isWildcard = permissionsSet.has(WILDCARD_PERMISSION);
 
-  const hasPermission = (entity: string, action: string): boolean => {
-    // Admin has all permissions
-    if (permissionsSet.has("*")) {
-      return true;
-    }
-    return permissionsSet.has(`${entity}:${action}`);
+  function hasPermission(perm: Permission): boolean;
+  function hasPermission(entity: string, action: string): boolean;
+  function hasPermission(
+    permOrEntity: string | Permission,
+    action?: string,
+  ): boolean {
+    if (isWildcard) return true;
+    const perm = action !== undefined ? `${permOrEntity}:${action}` : permOrEntity;
+    return permissionsSet.has(perm);
+  }
+
+  const hasAnyPermission = (
+    checks: Permission[] | Array<{ entity: string; action: string }>,
+  ): boolean => {
+    if (isWildcard) return true;
+    return checks.some((check) => {
+      const key = typeof check === "string" ? check : `${check.entity}:${check.action}`;
+      return permissionsSet.has(key);
+    });
   };
 
-  const hasAnyPermission = (checks: Array<{ entity: string; action: string }>): boolean => {
-    if (permissionsSet.has("*")) {
-      return true;
-    }
-    return checks.some((check) =>
-      permissionsSet.has(`${check.entity}:${check.action}`),
-    );
-  };
-
-  const value = {
+  return {
     permissions,
     isLoading,
     error,
@@ -51,74 +96,5 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     hasAnyPermission,
     refetch,
   };
-
-  return (
-    <PermissionsContext value={value}>
-      {children}
-    </PermissionsContext>
-  );
 }
 
-/**
- * Hook to access permissions from context
- * Falls back to useAuth if no provider exists
- */
-export function usePermissions(): PermissionsContextValue {
-  const context = use(PermissionsContext);
-
-  // If context exists, use it
-  if (context) {
-    return context;
-  }
-
-  // Fallback: use useAuth directly (still gets SWR deduplication)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { permissions, isLoading, error, refetch } = useAuth();
-  const permissionsSet = new Set(permissions);
-
-  return {
-    permissions,
-    isLoading,
-    error,
-    hasPermission: (entity: string, action: string): boolean => {
-      if (permissionsSet.has("*")) return true;
-      return permissionsSet.has(`${entity}:${action}`);
-    },
-    hasAnyPermission: (
-      checks: Array<{ entity: string; action: string }>,
-    ): boolean => {
-      if (permissionsSet.has("*")) return true;
-      return checks.some((check) =>
-        permissionsSet.has(`${check.entity}:${check.action}`),
-      );
-    },
-    refetch,
-  };
-}
-
-/**
- * Permission check component - shows children only if user has permission
- */
-export function RequirePermission({
-  entity,
-  action,
-  children,
-  fallback = null,
-}: {
-  entity: string;
-  action: string;
-  children: ReactNode;
-  fallback?: ReactNode;
-}) {
-  const { hasPermission, isLoading } = usePermissions();
-
-  if (isLoading) {
-    return null;
-  }
-
-  if (!hasPermission(entity, action)) {
-    return fallback;
-  }
-
-  return <>{children}</>;
-}

@@ -19,6 +19,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
 import { ErrorState } from "@/components/ui/error-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -111,10 +112,12 @@ export function CustomFieldsDashboardView() {
                 : "Define campos adicionales para tus pedidos y paradas"}
             </p>
           </div>
-          <Button size="sm" onClick={actions.openCreateDialog}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Nuevo campo
-          </Button>
+          <Can perm="company:update">
+            <Button size="sm" onClick={actions.openCreateDialog}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Nuevo campo
+            </Button>
+          </Can>
         </div>
 
         {/* Content */}
@@ -160,10 +163,12 @@ function EmptyState() {
             <Phone className="h-3 w-3 mr-1" />Telefono contacto
           </Badge>
         </div>
-        <Button size="sm" onClick={actions.openCreateDialog} className="mt-2">
-          <Plus className="h-4 w-4 mr-1.5" />
-          Crear primer campo
-        </Button>
+        <Can perm="company:update">
+          <Button size="sm" onClick={actions.openCreateDialog} className="mt-2">
+            <Plus className="h-4 w-4 mr-1.5" />
+            Crear primer campo
+          </Button>
+        </Can>
       </CardContent>
     </Card>
   );
@@ -255,50 +260,52 @@ function DefinitionRow({ definition }: { definition: FieldDefinition }) {
       </td>
       <td className="p-3">
         <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={() => actions.openEditDialog(definition)}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
+          <Can perm="company:update">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => actions.openEditDialog(definition)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Eliminar campo</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta accion eliminara el campo{" "}
-                  <strong>{definition.label}</strong> y todos los datos asociados.
-                  Esta accion no se puede deshacer.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                  disabled={isDeleting}
                 >
-                  Eliminar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  {isDeleting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Eliminar campo</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta accion eliminara el campo{" "}
+                    <strong>{definition.label}</strong> y todos los datos asociados.
+                    Esta accion no se puede deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Eliminar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </Can>
         </div>
       </td>
     </tr>
