@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Can } from "@/components/auth/can";
 import { WorkflowStateCard } from "./workflow-state-card";
 import { WorkflowStateDialog } from "./workflow-state-dialog";
-import { WorkflowTransitionsEditor } from "./workflow-transitions-editor";
+import { WorkflowTransitionsPanel } from "./workflow-transitions-panel";
 import { useWorkflow } from "./workflow-context";
 
 export function WorkflowPipelineView({
@@ -18,7 +18,6 @@ export function WorkflowPipelineView({
   const { state } = useWorkflow();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [transitionsExpanded, setTransitionsExpanded] = useState(false);
 
   const toggleExpand = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
@@ -79,12 +78,7 @@ export function WorkflowPipelineView({
           </div>
         </section>
 
-        {state.states.length >= 2 && (
-          <WorkflowTransitionsEditor
-            expanded={transitionsExpanded}
-            onToggle={() => setTransitionsExpanded((v) => !v)}
-          />
-        )}
+        {state.states.length >= 2 && <WorkflowTransitionsPanel />}
 
         {/* Summary strip — quick-glance count of requirements across states. */}
         <RequirementsSummary />
