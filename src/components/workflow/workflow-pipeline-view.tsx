@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Can } from "@/components/auth/can";
 import { WorkflowStateCard } from "./workflow-state-card";
 import { WorkflowStateDialog } from "./workflow-state-dialog";
-import { WorkflowTransitionsMatrix } from "./workflow-transitions-matrix";
+import { WorkflowTransitionsEditor } from "./workflow-transitions-editor";
 import { useWorkflow } from "./workflow-context";
 
 export function WorkflowPipelineView({
@@ -80,7 +80,7 @@ export function WorkflowPipelineView({
         </section>
 
         {state.states.length >= 2 && (
-          <WorkflowTransitionsMatrix
+          <WorkflowTransitionsEditor
             expanded={transitionsExpanded}
             onToggle={() => setTransitionsExpanded((v) => !v)}
           />

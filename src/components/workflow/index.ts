@@ -10,5 +10,5 @@ export { WorkflowDashboardView } from "./workflow-views";
 export { WorkflowPipelineView } from "./workflow-pipeline-view";
 export { WorkflowTemplatePicker } from "./workflow-template-picker";
 export { WorkflowStateCard } from "./workflow-state-card";
-export { WorkflowTransitionsMatrix } from "./workflow-transitions-matrix";
+export { WorkflowTransitionsEditor } from "./workflow-transitions-editor";
 export { WorkflowStateDialog } from "./workflow-state-dialog";
