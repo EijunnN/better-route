@@ -1,32 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowDown, GitBranch, Plus } from "lucide-react";
+import { GitBranch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Can } from "@/components/auth/can";
-import { WorkflowStateCard } from "./workflow-state-card";
-import { WorkflowStateDialog } from "./workflow-state-dialog";
-import { WorkflowTransitionsPanel } from "./workflow-transitions-panel";
+import { WorkflowFlowView } from "./workflow-flow-view";
 import { useWorkflow } from "./workflow-context";
 
+/**
+ * Pipeline view — the canvas IS the editor. Every create/edit/delete happens
+ * inside WorkflowFlowView:
+ *   - "+ Agregar estado" button sits in the canvas (top-right Panel).
+ *   - Click a node to edit it.
+ *   - Drag from a node's right handle to another's left handle to create
+ *     a transition.
+ *   - Hover an edge to reveal a trash button; press Delete to remove a
+ *     selected edge or node.
+ * The sticky header kept here only carries the title and the "Cambiar
+ * plantilla" escape hatch.
+ */
 export function WorkflowPipelineView({
   onChangeTemplate,
 }: {
   onChangeTemplate: () => void;
 }) {
   const { state } = useWorkflow();
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const toggleExpand = (id: string) =>
-    setExpandedId((prev) => (prev === id ? null : id));
 
   return (
     <div className="flex flex-col">
-      {/* Sticky header — matches /configuracion. */}
       <header className="sticky top-0 z-10 border-b bg-background/95 px-6 py-4 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-xl font-semibold">
               <GitBranch className="h-5 w-5" />
@@ -45,59 +48,19 @@ export function WorkflowPipelineView({
                 Cambiar plantilla
               </Button>
             </Can>
-            <Can perm="company:update">
-              <Button size="sm" onClick={() => setAddDialogOpen(true)}>
-                <Plus className="mr-1.5 h-4 w-4" />
-                Agregar estado
-              </Button>
-            </Can>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-4xl space-y-6 p-6">
-        <section aria-label="Pipeline de estados">
-          <div className="space-y-0">
-            {state.states.map((ws, idx) => (
-              <div key={ws.id}>
-                <WorkflowStateCard
-                  workflowState={ws}
-                  isExpanded={expandedId === ws.id}
-                  onToggleExpand={() => toggleExpand(ws.id)}
-                />
-                {idx < state.states.length - 1 && (
-                  <div className="flex justify-center py-1">
-                    <ArrowDown
-                      className="h-4 w-4 text-muted-foreground/40"
-                      aria-hidden="true"
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {state.states.length >= 2 && <WorkflowTransitionsPanel />}
-
-        {/* Summary strip — quick-glance count of requirements across states. */}
+      <div className="mx-auto w-full max-w-6xl space-y-4 p-6">
+        <WorkflowFlowView />
         <RequirementsSummary />
+        <HelpFootnote />
       </div>
-
-      <WorkflowStateDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        editingState={null}
-      />
     </div>
   );
 }
 
-/**
- * Compact footer showing how many states need photo / signature / notes /
- * reason. Helps the planner verify at a glance that the workflow is
- * well-formed ("at least one FAILED state with reason required").
- */
 function RequirementsSummary() {
   const { state } = useWorkflow();
   const counts = {
@@ -124,5 +87,19 @@ function RequirementsSummary() {
         Motivo: <strong>{counts.reason}</strong>/{total}
       </Badge>
     </div>
+  );
+}
+
+function HelpFootnote() {
+  return (
+    <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <span className="font-medium text-foreground/70">
+        Cómo usar el canvas:
+      </span>{" "}
+      clic en un nodo para editarlo · arrastrar desde el punto derecho de un
+      nodo hasta otro para crear una transición · hover sobre una línea para
+      borrarla · tecla Delete sobre nodo o línea seleccionados para
+      eliminar · botón «+ Agregar estado» arriba a la derecha del canvas.
+    </p>
   );
 }
