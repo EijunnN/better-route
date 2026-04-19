@@ -3,29 +3,23 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { Action, EntityType } from "@/lib/auth/authorization";
-import {
-  checkPermissionOrError,
-  handleError,
-  setupAuthContext,
-  unauthorizedResponse,
-} from "@/lib/routing/route-helpers";
+import { handleError } from "@/lib/routing/route-helpers";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { Action, EntityType } from "@/lib/auth/permissions";
 import { companyQuerySchema, companySchema } from "@/lib/validations/company";
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
-
-    // Check if user can read companies
-    const permError = await checkPermissionOrError(
-      authResult.user,
+    // Listing companies is intentionally cross-tenant: ADMIN_SISTEMA sees all,
+    // a user from a single tenant sees only their own. We use
+    // requireRoutePermission (not setupAuthContext) because the latter forces
+    // x-company-id for ADMIN_SISTEMA — which makes no sense for a listing.
+    const user = await requireRoutePermission(
+      request,
       EntityType.COMPANY,
       Action.READ,
     );
-    if (permError) return permError;
+    if (user instanceof NextResponse) return user;
 
     const { searchParams } = new URL(request.url);
     const query = companyQuerySchema.parse(Object.fromEntries(searchParams));
@@ -45,18 +39,19 @@ export async function GET(request: NextRequest) {
       conditions.push(lte(companies.createdAt, new Date(query.endDate)));
     }
 
-    // ADMIN_SISTEMA can see all companies, others can only see their own.
-    // Pass companyId explicitly — withTenantFilter's AsyncLocalStorage
-    // fallback isn't reliable in App Router handlers.
-    const isSystemAdmin = authResult.user.role === "ADMIN_SISTEMA";
-    if (!isSystemAdmin && !authResult.user.companyId) {
-      return unauthorizedResponse();
+    // ADMIN_SISTEMA sees all; non-admins are scoped to their own companyId.
+    const isSystemAdmin = user.role === "ADMIN_SISTEMA";
+    if (!isSystemAdmin && !user.companyId) {
+      return NextResponse.json(
+        { error: "User has no company", code: "NO_COMPANY" },
+        { status: 403 },
+      );
     }
     const whereClause = isSystemAdmin
       ? conditions.length > 0
         ? and(...conditions)
         : undefined
-      : withTenantFilter(companies, conditions, authResult.user.companyId);
+      : withTenantFilter(companies, conditions, user.companyId);
 
     const [data, [{ count: total }]] = await Promise.all([
       db
@@ -88,18 +83,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
-
-    // Check if user can create companies
-    const permError = await checkPermissionOrError(
-      authResult.user,
+    // Creating a company is an ADMIN_SISTEMA-only action (cross-tenant).
+    // Same reasoning as GET above — no x-company-id required.
+    const user = await requireRoutePermission(
+      request,
       EntityType.COMPANY,
       Action.CREATE,
     );
-    if (permError) return permError;
+    if (user instanceof NextResponse) return user;
 
     const body = await request.json();
     const validatedData = companySchema.parse(body);

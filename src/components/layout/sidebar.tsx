@@ -89,7 +89,7 @@ const defaultNavSections: NavSection[] = [
   {
     title: "Configuración",
     items: [
-      { title: "Perfil Empresa", href: "/configuracion", icon: Settings, requiredPermission: "optimization_preset:read" },
+      { title: "Perfil Empresa", href: "/configuracion", icon: Settings, requiredPermission: "company:update" },
       { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2, requiredPermission: "optimization_preset:read" },
       { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock, requiredPermission: "time_window_preset:read" },
       { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award, requiredPermission: "vehicle_skill:read" },
