@@ -22,12 +22,15 @@ import { useEffect } from "react";
 import {
   Camera,
   CheckCircle2,
+  Circle,
+  Clock,
   FileSignature,
   MessageCircle,
   NotepadText,
+  Pause,
+  Play,
   XCircle,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import type { SystemState, WorkflowState } from "./workflow-context";
 import { useWorkflow } from "./workflow-context";
 
@@ -40,15 +43,20 @@ import { useWorkflow } from "./workflow-context";
  * distinct pill so the planner can see final destinations at a glance.
  */
 
-const NODE_WIDTH = 220;
-const NODE_HEIGHT = 78;
-const SYSTEM_STATE_LABELS: Record<SystemState, string> = {
-  PENDING: "Pendiente",
-  IN_PROGRESS: "En progreso",
-  COMPLETED: "Completado",
-  FAILED: "Fallido",
-  CANCELLED: "Cancelado",
+// Compact node — roughly the n8n dimensions: a 72×72 badge for the
+// semantic icon, label underneath, optional requirement icons at the
+// bottom. NODE_WIDTH/HEIGHT drive dagre's layout.
+const NODE_WIDTH = 148;
+const NODE_HEIGHT = 140;
+
+const SYSTEM_STATE_ICONS: Record<SystemState, typeof Circle> = {
+  PENDING: Clock,
+  IN_PROGRESS: Play,
+  COMPLETED: CheckCircle2,
+  FAILED: XCircle,
+  CANCELLED: Pause,
 };
+
 const REQUIREMENT_ICONS = [
   { key: "requiresPhoto" as const, icon: Camera, title: "Foto" },
   { key: "requiresSignature" as const, icon: FileSignature, title: "Firma" },
@@ -172,8 +180,9 @@ function buildGraph(
   const edges: Edge[] = transitions
     .filter((t) => t.fromStateId !== t.toStateId)
     .map((t) => {
-      // Back-edges: when `to` lands in a rank before `from`, style it as a
-      // dashed return arrow so "vuelve a" is obvious.
+      // Back-edges (cycles) are drawn dashed; the direction of the arrow
+      // already communicates "this goes back". No text label — labels on
+      // edges add noise and were confusing.
       const fromRank = g.node(t.fromStateId)?.x ?? 0;
       const toRank = g.node(t.toStateId)?.x ?? 0;
       const isBack = toRank < fromRank;
@@ -186,114 +195,133 @@ function buildGraph(
         style: isBack
           ? {
               stroke: "var(--muted-foreground)",
-              strokeDasharray: "4 4",
-              strokeOpacity: 0.6,
+              strokeDasharray: "5 4",
+              strokeOpacity: 0.55,
+              strokeWidth: 1.5,
             }
-          : { stroke: "var(--foreground)", strokeOpacity: 0.5 },
+          : {
+              stroke: "var(--foreground)",
+              strokeOpacity: 0.55,
+              strokeWidth: 1.5,
+            },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          width: 18,
-          height: 18,
+          width: 16,
+          height: 16,
           color: isBack
             ? "var(--muted-foreground)"
             : "var(--foreground)",
         },
-        label: isBack ? "vuelve" : undefined,
-        labelStyle: {
-          fontSize: 10,
-          fill: "var(--muted-foreground)",
-        },
-        labelBgStyle: { fill: "var(--background)" },
-        labelBgPadding: [4, 2] as [number, number],
-        labelBgBorderRadius: 4,
       };
     });
 
   return { nodes, edges };
 }
 
+/**
+ * n8n-style node: a 72×72 square badge with the system-state icon on a
+ * brand-coloured background, followed by the state label outside of the
+ * badge (like n8n shows the node-type name below its icon). Handles
+ * render as small dots on the left/right edges so it's obvious where
+ * edges attach.
+ */
 function WorkflowStateNode({ data }: NodeProps<Node<FlowNodeData>>) {
   const { state: s } = data;
+  const Icon = SYSTEM_STATE_ICONS[s.systemState];
   const activeReqs = REQUIREMENT_ICONS.filter((r) => s[r.key]);
-  const terminalTone = s.isTerminal
+
+  const ringClass = s.isTerminal
     ? s.systemState === "COMPLETED"
-      ? "border-green-300 dark:border-green-800"
+      ? "ring-2 ring-green-400/70 dark:ring-green-600/70"
       : s.systemState === "FAILED"
-        ? "border-red-300 dark:border-red-800"
-        : "border-amber-300 dark:border-amber-800"
+        ? "ring-2 ring-red-400/70 dark:ring-red-600/70"
+        : "ring-2 ring-amber-400/70 dark:ring-amber-600/70"
     : s.isDefault
-      ? "border-primary/60"
-      : "border-border";
+      ? "ring-2 ring-primary/60"
+      : "ring-1 ring-border";
+
+  const badgeLabel = s.isDefault
+    ? "Inicial"
+    : s.isTerminal
+      ? s.systemState === "COMPLETED"
+        ? "Éxito"
+        : s.systemState === "FAILED"
+          ? "Fallo"
+          : "Cancelado"
+      : null;
+  const badgeTone = s.isTerminal
+    ? s.systemState === "COMPLETED"
+      ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+      : s.systemState === "FAILED"
+        ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+        : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+    : "bg-primary/10 text-primary";
 
   return (
-    <div
-      className={`w-[220px] rounded-md border-2 bg-card shadow-sm ${terminalTone}`}
-      style={{ height: NODE_HEIGHT }}
-    >
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!h-2 !w-2 !border-0 !bg-muted-foreground/40"
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!h-2 !w-2 !border-0 !bg-muted-foreground/40"
-      />
-
-      <div className="flex items-center gap-2 px-3 pt-2">
-        <span
-          className="h-3 w-3 shrink-0 rounded-full"
-          style={{ backgroundColor: s.color }}
+    <div className="flex flex-col items-center gap-1.5 text-center">
+      <div
+        className={`relative flex h-[72px] w-[72px] items-center justify-center rounded-xl bg-card shadow-sm ${ringClass}`}
+        style={{
+          boxShadow: `inset 0 0 0 9999px ${hexToRgba(s.color, 0.12)}`,
+        }}
+      >
+        <Handle
+          type="target"
+          position={Position.Left}
+          className="!h-2.5 !w-2.5 !border-2 !border-background !bg-foreground/40"
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="!h-2.5 !w-2.5 !border-2 !border-background !bg-foreground/40"
+        />
+        <Icon
+          className="h-8 w-8"
+          style={{ color: s.color }}
           aria-hidden="true"
         />
-        <span className="truncate text-sm font-medium">{s.label}</span>
-      </div>
-
-      <div className="flex items-center gap-1.5 px-3 pb-2 pt-1.5">
-        {s.isDefault && (
-          <Badge
-            variant="outline"
-            className="border-primary/50 px-1 py-0 text-[9px] text-primary"
-          >
-            Inicial
-          </Badge>
-        )}
-        {s.isTerminal && <TerminalPill systemState={s.systemState} />}
-        {!s.isDefault && !s.isTerminal && (
-          <span className="text-[10px] text-muted-foreground">
-            {SYSTEM_STATE_LABELS[s.systemState]}
-          </span>
-        )}
         {activeReqs.length > 0 && (
           <div
-            className="ml-auto flex items-center gap-0.5 text-muted-foreground"
-            aria-label="Requerimientos"
+            className="absolute -right-1 -top-1 flex items-center gap-0.5 rounded-full border bg-background px-1 py-0.5 shadow-sm"
+            aria-label={`Requerimientos: ${activeReqs.map((r) => r.title).join(", ")}`}
           >
             {activeReqs.map((r) => (
-              <r.icon key={r.key} className="h-3 w-3" aria-hidden="true" />
+              <r.icon
+                key={r.key}
+                className="h-2.5 w-2.5 text-muted-foreground"
+                aria-hidden="true"
+              />
             ))}
           </div>
+        )}
+      </div>
+
+      <div className="flex max-w-[140px] flex-col items-center gap-0.5">
+        <span className="truncate text-xs font-semibold leading-tight">
+          {s.label}
+        </span>
+        {badgeLabel && (
+          <span
+            className={`rounded-full px-1.5 py-0 text-[9px] font-medium ${badgeTone}`}
+          >
+            {badgeLabel}
+          </span>
         )}
       </div>
     </div>
   );
 }
 
-function TerminalPill({ systemState }: { systemState: SystemState }) {
-  const isSuccess = systemState === "COMPLETED";
-  const isFailure = systemState === "FAILED";
-  const Icon = isSuccess ? CheckCircle2 : XCircle;
-  const label = isSuccess ? "éxito" : isFailure ? "fallo" : "cancelado";
-  const tone = isSuccess
-    ? "border-green-300 text-green-700 dark:border-green-800 dark:text-green-400"
-    : isFailure
-      ? "border-red-300 text-red-700 dark:border-red-800 dark:text-red-400"
-      : "border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400";
-  return (
-    <Badge variant="outline" className={`gap-1 px-1 py-0 text-[9px] ${tone}`}>
-      <Icon className="h-2.5 w-2.5" />
-      final · {label}
-    </Badge>
-  );
+/**
+ * Tiny helper to tint the node background with the state's color at low
+ * opacity. We avoid doing this via Tailwind because the color comes from
+ * the DB (per-company configurable) and we need real colour values.
+ */
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = hex.replace("#", "");
+  if (normalized.length !== 6) return `rgba(128,128,128,${alpha})`;
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
