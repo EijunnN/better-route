@@ -5,7 +5,7 @@ import { CustomFieldsProvider, CustomFieldsDashboardView } from "@/components/cu
 
 export default function CustomFieldsPage() {
   return (
-    <ProtectedPage requiredPermission="order:read">
+    <ProtectedPage requiredPermission="company:update">
       <CustomFieldsProvider>
         <CustomFieldsDashboardView />
       </CustomFieldsProvider>

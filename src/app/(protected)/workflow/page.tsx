@@ -5,7 +5,7 @@ import { WorkflowProvider, WorkflowDashboardView } from "@/components/workflow";
 
 export default function WorkflowPage() {
   return (
-    <ProtectedPage requiredPermission="company:read">
+    <ProtectedPage requiredPermission="company:update">
       <WorkflowProvider>
         <WorkflowDashboardView />
       </WorkflowProvider>
