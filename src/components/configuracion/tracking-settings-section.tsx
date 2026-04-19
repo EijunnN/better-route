@@ -75,7 +75,7 @@ const VISIBILITY_TOGGLES: Array<{
 ];
 
 export function TrackingSettingsSection() {
-  const { state, actions } = useConfiguracion();
+  const { state, actions, meta } = useConfiguracion();
   const tracking = state.tracking;
 
   if (!tracking) return null;
@@ -146,48 +146,57 @@ export function TrackingSettingsSection() {
 
             <div className="border-t pt-6">
               <p className="text-sm font-medium mb-3">Personalización</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="brand-color">Color de marca</Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="brand-color"
-                      type="color"
-                      value={tracking.brandColor || "#3B82F6"}
-                      onChange={(e) =>
-                        actions.updateTracking({ brandColor: e.target.value })
-                      }
-                      className="h-9 w-12 cursor-pointer rounded border"
-                      aria-label="Selector de color de marca"
-                    />
-                    <Input
-                      value={tracking.brandColor || "#3B82F6"}
-                      onChange={(e) =>
-                        actions.updateTracking({ brandColor: e.target.value })
-                      }
-                      placeholder="#3B82F6"
-                      className="flex-1 font-mono"
-                    />
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(280px,380px)] gap-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="brand-color">Color de marca</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="brand-color"
+                        type="color"
+                        value={tracking.brandColor || "#3B82F6"}
+                        onChange={(e) =>
+                          actions.updateTracking({ brandColor: e.target.value })
+                        }
+                        className="h-9 w-12 cursor-pointer rounded border"
+                        aria-label="Selector de color de marca"
+                      />
+                      <Input
+                        value={tracking.brandColor || "#3B82F6"}
+                        onChange={(e) =>
+                          actions.updateTracking({ brandColor: e.target.value })
+                        }
+                        placeholder="#3B82F6"
+                        className="flex-1 font-mono"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Tinte el nombre de la empresa y el badge de estado &ldquo;En camino&rdquo;.
+                    </p>
                   </div>
-                  <BrandColorPreview color={tracking.brandColor || "#3B82F6"} />
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-message">Mensaje personalizado</Label>
+                    <Input
+                      id="custom-message"
+                      value={tracking.customMessage || ""}
+                      onChange={(e) =>
+                        actions.updateTracking({
+                          customMessage: e.target.value || null,
+                        })
+                      }
+                      placeholder="Ej: Gracias por tu compra"
+                      maxLength={500}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Aparece bajo el nombre de la empresa.
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="custom-message">Mensaje personalizado</Label>
-                  <Input
-                    id="custom-message"
-                    value={tracking.customMessage || ""}
-                    onChange={(e) =>
-                      actions.updateTracking({
-                        customMessage: e.target.value || null,
-                      })
-                    }
-                    placeholder="Ej: Gracias por tu compra"
-                    maxLength={500}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Aparece en la cabecera del tracking público.
-                  </p>
-                </div>
+                <BrandPreviewCard
+                  brandColor={tracking.brandColor || "#3B82F6"}
+                  customMessage={tracking.customMessage}
+                  companyName={meta.companies.find((c) => c.id === meta.companyId)?.commercialName ?? "Tu empresa"}
+                />
               </div>
             </div>
 
@@ -240,35 +249,75 @@ export function TrackingSettingsSection() {
 }
 
 /**
- * Minimal preview of how the brand color will render in the tracking page
- * header. Three elements (header band, status badge, button) so the planner
- * can see contrast before saving.
+ * Faithful preview of the public tracking page header + order details card.
+ * Mirrors src/components/tracking/{tracking-header,tracking-order-info}.tsx
+ * so the planner sees exactly how the brand color tints the company name
+ * and the "En camino" status badge before saving.
  */
-function BrandColorPreview({ color }: { color: string }) {
+function BrandPreviewCard({
+  brandColor,
+  customMessage,
+  companyName,
+}: {
+  brandColor: string;
+  customMessage: string | null;
+  companyName: string;
+}) {
   return (
-    <div className="rounded-md border bg-background p-3 space-y-2">
+    <div className="space-y-2">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        Vista previa
+        Vista previa del tracking público
       </p>
-      <div className="flex items-center gap-2">
-        <div
-          className="h-6 flex-1 rounded"
-          style={{ backgroundColor: color }}
-        />
-        <span
-          className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
-          style={{ backgroundColor: color }}
-        >
-          En ruta
-        </span>
-        <button
-          type="button"
-          className="rounded px-2 py-1 text-xs font-medium text-white"
-          style={{ backgroundColor: color }}
-          disabled
-        >
-          Rastrear
-        </button>
+      <div className="overflow-hidden rounded-lg border bg-background shadow-sm">
+        {/* Header — mirrors TrackingHeader */}
+        <div className="border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded text-xs font-bold text-white"
+              style={{ backgroundColor: brandColor }}
+              aria-hidden="true"
+            >
+              {companyName.charAt(0).toUpperCase()}
+            </div>
+            <h1
+              className="text-sm font-semibold truncate"
+              style={{ color: brandColor }}
+            >
+              {companyName}
+            </h1>
+          </div>
+          {customMessage && (
+            <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">
+              {customMessage}
+            </p>
+          )}
+        </div>
+
+        {/* Order card — mirrors TrackingOrderInfo */}
+        <div className="p-3">
+          <div className="rounded-md border p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium">Detalles del pedido</span>
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+                style={{ backgroundColor: brandColor, borderColor: brandColor }}
+              >
+                En camino
+              </span>
+            </div>
+            <div className="space-y-1 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-foreground">#TRK-28431</span>
+                <span>·</span>
+                <span>Juan Pérez</span>
+              </div>
+              <p className="truncate">Av. Javier Prado 1580, San Isidro</p>
+              <p className="text-foreground/80">
+                Llegada estimada: <span className="font-medium">15:42</span>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
