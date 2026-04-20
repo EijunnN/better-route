@@ -382,6 +382,7 @@ export async function POST(
       estimatedServiceTime: number | null;
       timeWindowStart: Date | null;
       timeWindowEnd: Date | null;
+      zoneId: string | null;
       status: "PENDING";
     }> = [];
 
@@ -423,6 +424,7 @@ export async function POST(
             estimatedServiceTime: 600, // Default 10 minutes
             timeWindowStart,
             timeWindowEnd,
+            zoneId: route.zoneId ?? null,
             status: "PENDING",
           });
         }

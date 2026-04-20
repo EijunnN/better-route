@@ -28,6 +28,10 @@ export interface OptimizationRoute {
     longitude: string;
     address?: string;
   };
+  // Zone this route was computed within. Undefined means the no-zones path
+  // ran (or the "unzoned" bucket in the zone-aware path) — in both cases
+  // the stop is not linked to any zone and should not get a zoneId at save.
+  zoneId?: string;
   stops: OptimizationStop[];
   totalDistance: number;
   totalDuration: number; // Total time (travel + service + waiting)

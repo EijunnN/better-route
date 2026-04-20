@@ -731,6 +731,9 @@ export async function runOptimization(
           routeId: `route-${vehicle.id}-${batch.zoneId}-${Date.now()}`,
           vehicleId: vehicle.id,
           vehiclePlate: vehicle.plate || vehicle.name || vehicle.id,
+          // Only real zones carry an id — the "unzoned" bucket is a synthetic
+          // placeholder and shouldn't end up as a FK value on route_stops.
+          zoneId: batch.zoneId === "unzoned" ? undefined : batch.zoneId,
           stops: routeStops,
           totalDistance: vroomRoute.totalDistance,
           totalDuration: vroomRoute.totalDuration,

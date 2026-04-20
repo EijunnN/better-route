@@ -166,6 +166,13 @@ export async function GET(
             systemState: true,
           },
         },
+        zone: {
+          columns: {
+            id: true,
+            name: true,
+            color: true,
+          },
+        },
       },
       limit: 500,
     });
@@ -300,6 +307,11 @@ export async function GET(
         color: stop.workflowState.color,
         code: stop.workflowState.code,
         systemState: stop.workflowState.systemState,
+      } : null,
+      zone: stop.zone ? {
+        id: stop.zone.id,
+        name: stop.zone.name,
+        color: stop.zone.color,
       } : null,
     }));
 

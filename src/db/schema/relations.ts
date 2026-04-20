@@ -405,6 +405,10 @@ export const routeStopsRelations = relations(routeStops, ({ one, many }) => ({
     fields: [routeStops.orderId],
     references: [orders.id],
   }),
+  zone: one(zones, {
+    fields: [routeStops.zoneId],
+    references: [zones.id],
+  }),
   workflowState: one(companyWorkflowStates, {
     fields: [routeStops.workflowStateId],
     references: [companyWorkflowStates.id],

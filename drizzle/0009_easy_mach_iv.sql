@@ -1,0 +1,2 @@
+ALTER TABLE "route_stops" ADD COLUMN "zone_id" uuid;--> statement-breakpoint
+ALTER TABLE "route_stops" ADD CONSTRAINT "route_stops_zone_id_zones_id_fk" FOREIGN KEY ("zone_id") REFERENCES "public"."zones"("id") ON DELETE set null ON UPDATE no action;

@@ -14,6 +14,7 @@ import { vehicles } from "./vehicles";
 import { orders } from "./orders";
 import { optimizationJobs } from "./optimization";
 import { companyWorkflowStates } from "./workflow";
+import { zones } from "./zones";
 
 // Stop status types for route execution tracking
 export const STOP_STATUS = {
@@ -107,6 +108,11 @@ export const routeStops = pgTable("route_stops", {
   evidenceUrls: jsonb("evidence_urls").$type<string[]>(),
   // Custom workflow state reference
   workflowStateId: uuid("workflow_state_id").references(() => companyWorkflowStates.id, { onDelete: "set null" }),
+  // Zone this stop was routed through at plan-time. Captured once at
+  // confirm and preserved even if the zone is later deleted/renamed —
+  // historical plans should keep showing the zone they were run under.
+  // ON DELETE SET NULL so zone deletion doesn't cascade into old plans.
+  zoneId: uuid("zone_id").references(() => zones.id, { onDelete: "set null" }),
   // Metadata
   metadata: jsonb("metadata"), // Flexible data for stop-specific info
   // Values for company-defined custom fields with entity="route_stops".

@@ -51,6 +51,11 @@ interface Stop {
     code: string;
     systemState: string;
   } | null;
+  zone?: {
+    id: string;
+    name: string;
+    color: string | null;
+  } | null;
   customFields?: Record<string, unknown> | null;
 }
 
@@ -448,6 +453,19 @@ export function DriverRouteDetail({
                           />
                           {hasCustomColor && (
                             <span className="text-[10px]" style={{ color: wfDisplay.color }}>{wfDisplay.label}</span>
+                          )}
+                          {stop.zone && (
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded-full border shrink-0"
+                              style={{
+                                borderColor: stop.zone.color ?? undefined,
+                                color: stop.zone.color ?? undefined,
+                                backgroundColor: stop.zone.color ? `${stop.zone.color}15` : undefined,
+                              }}
+                              title={`Zona: ${stop.zone.name}`}
+                            >
+                              {stop.zone.name}
+                            </span>
                           )}
                         </div>
                         <div className="text-[11px] text-muted-foreground truncate">{stop.address}</div>
