@@ -16,7 +16,6 @@ export const companies = pgTable("companies", {
   taxAddress: text("tax_address"),
   country: varchar("country", { length: 2 }).notNull(),
   timezone: varchar("timezone", { length: 50 }).notNull().default("UTC"),
-  currency: varchar("currency", { length: 3 }).notNull().default("USD"),
   dateFormat: varchar("date_format", { length: 20 })
     .notNull()
     .default("DD/MM/YYYY"),

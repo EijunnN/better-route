@@ -53,7 +53,6 @@ export async function createCompany(
       email: `company-${Date.now()}@test.com`,
       country: "PE",
       timezone: "America/Lima",
-      currency: "PEN",
       ...overrides,
     })
     .returning();

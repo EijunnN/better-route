@@ -162,7 +162,6 @@ export async function POST(request: NextRequest) {
           email: input.email,
           country: input.country,
           timezone: input.timezone,
-          currency: input.currency,
         })
         .returning();
 

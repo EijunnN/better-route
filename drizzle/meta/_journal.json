@@ -71,6 +71,13 @@
       "when": 1776664532306,
       "tag": "0009_easy_mach_iv",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1776666514083,
+      "tag": "0010_burly_rockslide",
+      "breakpoints": true
     }
   ]
 }

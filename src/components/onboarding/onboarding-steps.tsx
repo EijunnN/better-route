@@ -172,7 +172,6 @@ export interface CompanyFormData {
   email: string;
   country: string;
   timezone: string;
-  currency: string;
 }
 
 const COUNTRIES = [
@@ -200,16 +199,6 @@ const TIMEZONES = [
   { value: "UTC", label: "UTC" },
 ];
 
-const CURRENCIES = [
-  { code: "PEN", name: "Sol Peruano (PEN)" },
-  { code: "CLP", name: "Peso Chileno (CLP)" },
-  { code: "COP", name: "Peso Colombiano (COP)" },
-  { code: "MXN", name: "Peso Mexicano (MXN)" },
-  { code: "ARS", name: "Peso Argentino (ARS)" },
-  { code: "BRL", name: "Real Brasileno (BRL)" },
-  { code: "USD", name: "Dolar (USD)" },
-];
-
 export function CompanyFormStep({
   onSubmit,
   isLoading,
@@ -221,7 +210,6 @@ export function CompanyFormStep({
     email: "",
     country: "PE",
     timezone: "America/Lima",
-    currency: "PEN",
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -380,27 +368,6 @@ export function CompanyFormStep({
               </SelectContent>
             </Select>
           </div>
-        </div>
-
-        {/* Currency */}
-        <div className="space-y-1.5">
-          <Label>Moneda</Label>
-          <Select
-            value={form.currency}
-            onValueChange={(v) => updateField("currency", v)}
-            disabled={isLoading}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CURRENCIES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         <Button

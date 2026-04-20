@@ -22,15 +22,6 @@ const COUNTRIES = [
   { code: "ES", name: "España" },
 ];
 
-const CURRENCIES = [
-  { code: "USD", name: "Dólar estadounidense" },
-  { code: "EUR", name: "Euro" },
-  { code: "MXN", name: "Peso mexicano" },
-  { code: "ARS", name: "Peso argentino" },
-  { code: "COP", name: "Peso colombiano" },
-  { code: "CLP", name: "Peso chileno" },
-];
-
 const TIMEZONES = [
   "UTC",
   "America/New_York",
@@ -64,7 +55,6 @@ export function CompanyForm({
     taxAddress: initialData?.taxAddress ?? "",
     country: initialData?.country ?? "US",
     timezone: initialData?.timezone ?? "UTC",
-    currency: initialData?.currency ?? "USD",
     dateFormat: initialData?.dateFormat ?? "DD/MM/YYYY",
     active: initialData?.active ?? true,
   };
@@ -225,23 +215,6 @@ export function CompanyForm({
             {COUNTRIES.map((country) => (
               <option key={country.code} value={country.code}>
                 {country.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="currency">Moneda *</Label>
-          <select
-            id="currency"
-            value={formData.currency}
-            onChange={(e) => updateField("currency", e.target.value)}
-            disabled={isSubmitting}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
-          >
-            {CURRENCIES.map((currency) => (
-              <option key={currency.code} value={currency.code}>
-                {currency.code} - {currency.name}
               </option>
             ))}
           </select>

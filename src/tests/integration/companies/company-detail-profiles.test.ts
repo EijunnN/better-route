@@ -61,7 +61,6 @@ describe("Company Detail, Profiles & Field Definitions", () => {
       email: "detail-test@example.com",
       country: "PE",
       timezone: "America/Lima",
-      currency: "PEN",
     });
     company2 = await createCompany({
       legalName: "Other Company",
@@ -110,7 +109,6 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     expect(body.email).toBe("detail-test@example.com");
     expect(body.country).toBe("PE");
     expect(body.timezone).toBe("America/Lima");
-    expect(body.currency).toBe("PEN");
     expect(body.active).toBe(true);
   });
 
@@ -203,15 +201,15 @@ describe("Company Detail, Profiles & Field Definitions", () => {
   });
 
   // -------------------------------------------------------------------------
-  // 7. PATCH company - updates timezone and currency
+  // 7. PATCH company - updates timezone and dateFormat
   // -------------------------------------------------------------------------
-  test("PATCH /api/companies/[id] updates timezone and currency", async () => {
+  test("PATCH /api/companies/[id] updates timezone and dateFormat", async () => {
     const request = await createTestRequest(`/api/companies/${company.id}`, {
       method: "PATCH",
       token: adminToken,
       companyId: company.id,
       userId: admin.id,
-      body: { timezone: "America/Bogota", currency: "COP" },
+      body: { timezone: "America/Bogota", dateFormat: "YYYY-MM-DD" },
     });
     const response = await companyPATCH(request, {
       params: Promise.resolve({ id: company.id }),
@@ -220,7 +218,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.timezone).toBe("America/Bogota");
-    expect(body.currency).toBe("COP");
+    expect(body.dateFormat).toBe("YYYY-MM-DD");
   });
 
   // -------------------------------------------------------------------------

@@ -8,10 +8,6 @@ export const companySchema = z.object({
   taxAddress: z.string().optional(),
   country: z.string().length(2, "Código de país debe ser ISO 3166-1 alpha-2"),
   timezone: z.string().default("UTC"),
-  currency: z
-    .string()
-    .length(3, "Código de moneda debe ser ISO 4217")
-    .default("USD"),
   dateFormat: z.string().default("DD/MM/YYYY"),
   active: z.boolean().default(true),
 });
@@ -25,7 +21,6 @@ export const updateCompanySchema = z.object({
   taxAddress: z.string().optional(),
   country: z.string().length(2).optional(),
   timezone: z.string().optional(),
-  currency: z.string().length(3).optional(),
   dateFormat: z.string().optional(),
   active: z.boolean().optional(),
 });

@@ -126,7 +126,6 @@ describe("Company Management", () => {
         email: "nueva@test.com",
         country: "PE",
         timezone: "America/Lima",
-        currency: "PEN",
       },
     });
     const response = await companiesPOST(request);
@@ -156,7 +155,6 @@ describe("Company Management", () => {
         email: "dup@test.com",
         country: "PE",
         timezone: "America/Lima",
-        currency: "PEN",
       },
     });
     const response = await companiesPOST(request);
