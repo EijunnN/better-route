@@ -1,0 +1,2 @@
+ALTER TABLE "optimization_configurations" ADD COLUMN "optimization_preset_id" uuid;--> statement-breakpoint
+ALTER TABLE "optimization_configurations" ADD CONSTRAINT "optimization_configurations_optimization_preset_id_optimization_presets_id_fk" FOREIGN KEY ("optimization_preset_id") REFERENCES "public"."optimization_presets"("id") ON DELETE set null ON UPDATE no action;

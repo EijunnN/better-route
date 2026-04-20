@@ -382,16 +382,26 @@ export async function runOptimization(
     }
   }
 
-  // Load optimization preset (default for company)
-  const preset = await db.query.optimizationPresets.findFirst({
-    where: and(
-      eq(optimizationPresets.companyId, input.companyId),
-      eq(optimizationPresets.isDefault, true),
-      eq(optimizationPresets.active, true),
-    ),
-  });
-
-  // If no preset found, system defaults are used
+  // Load the optimization preset bound to this configuration. The config's
+  // `optimizationPresetId` wins — this is what the user picked for this run.
+  // NULL falls back to the company's default preset, which keeps legacy
+  // configs working. If there's no default either, the runner uses sensible
+  // system defaults (the `??` fallbacks in vroomConfig below).
+  const preset = config.optimizationPresetId
+    ? await db.query.optimizationPresets.findFirst({
+        where: and(
+          eq(optimizationPresets.id, config.optimizationPresetId),
+          eq(optimizationPresets.companyId, input.companyId),
+          eq(optimizationPresets.active, true),
+        ),
+      }) ?? null
+    : await db.query.optimizationPresets.findFirst({
+        where: and(
+          eq(optimizationPresets.companyId, input.companyId),
+          eq(optimizationPresets.isDefault, true),
+          eq(optimizationPresets.active, true),
+        ),
+      });
 
   // Get groupSameLocation setting from preset
   const groupSameLocation = preset?.groupSameLocation ?? true;

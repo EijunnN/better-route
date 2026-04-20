@@ -305,6 +305,7 @@ export async function POST(request: NextRequest) {
       penaltyFactor: data.penaltyFactor,
       maxRoutes: data.maxRoutes || null,
       optimizerType: data.optimizerType || "VROOM",
+      optimizationPresetId: data.optimizationPresetId || null,
       status: data.status || "CONFIGURED",
       active: true,
     };

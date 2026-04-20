@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   boolean,
   index,
   integer,
@@ -57,6 +58,14 @@ export const optimizationConfigurations = pgTable(
     maxRoutes: integer("max_routes"),
     // Engine selection — VROOM is the only supported value (legacy column kept for data).
     optimizerType: varchar("optimizer_type", { length: 20 }).notNull().default("VROOM"),
+    // Which optimization preset to apply when this config is run. NULL means
+    // "use whatever preset is marked isDefault=true for the company" — keeps
+    // legacy configs working. ON DELETE SET NULL: deleting a preset doesn't
+    // break historical configs; they fall back to the default.
+    optimizationPresetId: uuid("optimization_preset_id").references(
+      (): AnyPgColumn => optimizationPresets.id,
+      { onDelete: "set null" },
+    ),
     // Metadata
     status: varchar("status", { length: 50 }).notNull().default("DRAFT"), // DRAFT, CONFIGURED, CONFIRMED
     confirmedAt: timestamp("confirmed_at"),

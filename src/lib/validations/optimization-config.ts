@@ -101,6 +101,7 @@ export const optimizationConfigSchema = z
     penaltyFactor: z.number().int().min(1).max(20).default(3),
     maxRoutes: z.number().int().positive().optional(),
     optimizerType: z.enum(["VROOM"]).default("VROOM"),
+    optimizationPresetId: z.string().uuid().nullable().optional(),
     status: z.enum(["DRAFT", "CONFIGURED"]).default("CONFIGURED"),
   })
   .refine(
@@ -143,6 +144,7 @@ export const optimizationConfigUpdateSchema = z
     penaltyFactor: z.number().int().min(1).max(20).optional(),
     maxRoutes: z.number().int().positive().optional(),
     optimizerType: z.enum(["VROOM"]).optional(),
+    optimizationPresetId: z.string().uuid().nullable().optional(),
     status: z.enum(["DRAFT", "CONFIGURED"]).optional(),
   })
   .refine(
