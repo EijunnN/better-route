@@ -44,6 +44,7 @@ import type {
 import { groupOrdersByLocation, type OrderGroupMap } from "./prepare";
 import { formatArrivalTime, parseHHmmToSeconds } from "./postprocess";
 import { sleep } from "./utils";
+import { loadVehicleSkillsMap, parseRequiredSkills } from "./load-skills";
 
 /**
  * Run optimization with mock algorithm (placeholder for actual VRP solver)
@@ -251,6 +252,9 @@ export async function runOptimization(
       // Time windows from CSV import (format: "HH:mm" string or null)
       timeWindowStart: order.timeWindowStart ?? undefined,
       timeWindowEnd: order.timeWindowEnd ?? undefined,
+      // CSV of skill codes (e.g. "REFRIGERADO, FRAGIL"). Parsed per-vehicle
+      // below; VROOM needs them as an array of strings.
+      requiredSkills: order.requiredSkills ?? null,
     }));
 
   // Orders with invalid coordinates are added to unassigned list below
@@ -312,6 +316,13 @@ export async function runOptimization(
     breakTimeEnd: vehicle.breakTimeEnd,
     zoneAssignments: zoneAssignmentsByVehicle.get(vehicle.id) || [],
   }));
+
+  // Load vehicle skills once for both the zone-aware and no-zones paths. VROOM
+  // needs this to respect `skillsRequired` on orders — without it the solver
+  // assigns freely and violations only surface in the verifier post-hoc.
+  const vehicleSkillsMap = await loadVehicleSkillsMap(
+    vehiclesWithZones.map((v) => v.id),
+  );
 
   // Create map of driverId -> vehicle origin (for drivers without routes display)
   const driverVehicleOriginMap = new Map<
@@ -539,6 +550,7 @@ export async function runOptimization(
                   .slice(0, 5)
               : undefined;
 
+          const skillsRequired = parseRequiredSkills(typedOrder.requiredSkills);
           return {
             id: order.id,
             trackingId: order.trackingId,
@@ -554,6 +566,7 @@ export async function runOptimization(
             timeWindowStart,
             timeWindowEnd,
             serviceTime: order.serviceTime,
+            skillsRequired: skillsRequired.length > 0 ? skillsRequired : undefined,
             zoneId: batch.zoneId === "unzoned" ? undefined : batch.zoneId,
           };
         },
@@ -575,6 +588,7 @@ export async function runOptimization(
           originLongitude: vehicle.originLongitude
             ? parseFloat(vehicle.originLongitude)
             : undefined,
+          skills: vehicleSkillsMap.get(vehicle.id),
           timeWindowStart: vehicle.workdayStart ?? undefined,
           timeWindowEnd: vehicle.workdayEnd ?? undefined,
           hasBreakTime: vehicle.hasBreakTime,
@@ -755,6 +769,7 @@ export async function runOptimization(
                 .slice(0, 5)
             : undefined;
 
+        const skillsRequired = parseRequiredSkills(order.requiredSkills);
         return {
           id: order.id,
           trackingId: order.trackingId,
@@ -770,6 +785,7 @@ export async function runOptimization(
           timeWindowStart,
           timeWindowEnd,
           serviceTime: order.serviceTime,
+          skillsRequired: skillsRequired.length > 0 ? skillsRequired : undefined,
         };
       },
     );
@@ -789,6 +805,7 @@ export async function runOptimization(
         originLongitude: vehicle.originLongitude
           ? parseFloat(vehicle.originLongitude)
           : undefined,
+        skills: vehicleSkillsMap.get(vehicle.id),
         timeWindowStart: vehicle.workdayStart ?? undefined,
         timeWindowEnd: vehicle.workdayEnd ?? undefined,
         hasBreakTime: vehicle.hasBreakTime,

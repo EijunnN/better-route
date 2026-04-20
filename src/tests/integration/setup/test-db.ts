@@ -32,7 +32,16 @@ function loadTestEnvFile() {
     }
 
     const key = line.slice(0, separatorIndex).trim();
-    const value = line.slice(separatorIndex + 1).trim();
+    let value = line.slice(separatorIndex + 1).trim();
+    // dotenv-style unquoting: values wrapped in matching single or double
+    // quotes are stripped. Without this, Postgres URLs like `"postgresql://..."`
+    // fail to parse because the quotes end up inside the string.
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
 
     if (!process.env[key]) {
       process.env[key] = value;
