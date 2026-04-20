@@ -77,7 +77,7 @@ const FIELD_TYPE_OPTIONS: FieldTypeOption[] = [
   },
   {
     value: "number",
-    label: "Numero",
+    label: "Número",
     description: "Cantidades, medidas, conteos",
     icon: Hash,
     bgClass: "bg-blue-100 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800",
@@ -88,11 +88,11 @@ const FIELD_TYPE_OPTIONS: FieldTypeOption[] = [
   },
   {
     value: "select",
-    label: "Seleccion",
+    label: "Selección",
     description: "Lista de opciones predefinidas",
     icon: List,
     bgClass: "bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800",
-    defaultPlaceholder: "Seleccione una opcion",
+    defaultPlaceholder: "Seleccione una opción",
     defaultShowInList: true,
     defaultShowInMobile: true,
     defaultShowInCsv: true,
@@ -100,7 +100,7 @@ const FIELD_TYPE_OPTIONS: FieldTypeOption[] = [
   {
     value: "date",
     label: "Fecha",
-    description: "Fechas de vencimiento, programacion",
+    description: "Fechas de vencimiento, programación",
     icon: Calendar,
     bgClass: "bg-amber-100 dark:bg-amber-800/50 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800",
     defaultPlaceholder: "dd/mm/aaaa",
@@ -121,8 +121,8 @@ const FIELD_TYPE_OPTIONS: FieldTypeOption[] = [
   },
   {
     value: "phone",
-    label: "Telefono",
-    description: "Numeros de contacto",
+    label: "Teléfono",
+    description: "Números de contacto",
     icon: Phone,
     bgClass: "bg-cyan-100 dark:bg-cyan-800/50 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-200 dark:hover:bg-cyan-800",
     defaultPlaceholder: "+51 999 999 999",
@@ -133,7 +133,7 @@ const FIELD_TYPE_OPTIONS: FieldTypeOption[] = [
   {
     value: "email",
     label: "Email",
-    description: "Correos electronicos",
+    description: "Correos electrónicos",
     icon: Mail,
     bgClass: "bg-pink-100 dark:bg-pink-800/50 text-pink-700 dark:text-pink-300 hover:bg-pink-200 dark:hover:bg-pink-800",
     defaultPlaceholder: "correo@ejemplo.com",
@@ -143,7 +143,7 @@ const FIELD_TYPE_OPTIONS: FieldTypeOption[] = [
   },
   {
     value: "boolean",
-    label: "Si/No",
+    label: "Sí/No",
     description: "Opciones binarias, confirmaciones",
     icon: ToggleLeft,
     bgClass: "bg-orange-100 dark:bg-orange-800/50 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-800",
@@ -167,7 +167,7 @@ const VISIBILITY_TOGGLES = [
 
 export function FieldDefinitionDialog() {
   const { state, actions } = useCustomFields();
-  const { showDialog, dialogMode, selectedDefinition, definitions } = state;
+  const { showDialog, dialogMode, selectedDefinition, definitions, defaultEntity } = state;
   const isEdit = dialogMode === "edit" && !!selectedDefinition;
 
   const [step, setStep] = useState<1 | 2>(isEdit ? 2 : 1);
@@ -219,7 +219,7 @@ export function FieldDefinitionDialog() {
         setFormData({
           code: "",
           label: "",
-          entity: "orders",
+          entity: defaultEntity,
           fieldType: "text",
           required: false,
           placeholder: "",
@@ -236,7 +236,7 @@ export function FieldDefinitionDialog() {
       setError(null);
       setPreviewValue(null);
     }
-  }, [showDialog, isEdit, selectedDefinition, definitions]);
+  }, [showDialog, isEdit, selectedDefinition, definitions, defaultEntity]);
 
   const handlePickType = (option: FieldTypeOption) => {
     const nextPosition = definitions.length > 0
@@ -279,11 +279,11 @@ export function FieldDefinitionDialog() {
 
     const code = formData.code.trim() || labelToCode(formData.label);
     if (!code) {
-      setError("El codigo es requerido");
+      setError("El código es requerido");
       return;
     }
     if (!isValidCode(code)) {
-      setError("El codigo debe empezar con letra y contener solo letras, numeros y guiones bajos");
+      setError("El código debe empezar con letra y contener solo letras, números y guiones bajos");
       return;
     }
 
@@ -347,7 +347,7 @@ export function FieldDefinitionDialog() {
             <DialogHeader>
               <DialogTitle>Nuevo campo personalizado</DialogTitle>
               <DialogDescription>
-                Que tipo de campo necesitas?
+                ¿Qué tipo de campo necesitas?
               </DialogDescription>
             </DialogHeader>
 
@@ -379,8 +379,8 @@ export function FieldDefinitionDialog() {
               </DialogTitle>
               <DialogDescription>
                 {isEdit
-                  ? "Modifica la configuracion del campo."
-                  : "Ajusta los valores preconfigurados o dejalo como esta."}
+                  ? "Modifica la configuración del campo."
+                  : "Ajusta los valores preconfigurados o déjalo como está."}
               </DialogDescription>
             </DialogHeader>
 
@@ -426,9 +426,9 @@ export function FieldDefinitionDialog() {
               {/* Code */}
               <div className="space-y-1">
                 <Label className="text-xs">
-                  Codigo{" "}
+                  Código{" "}
                   <span className="text-muted-foreground font-normal">
-                    (auto-generado si se deja vacio)
+                    (auto-generado si se deja vacío)
                   </span>
                 </Label>
                 <Input
@@ -442,7 +442,7 @@ export function FieldDefinitionDialog() {
 
               {/* Entity - visual selector */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Donde se usa este campo?</Label>
+                <Label className="text-xs">¿Dónde se usa este campo?</Label>
                 <div className="grid grid-cols-1 gap-2">
                   {ENTITY_OPTIONS.map((ent) => {
                     const isActive = formData.entity === ent.value;
@@ -484,21 +484,21 @@ export function FieldDefinitionDialog() {
               {/* Options - only for select */}
               {formData.fieldType === "select" && (
                 <div className="space-y-1">
-                  <Label className="text-xs">Opciones (una por linea)</Label>
+                  <Label className="text-xs">Opciones (una por línea)</Label>
                   <textarea
                     value={optionsText}
                     onChange={(e) => setOptionsText(e.target.value)}
                     rows={4}
                     disabled={isSubmitting}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    placeholder={"Opcion 1\nOpcion 2\nOpcion 3"}
+                    placeholder={"Opción 1\nOpción 2\nOpción 3"}
                   />
                 </div>
               )}
 
               {/* Visibility toggles */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Donde se muestra?</Label>
+                <Label className="text-xs">¿Dónde se muestra?</Label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {VISIBILITY_TOGGLES.map((v) => {
                     const isActive = formData[v.key];
@@ -535,8 +535,8 @@ export function FieldDefinitionDialog() {
                 {formData.required && (
                   <p className="text-[11px] text-muted-foreground pl-9">
                     {formData.entity === "route_stops"
-                      ? "El conductor no podra completar la entrega sin llenar este campo"
-                      : "No se podra guardar el pedido sin completar este campo"}
+                      ? "El conductor no podrá completar la entrega sin llenar este campo"
+                      : "No se podrá guardar el pedido sin completar este campo"}
                   </p>
                 )}
               </div>

@@ -46,18 +46,18 @@ export interface FieldDefinitionInput {
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   text: "Texto",
-  number: "Numero",
-  select: "Seleccion",
+  number: "Número",
+  select: "Selección",
   date: "Fecha",
   currency: "Moneda",
-  phone: "Telefono",
+  phone: "Teléfono",
   email: "Email",
-  boolean: "Si/No",
+  boolean: "Sí/No",
 };
 
 export const FIELD_ENTITY_LABELS: Record<FieldEntity, string> = {
   orders: "Pedidos",
-  route_stops: "Paradas de ruta",
+  route_stops: "Entregas",
 };
 
 interface CustomFieldsState {
@@ -68,13 +68,17 @@ interface CustomFieldsState {
   selectedDefinition: FieldDefinition | null;
   showDialog: boolean;
   dialogMode: "create" | "edit";
+  /** Pre-selected entity when opening the dialog in create mode from a tab. */
+  defaultEntity: FieldEntity;
 }
 
 interface CustomFieldsActions {
   createDefinition: (data: FieldDefinitionInput) => Promise<void>;
   updateDefinition: (id: string, data: FieldDefinitionInput) => Promise<void>;
   deleteDefinition: (id: string) => Promise<void>;
-  openCreateDialog: () => void;
+  toggleActive: (definition: FieldDefinition, active: boolean) => Promise<void>;
+  reorder: (definition: FieldDefinition, direction: "up" | "down") => Promise<void>;
+  openCreateDialog: (defaultEntity?: FieldEntity) => void;
   openEditDialog: (definition: FieldDefinition) => void;
   closeDialog: () => void;
   refreshDefinitions: () => void;
@@ -100,6 +104,7 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   const [selectedDefinition, setSelectedDefinition] = useState<FieldDefinition | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [defaultEntity, setDefaultEntity] = useState<FieldEntity>("orders");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const definitionsUrl = companyId ? `/api/companies/${companyId}/field-definitions` : null;
@@ -160,18 +165,70 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
         headers: { "x-company-id": companyId },
       });
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Error al eliminar campo" }));
-        throw new Error(error.error || "Error al eliminar campo");
+        const error = await response.json().catch(() => ({ error: "Error al archivar campo" }));
+        throw new Error(error.error || "Error al archivar campo");
       }
       await mutateDefinitions();
-      toast({ title: "Campo eliminado", description: "El campo ha sido eliminado." });
+      toast({ title: "Campo archivado", description: "El campo ya no se usará en nuevos pedidos." });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const openCreateDialog = () => {
+  const toggleActive = async (definition: FieldDefinition, active: boolean) => {
+    if (!companyId) return;
+    const response = await fetch(`/api/companies/${companyId}/field-definitions/${definition.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-company-id": companyId },
+      body: JSON.stringify({ active }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Error al cambiar estado" }));
+      throw new Error(error.error || "Error al cambiar estado");
+    }
+    await mutateDefinitions();
+    toast({
+      title: active ? "Campo reactivado" : "Campo archivado",
+      description: active
+        ? `"${definition.label}" vuelve a estar disponible.`
+        : `"${definition.label}" ya no aparecerá en formularios nuevos.`,
+    });
+  };
+
+  // Reorder swaps `position` with the previous/next sibling in the same entity.
+  // Two PATCH calls because we don't have a batch endpoint — good enough for
+  // a list of <50 fields and avoids adding a new API surface.
+  const reorder = async (definition: FieldDefinition, direction: "up" | "down") => {
+    if (!companyId) return;
+    const list = Array.isArray(definitions) ? definitions : [];
+    const siblings = list
+      .filter((d) => d.entity === definition.entity && d.active === definition.active)
+      .sort((a, b) => a.position - b.position);
+    const idx = siblings.findIndex((d) => d.id === definition.id);
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= siblings.length) return;
+    const other = siblings[swapIdx];
+
+    const patch = async (id: string, position: number) =>
+      fetch(`/api/companies/${companyId}/field-definitions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        body: JSON.stringify({ position }),
+      });
+
+    const [a, b] = await Promise.all([
+      patch(definition.id, other.position),
+      patch(other.id, definition.position),
+    ]);
+    if (!a.ok || !b.ok) {
+      throw new Error("Error al reordenar campos");
+    }
+    await mutateDefinitions();
+  };
+
+  const openCreateDialog = (entity?: FieldEntity) => {
     setSelectedDefinition(null);
+    setDefaultEntity(entity ?? "orders");
     setDialogMode("create");
     setShowDialog(true);
   };
@@ -199,12 +256,15 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
     selectedDefinition,
     showDialog,
     dialogMode,
+    defaultEntity,
   };
 
   const contextActions: CustomFieldsActions = {
     createDefinition,
     updateDefinition,
     deleteDefinition,
+    toggleActive,
+    reorder,
     openCreateDialog,
     openEditDialog,
     closeDialog,
