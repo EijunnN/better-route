@@ -355,6 +355,32 @@ export function clearUserPermissionCache(userId: string): void {
 }
 
 /**
+ * Clear the cache for every user that has a given role. Call this when the
+ * role's permission set changes (PATCH/PUT on role_permissions) — without
+ * it, those users would keep seeing the old permission set until the TTL.
+ *
+ * This issues one query per call, which is fine for the volumes expected
+ * in the admin flows that trigger it. If it ever becomes hot, swap for
+ * `clearAllPermissionCache()` (currently not exposed).
+ */
+export async function clearUserPermissionCacheByRole(
+  roleId: string,
+): Promise<void> {
+  const { db } = await import("@/db");
+  const { userRoles } = await import("@/db/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  const rows = await db
+    .select({ userId: userRoles.userId })
+    .from(userRoles)
+    .where(and(eq(userRoles.roleId, roleId), eq(userRoles.active, true)));
+
+  for (const row of rows) {
+    clearUserPermissionCache(row.userId);
+  }
+}
+
+/**
  * Check if user has permission by querying the database
  * Uses role_permissions table for dynamic permission checking
  */

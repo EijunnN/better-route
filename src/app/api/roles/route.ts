@@ -141,6 +141,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Derive `code` from `name` when the client didn't send one. Keeps custom
+    // roles addressable by a stable identifier without forcing the UI to
+    // expose it (the onboarding flow sets code explicitly; manual creation
+    // didn't, leaving NULLs that broke downstream legacy-role syncs).
+    const derivedCode =
+      validatedData.code && validatedData.code.trim().length > 0
+        ? validatedData.code.trim()
+        : validatedData.name
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, "_")
+            .replace(/^_|_$/g, "")
+            .slice(0, 50) || `role_${Date.now()}`;
+
     // Create the role
     const [newRole] = await db
       .insert(roles)
@@ -148,7 +163,7 @@ export async function POST(request: NextRequest) {
         companyId,
         name: validatedData.name,
         description: validatedData.description,
-        code: validatedData.code,
+        code: derivedCode,
         isSystem: false,
       })
       .returning();

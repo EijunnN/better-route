@@ -11,6 +11,7 @@ import {
   unauthorizedResponse,
 } from "@/lib/routing/route-helpers";
 import { rolePermissionsSchema } from "@/lib/validations/role";
+import { clearUserPermissionCacheByRole } from "@/lib/auth/authorization";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -193,6 +194,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       })
       .from(rolePermissions)
       .where(eq(rolePermissions.roleId, id));
+
+    // Invalidate the permission cache for every user that carries this role
+    // so the change is visible immediately instead of after the TTL.
+    await clearUserPermissionCacheByRole(id);
 
     return NextResponse.json({
       roleId: id,

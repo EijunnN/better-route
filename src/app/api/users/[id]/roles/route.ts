@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users, roles, userRoles } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/permissions";
+import { clearUserPermissionCache } from "@/lib/auth/authorization";
 import {
   checkPermissionOrError,
   handleError,
@@ -185,6 +186,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .where(eq(users.id, id));
     }
 
+    // Invalidate the cached permission set — without this the user would see
+    // stale permissions (legacy + previous custom roles) for up to the TTL
+    // of `getUserPermissionsFromDB` (~60s).
+    clearUserPermissionCache(id);
+
     return NextResponse.json({
       message: "Rol asignado correctamente",
       roleId,
@@ -244,6 +250,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       .update(userRoles)
       .set({ active: false, updatedAt: new Date() })
       .where(and(eq(userRoles.userId, id), eq(userRoles.roleId, roleId)));
+
+    // Invalidate cached permissions — the user should lose the role's perms
+    // immediately, not after the TTL.
+    clearUserPermissionCache(id);
 
     return NextResponse.json({
       message: "Rol removido correctamente",
