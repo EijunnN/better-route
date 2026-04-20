@@ -29,6 +29,8 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
     setZones,
     setCompanyProfile,
     setFieldDefinitions,
+    setAvailablePresets,
+    setOptimizationPresetId,
   } = state;
 
   // Data loaders
@@ -222,6 +224,35 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
     }
   };
 
+  const loadPresets = async (signal?: AbortSignal) => {
+    if (!companyId) return;
+    try {
+      const response = await fetch("/api/optimization-presets", {
+        headers: { "x-company-id": companyId },
+        signal,
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const presets = (data.data || []) as Array<{
+        id: string;
+        name: string;
+        isDefault: boolean;
+        active: boolean;
+      }>;
+      const activePresets = presets
+        .filter((p) => p.active)
+        .map((p) => ({ id: p.id, name: p.name, isDefault: p.isDefault }));
+      setAvailablePresets(activePresets);
+      // Pre-select the default so the UI matches what would have happened
+      // under the legacy "always use isDefault" behavior.
+      const defaultPreset = activePresets.find((p) => p.isDefault);
+      if (defaultPreset) setOptimizationPresetId(defaultPreset.id);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      console.error("Failed to fetch optimization presets:", err);
+    }
+  };
+
   // Initial data load
   useEffect(() => {
     if (!companyId) return;
@@ -235,6 +266,7 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
       loadZones(controller.signal),
       loadCompanyProfile(controller.signal),
       loadFieldDefinitions(controller.signal),
+      loadPresets(controller.signal),
     ]).catch(() => {
       // Ignore abort errors
     });

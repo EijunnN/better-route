@@ -549,6 +549,46 @@ export function ConfigStep() {
           </CardContent>
         </Card>
 
+        {/* Optimization preset selection */}
+        {state.availablePresets.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Preset de optimización</CardTitle>
+              <CardDescription className="text-xs">
+                Aplica una configuración guardada del solver (flags, ventanas flexibles, modo fin de ruta…).
+                Gestionalas en{" "}
+                <a href="/optimization-presets" className="underline" target="_blank" rel="noreferrer">
+                  /optimization-presets
+                </a>
+                .
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {state.availablePresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => actions.setOptimizationPresetId(preset.id)}
+                  className={`w-full p-3 rounded-lg border text-left transition-colors ${
+                    state.optimizationPresetId === preset.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-sm">{preset.name}</p>
+                    {preset.isDefault && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                        por defecto
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Service time */}
         <Card>
           <CardHeader className="pb-3">

@@ -35,6 +35,8 @@ export interface PlanificacionState {
   objective: string;
   serviceTime: number;
   capacityEnabled: boolean;
+  optimizationPresetId: string | null;
+  availablePresets: Array<{ id: string; name: string; isDefault: boolean }>;
   // Zones
   zones: Zone[];
   showZones: boolean;
@@ -85,6 +87,7 @@ export interface PlanificacionActions {
   setObjective: (objective: string) => void;
   setServiceTime: (time: number) => void;
   setCapacityEnabled: (enabled: boolean) => void;
+  setOptimizationPresetId: (id: string | null) => void;
   setShowZones: (show: boolean) => void;
   // Submit
   handleSubmit: () => Promise<void>;

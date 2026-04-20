@@ -75,6 +75,8 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     objective: state.objective,
     serviceTime: state.serviceTime,
     capacityEnabled: state.capacityEnabled,
+    optimizationPresetId: state.optimizationPresetId,
+    availablePresets: state.availablePresets,
     zones: state.zones,
     showZones: state.showZones,
     companyProfile: state.companyProfile,
