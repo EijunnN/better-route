@@ -25,6 +25,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { STOP_STATUS } from "@/db/schema";
 import type { WorkflowState } from "./monitoring-context";
+import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
+import { DynamicFieldRenderer } from "@/components/custom-fields/dynamic-field-renderer";
 
 export interface StopInfo {
   id: string;
@@ -36,14 +38,22 @@ export interface StopInfo {
   estimatedArrival?: string | null;
   timeWindowStart?: string | null;
   timeWindowEnd?: string | null;
+  customFields?: Record<string, unknown> | null;
 }
 
 export interface StopStatusUpdateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   stop: StopInfo | null;
-  onUpdate: (stopId: string, status: string, notes?: string, workflowStateId?: string) => Promise<void>;
+  onUpdate: (
+    stopId: string,
+    status: string,
+    notes?: string,
+    workflowStateId?: string,
+    customFields?: Record<string, unknown>,
+  ) => Promise<void>;
   workflowStates?: WorkflowState[];
+  customFieldDefinitions?: FieldDefinition[];
 }
 
 const STOP_STATUS_OPTIONS = [
@@ -100,6 +110,7 @@ export function StopStatusUpdateDialog({
   stop,
   onUpdate,
   workflowStates = [],
+  customFieldDefinitions = [],
 }: StopStatusUpdateDialogProps) {
   const [selectedStatus, setSelectedStatus] = useState<string>(
     stop?.status || "PENDING",
@@ -107,16 +118,23 @@ export function StopStatusUpdateDialog({
   const [selectedWorkflowStateId, setSelectedWorkflowStateId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hasWorkflowStates = workflowStates.length > 0;
+  const relevantCustomFields = customFieldDefinitions.filter(
+    (f) => f.active && f.entity === "route_stops",
+  );
+  const hasCustomFields = relevantCustomFields.length > 0;
 
-  // Reset state when stop changes
+  // Reset state when stop changes. Initialize customFieldValues from the
+  // stop's existing customFields so the driver sees what was captured before.
   if (stop && selectedStatus !== stop.status) {
     setSelectedStatus(stop.status);
     setSelectedWorkflowStateId(null);
     setSelectedReason(null);
+    setCustomFieldValues((stop.customFields as Record<string, unknown> | null) ?? {});
   }
 
   const formatTime = (isoString?: string | null) => {
@@ -136,7 +154,16 @@ export function StopStatusUpdateDialog({
       const finalNotes = selectedReason
         ? (notes ? `${selectedReason}: ${notes}` : selectedReason)
         : (notes || undefined);
-      await onUpdate(stop.id, selectedStatus, finalNotes, selectedWorkflowStateId || undefined);
+      // Only send customFields if the user actually has them configured —
+      // avoids a no-op payload key that would force validation on empty state.
+      const customFieldsPayload = hasCustomFields ? customFieldValues : undefined;
+      await onUpdate(
+        stop.id,
+        selectedStatus,
+        finalNotes,
+        selectedWorkflowStateId || undefined,
+        customFieldsPayload,
+      );
       onOpenChange(false);
       setNotes("");
       setSelectedReason(null);
@@ -148,6 +175,19 @@ export function StopStatusUpdateDialog({
       setUpdating(false);
     }
   };
+
+  // Missing required customFields block the button when moving to COMPLETED.
+  const missingRequiredFields = relevantCustomFields
+    .filter((f) => f.required)
+    .filter((f) => {
+      const v = customFieldValues[f.code];
+      return v === undefined || v === null || v === "";
+    });
+  const willCompleteStop =
+    selectedStatus === "COMPLETED" ||
+    (selectedWorkflowStateId &&
+      workflowStates.find((ws) => ws.id === selectedWorkflowStateId)?.systemState === "COMPLETED");
+  const blockedByMissingFields = willCompleteStop && missingRequiredFields.length > 0;
 
   const selectedWorkflowState = selectedWorkflowStateId
     ? workflowStates.find(ws => ws.id === selectedWorkflowStateId)
@@ -324,6 +364,35 @@ export function StopStatusUpdateDialog({
               />
             </div>
 
+            {/* Custom fields for the stop */}
+            {hasCustomFields && (
+              <div className="space-y-3 rounded-lg border p-3 bg-muted/20">
+                <div>
+                  <Label className="text-sm">Campos personalizados</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Completa los campos definidos para esta entrega. Los obligatorios
+                    deben tener valor antes de marcar como completada.
+                  </p>
+                </div>
+                {relevantCustomFields.map((def) => (
+                  <DynamicFieldRenderer
+                    key={def.id}
+                    definition={def}
+                    value={customFieldValues[def.code]}
+                    onChange={(value) =>
+                      setCustomFieldValues((prev) => ({ ...prev, [def.code]: value }))
+                    }
+                  />
+                ))}
+                {blockedByMissingFields && (
+                  <p className="text-xs text-destructive">
+                    Faltan campos obligatorios:{" "}
+                    {missingRequiredFields.map((f) => f.label).join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Error message */}
             {error && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
@@ -365,6 +434,7 @@ export function StopStatusUpdateDialog({
               disabled={
                 updating ||
                 !stop ||
+                blockedByMissingFields ||
                 (hasWorkflowStates
                   ? !selectedWorkflowStateId || !!(selectedWorkflowState?.requiresNotes && !notes.trim()) || !!(selectedWorkflowState?.requiresReason && selectedWorkflowState.reasonOptions && !selectedReason)
                   : selectedStatus === stop.status)

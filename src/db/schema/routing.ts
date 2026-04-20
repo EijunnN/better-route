@@ -109,6 +109,10 @@ export const routeStops = pgTable("route_stops", {
   workflowStateId: uuid("workflow_state_id").references(() => companyWorkflowStates.id, { onDelete: "set null" }),
   // Metadata
   metadata: jsonb("metadata"), // Flexible data for stop-specific info
+  // Values for company-defined custom fields with entity="route_stops".
+  // Shape: { [fieldDefinitionCode]: value } — validated against
+  // companyFieldDefinitions at write time, not enforced by DB.
+  customFields: jsonb("custom_fields").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [

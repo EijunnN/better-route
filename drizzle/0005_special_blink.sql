@@ -1,0 +1,1 @@
+ALTER TABLE "route_stops" ADD COLUMN "custom_fields" jsonb;

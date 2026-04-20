@@ -376,6 +376,7 @@ export function MonitoringDashboardView() {
                     locationData={state.driversData.find(d => d.id === state.selectedDriverId)?.currentLocation}
                     workflowStates={state.workflowStates}
                     fieldDefinitionLabels={state.fieldDefinitionLabels}
+                    customFieldDefinitions={state.routeStopFieldDefinitions}
                   />
                 </div>
               </ScrollArea>

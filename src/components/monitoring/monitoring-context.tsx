@@ -3,6 +3,7 @@
 import { createContext, use, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { useCompanyContext } from "@/hooks/use-company-context";
+import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
 
 const POLLING_INTERVAL = 10000;
 
@@ -150,6 +151,7 @@ export interface MonitoringState {
   lastUpdate: Date;
   workflowStates: WorkflowState[];
   fieldDefinitionLabels: Record<string, string>;
+  routeStopFieldDefinitions: FieldDefinition[];
 }
 
 export interface MonitoringActions {
@@ -255,19 +257,16 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     { revalidateOnFocus: false }
   );
 
-  const { data: rawFieldDefs = [] } = useSWR<Array<{ code: string; label: string; active: boolean }>>(
+  const { data: rawFieldDefs = [] } = useSWR<FieldDefinition[]>(
     companyId ? [`/api/companies/${companyId}/field-definitions?entity=route_stops`, companyId] : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
     { revalidateOnFocus: false }
   );
 
-  const fieldDefinitionLabels: Record<string, string> = (() => {
-    const map: Record<string, string> = {};
-    for (const fd of rawFieldDefs) {
-      if (fd.active) map[fd.code] = fd.label;
-    }
-    return map;
-  })();
+  const routeStopFieldDefinitions: FieldDefinition[] = rawFieldDefs.filter((f) => f.active);
+  const fieldDefinitionLabels: Record<string, string> = Object.fromEntries(
+    routeStopFieldDefinitions.map((f) => [f.code, f.label]),
+  );
 
   const alertsCount = monitoringData?.metrics?.activeAlerts ?? 0;
   const isLoading = isLoadingMonitoring && !monitoringData;
@@ -331,6 +330,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     lastUpdate,
     workflowStates,
     fieldDefinitionLabels,
+    routeStopFieldDefinitions,
   };
 
   const actions: MonitoringActions = {

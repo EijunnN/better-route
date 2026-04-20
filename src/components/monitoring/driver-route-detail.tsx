@@ -27,6 +27,7 @@ import {
   StopStatusUpdateDialog,
 } from "./stop-status-update-dialog";
 import type { WorkflowState } from "./monitoring-context";
+import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
 
 interface Stop {
   id?: string;
@@ -121,6 +122,7 @@ interface DriverRouteDetailProps {
   locationData?: LocationData | null;
   workflowStates?: WorkflowState[];
   fieldDefinitionLabels?: FieldDefinitionMap;
+  customFieldDefinitions?: FieldDefinition[];
 }
 
 const STOP_STATUS_CONFIG = {
@@ -169,6 +171,7 @@ export function DriverRouteDetail({
   locationData,
   workflowStates = [],
   fieldDefinitionLabels = {},
+  customFieldDefinitions = [],
 }: DriverRouteDetailProps) {
   const [selectedStop, setSelectedStop] = useState<StopInfo | null>(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -206,11 +209,18 @@ export function DriverRouteDetail({
     });
   };
 
-  const handleStatusUpdate = async (stopId: string, status: string, notes?: string, workflowStateId?: string) => {
+  const handleStatusUpdate = async (
+    stopId: string,
+    status: string,
+    notes?: string,
+    workflowStateId?: string,
+    customFields?: Record<string, unknown>,
+  ) => {
     setUpdatingStatus(true);
     try {
-      const body: Record<string, string | undefined> = { status, notes };
+      const body: Record<string, unknown> = { status, notes };
       if (workflowStateId) body.workflowStateId = workflowStateId;
+      if (customFields) body.customFields = customFields;
 
       const response = await fetch(`/api/route-stops/${stopId}`, {
         method: "PATCH",
@@ -225,7 +235,10 @@ export function DriverRouteDetail({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to update stop status");
+        const details = Array.isArray(error.details)
+          ? `: ${error.details.map((d: { code: string; message: string }) => `${d.code} — ${d.message}`).join("; ")}`
+          : "";
+        throw new Error((error.error || "Failed to update stop status") + details);
       }
 
       // Refresh the data to show updated status
@@ -259,6 +272,7 @@ export function DriverRouteDetail({
       estimatedArrival: stop.estimatedArrival,
       timeWindowStart: stop.timeWindowStart,
       timeWindowEnd: stop.timeWindowEnd,
+      customFields: (stop.customFields as Record<string, unknown> | null) ?? null,
     });
     setStatusDialogOpen(true);
   };
@@ -484,6 +498,7 @@ export function DriverRouteDetail({
         stop={selectedStop}
         onUpdate={handleStatusUpdate}
         workflowStates={workflowStates}
+        customFieldDefinitions={customFieldDefinitions}
       />
     </>
   );

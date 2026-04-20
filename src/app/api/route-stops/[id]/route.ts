@@ -20,6 +20,10 @@ import { getAuthenticatedUser, getOptionalUser } from "@/lib/auth/auth-api";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { EntityType, Action } from "@/lib/auth/authorization";
+import {
+  loadStopFieldDefinitions,
+  validateStopCustomFields,
+} from "@/lib/routing/stop-custom-fields";
 // Map route_stop status to order status
 const STOP_TO_ORDER_STATUS: Record<string, string> = {
   PENDING: "ASSIGNED", // Order stays assigned until stop starts
@@ -106,8 +110,10 @@ export async function PATCH(
     const { id: stopId } = await params;
 
     const body = await request.json();
-    const { workflowStateId, notes, failureReason, evidenceUrls } = body;
+    const { workflowStateId, notes, failureReason, evidenceUrls, customFields: customFieldsInput } = body;
     let { status } = body;
+    const hasCustomFieldsUpdate =
+      customFieldsInput && typeof customFieldsInput === "object" && !Array.isArray(customFieldsInput);
 
     // Get current stop
     const currentStop = await db.query.routeStops.findFirst({
@@ -173,11 +179,55 @@ export async function PATCH(
       status = workflowState.systemState;
     }
 
-    if (!status) {
+    if (!status && !hasCustomFieldsUpdate) {
       return NextResponse.json(
-        { error: "Status or workflowStateId is required" },
+        { error: "Status, workflowStateId, or customFields is required" },
         { status: 400 },
       );
+    }
+
+    // Validate + normalize customFields. We run this whenever the payload
+    // includes customFields OR when transitioning to COMPLETED (to enforce
+    // required fields on the completion path even if the driver didn't send
+    // new values this call).
+    let normalizedCustomFields: Record<string, unknown> | null = null;
+    if (hasCustomFieldsUpdate || status === "COMPLETED") {
+      const defs = await loadStopFieldDefinitions(tenantCtx.companyId);
+      if (defs.length > 0 || hasCustomFieldsUpdate) {
+        const result = validateStopCustomFields(
+          hasCustomFieldsUpdate ? (customFieldsInput as Record<string, unknown>) : {},
+          defs,
+          (currentStop.customFields as Record<string, unknown> | null) ?? null,
+          status === "COMPLETED",
+        );
+        if (!result.ok) {
+          return NextResponse.json(
+            { error: "Custom field validation failed", details: result.errors },
+            { status: 400 },
+          );
+        }
+        if (hasCustomFieldsUpdate) normalizedCustomFields = result.value;
+      }
+    }
+
+    // Custom-fields-only path: short update, no history or alert. The status
+    // path below (which also handles optimistic locking) is skipped entirely.
+    if (!status) {
+      const now = new Date();
+      const [updated] = await db
+        .update(routeStops)
+        .set({ customFields: normalizedCustomFields, updatedAt: now })
+        .where(
+          and(
+            eq(routeStops.id, stopId),
+            withTenantFilter(routeStops, [], tenantCtx.companyId),
+          ),
+        )
+        .returning();
+      if (!updated) {
+        return NextResponse.json({ error: "Stop not found" }, { status: 404 });
+      }
+      return NextResponse.json({ data: updated });
     }
 
     // Validate failureReason is required when status is FAILED (only for legacy flow without workflow)
@@ -243,6 +293,11 @@ export async function PATCH(
     // Set workflowStateId if provided
     if (workflowStateId) {
       updateData.workflowStateId = workflowStateId;
+    }
+
+    // Persist customFields alongside the status change
+    if (normalizedCustomFields !== null) {
+      updateData.customFields = normalizedCustomFields;
     }
 
     // Set startedAt when moving to IN_PROGRESS
