@@ -131,7 +131,6 @@ export const optimizationPresets = pgTable("optimization_presets", {
   groupSameLocation: boolean("group_same_location").notNull().default(true),
   // Parameters
   maxDistanceKm: integer("max_distance_km").default(200),
-  vehicleRechargeTime: integer("vehicle_recharge_time").default(0), // minutes
   trafficFactor: integer("traffic_factor").default(50), // 0-100 scale
   // Route end configuration: DRIVER_ORIGIN | SPECIFIC_DEPOT | OPEN_END
   routeEndMode: varchar("route_end_mode", { length: 50 })

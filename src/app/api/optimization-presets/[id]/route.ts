@@ -88,8 +88,6 @@ export async function PUT(
       groupSameLocation:
         body.groupSameLocation ?? existingPreset.groupSameLocation,
       maxDistanceKm: body.maxDistanceKm ?? existingPreset.maxDistanceKm,
-      vehicleRechargeTime:
-        body.vehicleRechargeTime ?? existingPreset.vehicleRechargeTime,
       trafficFactor: body.trafficFactor ?? existingPreset.trafficFactor,
       isDefault: body.isDefault ?? existingPreset.isDefault,
       updatedAt: new Date(),

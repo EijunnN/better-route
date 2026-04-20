@@ -50,6 +50,13 @@
       "when": 1776662585868,
       "tag": "0006_right_magdalene",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776663617551,
+      "tag": "0007_fast_thaddeus_ross",
+      "breakpoints": true
     }
   ]
 }

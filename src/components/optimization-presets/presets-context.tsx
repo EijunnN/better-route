@@ -15,7 +15,6 @@ export interface OptimizationPreset {
   flexibleTimeWindows: boolean;
   groupSameLocation: boolean;
   maxDistanceKm: number | null;
-  vehicleRechargeTime: number | null;
   trafficFactor: number | null;
   routeEndMode: "DRIVER_ORIGIN" | "SPECIFIC_DEPOT" | "OPEN_END";
   endDepotLatitude: string | null;
@@ -43,7 +42,6 @@ export const DEFAULT_PRESET: Partial<OptimizationPreset> = {
   flexibleTimeWindows: false,
   groupSameLocation: true,
   maxDistanceKm: 200,
-  vehicleRechargeTime: 0,
   trafficFactor: 50,
   routeEndMode: "DRIVER_ORIGIN",
   endDepotLatitude: null,

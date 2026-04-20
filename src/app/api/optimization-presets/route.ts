@@ -64,7 +64,6 @@ export async function POST(request: NextRequest) {
       flexibleTimeWindows: body.flexibleTimeWindows ?? false,
       groupSameLocation: body.groupSameLocation ?? true,
       maxDistanceKm: body.maxDistanceKm ?? 200,
-      vehicleRechargeTime: body.vehicleRechargeTime ?? 0,
       trafficFactor: body.trafficFactor ?? 50,
       isDefault: body.isDefault ?? false,
       active: true,

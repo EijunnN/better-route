@@ -169,14 +169,10 @@ function PresetCard({ preset }: { preset: OptimizationPreset }) {
 
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Parámetros</p>
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-2 gap-2 text-center">
             <div className="bg-muted/50 rounded-lg p-2">
               <p className="text-lg font-semibold">{preset.maxDistanceKm}</p>
               <p className="text-[10px] text-muted-foreground">km max</p>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-2">
-              <p className="text-lg font-semibold">{preset.vehicleRechargeTime}</p>
-              <p className="text-[10px] text-muted-foreground">min recarga</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-2">
               <p className="text-lg font-semibold">{preset.trafficFactor}%</p>
@@ -308,19 +304,6 @@ function PresetDialog() {
                   min={50}
                   max={500}
                   step={10}
-                />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Tiempo de recarga del vehículo</Label>
-                  <span className="text-sm text-muted-foreground">{state.editingPreset.vehicleRechargeTime} min</span>
-                </div>
-                <Slider
-                  value={[state.editingPreset.vehicleRechargeTime || 0]}
-                  onValueChange={([value]) => actions.updateEditingPreset({ vehicleRechargeTime: value })}
-                  min={0}
-                  max={120}
-                  step={5}
                 />
               </div>
               <div>
