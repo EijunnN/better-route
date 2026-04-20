@@ -11,14 +11,8 @@ export interface OptimizationPreset {
   balanceVisits: boolean;
   minimizeVehicles: boolean;
   openStart: boolean;
-  openEnd: boolean;
-  mergeSimilar: boolean;
-  mergeSimilarV2: boolean;
   oneRoutePerVehicle: boolean;
-  simplify: boolean;
-  bigVrp: boolean;
   flexibleTimeWindows: boolean;
-  mergeByDistance: boolean;
   groupSameLocation: boolean;
   maxDistanceKm: number | null;
   vehicleRechargeTime: number | null;
@@ -45,14 +39,8 @@ export const DEFAULT_PRESET: Partial<OptimizationPreset> = {
   balanceVisits: false,
   minimizeVehicles: false,
   openStart: false,
-  openEnd: false,
-  mergeSimilar: true,
-  mergeSimilarV2: false,
   oneRoutePerVehicle: true,
-  simplify: true,
-  bigVrp: true,
   flexibleTimeWindows: false,
-  mergeByDistance: false,
   groupSameLocation: true,
   maxDistanceKm: 200,
   vehicleRechargeTime: 0,

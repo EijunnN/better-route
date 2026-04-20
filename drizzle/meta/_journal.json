@@ -43,6 +43,13 @@
       "when": 1776659013857,
       "tag": "0005_special_blink",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776662585868,
+      "tag": "0006_right_magdalene",
+      "breakpoints": true
     }
   ]
 }

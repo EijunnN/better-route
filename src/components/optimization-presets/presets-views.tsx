@@ -25,7 +25,6 @@ const OPTIMIZATION_OPTIONS = [
   { key: "minimizeVehicles", label: "Minimizar vehículos", desc: "Usar la menor cantidad de vehículos posible" },
   { key: "flexibleTimeWindows", label: "Ventanas de tiempo flexibles", desc: "Permitir cierta tolerancia en horarios" },
   { key: "openStart", label: "Inicio abierto", desc: "Vehículos pueden iniciar desde cualquier lugar" },
-  { key: "openEnd", label: "Fin abierto", desc: "Vehículos no necesitan volver al origen" },
   { key: "oneRoutePerVehicle", label: "Una ruta por vehículo", desc: "Cada vehículo solo tiene una ruta asignada" },
   { key: "groupSameLocation", label: "Agrupar mismas coordenadas", desc: "Múltiples pedidos en la misma ubicación cuentan como una sola parada" },
 ] as const;

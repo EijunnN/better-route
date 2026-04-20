@@ -81,16 +81,10 @@ export async function PUT(
       minimizeVehicles:
         body.minimizeVehicles ?? existingPreset.minimizeVehicles,
       openStart: body.openStart ?? existingPreset.openStart,
-      openEnd: body.openEnd ?? existingPreset.openEnd,
-      mergeSimilar: body.mergeSimilar ?? existingPreset.mergeSimilar,
-      mergeSimilarV2: body.mergeSimilarV2 ?? existingPreset.mergeSimilarV2,
       oneRoutePerVehicle:
         body.oneRoutePerVehicle ?? existingPreset.oneRoutePerVehicle,
-      simplify: body.simplify ?? existingPreset.simplify,
-      bigVrp: body.bigVrp ?? existingPreset.bigVrp,
       flexibleTimeWindows:
         body.flexibleTimeWindows ?? existingPreset.flexibleTimeWindows,
-      mergeByDistance: body.mergeByDistance ?? existingPreset.mergeByDistance,
       groupSameLocation:
         body.groupSameLocation ?? existingPreset.groupSameLocation,
       maxDistanceKm: body.maxDistanceKm ?? existingPreset.maxDistanceKm,

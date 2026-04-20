@@ -117,20 +117,16 @@ export const optimizationPresets = pgTable("optimization_presets", {
     .references(() => companies.id, { onDelete: "restrict" }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  // Optimization flags
+  // Optimization flags. Kept minimal — only values the runner actually
+  // passes to VROOM. Removed PyVRP-era knobs (mergeSimilar, simplify, etc.)
+  // and `openEnd` boolean after routeEndMode="OPEN_END" covered it.
   balanceVisits: boolean("balance_visits").notNull().default(false),
   minimizeVehicles: boolean("minimize_vehicles").notNull().default(false),
   openStart: boolean("open_start").notNull().default(false),
-  openEnd: boolean("open_end").notNull().default(false),
-  mergeSimilar: boolean("merge_similar").notNull().default(true),
-  mergeSimilarV2: boolean("merge_similar_v2").notNull().default(false),
   oneRoutePerVehicle: boolean("one_route_per_vehicle").notNull().default(true),
-  simplify: boolean("simplify").notNull().default(true),
-  bigVrp: boolean("big_vrp").notNull().default(true),
   flexibleTimeWindows: boolean("flexible_time_windows")
     .notNull()
     .default(false),
-  mergeByDistance: boolean("merge_by_distance").notNull().default(false),
   // Group orders with same coordinates as single stop
   groupSameLocation: boolean("group_same_location").notNull().default(true),
   // Parameters
