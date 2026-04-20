@@ -45,6 +45,10 @@ import { groupOrdersByLocation, type OrderGroupMap } from "./prepare";
 import { formatArrivalTime, parseHHmmToSeconds } from "./postprocess";
 import { sleep } from "./utils";
 import { loadVehicleSkillsMap, parseRequiredSkills } from "./load-skills";
+import {
+  loadTimeWindowPresetsMap,
+  resolveTimeWindow,
+} from "./load-time-windows";
 
 /**
  * Run optimization with mock algorithm (placeholder for actual VRP solver)
@@ -223,6 +227,12 @@ export async function runOptimization(
   const serviceTimeMinutes = config.serviceTimeMinutes ?? 10;
   const serviceTimeSeconds = serviceTimeMinutes * 60;
 
+  // Load time window presets once per run. The form in the web UI saves a
+  // `timeWindowPresetId` without copying the preset's start/end onto the
+  // order — the runner has to resolve the effective window here, otherwise
+  // VROOM sees no time window and assigns the stop at any hour of the day.
+  const timeWindowPresetsMap = await loadTimeWindowPresetsMap(input.companyId);
+
   // Prepare orders with location info - filter out orders with missing coordinates
   const ordersWithInvalidCoords: typeof pendingOrders = [];
   const ordersWithLocation = pendingOrders
@@ -235,27 +245,31 @@ export async function runOptimization(
       }
       return true;
     })
-    .map((order) => ({
-      id: order.id,
-      trackingId: order.trackingId,
-      address: order.address,
-      latitude: order.latitude,
-      longitude: order.longitude,
-      weightRequired: order.weightRequired || 0,
-      volumeRequired: order.volumeRequired || 0,
-      orderValue: order.orderValue || 0,
-      unitsRequired: order.unitsRequired || 1, // Default 1 unit per order
-      orderType: order.orderType as "NEW" | "RESCHEDULED" | "URGENT" | undefined,
-      priority: order.priority ?? undefined,
-      promisedDate: order.promisedDate,
-      serviceTime: serviceTimeSeconds,
-      // Time windows from CSV import (format: "HH:mm" string or null)
-      timeWindowStart: order.timeWindowStart ?? undefined,
-      timeWindowEnd: order.timeWindowEnd ?? undefined,
-      // CSV of skill codes (e.g. "REFRIGERADO, FRAGIL"). Parsed per-vehicle
-      // below; VROOM needs them as an array of strings.
-      requiredSkills: order.requiredSkills ?? null,
-    }));
+    .map((order) => {
+      const resolvedTw = resolveTimeWindow(order, timeWindowPresetsMap);
+      return {
+        id: order.id,
+        trackingId: order.trackingId,
+        address: order.address,
+        latitude: order.latitude,
+        longitude: order.longitude,
+        weightRequired: order.weightRequired || 0,
+        volumeRequired: order.volumeRequired || 0,
+        orderValue: order.orderValue || 0,
+        unitsRequired: order.unitsRequired || 1, // Default 1 unit per order
+        orderType: order.orderType as "NEW" | "RESCHEDULED" | "URGENT" | undefined,
+        priority: order.priority ?? undefined,
+        promisedDate: order.promisedDate,
+        serviceTime: serviceTimeSeconds,
+        // Effective time window — already resolved via preset if the order
+        // only had `timeWindowPresetId`. "HH:mm" strings or undefined.
+        timeWindowStart: resolvedTw.start ?? undefined,
+        timeWindowEnd: resolvedTw.end ?? undefined,
+        // CSV of skill codes (e.g. "REFRIGERADO, FRAGIL"). Parsed per-vehicle
+        // below; VROOM needs them as an array of strings.
+        requiredSkills: order.requiredSkills ?? null,
+      };
+    });
 
   // Orders with invalid coordinates are added to unassigned list below
 

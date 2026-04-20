@@ -60,6 +60,40 @@ export interface TimeWindowPreset {
   strictness: (typeof TIME_WINDOW_STRICTNESS)[number];
 }
 
+/**
+ * Project a preset onto the concrete (start, end) the form stores. "HH:mm"
+ * inputs mirror the `time` input element's value shape; trimming the seconds
+ * from a Postgres "HH:MM:SS" value keeps that consistent.
+ */
+function derivePresetWindow(
+  preset: TimeWindowPreset,
+): { start: string | null; end: string | null } {
+  const toHHmm = (v: string | null) => (v ? v.slice(0, 5) : null);
+
+  switch (preset.type) {
+    case "RANGE":
+    case "SHIFT":
+      return { start: toHHmm(preset.startTime), end: toHHmm(preset.endTime) };
+    case "EXACT": {
+      if (!preset.exactTime || preset.toleranceMinutes == null) {
+        return { start: null, end: null };
+      }
+      const hhmm = toHHmm(preset.exactTime)!;
+      const [h, m] = hhmm.split(":").map(Number);
+      const total = h * 60 + m;
+      const startMin = Math.max(0, total - preset.toleranceMinutes);
+      const endMin = Math.min(24 * 60 - 1, total + preset.toleranceMinutes);
+      const fmt = (mins: number) =>
+        `${Math.floor(mins / 60).toString().padStart(2, "0")}:${(mins % 60)
+          .toString()
+          .padStart(2, "0")}`;
+      return { start: fmt(startMin), end: fmt(endMin) };
+    }
+    default:
+      return { start: null, end: null };
+  }
+}
+
 export interface Order {
   id: string;
   trackingId: string;
@@ -282,6 +316,14 @@ export function OrderFormProvider({
     const preset = timeWindowPresets.find((p) => p.id === presetId);
     setSelectedPreset(preset || null);
     if (preset) {
+      // Copy the preset's effective window into the form so the user sees
+      // what will actually be saved. Without this, start/end stayed empty
+      // and the order landed in DB with only a preset id — the runner would
+      // then have to resolve it. We still resolve there as defense-in-depth,
+      // but showing the values in the UI avoids silent behavior.
+      const { start, end } = derivePresetWindow(preset);
+      if (start) handleChange("timeWindowStart", start);
+      if (end) handleChange("timeWindowEnd", end);
       handleChange("strictness", null);
     }
   };
