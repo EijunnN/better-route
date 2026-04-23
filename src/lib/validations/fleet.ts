@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Fleet types (kept for backward compatibility)
+// Fleet classification — purely for display/filter. Not consumed by the solver.
 export const FLEET_TYPES = [
   "HEAVY_LOAD",
   "LIGHT_LOAD",
@@ -9,85 +9,35 @@ export const FLEET_TYPES = [
   "SPECIAL",
 ] as const;
 
-// New simplified fleet schema
-export const fleetSchema = z
-  .object({
-    name: z
-      .string()
-      .min(1, "Nombre es requerido")
-      .max(255, "Nombre demasiado largo"),
-    description: z
-      .string()
-      .max(500, "Descripción demasiado larga")
-      .optional()
-      .nullable(),
-
-    // M:N relationships
-    vehicleIds: z
-      .array(z.string().uuid("ID de vehículo inválido"))
-      .optional()
-      .default([]),
-    userIds: z
-      .array(z.string().uuid("ID de usuario inválido"))
-      .optional()
-      .default([]),
-
-    // Legacy fields (kept for backward compatibility)
-    type: z
-      .enum(FLEET_TYPES, {
-        message:
-          "Tipo debe ser HEAVY_LOAD, LIGHT_LOAD, EXPRESS, REFRIGERATED o SPECIAL",
-      })
-      .optional()
-      .nullable(),
-    weightCapacity: z
-      .number()
-      .positive("Capacidad de peso debe ser mayor a 0")
-      .optional()
-      .nullable(),
-    volumeCapacity: z
-      .number()
-      .positive("Capacidad de volumen debe ser mayor a 0")
-      .optional()
-      .nullable(),
-    operationStart: z
-      .string()
-      .regex(
-        /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
-        "Formato de hora inicio debe ser HH:MM",
-      )
-      .optional()
-      .nullable(),
-    operationEnd: z
-      .string()
-      .regex(
-        /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
-        "Formato de hora fin debe ser HH:MM",
-      )
-      .optional()
-      .nullable(),
-
-    active: z.boolean().default(true),
-  })
-  .refine(
-    (data) => {
-      // Validate operation times if both are provided
-      if (data.operationStart && data.operationEnd) {
-        const [startHour, startMin] = data.operationStart
-          .split(":")
-          .map(Number);
-        const [endHour, endMin] = data.operationEnd.split(":").map(Number);
-        const startMinutes = startHour * 60 + startMin;
-        const endMinutes = endHour * 60 + endMin;
-        return endMinutes > startMinutes;
-      }
-      return true;
-    },
-    {
-      message: "Hora fin debe ser posterior a hora inicio",
-      path: ["operationEnd"],
-    },
-  );
+export const fleetSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Nombre es requerido")
+    .max(255, "Nombre demasiado largo"),
+  description: z
+    .string()
+    .max(500, "Descripción demasiado larga")
+    .optional()
+    .nullable(),
+  // Vehicles belong to fleets via vehicle_fleets M:N. userIds kept for
+  // primary/secondary fleet assignments updated from this form.
+  vehicleIds: z
+    .array(z.string().uuid("ID de vehículo inválido"))
+    .optional()
+    .default([]),
+  userIds: z
+    .array(z.string().uuid("ID de usuario inválido"))
+    .optional()
+    .default([]),
+  type: z
+    .enum(FLEET_TYPES, {
+      message:
+        "Tipo debe ser HEAVY_LOAD, LIGHT_LOAD, EXPRESS, REFRIGERATED o SPECIAL",
+    })
+    .optional()
+    .nullable(),
+  active: z.boolean().default(true),
+});
 
 export const updateFleetSchema = z.object({
   id: z.string().uuid("ID de flota inválido"),
@@ -95,20 +45,7 @@ export const updateFleetSchema = z.object({
   description: z.string().max(500).optional().nullable(),
   vehicleIds: z.array(z.string().uuid()).optional(),
   userIds: z.array(z.string().uuid()).optional(),
-  // Legacy fields
   type: z.enum(FLEET_TYPES).optional().nullable(),
-  weightCapacity: z.number().positive().optional().nullable(),
-  volumeCapacity: z.number().positive().optional().nullable(),
-  operationStart: z
-    .string()
-    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
-    .optional()
-    .nullable(),
-  operationEnd: z
-    .string()
-    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
-    .optional()
-    .nullable(),
   active: z.boolean().optional(),
 });
 

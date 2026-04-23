@@ -9,7 +9,6 @@ import {
 import {
   fleets,
   vehicleFleets,
-  userFleetPermissions,
   userSecondaryFleets,
   vehicleFleetHistory,
 } from "./fleets";
@@ -83,7 +82,6 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   availability: many(userAvailability),
   secondaryFleets: many(userSecondaryFleets),
   statusHistory: many(userDriverStatusHistory),
-  fleetPermissions: many(userFleetPermissions),
   assignedVehicles: many(vehicles),
   userRoles: many(userRoles),
 }));
@@ -96,7 +94,6 @@ export const fleetsRelations = relations(fleets, ({ one, many }) => ({
   vehicleFleets: many(vehicleFleets),
   primaryUsers: many(users),
   secondaryUsers: many(userSecondaryFleets),
-  userPermissions: many(userFleetPermissions),
 }));
 
 export const vehiclesRelations = relations(vehicles, ({ one, many }) => ({
@@ -128,24 +125,6 @@ export const vehicleFleetsRelations = relations(vehicleFleets, ({ one }) => ({
     references: [fleets.id],
   }),
 }));
-
-export const userFleetPermissionsRelations = relations(
-  userFleetPermissions,
-  ({ one }) => ({
-    company: one(companies, {
-      fields: [userFleetPermissions.companyId],
-      references: [companies.id],
-    }),
-    user: one(users, {
-      fields: [userFleetPermissions.userId],
-      references: [users.id],
-    }),
-    fleet: one(fleets, {
-      fields: [userFleetPermissions.fleetId],
-      references: [fleets.id],
-    }),
-  }),
-);
 
 export const vehicleSkillsRelations = relations(
   vehicleSkills,

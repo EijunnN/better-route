@@ -10,15 +10,10 @@ export interface Fleet {
   name: string;
   description?: string | null;
   type?: string | null;
-  weightCapacity?: number | null;
-  volumeCapacity?: number | null;
-  operationStart?: string | null;
-  operationEnd?: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
   vehicleIds?: string[];
-  userIds?: string[];
 }
 
 export interface VehicleWithFleets {
@@ -28,17 +23,9 @@ export interface VehicleWithFleets {
   fleets: Array<{ id: string; name: string }>;
 }
 
-export interface UserWithFleets {
-  id: string;
-  name: string;
-  role: string;
-  fleets: Array<{ id: string; name: string }>;
-}
-
 export interface FleetsState {
   fleets: Fleet[];
   vehicles: VehicleWithFleets[];
-  users: UserWithFleets[];
   isLoading: boolean;
   error: string | null;
   showForm: boolean;
@@ -88,7 +75,6 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
 
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [vehicles, setVehicles] = useState<VehicleWithFleets[]>([]);
-  const [users, setUsers] = useState<UserWithFleets[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -111,7 +97,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const fetchVehiclesAndUsers = async (signal?: AbortSignal) => {
+  const fetchVehicles = async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const vehiclesRes = await fetch("/api/vehicles", { headers: { "x-company-id": companyId }, signal });
@@ -123,25 +109,12 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
           name: v.name || v.plate || "Sin nombre",
           plate: v.plate,
           fleets: v.fleets || [],
-        })
+        }),
       );
       setVehicles(vehiclesWithFleets);
-
-      const usersRes = await fetch("/api/users", { headers: { "x-company-id": companyId }, signal });
-      const usersData = await usersRes.json();
-      const usersList = usersData.data || [];
-      const usersWithFleets: UserWithFleets[] = usersList
-        .filter((u: { role: string }) => u.role === "ADMIN_FLOTA" || u.role === "PLANIFICADOR" || u.role === "ADMIN_SISTEMA" || u.role === "MONITOR")
-        .map((u: { id: string; name: string; role: string; fleetPermissions?: Array<{ id: string; name: string }> }) => ({
-          id: u.id,
-          name: u.name,
-          role: u.role,
-          fleets: u.fleetPermissions || [],
-        }));
-      setUsers(usersWithFleets);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      console.error("Error fetching vehicles/users:", error);
+      console.error("Error fetching vehicles:", error);
     }
   };
 
@@ -152,7 +125,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
 
     Promise.all([
       fetchFleets(controller.signal),
-      fetchVehiclesAndUsers(controller.signal),
+      fetchVehicles(controller.signal),
     ]).catch(() => {
       // Ignore abort errors
     });
@@ -172,7 +145,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
         const error = await response.json();
         throw new Error(error.error || "Error al crear flota");
       }
-      await Promise.all([fetchFleets(), fetchVehiclesAndUsers()]);
+      await Promise.all([fetchFleets(), fetchVehicles()]);
       setShowForm(false);
       toast({ title: "Flota creada", description: `La flota "${data.name}" ha sido creada exitosamente.` });
     } catch (err) {
@@ -197,7 +170,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
         const error = await response.json();
         throw new Error(error.error || "Error al actualizar flota");
       }
-      await Promise.all([fetchFleets(), fetchVehiclesAndUsers()]);
+      await Promise.all([fetchFleets(), fetchVehicles()]);
       setEditingFleet(null);
       toast({ title: "Flota actualizada", description: `La flota "${data.name}" ha sido actualizada exitosamente.` });
     } catch (err) {
@@ -223,7 +196,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
         const error = await response.json();
         throw new Error(error.error || error.details || "Error al desactivar la flota");
       }
-      await Promise.all([fetchFleets(), fetchVehiclesAndUsers()]);
+      await Promise.all([fetchFleets(), fetchVehicles()]);
       toast({
         title: "Flota desactivada",
         description: fleet ? `La flota "${fleet.name}" ha sido desactivada.` : "La flota ha sido desactivada.",
@@ -244,7 +217,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     setEditingFleet(null);
   };
 
-  const state: FleetsState = { fleets, vehicles, users, isLoading, error, showForm, editingFleet, deletingId };
+  const state: FleetsState = { fleets, vehicles, isLoading, error, showForm, editingFleet, deletingId };
   const actions: FleetsActions = { fetchFleets, handleCreate, handleUpdate, handleDelete, setShowForm, setEditingFleet, cancelForm };
   const meta: FleetsMeta = { companyId, isReady, isSystemAdmin, companies, selectedCompanyId, setSelectedCompanyId, authCompanyId };
 

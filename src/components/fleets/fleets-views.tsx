@@ -154,7 +154,6 @@ export function FleetsFormView() {
               : undefined
           }
           vehicles={state.vehicles}
-          users={state.users}
           submitLabel={state.editingFleet ? "Actualizar" : "Crear"}
           onCancel={actions.cancelForm}
         />

@@ -1,10 +1,8 @@
 import {
   boolean,
   index,
-  integer,
   pgTable,
   text,
-  time,
   timestamp,
   uniqueIndex,
   uuid,
@@ -14,7 +12,9 @@ import { companies } from "./companies";
 import { users } from "./users";
 import { vehicles } from "./vehicles";
 
-// Fleet types (kept for backward compatibility)
+// Fleet categories — used for filtering lists and for display badges on
+// monitoring/detail views. Purely classification; the solver doesn't branch
+// on this value, so unused values here are harmless.
 export const FLEET_TYPES = {
   HEAVY_LOAD: "HEAVY_LOAD",
   LIGHT_LOAD: "LIGHT_LOAD",
@@ -30,12 +30,7 @@ export const fleets = pgTable("fleets", {
     .references(() => companies.id, { onDelete: "restrict" }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  // Campos legacy (mantenidos para compatibilidad)
   type: varchar("type", { length: 50 }).$type<keyof typeof FLEET_TYPES>(),
-  weightCapacity: integer("weight_capacity"),
-  volumeCapacity: integer("volume_capacity"),
-  operationStart: time("operation_start"),
-  operationEnd: time("operation_end"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -62,23 +57,6 @@ export const vehicleFleets = pgTable("vehicle_fleets", {
   uniqueIndex("vehicle_fleets_vehicle_fleet_idx").on(table.vehicleId, table.fleetId),
   index("vehicle_fleets_fleet_id_idx").on(table.fleetId),
 ]);
-
-// User-Fleet permissions (for viewing fleets)
-export const userFleetPermissions = pgTable("user_fleet_permissions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "restrict" }),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  fleetId: uuid("fleet_id")
-    .notNull()
-    .references(() => fleets.id, { onDelete: "cascade" }),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
 
 // Secondary fleets for users (many-to-many relationship, renamed from driver_secondary_fleets)
 export const userSecondaryFleets = pgTable("user_secondary_fleets", {

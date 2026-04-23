@@ -4,8 +4,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   fleets,
-  userFleetPermissions,
-  users,
   vehicleFleets,
   vehicles,
 } from "@/db/schema";
@@ -31,7 +29,6 @@ export async function GET(
 
     const { id } = await params;
 
-    // Apply tenant filtering
     const whereClause = withTenantFilter(
       fleets,
       [eq(fleets.id, id)],
@@ -44,7 +41,6 @@ export async function GET(
       return NextResponse.json({ error: "Fleet not found" }, { status: 404 });
     }
 
-    // Get related vehicles
     const relatedVehicles = await db
       .select({
         id: vehicles.id,
@@ -57,30 +53,11 @@ export async function GET(
         and(eq(vehicleFleets.fleetId, id), eq(vehicleFleets.active, true)),
       );
 
-    // Get related users with permissions
-    const relatedUsers = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        role: users.role,
-      })
-      .from(userFleetPermissions)
-      .innerJoin(users, eq(userFleetPermissions.userId, users.id))
-      .where(
-        and(
-          eq(userFleetPermissions.fleetId, id),
-          eq(userFleetPermissions.active, true),
-        ),
-      );
-
     return NextResponse.json({
       ...fleet,
       vehicles: relatedVehicles,
-      users: relatedUsers,
       vehicleIds: relatedVehicles.map((v) => v.id),
-      userIds: relatedUsers.map((u) => u.id),
       vehicleCount: relatedVehicles.length,
-      userCount: relatedUsers.length,
     });
   } catch (error) {
     after(() => console.error("Error fetching fleet:", error));
@@ -109,7 +86,6 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = updateFleetSchema.parse({ ...body, id });
 
-    // Apply tenant filtering when fetching existing fleet
     const existingWhereClause = withTenantFilter(
       fleets,
       [eq(fleets.id, id)],
@@ -126,7 +102,6 @@ export async function PATCH(
       return NextResponse.json({ error: "Fleet not found" }, { status: 404 });
     }
 
-    // Check for duplicate fleet name within the same company (if name is being updated)
     if (validatedData.name && validatedData.name !== existingFleet.name) {
       const duplicateFleet = await db
         .select()
@@ -148,10 +123,10 @@ export async function PATCH(
       }
     }
 
-    // Extract M:N relationship IDs
-    const { id: _, vehicleIds, userIds, ...updateData } = validatedData;
+    // userIds is accepted for backwards compatibility but ignored — user↔fleet
+    // mapping lives on primaryFleetId/userSecondaryFleets, managed in /users.
+    const { id: _, vehicleIds, ...updateData } = validatedData;
 
-    // Update fleet data
     const [updatedFleet] = await db
       .update(fleets)
       .set({
@@ -161,17 +136,13 @@ export async function PATCH(
       .where(existingWhereClause)
       .returning();
 
-    // Update vehicle relationships if provided
     if (vehicleIds !== undefined) {
-      // Deactivate existing relationships
       await db
         .update(vehicleFleets)
         .set({ active: false, updatedAt: new Date() })
         .where(eq(vehicleFleets.fleetId, id));
 
-      // Create new relationships
       if (vehicleIds.length > 0) {
-        // Check if relationships already exist and reactivate or create new ones
         for (const vehicleId of vehicleIds) {
           const existing = await db
             .select()
@@ -201,46 +172,6 @@ export async function PATCH(
       }
     }
 
-    // Update user permission relationships if provided
-    if (userIds !== undefined) {
-      // Deactivate existing relationships
-      await db
-        .update(userFleetPermissions)
-        .set({ active: false, updatedAt: new Date() })
-        .where(eq(userFleetPermissions.fleetId, id));
-
-      // Create new relationships
-      if (userIds.length > 0) {
-        for (const userId of userIds) {
-          const existing = await db
-            .select()
-            .from(userFleetPermissions)
-            .where(
-              and(
-                eq(userFleetPermissions.fleetId, id),
-                eq(userFleetPermissions.userId, userId),
-              ),
-            )
-            .limit(1);
-
-          if (existing.length > 0) {
-            await db
-              .update(userFleetPermissions)
-              .set({ active: true, updatedAt: new Date() })
-              .where(eq(userFleetPermissions.id, existing[0].id));
-          } else {
-            await db.insert(userFleetPermissions).values({
-              companyId: tenantCtx.companyId,
-              userId,
-              fleetId: id,
-              active: true,
-            });
-          }
-        }
-      }
-    }
-
-    // Get updated relationships for response
     const relatedVehicles = await db
       .select({
         id: vehicles.id,
@@ -253,29 +184,12 @@ export async function PATCH(
         and(eq(vehicleFleets.fleetId, id), eq(vehicleFleets.active, true)),
       );
 
-    const relatedUsers = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        role: users.role,
-      })
-      .from(userFleetPermissions)
-      .innerJoin(users, eq(userFleetPermissions.userId, users.id))
-      .where(
-        and(
-          eq(userFleetPermissions.fleetId, id),
-          eq(userFleetPermissions.active, true),
-        ),
-      );
-
-    // Log update (non-blocking)
     after(async () => {
       await logUpdate("fleet", id, {
         before: existingFleet,
         after: {
           ...updatedFleet,
           vehicleIds: relatedVehicles.map((v) => v.id),
-          userIds: relatedUsers.map((u) => u.id),
         },
       });
     });
@@ -283,9 +197,7 @@ export async function PATCH(
     return NextResponse.json({
       ...updatedFleet,
       vehicles: relatedVehicles,
-      users: relatedUsers,
       vehicleCount: relatedVehicles.length,
-      userCount: relatedUsers.length,
     });
   } catch (error) {
     after(() => console.error("Error updating fleet:", error));
@@ -321,7 +233,6 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Apply tenant filtering when fetching existing fleet
     const whereClause = withTenantFilter(
       fleets,
       [eq(fleets.id, id)],
@@ -338,7 +249,6 @@ export async function DELETE(
       return NextResponse.json({ error: "Fleet not found" }, { status: 404 });
     }
 
-    // Check if there are active vehicles in this fleet via M:N
     const [activeVehicleCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(vehicleFleets)
@@ -346,18 +256,6 @@ export async function DELETE(
         and(eq(vehicleFleets.fleetId, id), eq(vehicleFleets.active, true)),
       );
 
-    // Check if there are active user permissions
-    const [activeUserCount] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(userFleetPermissions)
-      .where(
-        and(
-          eq(userFleetPermissions.fleetId, id),
-          eq(userFleetPermissions.active, true),
-        ),
-      );
-
-    // Allow deletion but deactivate relationships first
     if (Number(activeVehicleCount.count) > 0) {
       await db
         .update(vehicleFleets)
@@ -365,14 +263,6 @@ export async function DELETE(
         .where(eq(vehicleFleets.fleetId, id));
     }
 
-    if (Number(activeUserCount.count) > 0) {
-      await db
-        .update(userFleetPermissions)
-        .set({ active: false, updatedAt: new Date() })
-        .where(eq(userFleetPermissions.fleetId, id));
-    }
-
-    // Soft delete - set active to false
     await db
       .update(fleets)
       .set({
@@ -381,7 +271,6 @@ export async function DELETE(
       })
       .where(whereClause);
 
-    // Log deletion (non-blocking)
     after(async () => {
       await logDelete("fleet", id, existingFleet);
     });
@@ -390,7 +279,6 @@ export async function DELETE(
       success: true,
       message: "Flota desactivada exitosamente",
       deactivatedVehicles: Number(activeVehicleCount.count),
-      deactivatedPermissions: Number(activeUserCount.count),
     });
   } catch (error) {
     after(() => console.error("Error deleting fleet:", error));

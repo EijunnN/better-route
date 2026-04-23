@@ -78,6 +78,13 @@
       "when": 1776666514083,
       "tag": "0010_burly_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1776924688373,
+      "tag": "0011_fuzzy_dragon_lord",
+      "breakpoints": true
     }
   ]
 }

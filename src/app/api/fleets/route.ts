@@ -3,8 +3,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   fleets,
-  userFleetPermissions,
-  users,
   vehicleFleets,
   vehicles,
 } from "@/db/schema";
@@ -61,20 +59,15 @@ export async function GET(request: NextRequest) {
         .where(whereClause),
     ]);
 
-    // Get related vehicles and users for each fleet
+    // Get related vehicles for each fleet
     const fleetIds = fleetsData.map((f) => f.id);
 
     const fleetVehicles: Record<
       string,
       Array<{ id: string; name: string; plate: string | null }>
     > = {};
-    const fleetUsers: Record<
-      string,
-      Array<{ id: string; name: string; role: string }>
-    > = {};
 
     if (fleetIds.length > 0) {
-      // Get vehicles for each fleet
       const vehicleRelations = await db
         .select({
           fleetId: vehicleFleets.fleetId,
@@ -91,7 +84,6 @@ export async function GET(request: NextRequest) {
           ),
         );
 
-      // Group vehicles by fleet
       for (const rel of vehicleRelations) {
         if (!fleetVehicles[rel.fleetId]) {
           fleetVehicles[rel.fleetId] = [];
@@ -102,49 +94,15 @@ export async function GET(request: NextRequest) {
           plate: rel.vehiclePlate,
         });
       }
-
-      // Get users for each fleet
-      const userRelations = await db
-        .select({
-          fleetId: userFleetPermissions.fleetId,
-          userId: userFleetPermissions.userId,
-          userName: users.name,
-          userRole: users.role,
-        })
-        .from(userFleetPermissions)
-        .innerJoin(users, eq(userFleetPermissions.userId, users.id))
-        .where(
-          and(
-            inArray(userFleetPermissions.fleetId, fleetIds),
-            eq(userFleetPermissions.active, true),
-          ),
-        );
-
-      // Group users by fleet
-      for (const rel of userRelations) {
-        if (!fleetUsers[rel.fleetId]) {
-          fleetUsers[rel.fleetId] = [];
-        }
-        fleetUsers[rel.fleetId].push({
-          id: rel.userId,
-          name: rel.userName,
-          role: rel.userRole,
-        });
-      }
     }
 
-    // Combine data
     const data = fleetsData.map((fleet) => {
       const vehicles = fleetVehicles[fleet.id] || [];
-      const users = fleetUsers[fleet.id] || [];
       return {
         ...fleet,
         vehicles,
-        users,
         vehicleIds: vehicles.map((v) => v.id),
-        userIds: users.map((u) => u.id),
         vehicleCount: vehicles.length,
-        userCount: users.length,
       };
     });
 
@@ -196,27 +154,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract M:N relationship IDs
-    const { vehicleIds, userIds, ...fleetData } = validatedData;
+    // Extract M:N relationship IDs. userIds is accepted for backwards
+    // compatibility with older clients but ignored — user↔fleet mapping lives
+    // on users.primaryFleetId + userSecondaryFleets, edited from /users.
+    const { vehicleIds, ...fleetData } = validatedData;
 
-    // Create the fleet
     const [newFleet] = await db
       .insert(fleets)
       .values({
         name: fleetData.name,
         description: fleetData.description,
         type: fleetData.type,
-        weightCapacity: fleetData.weightCapacity,
-        volumeCapacity: fleetData.volumeCapacity,
-        operationStart: fleetData.operationStart,
-        operationEnd: fleetData.operationEnd,
         active: fleetData.active,
         companyId: tenantCtx.companyId,
         updatedAt: new Date(),
       })
       .returning();
 
-    // Create vehicle-fleet relationships
     if (vehicleIds && vehicleIds.length > 0) {
       await db.insert(vehicleFleets).values(
         vehicleIds.map((vehicleId) => ({
@@ -228,25 +182,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user-fleet permission relationships
-    if (userIds && userIds.length > 0) {
-      await db.insert(userFleetPermissions).values(
-        userIds.map((userId) => ({
-          companyId: tenantCtx.companyId,
-          userId,
-          fleetId: newFleet.id,
-          active: true,
-        })),
-      );
-    }
-
-    // Get the related vehicles and users for the response
     let responseVehicles: Array<{
       id: string;
       name: string;
       plate: string | null;
     }> = [];
-    let responseUsers: Array<{ id: string; name: string; role: string }> = [];
 
     if (vehicleIds && vehicleIds.length > 0) {
       const vehicleData = await db
@@ -256,24 +196,13 @@ export async function POST(request: NextRequest) {
       responseVehicles = vehicleData;
     }
 
-    if (userIds && userIds.length > 0) {
-      const userData = await db
-        .select({ id: users.id, name: users.name, role: users.role })
-        .from(users)
-        .where(inArray(users.id, userIds));
-      responseUsers = userData;
-    }
-
-    // Log creation
-    await logCreate("fleet", newFleet.id, { ...newFleet, vehicleIds, userIds });
+    await logCreate("fleet", newFleet.id, { ...newFleet, vehicleIds });
 
     return NextResponse.json(
       {
         ...newFleet,
         vehicles: responseVehicles,
-        users: responseUsers,
         vehicleCount: responseVehicles.length,
-        userCount: responseUsers.length,
       },
       { status: 201 },
     );

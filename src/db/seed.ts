@@ -32,7 +32,6 @@ import {
   trackingTokens,
   userAvailability,
   userDriverStatusHistory,
-  userFleetPermissions,
   userRoles,
   userSecondaryFleets,
   userSkills,
@@ -78,7 +77,6 @@ async function seed() {
       await db.delete(userSecondaryFleets);
       await db.delete(userDriverStatusHistory);
       await db.delete(userSkills);
-      await db.delete(userFleetPermissions);
       await db.delete(vehicleStatusHistory);
       await db.delete(vehicleFleetHistory);
       await db.delete(vehicleSkillAssignments);
