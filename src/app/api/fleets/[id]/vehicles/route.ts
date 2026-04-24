@@ -76,9 +76,6 @@ export async function GET(
     if (query.status) {
       conditions.push(eq(vehicles.status, query.status));
     }
-    if (query.type) {
-      conditions.push(eq(vehicles.type, query.type));
-    }
     if (query.active !== undefined) {
       conditions.push(eq(vehicles.active, query.active));
     }

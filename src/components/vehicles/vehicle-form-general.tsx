@@ -14,11 +14,6 @@ import {
 } from "@/components/ui/select";
 import { useVehicleForm } from "./vehicle-form-context";
 
-const LOAD_TYPES = [
-  { value: "LIGHT", label: "Liviano" },
-  { value: "HEAVY", label: "Pesado" },
-];
-
 const VEHICLE_STATUS = [
   { value: "AVAILABLE", label: "Disponible" },
   { value: "IN_MAINTENANCE", label: "En Mantenimiento" },
@@ -38,7 +33,7 @@ export function VehicleFormGeneral() {
         <CardContent className="pt-4 space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Name */}
-            <div className="space-y-2">
+            <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="name">Nombre del Vehículo *</Label>
               <Input
                 id="name"
@@ -51,27 +46,6 @@ export function VehicleFormGeneral() {
               {errors.name && (
                 <p className="text-xs text-destructive">{errors.name}</p>
               )}
-            </div>
-
-            {/* Load Type */}
-            <div className="space-y-2">
-              <Label htmlFor="loadType">Tipo de Carga</Label>
-              <Select
-                value={formData.loadType ?? ""}
-                onValueChange={(value) => updateField("loadType", value || null)}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger id="loadType">
-                  <SelectValue placeholder="Seleccionar" />
-                </SelectTrigger>
-                <SelectContent>
-                  {LOAD_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Use Name As Plate */}
@@ -106,6 +80,30 @@ export function VehicleFormGeneral() {
                 )}
               </div>
             )}
+
+            {/* Brand */}
+            <div className="space-y-2">
+              <Label htmlFor="brand">Marca</Label>
+              <Input
+                id="brand"
+                value={formData.brand ?? ""}
+                onChange={(e) => updateField("brand", e.target.value)}
+                disabled={isSubmitting}
+                placeholder="Ej: Volvo"
+              />
+            </div>
+
+            {/* Model */}
+            <div className="space-y-2">
+              <Label htmlFor="model">Modelo</Label>
+              <Input
+                id="model"
+                value={formData.model ?? ""}
+                onChange={(e) => updateField("model", e.target.value)}
+                disabled={isSubmitting}
+                placeholder="Ej: FH16"
+              />
+            </div>
 
             {/* Max Orders */}
             <div className="space-y-2">

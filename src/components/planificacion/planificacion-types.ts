@@ -3,7 +3,8 @@ export interface Vehicle {
   id: string;
   name: string;
   plate: string | null;
-  type: string | null;
+  brand: string | null;
+  model: string | null;
   weightCapacity: number | null;
   volumeCapacity: number | null;
   maxValueCapacity: number | null;

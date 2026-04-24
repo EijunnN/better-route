@@ -83,7 +83,7 @@ const TRUNCATE_SQL = sql`TRUNCATE TABLE
     optimization_configurations, orders,
     vehicle_fleets, vehicle_skill_assignments, vehicle_skills, user_skills,
     vehicle_fleet_history, vehicle_status_history,
-    user_fleet_permissions, user_secondary_fleets,
+    user_secondary_fleets,
     user_availability, user_driver_status_history,
     user_roles, role_permissions, permissions, roles,
     alert_notifications, alerts, alert_rules,

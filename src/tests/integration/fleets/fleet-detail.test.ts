@@ -83,9 +83,7 @@ describe("Fleet Detail - GET /api/fleets/[id]", () => {
     expect(data.companyId).toBe(company.id);
     expect(data.active).toBe(true);
     expect(data.vehicles).toBeInstanceOf(Array);
-    expect(data.users).toBeInstanceOf(Array);
     expect(typeof data.vehicleCount).toBe("number");
-    expect(typeof data.userCount).toBe("number");
   });
 
   test("returns fleet with associated vehicles", async () => {

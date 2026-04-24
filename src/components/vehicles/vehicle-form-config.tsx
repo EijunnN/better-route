@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LICENSE_CATEGORIES } from "@/lib/validations/vehicle";
 import { useVehicleForm } from "./vehicle-form-context";
 
 const SKILL_CATEGORY_LABELS: Record<string, string> = {
@@ -46,25 +47,67 @@ export function VehicleFormConfig() {
       <Card>
         <CardContent className="pt-4 space-y-4">
           <h4 className="font-medium text-sm">Conductor Asignado</h4>
-          <Select
-            value={formData.assignedDriverId ?? "__none__"}
-            onValueChange={(value) =>
-              updateField("assignedDriverId", value === "__none__" ? null : value)
-            }
-            disabled={isSubmitting}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Sin conductor asignado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">Sin conductor</SelectItem>
-              {drivers.map((driver) => (
-                <SelectItem key={driver.id} value={driver.id}>
-                  {driver.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="assignedDriverId" className="text-xs">
+                Conductor
+              </Label>
+              <Select
+                value={formData.assignedDriverId ?? "__none__"}
+                onValueChange={(value) =>
+                  updateField(
+                    "assignedDriverId",
+                    value === "__none__" ? null : value,
+                  )
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="assignedDriverId">
+                  <SelectValue placeholder="Sin conductor asignado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin conductor</SelectItem>
+                  {drivers.map((driver) => (
+                    <SelectItem key={driver.id} value={driver.id}>
+                      {driver.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="licenseRequired" className="text-xs">
+                Licencia mínima requerida
+              </Label>
+              <Select
+                value={formData.licenseRequired ?? "__none__"}
+                onValueChange={(value) =>
+                  updateField(
+                    "licenseRequired",
+                    value === "__none__"
+                      ? null
+                      : (value as (typeof LICENSE_CATEGORIES)[number]),
+                  )
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="licenseRequired">
+                  <SelectValue placeholder="No requiere" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No requiere</SelectItem>
+                  {LICENSE_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Categoría mínima de licencia que debe tener el conductor
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

@@ -57,9 +57,6 @@ export async function GET(request: NextRequest) {
     if (query.status) {
       conditions.push(eq(vehicles.status, query.status));
     }
-    if (query.type) {
-      conditions.push(eq(vehicles.type, query.type));
-    }
     if (query.active === false) {
       conditions.push(eq(vehicles.active, false));
     } else {
@@ -103,14 +100,14 @@ export async function GET(request: NextRequest) {
     }));
 
     const [{ count: total }] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(vehicles)
       .where(whereClause);
 
     return NextResponse.json({
       data: vehiclesWithFleets,
       meta: {
-        total,
+        total: Number(total),
         limit: query.limit,
         offset: query.offset,
       },
