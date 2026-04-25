@@ -23,6 +23,8 @@ import {
   Eye,
   Smartphone,
   FileSpreadsheet,
+  HelpCircle,
+  Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +46,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   useCustomFields,
   FIELD_TYPE_LABELS,
   type FieldDefinition,
@@ -51,6 +59,8 @@ import {
   type FieldType,
 } from "./custom-fields-context";
 import { FieldDefinitionDialog } from "./field-definition-dialog";
+import { CustomFieldsLearn } from "./custom-fields-learn";
+import { FieldFlowDialog } from "./field-flow-dialog";
 
 const FIELD_TYPE_ICON: Record<FieldType, typeof Type> = {
   text: Type,
@@ -92,6 +102,7 @@ export function CustomFieldsDashboardView() {
   const [activeTab, setActiveTab] = useState<FieldEntity>("orders");
   const [query, setQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [showLearnDialog, setShowLearnDialog] = useState(false);
 
   if (!meta.isReady || state.isLoading) {
     return (
@@ -118,6 +129,38 @@ export function CustomFieldsDashboardView() {
   }
 
   const hasAnyActive = state.definitions.some((d) => d.active);
+  const hasAnyDefinitions = state.definitions.length > 0;
+
+  // First-run experience: company has zero definitions (active or archived).
+  // Replace the whole dashboard with the educational view so the user doesn't
+  // see an empty interface they don't understand. Once they create one field
+  // (or archive it), the dashboard becomes the default and they reach the
+  // same content via the "¿Cómo funciona?" button.
+  if (!hasAnyDefinitions) {
+    return (
+      <div className="flex-1 bg-background p-8">
+        <div className="mx-auto max-w-5xl space-y-6">
+          <header className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Campos personalizados</h1>
+              <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
+                Antes de crear tu primer campo, leé cómo funciona el flujo
+                completo. Al terminar, vas a saber exactamente para qué sirve,
+                qué casos resuelve, y cómo se ve en cada pantalla del sistema.
+              </p>
+            </div>
+          </header>
+
+          <CustomFieldsLearn
+            asEmptyState
+            onPrimaryAction={() => actions.openCreateDialog("orders")}
+          />
+        </div>
+
+        <FieldDefinitionDialog />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 bg-background p-8">
@@ -130,12 +173,22 @@ export function CustomFieldsDashboardView() {
               entrega. Los cambios se aplican solo a los pedidos creados a partir de ahora.
             </p>
           </div>
-          <Can perm="company:update">
-            <Button size="sm" onClick={() => actions.openCreateDialog(activeTab)}>
-              <Plus className="h-4 w-4 mr-1.5" />
-              Nuevo campo
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowLearnDialog(true)}
+            >
+              <HelpCircle className="h-4 w-4 mr-1.5" />
+              ¿Cómo funciona?
             </Button>
-          </Can>
+            <Can perm="company:update">
+              <Button size="sm" onClick={() => actions.openCreateDialog(activeTab)}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Nuevo campo
+              </Button>
+            </Can>
+          </div>
         </header>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FieldEntity)}>
@@ -192,6 +245,15 @@ export function CustomFieldsDashboardView() {
       </div>
 
       <FieldDefinitionDialog />
+
+      <Dialog open={showLearnDialog} onOpenChange={setShowLearnDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cómo funcionan los campos personalizados</DialogTitle>
+          </DialogHeader>
+          <CustomFieldsLearn />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -363,6 +425,7 @@ interface DefinitionRowProps {
 function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps) {
   const { actions } = useCustomFields();
   const [isBusy, setIsBusy] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
 
   const handleArchive = async () => {
     setIsBusy(true);
@@ -402,6 +465,7 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
   const isArchived = kind === "archived";
 
   return (
+    <>
     <tr className={`border-b last:border-b-0 ${isArchived ? "opacity-60" : "hover:bg-muted/30"}`}>
       <td className="p-3">
         <Can perm="company:update" fallback={<span className="text-xs text-muted-foreground">—</span>}>
@@ -472,6 +536,15 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
       </td>
       <td className="p-3">
         <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+            onClick={() => setShowFlow(true)}
+            title="Ver dónde aparece este campo"
+          >
+            <Workflow className="h-3.5 w-3.5" />
+          </Button>
           <Can perm="company:update">
             <Button
               variant="ghost"
@@ -538,6 +611,12 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
         </div>
       </td>
     </tr>
+    <FieldFlowDialog
+      open={showFlow}
+      onOpenChange={setShowFlow}
+      definition={definition}
+    />
+    </>
   );
 }
 
