@@ -1,0 +1,1 @@
+ALTER TABLE "optimization_configurations" DROP COLUMN "capacity_enabled";

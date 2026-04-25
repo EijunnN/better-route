@@ -610,36 +610,6 @@ export function ConfigStep() {
           </CardContent>
         </Card>
 
-        {/* Capacity */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Restricciones de capacidad</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <Checkbox
-                id="capacity-enabled"
-                checked={state.capacityEnabled}
-                onCheckedChange={(checked) => actions.setCapacityEnabled(!!checked)}
-              />
-              <Label htmlFor="capacity-enabled" className="cursor-pointer">
-                <span className="text-sm">Respetar capacidad de vehículos</span>
-                <p className="text-xs text-muted-foreground">
-                  Considera{" "}
-                  {[
-                    state.companyProfile?.enableWeight && "peso",
-                    state.companyProfile?.enableVolume && "volumen",
-                    state.companyProfile?.enableUnits && "unidades",
-                    state.companyProfile?.enableOrderValue && "valorizado",
-                  ]
-                    .filter(Boolean)
-                    .join(", ") || "capacidad máxima"}
-                  {" "}de los vehículos
-                </p>
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Zone Warning */}

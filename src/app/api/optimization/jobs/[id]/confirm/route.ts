@@ -598,7 +598,6 @@ export async function POST(
       selectedVehicleIds: updatedConfiguration.selectedVehicleIds,
       selectedDriverIds: updatedConfiguration.selectedDriverIds,
       objective: updatedConfiguration.objective,
-      capacityEnabled: updatedConfiguration.capacityEnabled,
       workWindowStart: String(updatedConfiguration.workWindowStart),
       workWindowEnd: String(updatedConfiguration.workWindowEnd),
       serviceTimeMinutes: updatedConfiguration.serviceTimeMinutes,

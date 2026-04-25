@@ -43,8 +43,6 @@ export const optimizationConfigurations = pgTable(
       .notNull()
       .$type<keyof typeof OPTIMIZATION_OBJECTIVE>()
       .default("BALANCED"),
-    // Capacity constraints
-    capacityEnabled: boolean("capacity_enabled").notNull().default(true),
     // Time window settings
     workWindowStart: time("work_window_start").notNull(),
     workWindowEnd: time("work_window_end").notNull(),

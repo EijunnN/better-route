@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
+  BarChart3,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Eye,
   Loader2,
@@ -94,6 +97,202 @@ export function formatDate(dateStr: string | null): string {
 export function formatDistance(meters: number): string {
   if (meters < 1000) return `${meters}m`;
   return `${(meters / 1000).toFixed(1)}km`;
+}
+
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+function formatPercent(value: number): string {
+  return `${Math.round(value)}%`;
+}
+
+interface PlanMetrics {
+  totalRoutes: number;
+  totalStops: number;
+  totalDistance: number;
+  totalDuration: number;
+  averageUtilizationRate: number;
+  timeWindowComplianceRate: number;
+  totalTimeWindowViolations: number;
+  driverAssignmentCoverage: number;
+  averageAssignmentQuality: number;
+  assignmentsWithWarnings: number;
+  assignmentsWithErrors: number;
+  skillCoverage: number;
+  licenseCompliance: number;
+  fleetAlignment: number;
+  workloadBalance: number;
+  unassignedOrders: number;
+  processingTimeMs: number;
+}
+
+function MetricCell({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "good" | "warn" | "bad";
+}) {
+  const toneClass =
+    tone === "good"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : tone === "warn"
+        ? "text-amber-600 dark:text-amber-400"
+        : tone === "bad"
+          ? "text-red-600 dark:text-red-400"
+          : "text-foreground";
+  return (
+    <div className="space-y-0.5">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`text-sm font-semibold ${toneClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function toneFromPercent(value: number, inverted = false): "good" | "warn" | "bad" {
+  const v = inverted ? 100 - value : value;
+  if (v >= 80) return "good";
+  if (v >= 50) return "warn";
+  return "bad";
+}
+
+function JobMetricsExpansion({
+  jobId,
+  companyId,
+}: {
+  jobId: string;
+  companyId: string | null;
+}) {
+  const [metrics, setMetrics] = useState<PlanMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/optimization/jobs/${jobId}/metrics`, {
+          headers: { "x-company-id": companyId },
+        });
+        if (!res.ok) {
+          if (res.status === 404) {
+            if (!cancelled) {
+              setError("Métricas no disponibles (plan aún no confirmado)");
+              setLoading(false);
+            }
+            return;
+          }
+          throw new Error("Error al cargar métricas");
+        }
+        const data = await res.json();
+        if (!cancelled) {
+          setMetrics(data.metrics);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Error inesperado");
+          setLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [jobId, companyId]);
+
+  if (loading) {
+    return (
+      <div className="px-3 py-3 border-t flex items-center gap-2 text-xs text-muted-foreground">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        Cargando métricas...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="px-3 py-2 border-t text-xs text-muted-foreground italic">
+        {error}
+      </div>
+    );
+  }
+
+  if (!metrics) return null;
+
+  return (
+    <div className="px-3 pt-2 pb-3 border-t bg-muted/20 space-y-2">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4 lg:grid-cols-6">
+        <MetricCell label="Rutas" value={String(metrics.totalRoutes)} />
+        <MetricCell label="Paradas" value={String(metrics.totalStops)} />
+        <MetricCell label="Distancia" value={formatDistance(metrics.totalDistance)} />
+        <MetricCell label="Duración" value={formatDuration(metrics.totalDuration)} />
+        <MetricCell
+          label="Utilización"
+          value={formatPercent(metrics.averageUtilizationRate)}
+          tone={toneFromPercent(metrics.averageUtilizationRate)}
+        />
+        <MetricCell
+          label="Sin asignar"
+          value={String(metrics.unassignedOrders)}
+          tone={metrics.unassignedOrders === 0 ? "good" : "warn"}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4 lg:grid-cols-6">
+        <MetricCell
+          label="Ventanas tiempo"
+          value={formatPercent(metrics.timeWindowComplianceRate)}
+          tone={toneFromPercent(metrics.timeWindowComplianceRate)}
+        />
+        <MetricCell
+          label="Asign. conductor"
+          value={formatPercent(metrics.driverAssignmentCoverage)}
+          tone={toneFromPercent(metrics.driverAssignmentCoverage)}
+        />
+        <MetricCell
+          label="Calidad asign."
+          value={formatPercent(metrics.averageAssignmentQuality)}
+          tone={toneFromPercent(metrics.averageAssignmentQuality)}
+        />
+        <MetricCell
+          label="Skills"
+          value={formatPercent(metrics.skillCoverage)}
+          tone={toneFromPercent(metrics.skillCoverage)}
+        />
+        <MetricCell
+          label="Licencias"
+          value={formatPercent(metrics.licenseCompliance)}
+          tone={toneFromPercent(metrics.licenseCompliance)}
+        />
+        <MetricCell
+          label="Balance carga"
+          value={formatPercent(metrics.workloadBalance)}
+          tone={toneFromPercent(metrics.workloadBalance)}
+        />
+      </div>
+      {(metrics.assignmentsWithWarnings > 0 || metrics.assignmentsWithErrors > 0) && (
+        <div className="text-[11px] text-muted-foreground flex gap-3 pt-1 border-t">
+          {metrics.assignmentsWithWarnings > 0 && (
+            <span className="text-amber-600 dark:text-amber-400">
+              {metrics.assignmentsWithWarnings} asignacion(es) con advertencias
+            </span>
+          )}
+          {metrics.assignmentsWithErrors > 0 && (
+            <span className="text-red-600 dark:text-red-400">
+              {metrics.assignmentsWithErrors} con errores
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Helper Components
@@ -218,12 +417,15 @@ export function HistorialEmpty() {
 }
 
 export function HistorialJobCard({ job }: { job: OptimizationJob }) {
-  const { actions } = useHistorial();
+  const { meta } = useHistorial();
+  const [showMetrics, setShowMetrics] = useState(false);
   // Show "Confirmado" when job is COMPLETED and configuration was confirmed
   const effectiveStatus = job.status === "COMPLETED" && job.configurationStatus === "CONFIRMED"
     ? "CONFIRMED"
     : job.status;
   const statusConfig = getStatusConfig(effectiveStatus);
+  // Plan metrics only exist after confirm. Cancelled/failed jobs have no row.
+  const canShowMetrics = effectiveStatus === "CONFIRMED";
 
   return (
     <Card
@@ -268,9 +470,24 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
             </div>
           </div>
 
+          {canShowMetrics && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowMetrics((v) => !v)}
+              title={showMetrics ? "Ocultar métricas" : "Ver métricas detalladas"}
+            >
+              <BarChart3 className="w-4 h-4 mr-1" />
+              {showMetrics ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </Button>
+          )}
+
           <HistorialJobActions job={job} />
         </div>
       </CardContent>
+      {canShowMetrics && showMetrics && (
+        <JobMetricsExpansion jobId={job.id} companyId={meta.companyId} />
+      )}
     </Card>
   );
 }

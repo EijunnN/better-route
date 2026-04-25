@@ -49,7 +49,6 @@ export function usePlanificacionState() {
   const [planTime, setPlanTime] = useState("08:00");
   const [objective, setObjective] = useState("BALANCED");
   const [serviceTime, setServiceTime] = useState(10);
-  const [capacityEnabled, setCapacityEnabled] = useState(true);
   // NULL means "use company default" — matches the DB semantics exactly.
   const [optimizationPresetId, setOptimizationPresetId] = useState<string | null>(null);
   const [availablePresets, setAvailablePresets] = useState<
@@ -140,8 +139,6 @@ export function usePlanificacionState() {
     setObjective,
     serviceTime,
     setServiceTime,
-    capacityEnabled,
-    setCapacityEnabled,
     optimizationPresetId,
     setOptimizationPresetId,
     availablePresets,
