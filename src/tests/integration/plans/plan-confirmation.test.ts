@@ -309,8 +309,8 @@ describe("POST /api/optimization/jobs/[id]/confirm", () => {
     expect(response.status).toBe(404);
   });
 
-  // ---- 7. Config not DRAFT (e.g. CONFIGURED) --------------------------------
-  test("returns 409 when config status is not DRAFT", async () => {
+  // ---- 7. Config in terminal status (CONFIRMED/CANCELLED) -------------------
+  test("returns 409 when config status is not DRAFT or CONFIGURED", async () => {
     const company = await createCompany();
     const planner = await createPlanner(company.id);
     const driver = await createDriver(company.id);
@@ -319,7 +319,7 @@ describe("POST /api/optimization/jobs/[id]/confirm", () => {
 
     const config = await createOptimizationConfig({
       companyId: company.id,
-      status: "CONFIGURED",
+      status: "CONFIRMED",
     });
     const result = buildOptimizationResult([
       {
@@ -363,7 +363,7 @@ describe("POST /api/optimization/jobs/[id]/confirm", () => {
     expect(response.status).toBe(409);
 
     const body = await response.json();
-    expect(body.error).toContain("CONFIGURED");
+    expect(body.error).toContain("already been confirmed");
   });
 
   // ---- 8. No routes in result -----------------------------------------------

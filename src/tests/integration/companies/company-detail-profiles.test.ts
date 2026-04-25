@@ -1182,14 +1182,14 @@ describe("Company Detail, Profiles & Field Definitions", () => {
   // -------------------------------------------------------------------------
   // 47. Company profiles - GET 401 without companyId header
   // -------------------------------------------------------------------------
-  test("GET /api/company-profiles returns 401 without companyId header", async () => {
+  test("GET /api/company-profiles returns 400 without companyId header (ADMIN_SISTEMA)", async () => {
     const request = await createTestRequest("/api/company-profiles", {
       token: adminToken,
       userId: admin.id,
     });
     const response = await profileGET(request);
 
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(400);
   });
 
   // -------------------------------------------------------------------------
@@ -1306,7 +1306,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
   // -------------------------------------------------------------------------
   // 51. Company profiles - POST returns 401 without companyId
   // -------------------------------------------------------------------------
-  test("POST /api/company-profiles returns 401 without companyId", async () => {
+  test("POST /api/company-profiles returns 400 without companyId (ADMIN_SISTEMA)", async () => {
     const request = await createTestRequest("/api/company-profiles", {
       method: "POST",
       token: adminToken,
@@ -1318,7 +1318,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
     const response = await profilePOST(request);
 
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(400);
   });
 
   // -------------------------------------------------------------------------
@@ -1355,7 +1355,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
   // -------------------------------------------------------------------------
   // 53. Company profiles - DELETE returns 401 without companyId
   // -------------------------------------------------------------------------
-  test("DELETE /api/company-profiles returns 401 without companyId", async () => {
+  test("DELETE /api/company-profiles returns 400 without companyId (ADMIN_SISTEMA)", async () => {
     const request = await createTestRequest("/api/company-profiles", {
       method: "DELETE",
       token: adminToken,
@@ -1363,7 +1363,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
     const response = await profileDELETE(request);
 
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(400);
   });
 
   // -------------------------------------------------------------------------

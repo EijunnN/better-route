@@ -297,7 +297,7 @@ export async function DELETE(
 
     // Check if there are active vehicle assignments in this zone
     const [activeVehicleCount] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(zoneVehicles)
       .where(and(eq(zoneVehicles.zoneId, id), eq(zoneVehicles.active, true)));
 

@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     // Get total count efficiently with COUNT(*)
     const [{ count: total }] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(optimizationJobs)
       .where(
         and(

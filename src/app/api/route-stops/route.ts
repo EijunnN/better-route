@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
 
     // Get total count
     const countResult = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(routeStops)
       .where(and(...conditions));
 

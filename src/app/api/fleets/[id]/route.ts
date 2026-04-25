@@ -250,7 +250,7 @@ export async function DELETE(
     }
 
     const [activeVehicleCount] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(vehicleFleets)
       .where(
         and(eq(vehicleFleets.fleetId, id), eq(vehicleFleets.active, true)),

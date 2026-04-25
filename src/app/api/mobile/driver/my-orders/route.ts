@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
 
     // Obtener el total de pedidos (sin paginacion)
     const countResult = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(orders)
       .where(filterCondition);
 
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
     const summaryResult = await db
       .select({
         status: orders.status,
-        count: sql<number>`count(*)`,
+        count: sql<number>`count(*)::int`,
       })
       .from(orders)
       .where(baseCondition)

@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       }),
       // Get active alerts count
       db
-        .select({ count: sql<number>`count(*)` })
+        .select({ count: sql<number>`count(*)::int` })
         .from(alerts)
         .where(
           and(

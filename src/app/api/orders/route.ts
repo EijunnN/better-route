@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
       .offset(query.offset);
 
     const [{ count: total }] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(orders)
       .where(whereClause);
 

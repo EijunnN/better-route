@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         .limit(query.limit)
         .offset(query.offset),
       db
-        .select({ count: sql<number>`count(*)` })
+        .select({ count: sql<number>`count(*)::int` })
         .from(zones)
         .where(whereClause),
     ]);

@@ -95,7 +95,7 @@ export async function GET(
         .orderBy(desc(vehicles.createdAt))
         .limit(query.limit)
         .offset(query.offset),
-      db.select({ count: sql<number>`count(*)` }).from(vehicles).where(whereClause),
+      db.select({ count: sql<number>`count(*)::int` }).from(vehicles).where(whereClause),
     ]);
 
     return NextResponse.json({

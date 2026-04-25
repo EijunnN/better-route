@@ -306,19 +306,23 @@ export async function POST(request: NextRequest) {
  * - location: Última ubicación o null si no hay registros
  */
 export async function GET(request: NextRequest) {
-  const authResult = await requireRoutePermission(
-    request,
-    EntityType.DRIVER,
-    Action.READ,
-  );
-  if (authResult instanceof NextResponse) return authResult;
+  let authResult: Awaited<ReturnType<typeof getAuthenticatedUser>>;
+  try {
+    authResult = await getAuthenticatedUser(request);
+  } catch {
+    return NextResponse.json(
+      { error: "Authentication required", code: "AUTH_REQUIRED" },
+      { status: 401 },
+    );
+  }
   const tenantCtx = extractTenantContextAuthed(request, authResult);
   if (tenantCtx instanceof NextResponse) return tenantCtx;
   setTenantContext(tenantCtx);
 
   try {
-    // Defense-in-depth: this endpoint returns ONLY the authenticated driver's
-    // own location. Any other role is rejected even if they hold driver:read.
+    // Self-only endpoint: returns ONLY the authenticated driver's own
+    // location. Any other role is rejected — DRIVER:READ permission would
+    // not be the right gate (admins shouldn't hit this endpoint either).
     if (authResult.role !== USER_ROLES.CONDUCTOR) {
       return NextResponse.json(
         { error: "Este endpoint es solo para conductores" },

@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
         userId: routeStops.userId,
         routeId: routeStops.routeId,
         vehicleId: routeStops.vehicleId,
-        totalStops: sql<number>`count(*)`,
+        totalStops: sql<number>`count(*)::int`,
         completedStops: sql<number>`count(*) filter (where ${routeStops.status} = 'COMPLETED')`,
         inProgressStops: sql<number>`count(*) filter (where ${routeStops.status} = 'IN_PROGRESS')`,
         failedStops: sql<number>`count(*) filter (where ${routeStops.status} = 'FAILED')`,

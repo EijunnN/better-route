@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         .orderBy(desc(companies.createdAt))
         .limit(query.limit)
         .offset(query.offset),
-      db.select({ count: sql<number>`count(*)` }).from(companies).where(whereClause),
+      db.select({ count: sql<number>`count(*)::int` }).from(companies).where(whereClause),
     ]);
 
     return NextResponse.json({
