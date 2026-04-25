@@ -326,9 +326,10 @@ describe("Order Queries API", () => {
       expect(typeof field.required).toBe("boolean");
       expect(field.description).toBeDefined();
 
-      // Should include templates
-      expect(Array.isArray(body.data.templates)).toBe(true);
-      expect(body.data.templates.length).toBeGreaterThan(0);
+      // Should include time window presets and active dimensions metadata
+      expect(Array.isArray(body.data.timeWindowPresets)).toBe(true);
+      expect(Array.isArray(body.data.activeDimensions)).toBe(true);
+      expect(typeof body.data.requireOrderType).toBe("boolean");
     });
 
     test("includes custom field definitions in CSV template", async () => {
@@ -353,7 +354,9 @@ describe("Order Queries API", () => {
       expect(response.status).toBe(200);
 
       const csvText = await response.text();
-      expect(csvText).toContain("custom_field_1");
+      // Template uses the user-facing label as the column header (not the
+      // internal code) so the CSV is readable by non-technical operators.
+      expect(csvText).toContain("Custom Field 1");
     });
   });
 
@@ -388,11 +391,10 @@ describe("Order Queries API", () => {
 
       const body = await response.json();
       expect(body.suggestedMapping).toBeDefined();
-      expect(body.confidence).toBeDefined();
-      expect(typeof body.autoMappedCount).toBe("number");
-      expect(typeof body.manualMappingRequired).toBe("boolean");
+      expect(Array.isArray(body.unmappedHeaders)).toBe(true);
+      expect(Array.isArray(body.ambiguous)).toBe(true);
 
-      // Common headers should be auto-mapped
+      // Common headers should be auto-mapped via aliases
       expect(body.suggestedMapping["tracking_id"]).toBe("trackingId");
       expect(body.suggestedMapping["customer_name"]).toBe("customerName");
       expect(body.suggestedMapping["address"]).toBe("address");
@@ -401,7 +403,8 @@ describe("Order Queries API", () => {
 
       // Required fields validation
       expect(body.requiredFieldsValidation).toBeDefined();
-      expect(typeof body.requiredFieldsValidation.valid).toBe("boolean");
+      expect(typeof body.requiredFieldsValidation.allMapped).toBe("boolean");
+      expect(Array.isArray(body.requiredFieldsValidation.missing)).toBe(true);
     });
 
     test("uses saved template mapping when templateId provided", async () => {

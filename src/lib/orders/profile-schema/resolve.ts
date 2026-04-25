@@ -95,10 +95,15 @@ export async function resolveProfileSchema(
   const profileRow = profileRows[0];
 
   const activeDimensions = (() => {
+    // No profile row → use opinionated defaults so legacy companies keep
+    // working out of the box.
     if (!profileRow) return DEFAULT_DIMENSIONS;
     try {
       const parsed = safeParseJson<unknown>(profileRow.activeDimensions);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      // Profile row exists: trust the user's choice, even an empty array
+      // (which means "no capacity tracking"). Only fall back to defaults
+      // when the JSON failed to parse to an array at all.
+      if (Array.isArray(parsed)) {
         return parsed.filter((d): d is CapacityDimension =>
           d === "WEIGHT" || d === "VOLUME" || d === "VALUE" || d === "UNITS",
         );

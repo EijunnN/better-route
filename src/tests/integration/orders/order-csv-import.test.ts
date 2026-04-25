@@ -3,7 +3,12 @@ import { eq, and } from "drizzle-orm";
 import { testDb, cleanDatabase } from "../setup/test-db";
 import { createTestToken } from "../setup/test-auth";
 import { createTestRequest } from "../setup/test-request";
-import { createCompany, createPlanner, createOrder } from "../setup/test-data";
+import {
+  createCompany,
+  createCompanyProfile,
+  createPlanner,
+  createOrder,
+} from "../setup/test-data";
 import { orders } from "@/db/schema";
 import { POST } from "@/app/api/orders/import/route";
 
@@ -16,9 +21,9 @@ TRK-CSV-001,Av. Arequipa 100,-12.0464,-77.0428,John Doe
 TRK-CSV-002,Jr. Lima 200,-12.0500,-77.0400,Jane Smith
 TRK-CSV-003,Av. Brasil 300,-12.0550,-77.0350,Bob Wilson`;
 
-const semicolonCSV = `tracking_id;address;latitude;longitude
-TRK-SC-001;Av. Test 1;-12.0464;-77.0428
-TRK-SC-002;Av. Test 2;-12.0500;-77.0400`;
+const semicolonCSV = `tracking_id;address;latitude;longitude;customer_name
+TRK-SC-001;Av. Test 1;-12.0464;-77.0428;Cliente Uno
+TRK-SC-002;Av. Test 2;-12.0500;-77.0400;Cliente Dos`;
 
 describe("POST /api/orders/import", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -28,6 +33,16 @@ describe("POST /api/orders/import", () => {
   beforeAll(async () => {
     await cleanDatabase();
     company = await createCompany();
+    // Profile without capacity dimensions: tests upload only tracking_id +
+    // address + lat/lng + customer_name. Without this, resolveProfileSchema
+    // falls back to DEFAULT_DIMENSIONS=[WEIGHT,VOLUME] and the import rejects
+    // with "Missing required field" for weight/volume columns.
+    await createCompanyProfile({
+      companyId: company.id,
+      enableWeight: false,
+      enableVolume: false,
+      activeDimensions: [],
+    });
     planner = await createPlanner(company.id);
     token = await createTestToken({
       userId: planner.id,
@@ -110,8 +125,8 @@ TRK-IMP-003,Av. Brasil 300,-12.0550,-77.0350,Bob Wilson`;
     // Create an existing order first
     await createOrder({ companyId: company.id, trackingId: "TRK-DUP-DB" });
 
-    const csv = `tracking_id,address,latitude,longitude
-TRK-DUP-DB,Av. Test 1,-12.0464,-77.0428`;
+    const csv = `tracking_id,address,latitude,longitude,customer_name
+TRK-DUP-DB,Av. Test 1,-12.0464,-77.0428,Cliente Dup`;
 
     const request = await createTestRequest("/api/orders/import", {
       method: "POST",
@@ -136,9 +151,9 @@ TRK-DUP-DB,Av. Test 1,-12.0464,-77.0428`;
   // 4. Duplicate within CSV
   // -----------------------------------------------------------------------
   test("detects duplicate trackingId within the same CSV", async () => {
-    const csv = `tracking_id,address,latitude,longitude
-TRK-CSVDUP-001,Av. Test 1,-12.0464,-77.0428
-TRK-CSVDUP-001,Av. Test 2,-12.0500,-77.0400`;
+    const csv = `tracking_id,address,latitude,longitude,customer_name
+TRK-CSVDUP-001,Av. Test 1,-12.0464,-77.0428,Cliente A
+TRK-CSVDUP-001,Av. Test 2,-12.0500,-77.0400,Cliente B`;
 
     const request = await createTestRequest("/api/orders/import", {
       method: "POST",
@@ -187,11 +202,11 @@ TRK-CSVDUP-001,Av. Test 2,-12.0500,-77.0400`;
   // 6. Error summary structure
   // -----------------------------------------------------------------------
   test("returns error summary with byField, bySeverity, byErrorType", async () => {
-    // Mix valid and invalid rows: missing address and missing latitude
-    const csv = `tracking_id,address,latitude,longitude
-TRK-SUM-001,Av. Valid,-12.0464,-77.0428
-TRK-SUM-002,,-12.0500,-77.0400
-TRK-SUM-003,Av. Valid 2,INVALID_LAT,-77.0350`;
+    // Mix valid and invalid rows: missing address and invalid latitude
+    const csv = `tracking_id,address,latitude,longitude,customer_name
+TRK-SUM-001,Av. Valid,-12.0464,-77.0428,Cliente Uno
+TRK-SUM-002,,-12.0500,-77.0400,Cliente Dos
+TRK-SUM-003,Av. Valid 2,INVALID_LAT,-77.0350,Cliente Tres`;
 
     const request = await createTestRequest("/api/orders/import", {
       method: "POST",
