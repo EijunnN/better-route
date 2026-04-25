@@ -440,7 +440,10 @@ export function FieldDefinitionDialog() {
                 />
               </div>
 
-              {/* Entity - visual selector */}
+              {/* Entity - visual selector. Switching entity also resets the
+                  visibility flags that don't apply to the new entity, so the
+                  user doesn't end up with dead toggles silently enabled
+                  (showInList / showInCsv only do anything for entity=orders). */}
               <div className="space-y-1.5">
                 <Label className="text-xs">¿Dónde se usa este campo?</Label>
                 <div className="grid grid-cols-1 gap-2">
@@ -450,7 +453,17 @@ export function FieldDefinitionDialog() {
                       <button
                         key={ent.value}
                         type="button"
-                        onClick={() => setFormData((p) => ({ ...p, entity: ent.value }))}
+                        onClick={() =>
+                          setFormData((p) => ({
+                            ...p,
+                            entity: ent.value,
+                            // showInList and showInCsv only apply to orders;
+                            // route_stops doesn't render a list column or
+                            // participate in CSV import.
+                            showInList: ent.value === "orders" ? p.showInList : false,
+                            showInCsv: ent.value === "orders" ? p.showInCsv : false,
+                          }))
+                        }
                         disabled={isSubmitting}
                         className={`flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors ${
                           isActive
@@ -496,11 +509,19 @@ export function FieldDefinitionDialog() {
                 </div>
               )}
 
-              {/* Visibility toggles */}
+              {/* Visibility toggles. Filtered by entity: route_stops campos
+                  no aparecen en la tabla de pedidos ni en CSV de import,
+                  esos toggles se ocultan en lugar de quedar como switches
+                  muertos. */}
               <div className="space-y-1.5">
                 <Label className="text-xs">¿Dónde se muestra?</Label>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {VISIBILITY_TOGGLES.map((v) => {
+                  {VISIBILITY_TOGGLES.filter((v) => {
+                    if (formData.entity === "route_stops") {
+                      return v.key === "showInMobile";
+                    }
+                    return true;
+                  }).map((v) => {
                     const isActive = formData[v.key];
                     return (
                       <button
@@ -520,6 +541,24 @@ export function FieldDefinitionDialog() {
                     );
                   })}
                 </div>
+                {/* Live legend: "App del conductor" tiene semántica distinta
+                    según el tipo. Aclararlo evita la confusión que los
+                    operadores reportaron. */}
+                {formData.showInMobile && (
+                  <p className="text-[11px] text-muted-foreground pl-0.5">
+                    {formData.entity === "route_stops" ? (
+                      <>
+                        <strong className="text-foreground">App del conductor:</strong>{" "}
+                        el conductor llena este campo al cerrar la entrega.
+                      </>
+                    ) : (
+                      <>
+                        <strong className="text-foreground">App del conductor:</strong>{" "}
+                        el conductor lo ve como contexto de la entrega (solo lectura).
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
 
               {/* Required */}
@@ -539,6 +578,21 @@ export function FieldDefinitionDialog() {
                       : "No se podrá guardar el pedido sin completar este campo"}
                   </p>
                 )}
+                {/* Bypass warning: required + entity=orders + showInCsv=false
+                    deja un agujero. El form web pide el dato, pero el CSV
+                    importa filas con la columna ausente porque ni siquiera
+                    aparece en la plantilla. La validación se evade. */}
+                {formData.required &&
+                  formData.entity === "orders" &&
+                  !formData.showInCsv && (
+                    <div className="ml-9 mt-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+                      <strong>Atención:</strong> sin "Importar y exportar"
+                      activado, este campo obligatorio no aparece en el CSV.
+                      Las filas importadas se guardan con el dato vacío y la
+                      validación se evade. Activá "Importar y exportar" para
+                      cerrarlo.
+                    </div>
+                  )}
               </div>
 
               {/* Live preview */}
