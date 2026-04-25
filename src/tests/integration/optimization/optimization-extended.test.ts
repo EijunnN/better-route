@@ -41,6 +41,10 @@ function getPlanMetricsResult(companyId: string, jobId: string) {
 }
 
 mock.module("@/lib/optimization/plan-metrics", () => ({
+  // Mock must return ALL fields required by plan_metrics schema (NOT NULL),
+  // otherwise INSERT in confirm endpoint fails. Bun mock.module is global
+  // and persists across test files in the same process — partial returns
+  // here break unrelated tests like planning-lifecycle.
   calculatePlanMetrics: (
     companyId: string,
     jobId: string,
@@ -53,6 +57,22 @@ mock.module("@/lib/optimization/plan-metrics", () => ({
     totalStops: 2,
     totalDistance: 1000,
     totalDuration: 3600,
+    averageUtilizationRate: 50,
+    maxUtilizationRate: 80,
+    minUtilizationRate: 20,
+    timeWindowComplianceRate: 90,
+    totalTimeWindowViolations: 0,
+    driverAssignmentCoverage: 100,
+    averageAssignmentQuality: 85,
+    assignmentsWithWarnings: 0,
+    assignmentsWithErrors: 0,
+    skillCoverage: 100,
+    licenseCompliance: 100,
+    fleetAlignment: 100,
+    workloadBalance: 80,
+    unassignedOrders: 0,
+    objective: "BALANCED",
+    processingTimeMs: 500,
   }),
   calculateComparisonMetrics: async () => null,
   findPreviousJobForComparison: async () => null,

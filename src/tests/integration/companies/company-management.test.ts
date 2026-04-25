@@ -338,7 +338,7 @@ describe("Company Management", () => {
       params: Promise.resolve({ id: company2.id }),
     });
 
-    // ADMIN_FLOTA doesn't have COMPANY:READ -> 403
+    // ADMIN_FLOTA has COMPANY:READ but only for its own company → 403 cross-tenant
     expect(response.status).toBe(403);
   });
 });

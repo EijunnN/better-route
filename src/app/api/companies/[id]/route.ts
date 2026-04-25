@@ -42,9 +42,14 @@ export async function GET(
 
     const { id } = await params;
 
-    // Check access to this specific company
+    // Check access to this specific company. Caller IS authenticated and
+    // has the COMPANY:READ permission, but is scoped to a different company:
+    // that's a 403 (forbidden), not a 401 (unauthenticated).
     if (!canAccessCompany(authResult.user, id)) {
-      return unauthorizedResponse();
+      return NextResponse.json(
+        { error: "Tenant mismatch", code: "TENANT_MISMATCH" },
+        { status: 403 },
+      );
     }
 
     const [company] = await db
@@ -83,9 +88,13 @@ export async function PATCH(
 
     const { id } = await params;
 
-    // Check access to this specific company
+    // Authenticated + has permission, but trying to access a different
+    // tenant's company → 403, not 401.
     if (!canAccessCompany(authResult.user, id)) {
-      return unauthorizedResponse();
+      return NextResponse.json(
+        { error: "Tenant mismatch", code: "TENANT_MISMATCH" },
+        { status: 403 },
+      );
     }
 
     const body = await request.json();
@@ -184,9 +193,13 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Check access to this specific company
+    // Authenticated + has permission, but trying to access a different
+    // tenant's company → 403, not 401.
     if (!canAccessCompany(authResult.user, id)) {
-      return unauthorizedResponse();
+      return NextResponse.json(
+        { error: "Tenant mismatch", code: "TENANT_MISMATCH" },
+        { status: 403 },
+      );
     }
 
     const [existingCompany] = await db

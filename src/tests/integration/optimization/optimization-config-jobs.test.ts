@@ -448,7 +448,7 @@ describe("Optimization Config & Jobs", () => {
     expect(body.data.message).toContain("cancelled");
   });
 
-  test("DELETE /jobs/[id] on COMPLETED job returns 400", async () => {
+  test("DELETE /jobs/[id] on COMPLETED job soft-cancels it (so UI can clear from history)", async () => {
     const { company, admin, token } = await makeFixtures();
     const config = await createOptimizationConfig({ companyId: company.id });
     const job = await createOptimizationJob({
@@ -467,10 +467,11 @@ describe("Optimization Config & Jobs", () => {
     const res = await cancelJobRoute(request, {
       params: Promise.resolve({ id: job.id }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
 
     const body = await res.json();
-    expect(body.error).toContain("cannot be cancelled");
+    expect(body.data.status).toBe("CANCELLED");
+    expect(body.data.message).toContain("released");
   });
 
   // ==========================================================================

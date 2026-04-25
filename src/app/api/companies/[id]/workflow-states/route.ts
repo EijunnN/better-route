@@ -8,6 +8,7 @@ import {
 } from "@/db/schema";
 import { handleError } from "@/lib/routing/route-helpers";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 import { EntityType, Action } from "@/lib/auth/permissions";
 
 function assertSameTenant(
@@ -27,12 +28,18 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(
-      request,
-      EntityType.COMPANY,
-      Action.READ,
-    );
-    if (authResult instanceof NextResponse) return authResult;
+    // Workflow states are tenant-wide configuration — any authenticated
+    // user of the same tenant needs to read them (the monitoring dashboard
+    // and the order-status dialog use them to render labels and colors).
+    // Requiring COMPANY:READ would lock out PLANIFICADOR/CONDUCTOR even
+    // though they only consume the data, never mutate it.
+    const authResult = await getAuthenticatedUser(request).catch(() => null);
+    if (!authResult) {
+      return NextResponse.json(
+        { error: "Authentication required", code: "AUTH_REQUIRED" },
+        { status: 401 },
+      );
+    }
 
     const { id: companyId } = await params;
     const tenantError = assertSameTenant(authResult, companyId);

@@ -102,6 +102,7 @@ mock.module("@/lib/infra/audit", () => ({
 mock.module("@/lib/infra/job-queue", () => ({
   releaseCompanyLock: () => {},
   acquireCompanyLock: () => true,
+  forceReleaseCompanyLock: () => {},
   markCompanyLockCompleted: () => {},
   cancelJob: async () => true,
   canStartJob: () => true,
