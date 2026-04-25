@@ -22,8 +22,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { STOP_STATUS } from "@/db/schema";
+import {
+  DELIVERY_FAILURE_LABELS,
+  DELIVERY_FAILURE_REASONS,
+  type STOP_STATUS,
+} from "@/db/schema";
 import type { WorkflowState } from "./monitoring-context";
 import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
 import { DynamicFieldRenderer } from "@/components/custom-fields/dynamic-field-renderer";
@@ -51,6 +62,7 @@ export interface StopStatusUpdateDialogProps {
     notes?: string,
     workflowStateId?: string,
     customFields?: Record<string, unknown>,
+    failureReason?: keyof typeof DELIVERY_FAILURE_REASONS,
   ) => Promise<void>;
   workflowStates?: WorkflowState[];
   customFieldDefinitions?: FieldDefinition[];
@@ -118,6 +130,9 @@ export function StopStatusUpdateDialog({
   const [selectedWorkflowStateId, setSelectedWorkflowStateId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  const [failureReason, setFailureReason] = useState<
+    keyof typeof DELIVERY_FAILURE_REASONS | null
+  >(null);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +149,7 @@ export function StopStatusUpdateDialog({
     setSelectedStatus(stop.status);
     setSelectedWorkflowStateId(null);
     setSelectedReason(null);
+    setFailureReason(null);
     setCustomFieldValues((stop.customFields as Record<string, unknown> | null) ?? {});
   }
 
@@ -163,11 +179,13 @@ export function StopStatusUpdateDialog({
         finalNotes,
         selectedWorkflowStateId || undefined,
         customFieldsPayload,
+        failureReason || undefined,
       );
       onOpenChange(false);
       setNotes("");
       setSelectedReason(null);
       setSelectedWorkflowStateId(null);
+      setFailureReason(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al actualizar el estado de la parada";
       setError(message);
@@ -192,6 +210,16 @@ export function StopStatusUpdateDialog({
   const selectedWorkflowState = selectedWorkflowStateId
     ? workflowStates.find(ws => ws.id === selectedWorkflowStateId)
     : null;
+
+  // failureReason is required by /api/route-stops/[id] when transitioning to
+  // FAILED via the legacy path (no workflow). With workflow states the API
+  // accepts it but doesn't require it — still useful UX so we offer it.
+  const willFailStop =
+    selectedStatus === "FAILED" ||
+    (selectedWorkflowState?.systemState === "FAILED");
+  const requiresFailureReason = willFailStop && !selectedWorkflowStateId;
+  const blockedByMissingFailureReason =
+    requiresFailureReason && !failureReason;
 
   const getStatusConfig = (status: string) => {
     return (
@@ -328,6 +356,45 @@ export function StopStatusUpdateDialog({
               </div>
             </div>
 
+            {/* Failure reason picker (when marking FAILED) */}
+            {willFailStop && (
+              <div className="space-y-2">
+                <Label htmlFor="failureReason">
+                  Motivo de la falla {requiresFailureReason ? "*" : "(opcional)"}
+                </Label>
+                <Select
+                  value={failureReason ?? ""}
+                  onValueChange={(value) =>
+                    setFailureReason(
+                      value
+                        ? (value as keyof typeof DELIVERY_FAILURE_REASONS)
+                        : null,
+                    )
+                  }
+                >
+                  <SelectTrigger id="failureReason">
+                    <SelectValue placeholder="Seleccionar motivo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(
+                      Object.keys(DELIVERY_FAILURE_REASONS) as Array<
+                        keyof typeof DELIVERY_FAILURE_REASONS
+                      >
+                    ).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {DELIVERY_FAILURE_LABELS[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {blockedByMissingFailureReason && (
+                  <p className="text-xs text-destructive">
+                    Selecciona un motivo para registrar la falla.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Reason Options (from workflow state) */}
             {selectedWorkflowState?.requiresReason && selectedWorkflowState.reasonOptions && (
               <div className="space-y-2">
@@ -435,6 +502,7 @@ export function StopStatusUpdateDialog({
                 updating ||
                 !stop ||
                 blockedByMissingFields ||
+                blockedByMissingFailureReason ||
                 (hasWorkflowStates
                   ? !selectedWorkflowStateId || !!(selectedWorkflowState?.requiresNotes && !notes.trim()) || !!(selectedWorkflowState?.requiresReason && selectedWorkflowState.reasonOptions && !selectedReason)
                   : selectedStatus === stop.status)

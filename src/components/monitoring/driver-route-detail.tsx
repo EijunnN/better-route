@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Can } from "@/components/auth/can";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DELIVERY_FAILURE_LABELS } from "@/db/schema";
 import {
   type StopInfo,
   StopStatusUpdateDialog,
@@ -42,6 +43,7 @@ interface Stop {
   completedAt?: string | null;
   startedAt?: string | null;
   notes?: string | null;
+  failureReason?: string | null;
   timeWindowStart?: string | null;
   timeWindowEnd?: string | null;
   workflowState?: {
@@ -220,12 +222,14 @@ export function DriverRouteDetail({
     notes?: string,
     workflowStateId?: string,
     customFields?: Record<string, unknown>,
+    failureReason?: string,
   ) => {
     setUpdatingStatus(true);
     try {
       const body: Record<string, unknown> = { status, notes };
       if (workflowStateId) body.workflowStateId = workflowStateId;
       if (customFields) body.customFields = customFields;
+      if (failureReason) body.failureReason = failureReason;
 
       const response = await fetch(`/api/route-stops/${stopId}`, {
         method: "PATCH",
@@ -469,6 +473,11 @@ export function DriverRouteDetail({
                           )}
                         </div>
                         <div className="text-[11px] text-muted-foreground truncate">{stop.address}</div>
+                        {stop.status === "FAILED" && stop.failureReason && (
+                          <div className="text-[10px] text-destructive mt-0.5">
+                            Motivo: {DELIVERY_FAILURE_LABELS[stop.failureReason as keyof typeof DELIVERY_FAILURE_LABELS] ?? stop.failureReason}
+                          </div>
+                        )}
                         {stop.customFields && Object.keys(stop.customFields).length > 0 && (
                           <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
                             {Object.entries(stop.customFields).map(([key, val]) => (

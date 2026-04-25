@@ -299,6 +299,7 @@ export async function GET(
       completedAt: stop.completedAt?.toISOString() || null,
       startedAt: stop.startedAt?.toISOString() || null,
       notes: stop.notes,
+      failureReason: stop.failureReason,
       timeWindowStart: stop.timeWindowStart?.toISOString() || null,
       timeWindowEnd: stop.timeWindowEnd?.toISOString() || null,
       workflowState: stop.workflowState ? {
