@@ -71,7 +71,14 @@ export const driverLocations = pgTable("driver_locations", {
   createdAt: timestamp("created_at").notNull().defaultNow(), // When saved to DB
 }, (table) => [
   index("driver_locations_company_id_idx").on(table.companyId),
-  index("driver_locations_driver_id_idx").on(table.driverId),
+  // Drops the single-column driver_id index — every query that
+  // currently uses it also needs ordering by recorded_at DESC, so the
+  // composite below covers it for free and makes "latest position per
+  // driver" queries an index-only scan.
+  index("driver_locations_driver_recorded_at_idx").on(
+    table.driverId,
+    table.recordedAt.desc(),
+  ),
   index("driver_locations_recorded_at_idx").on(table.recordedAt),
 ]);
 

@@ -1,0 +1,2 @@
+DROP INDEX "driver_locations_driver_id_idx";--> statement-breakpoint
+CREATE INDEX "driver_locations_driver_recorded_at_idx" ON "driver_locations" USING btree ("driver_id","recorded_at" DESC NULLS LAST);

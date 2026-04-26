@@ -1,9 +1,16 @@
 "use client";
 
-import { createContext, use, useState, type ReactNode } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useState,
+} from "react";
 import useSWR from "swr";
-import { useCompanyContext } from "@/hooks/use-company-context";
 import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { useMonitoringStream } from "./use-monitoring-stream";
 
 const POLLING_INTERVAL = 10000;
 
@@ -84,7 +91,12 @@ export interface DriverDetailData {
     email: string;
     phone?: string;
     fleet: { id: string; name: string; type: string };
-    fleets?: Array<{ id: string; name: string; type: string; isPrimary: boolean }>;
+    fleets?: Array<{
+      id: string;
+      name: string;
+      type: string;
+      isPrimary: boolean;
+    }>;
   };
   route: {
     routeId: string;
@@ -184,11 +196,20 @@ interface MonitoringContextValue {
   meta: MonitoringMeta;
 }
 
-const MonitoringContext = createContext<MonitoringContextValue | undefined>(undefined);
+const MonitoringContext = createContext<MonitoringContextValue | undefined>(
+  undefined,
+);
 
 export function MonitoringProvider({ children }: { children: ReactNode }) {
-  const { effectiveCompanyId: companyId, isReady, isSystemAdmin, companies, selectedCompanyId, setSelectedCompanyId, authCompanyId } =
-    useCompanyContext();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
 
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -198,13 +219,12 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   // Fetch confirmed plans for the plan selector
-  const {
-    data: confirmedPlans = [],
-    isLoading: isLoadingPlans,
-  } = useSWR<ConfirmedPlan[]>(
+  const { data: confirmedPlans = [], isLoading: isLoadingPlans } = useSWR<
+    ConfirmedPlan[]
+  >(
     companyId ? ["/api/plans", companyId] : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   );
 
   // Build URL with optional jobId parameter
@@ -228,7 +248,12 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   } = useSWR<MonitoringData>(
     summaryUrl ? [summaryUrl, companyId] : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
-    { refreshInterval: POLLING_INTERVAL, revalidateOnFocus: true, dedupingInterval: 2000, onSuccess: () => setLastUpdate(new Date()) }
+    {
+      refreshInterval: POLLING_INTERVAL,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+      onSuccess: () => setLastUpdate(new Date()),
+    },
   );
 
   const {
@@ -238,7 +263,12 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   } = useSWR<DriverMonitoringData[]>(
     driversUrl ? [driversUrl, companyId] : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
-    { refreshInterval: POLLING_INTERVAL, revalidateOnFocus: true, dedupingInterval: 2000, onSuccess: () => setLastUpdate(new Date()) }
+    {
+      refreshInterval: POLLING_INTERVAL,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+      onSuccess: () => setLastUpdate(new Date()),
+    },
   );
 
   const {
@@ -246,24 +276,35 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     isLoading: isLoadingDetail,
     mutate: mutateDetail,
   } = useSWR<DriverDetailData>(
-    companyId && selectedDriverId && view === "detail" ? [`/api/monitoring/drivers/${selectedDriverId}`, companyId] : null,
+    companyId && selectedDriverId && view === "detail"
+      ? [`/api/monitoring/drivers/${selectedDriverId}`, companyId]
+      : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   );
 
   const { data: workflowStates = [] } = useSWR<WorkflowState[]>(
-    companyId ? [`/api/companies/${companyId}/workflow-states`, companyId] : null,
+    companyId
+      ? [`/api/companies/${companyId}/workflow-states`, companyId]
+      : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   );
 
   const { data: rawFieldDefs = [] } = useSWR<FieldDefinition[]>(
-    companyId ? [`/api/companies/${companyId}/field-definitions?entity=route_stops`, companyId] : null,
+    companyId
+      ? [
+          `/api/companies/${companyId}/field-definitions?entity=route_stops`,
+          companyId,
+        ]
+      : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   );
 
-  const routeStopFieldDefinitions: FieldDefinition[] = rawFieldDefs.filter((f) => f.active);
+  const routeStopFieldDefinitions: FieldDefinition[] = rawFieldDefs.filter(
+    (f) => f.active,
+  );
   const fieldDefinitionLabels: Record<string, string> = Object.fromEntries(
     routeStopFieldDefinitions.map((f) => [f.code, f.label]),
   );
@@ -287,6 +328,19 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     mutateDrivers();
   };
 
+  // Push-driven revalidation. The 10s SWR poll stays as a safety net
+  // (network drops, SSE disconnects), but every server-side stop
+  // transition lands here within ~50ms so the dashboard reflects
+  // completions/failures effectively in realtime instead of waiting
+  // for the next polling tick.
+  const handleStreamEvent = useCallback(() => {
+    mutateMonitoring();
+    mutateDrivers();
+    if (view === "detail") mutateDetail();
+    setLastUpdate(new Date());
+  }, [mutateMonitoring, mutateDrivers, mutateDetail, view]);
+  useMonitoringStream(companyId, handleStreamEvent);
+
   const handleDetailRefresh = () => {
     mutateDetail();
     mutateDrivers();
@@ -302,12 +356,12 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   const formatLastUpdate = (date: Date) => date.toLocaleTimeString();
 
   const getWorkflowLabel = (systemState: string) => {
-    const wf = workflowStates.find(s => s.systemState === systemState);
+    const wf = workflowStates.find((s) => s.systemState === systemState);
     return wf?.label || systemState;
   };
 
   const getWorkflowColor = (systemState: string) => {
-    const wf = workflowStates.find(s => s.systemState === systemState);
+    const wf = workflowStates.find((s) => s.systemState === systemState);
     return wf?.color || "#6B7280";
   };
 
@@ -350,9 +404,21 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     getWorkflowColor,
   };
 
-  const meta: MonitoringMeta = { companyId, isReady, isSystemAdmin, companies, selectedCompanyId, setSelectedCompanyId, authCompanyId };
+  const meta: MonitoringMeta = {
+    companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  };
 
-  return <MonitoringContext value={{ state, actions, meta }}>{children}</MonitoringContext>;
+  return (
+    <MonitoringContext value={{ state, actions, meta }}>
+      {children}
+    </MonitoringContext>
+  );
 }
 
 export function useMonitoring(): MonitoringContextValue {

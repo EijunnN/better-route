@@ -24,6 +24,7 @@ import {
   loadStopFieldDefinitions,
   validateStopCustomFields,
 } from "@/lib/routing/stop-custom-fields";
+import { publishStopEvent } from "@/lib/realtime";
 // Map route_stop status to order status
 const STOP_TO_ORDER_STATUS: Record<string, string> = {
   PENDING: "ASSIGNED", // Order stays assigned until stop starts
@@ -478,6 +479,20 @@ export async function PATCH(
           },
         },
       );
+    }
+
+    // Push the transition to the in-process monitoring bus so connected
+    // SSE clients (the /monitoring page) can revalidate immediately
+    // instead of waiting up to 10s for the next SWR poll.
+    if (status !== currentStop.status) {
+      publishStopEvent({
+        companyId: tenantCtx.companyId,
+        stopId,
+        routeId: currentStop.routeId ?? null,
+        driverId: currentStop.userId ?? null,
+        previousStatus: currentStop.status,
+        newStatus: status,
+      });
     }
 
     return NextResponse.json({ data: updatedStop[0] });
