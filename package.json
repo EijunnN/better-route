@@ -13,6 +13,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "bun run src/db/seed.ts",
+    "cleanup:locations": "bun run scripts/cleanup-driver-locations.ts",
     "test": "bun test",
     "test:integration": "bun test src/tests/integration/",
     "test:e2e": "playwright test",
