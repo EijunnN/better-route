@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  use,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import type {
   ORDER_STATUS,
@@ -65,9 +59,10 @@ export interface TimeWindowPreset {
  * inputs mirror the `time` input element's value shape; trimming the seconds
  * from a Postgres "HH:MM:SS" value keeps that consistent.
  */
-function derivePresetWindow(
-  preset: TimeWindowPreset,
-): { start: string | null; end: string | null } {
+function derivePresetWindow(preset: TimeWindowPreset): {
+  start: string | null;
+  end: string | null;
+} {
   const toHHmm = (v: string | null) => (v ? v.slice(0, 5) : null);
 
   switch (preset.type) {
@@ -84,9 +79,9 @@ function derivePresetWindow(
       const startMin = Math.max(0, total - preset.toleranceMinutes);
       const endMin = Math.min(24 * 60 - 1, total + preset.toleranceMinutes);
       const fmt = (mins: number) =>
-        `${Math.floor(mins / 60).toString().padStart(2, "0")}:${(mins % 60)
+        `${Math.floor(mins / 60)
           .toString()
-          .padStart(2, "0")}`;
+          .padStart(2, "0")}:${(mins % 60).toString().padStart(2, "0")}`;
       return { start: fmt(startMin), end: fmt(endMin) };
     }
     default:
@@ -199,9 +194,9 @@ export function OrderFormProvider({
 }: OrderFormProviderProps) {
   const { effectiveCompanyId: companyId } = useCompanyContext();
   const [formData, setFormData] = useState<OrderFormData>(defaultFormData);
-  const [timeWindowPresets, setTimeWindowPresets] = useState<TimeWindowPreset[]>(
-    [],
-  );
+  const [timeWindowPresets, setTimeWindowPresets] = useState<
+    TimeWindowPreset[]
+  >([]);
   const [selectedPreset, setSelectedPreset] = useState<TimeWindowPreset | null>(
     null,
   );
@@ -215,7 +210,9 @@ export function OrderFormProvider({
     enableUnits: false,
     enableOrderType: false,
   });
-  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>(
+    [],
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -240,15 +237,20 @@ export function OrderFormProvider({
           setCompanyProfile(profileResult.data.defaults);
         }
 
-        const fieldsResponse = await fetch(`/api/companies/${companyId}/field-definitions`, {
-          headers: { "x-company-id": companyId },
-        });
+        const fieldsResponse = await fetch(
+          `/api/companies/${companyId}/field-definitions`,
+          {
+            headers: { "x-company-id": companyId },
+          },
+        );
         const fieldsResult = await fieldsResponse.json();
         const defs = (fieldsResult.data ?? fieldsResult) as FieldDefinition[];
         setFieldDefinitions(
           Array.isArray(defs)
-            ? defs.filter((d) => d.entity === "orders" && d.active).sort((a, b) => a.position - b.position)
-            : []
+            ? defs
+                .filter((d) => d.entity === "orders" && d.active)
+                .sort((a, b) => a.position - b.position)
+            : [],
         );
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -259,47 +261,59 @@ export function OrderFormProvider({
     fetchData();
   }, [companyId]);
 
+  // Hydrate form once per `initialData` change. Previously this also
+  // depended on `timeWindowPresets` so the user's mid-edit input got
+  // wiped out the moment the presets fetch resolved (~200ms after
+  // mount). Splitting into two effects keeps the form populate
+  // single-shot while the preset lookup runs whenever either side
+  // becomes available.
   useEffect(() => {
-    if (initialData) {
-      const initialFormData: OrderFormData = {
-        trackingId: initialData.trackingId,
-        customerName: initialData.customerName || "",
-        customerPhone: initialData.customerPhone || "",
-        customerEmail: initialData.customerEmail || "",
-        address: initialData.address,
-        latitude: initialData.latitude,
-        longitude: initialData.longitude,
-        timeWindowPresetId: initialData.timeWindowPresetId || "",
-        timeWindowStart: initialData.timeWindowStart || "",
-        timeWindowEnd: initialData.timeWindowEnd || "",
-        strictness: initialData.strictness || null,
-        promisedDate: initialData.promisedDate
-          ? initialData.promisedDate.slice(0, 10)
-          : "",
-        weightRequired: initialData.weightRequired || undefined,
-        volumeRequired: initialData.volumeRequired || undefined,
-        orderValue: initialData.orderValue || undefined,
-        unitsRequired: initialData.unitsRequired || undefined,
-        orderType: (initialData.orderType as OrderFormData["orderType"]) || undefined,
-        priority: initialData.priority || undefined,
-        requiredSkills: initialData.requiredSkills || "",
-        notes: initialData.notes || "",
-        customFields: (initialData.customFields as Record<string, unknown>) || {},
-        status: initialData.status,
-        active: initialData.active,
-      };
-      setFormData(initialFormData);
+    if (!initialData) return;
+    setFormData({
+      trackingId: initialData.trackingId,
+      customerName: initialData.customerName || "",
+      customerPhone: initialData.customerPhone || "",
+      customerEmail: initialData.customerEmail || "",
+      address: initialData.address,
+      latitude: initialData.latitude,
+      longitude: initialData.longitude,
+      timeWindowPresetId: initialData.timeWindowPresetId || "",
+      timeWindowStart: initialData.timeWindowStart || "",
+      timeWindowEnd: initialData.timeWindowEnd || "",
+      strictness: initialData.strictness || null,
+      promisedDate: initialData.promisedDate
+        ? initialData.promisedDate.slice(0, 10)
+        : "",
+      weightRequired: initialData.weightRequired || undefined,
+      volumeRequired: initialData.volumeRequired || undefined,
+      orderValue: initialData.orderValue || undefined,
+      unitsRequired: initialData.unitsRequired || undefined,
+      orderType:
+        (initialData.orderType as OrderFormData["orderType"]) || undefined,
+      priority: initialData.priority || undefined,
+      requiredSkills: initialData.requiredSkills || "",
+      notes: initialData.notes || "",
+      customFields: (initialData.customFields as Record<string, unknown>) || {},
+      status: initialData.status,
+      active: initialData.active,
+    });
+  }, [initialData]);
 
-      if (initialData.timeWindowPresetId) {
-        const preset = timeWindowPresets.find(
-          (p) => p.id === initialData.timeWindowPresetId,
-        );
-        if (preset) setSelectedPreset(preset);
-      }
+  useEffect(() => {
+    if (!initialData?.timeWindowPresetId) {
+      setSelectedPreset(null);
+      return;
     }
+    const preset = timeWindowPresets.find(
+      (p) => p.id === initialData.timeWindowPresetId,
+    );
+    setSelectedPreset(preset ?? null);
   }, [initialData, timeWindowPresets]);
 
-  const handleChange = (field: keyof OrderFormData, value: string | number | boolean | Record<string, unknown> | null) => {
+  const handleChange = (
+    field: keyof OrderFormData,
+    value: string | number | boolean | Record<string, unknown> | null,
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => {
       if (prev[field]) {
@@ -333,10 +347,14 @@ export function OrderFormProvider({
     setErrors({});
 
     const validationErrors: Record<string, string> = {};
-    if (!formData.trackingId.trim()) validationErrors.trackingId = "Tracking ID es requerido";
-    if (!formData.address.trim()) validationErrors.address = "Dirección es requerida";
-    if (!formData.latitude.trim()) validationErrors.latitude = "Latitud es requerida";
-    if (!formData.longitude.trim()) validationErrors.longitude = "Longitud es requerida";
+    if (!formData.trackingId.trim())
+      validationErrors.trackingId = "Tracking ID es requerido";
+    if (!formData.address.trim())
+      validationErrors.address = "Dirección es requerida";
+    if (!formData.latitude.trim())
+      validationErrors.latitude = "Latitud es requerida";
+    if (!formData.longitude.trim())
+      validationErrors.longitude = "Longitud es requerida";
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;

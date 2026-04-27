@@ -32,11 +32,13 @@ const baseOrderSchema = {
     .string()
     .regex(/^-?\d+\.?\d*$/, "Invalid longitude format")
     .min(1, "Longitude is required"),
-  timeWindowPresetId: z
-    .string()
-    .uuid("Invalid time window preset ID")
-    .optional()
-    .or(z.literal("")),
+  // Empty string is what the form sends when the user clears the
+  // dropdown — coerce it to null here so the DB never sees `''` for a
+  // uuid column (Postgres rejects with 22P02). null = "no preset".
+  timeWindowPresetId: z.preprocess(
+    (v) => (v === "" ? null : v),
+    z.string().uuid("Invalid time window preset ID").nullable().optional(),
+  ),
   strictness: z
     .enum(TIME_WINDOW_STRICTNESS, {
       message: "Strictness must be HARD or SOFT",
@@ -54,10 +56,23 @@ const baseOrderSchema = {
     .int()
     .positive("Volume must be positive")
     .optional(),
-  orderValue: z.number().int().nonnegative("El valorizado no puede ser negativo").optional(),
-  unitsRequired: z.number().int().positive("Las unidades deben ser positivas").optional(),
+  orderValue: z
+    .number()
+    .int()
+    .nonnegative("El valorizado no puede ser negativo")
+    .optional(),
+  unitsRequired: z
+    .number()
+    .int()
+    .positive("Las unidades deben ser positivas")
+    .optional(),
   orderType: z.enum(["NEW", "RESCHEDULED", "URGENT"] as const).optional(),
-  priority: z.number().int().min(0, "Prioridad mínima es 0").max(100, "Prioridad máxima es 100").optional(),
+  priority: z
+    .number()
+    .int()
+    .min(0, "Prioridad mínima es 0")
+    .max(100, "Prioridad máxima es 100")
+    .optional(),
   requiredSkills: z.string().optional(),
   notes: z.string().optional(),
   customFields: z.record(z.string(), z.unknown()).optional(),
@@ -132,7 +147,10 @@ export const updateOrderSchema = z.object({
     .string()
     .regex(/^-?\d+\.?\d*$/)
     .optional(),
-  timeWindowPresetId: z.string().uuid().optional().or(z.literal("")),
+  timeWindowPresetId: z.preprocess(
+    (v) => (v === "" ? null : v),
+    z.string().uuid().nullable().optional(),
+  ),
   strictness: z.enum(TIME_WINDOW_STRICTNESS).nullable().optional(),
   promisedDate: z.coerce.date().optional(),
   weightRequired: z.number().int().positive().optional(),

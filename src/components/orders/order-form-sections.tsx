@@ -81,7 +81,9 @@ export function OrderFormBasicInfo() {
           autoComplete="email"
         />
         {errors.customerEmail && (
-          <p className="text-sm text-destructive mt-1">{errors.customerEmail}</p>
+          <p className="text-sm text-destructive mt-1">
+            {errors.customerEmail}
+          </p>
         )}
       </div>
     </div>
@@ -156,7 +158,8 @@ export function OrderFormLocation() {
 
 export function OrderFormTimeWindow() {
   const { state, actions } = useOrderForm();
-  const { formData, timeWindowPresets, selectedPreset, isLoadingPresets } = state;
+  const { formData, timeWindowPresets, selectedPreset, isLoadingPresets } =
+    state;
   const { handleChange, handlePresetChange } = actions;
 
   return (
@@ -185,7 +188,9 @@ export function OrderFormTimeWindow() {
           />
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mt-1">Rango horario en el que se puede realizar la entrega</p>
+      <p className="text-xs text-muted-foreground mt-1">
+        Rango horario en el que se puede realizar la entrega
+      </p>
 
       {timeWindowPresets.length > 0 && (
         <div className="mt-3">
@@ -200,11 +205,30 @@ export function OrderFormTimeWindow() {
               className="w-full px-3 py-2 border rounded-md bg-background"
             >
               <option value="">Sin preset</option>
+              {/*
+                If the order references a preset that's no longer in
+                the active list (deactivated, deleted, or fetched on
+                another tenant), keep it as an option so the select
+                renders matching the underlying state. Without this,
+                the browser silently falls back to the first option
+                ("Sin preset") and an unsuspecting save can wipe the
+                preset reference.
+              */}
+              {formData.timeWindowPresetId &&
+                !timeWindowPresets.some(
+                  (p) => p.id === formData.timeWindowPresetId,
+                ) && (
+                  <option value={formData.timeWindowPresetId}>
+                    Preset asignado (inactivo o no disponible)
+                  </option>
+                )}
               {timeWindowPresets.map((preset) => (
                 <option key={preset.id} value={preset.id}>
-                  {preset.name} ({preset.type === "EXACT"
+                  {preset.name} (
+                  {preset.type === "EXACT"
                     ? `${preset.exactTime} ±${preset.toleranceMinutes}min`
-                    : `${preset.startTime} - ${preset.endTime}`})
+                    : `${preset.startTime} - ${preset.endTime}`}
+                  )
                 </option>
               ))}
             </select>
@@ -254,7 +278,10 @@ export function OrderFormCapacity() {
               min="0"
               value={formData.weightRequired || ""}
               onChange={(e) =>
-                handleChange("weightRequired", parseInt(e.target.value, 10) || 0)
+                handleChange(
+                  "weightRequired",
+                  parseInt(e.target.value, 10) || 0,
+                )
               }
               placeholder="Ej: 500"
             />
@@ -270,7 +297,10 @@ export function OrderFormCapacity() {
               min="0"
               value={formData.volumeRequired || ""}
               onChange={(e) =>
-                handleChange("volumeRequired", parseInt(e.target.value, 10) || 0)
+                handleChange(
+                  "volumeRequired",
+                  parseInt(e.target.value, 10) || 0,
+                )
               }
               placeholder="Ej: 10"
             />
@@ -317,7 +347,9 @@ export function OrderFormCapacity() {
             <select
               id="orderType"
               value={formData.orderType || ""}
-              onChange={(e) => handleChange("orderType", e.target.value || null)}
+              onChange={(e) =>
+                handleChange("orderType", e.target.value || null)
+              }
               className="w-full px-3 py-2 border rounded-md bg-background"
             >
               <option value="">Sin tipo</option>
@@ -430,9 +462,7 @@ export function OrderFormActions() {
 
   return (
     <>
-      {errors.form && (
-        <p className="text-sm text-destructive">{errors.form}</p>
-      )}
+      {errors.form && <p className="text-sm text-destructive">{errors.form}</p>}
 
       <div className="flex justify-end gap-2 pt-2">
         {onCancel && (
