@@ -3,20 +3,20 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   driverLocations,
+  LOCATION_SOURCE,
   optimizationJobs,
   routeStops,
+  USER_ROLES,
   users,
   vehicles,
-  USER_ROLES,
-  LOCATION_SOURCE,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { publishDriverLocationEvent } from "@/lib/realtime";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
  * Validates latitude value
@@ -62,7 +62,11 @@ function isValidLongitude(lng: number): boolean {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE_STOP,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -153,7 +157,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar accuracy (si se proporciona)
-    if (accuracy !== undefined && (typeof accuracy !== "number" || accuracy < 0)) {
+    if (
+      accuracy !== undefined &&
+      (typeof accuracy !== "number" || accuracy < 0)
+    ) {
       return NextResponse.json(
         { error: "accuracy debe ser un número positivo (metros)" },
         { status: 400 },
@@ -169,7 +176,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar heading (si se proporciona)
-    if (heading !== undefined && (typeof heading !== "number" || heading < 0 || heading > 360)) {
+    if (
+      heading !== undefined &&
+      (typeof heading !== "number" || heading < 0 || heading > 360)
+    ) {
       return NextResponse.json(
         { error: "heading debe estar entre 0 y 360 grados" },
         { status: 400 },
@@ -177,7 +187,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar batteryLevel (si se proporciona)
-    if (batteryLevel !== undefined && (typeof batteryLevel !== "number" || batteryLevel < 0 || batteryLevel > 100)) {
+    if (
+      batteryLevel !== undefined &&
+      (typeof batteryLevel !== "number" ||
+        batteryLevel < 0 ||
+        batteryLevel > 100)
+    ) {
       return NextResponse.json(
         { error: "batteryLevel debe estar entre 0 y 100" },
         { status: 400 },
@@ -270,20 +285,34 @@ export async function POST(request: NextRequest) {
         createdAt: driverLocations.createdAt,
       });
 
-    return NextResponse.json({
-      success: true,
-      locationId: savedLocation.id,
-      savedAt: savedLocation.createdAt.toISOString(),
-    }, { status: 201 });
+    // Push the new position onto the in-process monitoring bus so
+    // every dashboard with an open SSE stream patches the marker
+    // immediately. Without this, the driver only moves on the map at
+    // the next 10s SWR poll — which felt stuck for the operator.
+    publishDriverLocationEvent({
+      companyId,
+      driverId,
+      routeId,
+      latitude: lat,
+      longitude: lng,
+      heading: heading ? Math.round(heading) : null,
+      speed: speed ? Math.round(speed) : null,
+      isMoving,
+    });
 
+    return NextResponse.json(
+      {
+        success: true,
+        locationId: savedLocation.id,
+        savedAt: savedLocation.createdAt.toISOString(),
+      },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("Error saving driver location:", error);
 
     if (error instanceof Error && error.message.includes("Unauthorized")) {
-      return NextResponse.json(
-        { error: "No autorizado" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
     return NextResponse.json(
@@ -365,15 +394,11 @@ export async function GET(request: NextRequest) {
         savedAt: lastLocation.createdAt.toISOString(),
       },
     });
-
   } catch (error) {
     console.error("Error fetching driver location:", error);
 
     if (error instanceof Error && error.message.includes("Unauthorized")) {
-      return NextResponse.json(
-        { error: "No autorizado" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
     return NextResponse.json(

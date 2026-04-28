@@ -333,12 +333,26 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   // transition lands here within ~50ms so the dashboard reflects
   // completions/failures effectively in realtime instead of waiting
   // for the next polling tick.
-  const handleStreamEvent = useCallback(() => {
-    mutateMonitoring();
-    mutateDrivers();
-    if (view === "detail") mutateDetail();
-    setLastUpdate(new Date());
-  }, [mutateMonitoring, mutateDrivers, mutateDetail, view]);
+  //
+  // Driver-location events fire much more often (every 20s per active
+  // driver) so we only revalidate the driver list — the summary
+  // counters don't change with a position ping. SWR's
+  // `dedupingInterval: 2000` keeps multiple drivers reporting in
+  // quick succession from causing a refetch storm.
+  const handleStreamEvent = useCallback(
+    (kind: string) => {
+      if (kind === "driver.location") {
+        mutateDrivers();
+        if (view === "detail") mutateDetail();
+      } else {
+        mutateMonitoring();
+        mutateDrivers();
+        if (view === "detail") mutateDetail();
+      }
+      setLastUpdate(new Date());
+    },
+    [mutateMonitoring, mutateDrivers, mutateDetail, view],
+  );
   useMonitoringStream(companyId, handleStreamEvent);
 
   const handleDetailRefresh = () => {

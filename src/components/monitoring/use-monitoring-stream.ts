@@ -9,6 +9,7 @@ const KNOWN_EVENTS: MonitoringEventKind[] = [
   "stop.failed",
   "stop.skipped",
   "stop.transitioned",
+  "driver.location",
 ];
 
 /**

@@ -39,6 +39,27 @@ const baseOrderSchema = {
     (v) => (v === "" ? null : v),
     z.string().uuid("Invalid time window preset ID").nullable().optional(),
   ),
+  // The form derives these from the picked preset (or the user types
+  // them directly). Without them on the schema Zod silently strips
+  // the keys, the INSERT runs without time_window_*, and the column
+  // lands as NULL — which is the bug that made edited orders show an
+  // empty window. Accept HH:MM or HH:MM:SS, coerce "" → null.
+  timeWindowStart: z.preprocess(
+    (v) => (v === "" ? null : v),
+    z
+      .string()
+      .regex(/^\d{2}:\d{2}(?::\d{2})?$/, "Invalid time format (HH:MM)")
+      .nullable()
+      .optional(),
+  ),
+  timeWindowEnd: z.preprocess(
+    (v) => (v === "" ? null : v),
+    z
+      .string()
+      .regex(/^\d{2}:\d{2}(?::\d{2})?$/, "Invalid time format (HH:MM)")
+      .nullable()
+      .optional(),
+  ),
   strictness: z
     .enum(TIME_WINDOW_STRICTNESS, {
       message: "Strictness must be HARD or SOFT",
@@ -150,6 +171,22 @@ export const updateOrderSchema = z.object({
   timeWindowPresetId: z.preprocess(
     (v) => (v === "" ? null : v),
     z.string().uuid().nullable().optional(),
+  ),
+  timeWindowStart: z.preprocess(
+    (v) => (v === "" ? null : v),
+    z
+      .string()
+      .regex(/^\d{2}:\d{2}(?::\d{2})?$/)
+      .nullable()
+      .optional(),
+  ),
+  timeWindowEnd: z.preprocess(
+    (v) => (v === "" ? null : v),
+    z
+      .string()
+      .regex(/^\d{2}:\d{2}(?::\d{2})?$/)
+      .nullable()
+      .optional(),
   ),
   strictness: z.enum(TIME_WINDOW_STRICTNESS).nullable().optional(),
   promisedDate: z.coerce.date().optional(),

@@ -4,17 +4,17 @@ import { db } from "@/db";
 import {
   optimizationJobs,
   routeStops,
+  USER_ROLES,
   users,
   vehicles,
-  USER_ROLES,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { safeParseJson } from "@/lib/utils/safe-json";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * GET /api/mobile/driver/my-route
@@ -34,7 +34,11 @@ import { EntityType, Action } from "@/lib/auth/authorization";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -101,6 +105,15 @@ export async function GET(request: NextRequest) {
               orderValue: true,
               unitsRequired: true,
               customFields: true,
+              // Pulled in for the time window fallback below — when
+              // the route stop's timestamp is missing (the optimizer
+              // didn't stamp one because the order had no resolved
+              // window at plan time), we compose a timestamp from the
+              // order's HH:MM string so the driver still sees the
+              // window instead of `--:--`.
+              timeWindowStart: true,
+              timeWindowEnd: true,
+              promisedDate: true,
             },
           },
         },
@@ -140,7 +153,10 @@ export async function GET(request: NextRequest) {
     const hasStopsToday = allTodayStops.length > 0;
     // Usar el job más reciente para metadata (distancia, duración)
     const latestStop = hasStopsToday
-      ? allTodayStops.reduce((latest, s) => s.createdAt > latest.createdAt ? s : latest, allTodayStops[0])
+      ? allTodayStops.reduce(
+          (latest, s) => (s.createdAt > latest.createdAt ? s : latest),
+          allTodayStops[0],
+        )
       : null;
     const activeJobId = latestStop?.jobId ?? null;
     const routeVehicleId = latestStop?.vehicleId ?? null;
@@ -200,7 +216,7 @@ export async function GET(request: NextRequest) {
 
     // Usar todas las paradas del día (ya cargadas con órdenes desde la query inicial).
     // Deduplicar por orderId: si una orden aparece en múltiples jobs, usar la del job más reciente.
-    const stopsByOrder = new Map<string, typeof allTodayStops[0]>();
+    const stopsByOrder = new Map<string, (typeof allTodayStops)[0]>();
     for (const stop of allTodayStops) {
       const existing = stopsByOrder.get(stop.orderId);
       if (!existing || stop.createdAt > existing.createdAt) {
@@ -275,7 +291,13 @@ export async function GET(request: NextRequest) {
 
     if (activeJob.result && routeVehicle) {
       try {
-        const parsedResult = safeParseJson<{ routes?: Array<{ vehicleId?: string; totalDistance?: number; totalDuration?: number }> }>(activeJob.result);
+        const parsedResult = safeParseJson<{
+          routes?: Array<{
+            vehicleId?: string;
+            totalDistance?: number;
+            totalDuration?: number;
+          }>;
+        }>(activeJob.result);
         const vehicleRoute = parsedResult.routes?.find(
           (r: { vehicleId?: string }) => r.vehicleId === routeVehicle.id,
         );
@@ -303,6 +325,28 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // Compose a timestamp from the order's HH:MM time and a base
+    // date so the mobile fallback below has something to render. The
+    // route stop's column is a real `timestamp` (Date), the order's
+    // column is `time` (HH:MM:SS string) — different shapes for the
+    // same logical data because the optimizer joins date + time when
+    // it stamps the route. Falls back to today if the order has no
+    // promised date attached.
+    const composeTimestamp = (
+      base: Date | null | undefined,
+      time: string | null | undefined,
+    ): string | null => {
+      if (!time) return null;
+      const parts = time.split(":");
+      const h = Number(parts[0]);
+      const m = Number(parts[1]);
+      const s = parts[2] !== undefined ? Number(parts[2]) : 0;
+      if (Number.isNaN(h) || Number.isNaN(m) || Number.isNaN(s)) return null;
+      const composed = new Date(base ?? Date.now());
+      composed.setHours(h, m, s, 0);
+      return composed.toISOString();
+    };
+
     // Construir lista de paradas para la app movil
     const stopsData = stops.map((stop) => ({
       id: stop.id,
@@ -317,8 +361,15 @@ export async function GET(request: NextRequest) {
       estimatedArrival: stop.estimatedArrival?.toISOString() || null,
       estimatedServiceTime: stop.estimatedServiceTime,
       timeWindow: {
-        start: stop.timeWindowStart?.toISOString() || null,
-        end: stop.timeWindowEnd?.toISOString() || null,
+        start:
+          stop.timeWindowStart?.toISOString() ??
+          composeTimestamp(
+            stop.order?.promisedDate,
+            stop.order?.timeWindowStart,
+          ),
+        end:
+          stop.timeWindowEnd?.toISOString() ??
+          composeTimestamp(stop.order?.promisedDate, stop.order?.timeWindowEnd),
       },
       // Timestamps de ejecucion
       startedAt: stop.startedAt?.toISOString() || null,
