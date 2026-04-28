@@ -326,12 +326,16 @@ export async function GET(request: NextRequest) {
     });
 
     // Compose a timestamp from the order's HH:MM time and a base
-    // date so the mobile fallback below has something to render. The
-    // route stop's column is a real `timestamp` (Date), the order's
-    // column is `time` (HH:MM:SS string) — different shapes for the
-    // same logical data because the optimizer joins date + time when
-    // it stamps the route. Falls back to today if the order has no
-    // promised date attached.
+    // date so the mobile fallback below has something to render.
+    //
+    // The order column is `time` (HH:MM:SS, tz-naive) — the user
+    // typed "09:59" meaning their local clock. The route stop column
+    // is a real `timestamp`. We treat the HH:MM as if it were UTC so
+    // the round-trip is identity: the mobile reads the UTC hour off
+    // the parsed DateTime and renders the same digits the user
+    // typed. `setHours` (local) used to add the server's TZ offset on
+    // top, which is why a 09:59 input showed up as 14:59 in the app
+    // when the server runs in UTC-5.
     const composeTimestamp = (
       base: Date | null | undefined,
       time: string | null | undefined,
@@ -343,7 +347,7 @@ export async function GET(request: NextRequest) {
       const s = parts[2] !== undefined ? Number(parts[2]) : 0;
       if (Number.isNaN(h) || Number.isNaN(m) || Number.isNaN(s)) return null;
       const composed = new Date(base ?? Date.now());
-      composed.setHours(h, m, s, 0);
+      composed.setUTCHours(h, m, s, 0);
       return composed.toISOString();
     };
 

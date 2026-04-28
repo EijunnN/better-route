@@ -114,17 +114,21 @@ export async function generatePresignedUploadUrl(
   const client = getS3Client();
   const bucketName = getBucketName();
 
+  // Don't bake ContentLength into the signed command. AWS SDK v3
+  // bakes it as `x-amz-decoded-content-length` / Content-Length and
+  // R2 then enforces an *exact* byte match — meaning every upload
+  // failed with 403 unless the file was exactly MAX_FILE_SIZE bytes.
+  // The size cap should be enforced via bucket policy (cap object
+  // size) or by the client before requesting the URL; here we just
+  // sign for content-type so the upload survives.
   const command = new PutObjectCommand({
     Bucket: bucketName,
     Key: key,
     ContentType: contentType,
-    // Set maximum content length to enforce file size limit
-    ContentLength: MAX_FILE_SIZE,
   });
 
   const signedUrl = await getSignedUrl(client, command, {
     expiresIn,
-    // Add content-length condition to prevent large uploads
     signableHeaders: new Set(["content-type"]),
   });
 

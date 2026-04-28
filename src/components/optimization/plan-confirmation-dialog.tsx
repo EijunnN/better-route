@@ -136,7 +136,9 @@ function dateToString(date: Date | null): string {
 function formatDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
-  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}HRS`;
+  if (hours === 0) return `${mins} min`;
+  if (mins === 0) return `${hours} h`;
+  return `${hours} h ${mins} min`;
 }
 
 function formatDistance(meters: number): string {
