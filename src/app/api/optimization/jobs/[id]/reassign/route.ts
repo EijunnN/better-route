@@ -3,19 +3,22 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs, orders, vehicles } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import {
+  buildVroomConfigFromPreset,
+  loadOptimizationPreset,
+} from "@/lib/optimization/preset-config";
 import {
   type DepotConfig,
   type OrderForOptimization,
   type VehicleForOptimization,
   optimizeRoutes as vroomOptimizeRoutes,
 } from "@/lib/optimization/vroom-optimizer";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
 import { safeParseJson } from "@/lib/utils/safe-json";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+
 interface RouteData {
   routeId: string;
   vehicleId: string;
@@ -93,7 +96,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.PLAN, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.PLAN,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -192,6 +199,28 @@ export async function POST(
 
     const targetRoute = result.routes[targetRouteIndex];
     const affectedSourceRouteIds = new Set<string>();
+
+    // Defense in depth: refuse no-op reassignments. The UI also
+    // filters the source vehicle out of the candidate list, but a
+    // direct API call (or a stale client) would otherwise trigger a
+    // pointless reoptimization that can shuffle stop sequence
+    // unexpectedly.
+    const sameVehicleOrders = ordersList.filter((orderReq) => {
+      if (!orderReq.sourceRouteId) return false;
+      const sourceRoute = result.routes.find(
+        (r) => r.routeId === orderReq.sourceRouteId,
+      );
+      return sourceRoute?.vehicleId === targetVehicleId;
+    });
+    if (sameVehicleOrders.length === ordersList.length) {
+      return NextResponse.json(
+        {
+          error: "Cannot reassign orders to the vehicle that already owns them",
+          code: "SAME_VEHICLE_REASSIGN",
+        },
+        { status: 400 },
+      );
+    }
 
     // Process each order to reassign
     for (const orderReq of ordersList) {
@@ -309,6 +338,17 @@ export async function POST(
         ),
       });
 
+      // Reoptimize each affected route. Load the preset bound to
+      // this job so reassign honors the same routeEndMode /
+      // openStart / endDepot the original run used. Previously the
+      // reassign path passed only `{ depot, objective: "DISTANCE" }`
+      // and silently fell back to DRIVER_ORIGIN, which made an
+      // OPEN_END preset suddenly close routes after a reassign.
+      const preset = await loadOptimizationPreset({
+        companyId: tenantCtx.companyId,
+        configurationId: job.configurationId,
+      });
+
       // Reoptimize each affected route
       for (const routeId of affectedRouteIds) {
         const route = result.routes.find((r) => r.routeId === routeId);
@@ -367,7 +407,11 @@ export async function POST(
           const optimResult = await vroomOptimizeRoutes(
             ordersForOptim,
             [vehicleForOptim],
-            { depot, objective: "DISTANCE" },
+            buildVroomConfigFromPreset({
+              preset,
+              depot,
+              objective: "DISTANCE",
+            }),
           );
 
           // Update route with optimized stops

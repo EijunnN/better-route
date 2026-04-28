@@ -1,15 +1,9 @@
 "use client";
 
-import {
-  createContext,
-  use,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import type maplibregl from "maplibre-gl";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
-import type maplibregl from "maplibre-gl";
 
 // Types
 export interface RouteData {
@@ -284,7 +278,9 @@ export function OptimizationDashboardProvider({
     string | null
   >(null);
   const [isReassigning, setIsReassigning] = useState(false);
-  const [reassignmentError, setReassignmentError] = useState<string | null>(null);
+  const [reassignmentError, setReassignmentError] = useState<string | null>(
+    null,
+  );
 
   // Pencil/Map state
   const [pencilMode, setPencilMode] = useState(false);
@@ -334,7 +330,23 @@ export function OptimizationDashboardProvider({
     loadZones();
   }, [companyId]);
 
-  // Derived: Available vehicles
+  // Derived: Available vehicles. When the reassign modal is open we
+  // hide the vehicle that already owns *every* selected order — moving
+  // an order onto its current vehicle is a no-op visually but used to
+  // trigger a single-vehicle reoptimization that could re-sequence
+  // stops with stale config. The server also rejects this case as
+  // defense in depth.
+  const sourceVehicleIds = new Set(
+    selectedOrdersForReassign
+      .map((o) => o.vehicleId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const allSelectedShareOneVehicle =
+    selectedOrdersForReassign.length > 0 && sourceVehicleIds.size === 1;
+  const excludedVehicleId = allSelectedShareOneVehicle
+    ? Array.from(sourceVehicleIds)[0]
+    : null;
+
   const availableVehicles: AvailableVehicle[] = [
     ...result.routes.map((r) => ({
       id: r.vehicleId,
@@ -352,7 +364,7 @@ export function OptimizationDashboardProvider({
       hasRoute: false,
       stopCount: 0,
     })),
-  ];
+  ].filter((v) => v.id !== excludedVehicleId);
 
   // Derived: All selectable orders for pencil mode
   const allSelectableOrders = [
@@ -537,9 +549,7 @@ export function OptimizationDashboardProvider({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(
-          errorData.error || "Error al intercambiar las rutas",
-        );
+        throw new Error(errorData.error || "Error al intercambiar las rutas");
       }
 
       const updatedResult = await response.json();
@@ -549,11 +559,11 @@ export function OptimizationDashboardProvider({
       }
 
       const plateA =
-        result.routes.find((r) => r.vehicleId === vehicleAId)
-          ?.vehiclePlate || vehicleAId;
+        result.routes.find((r) => r.vehicleId === vehicleAId)?.vehiclePlate ||
+        vehicleAId;
       const plateB =
-        result.routes.find((r) => r.vehicleId === vehicleBId)
-          ?.vehiclePlate || vehicleBId;
+        result.routes.find((r) => r.vehicleId === vehicleBId)?.vehiclePlate ||
+        vehicleBId;
 
       toast({
         title: "Rutas intercambiadas exitosamente",
