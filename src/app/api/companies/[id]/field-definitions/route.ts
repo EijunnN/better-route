@@ -133,6 +133,12 @@ export async function POST(
         showInMobile: body.showInMobile ?? true,
         showInCsv: body.showInCsv ?? true,
         validationRules: body.validationRules || null,
+        // Honor the `active` toggle if the caller sends it. The
+        // PATCH handler already supports flipping it; without
+        // mirroring it here, creating a field with active=false
+        // (e.g. seeding draft definitions) silently lands as
+        // active=true.
+        active: body.active ?? true,
       })
       .returning();
 
