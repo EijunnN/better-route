@@ -2,11 +2,11 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationPresets } from "@/db/schema";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { updatePresetSchema } from "@/lib/validations/optimization-preset";
 
 /**
  * GET /api/optimization-presets/[id] - Get a specific preset
@@ -16,7 +16,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_PRESET, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_PRESET,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -53,7 +57,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_PRESET, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_PRESET,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -62,7 +70,22 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    // Check if preset exists
+    // Validate the body upfront. The route end fields (routeEndMode +
+    // endDepot*) used to silently drop here because the previous
+    // hand-written `updateValues` object simply omitted them — adding
+    // a column to `optimizationPresets` required also remembering to
+    // wire it up in two places. The Zod schema is the single contract
+    // now: every column lives in `presetFields` and missing one is a
+    // type error at the spread below.
+    const parseResult = updatePresetSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: "Validation failed", issues: parseResult.error.issues },
+        { status: 400 },
+      );
+    }
+    const parsed = parseResult.data;
+
     const existingPreset = await db.query.optimizationPresets.findFirst({
       where: and(
         eq(optimizationPresets.id, id),
@@ -74,30 +97,19 @@ export async function PUT(
       return NextResponse.json({ error: "Preset not found" }, { status: 404 });
     }
 
-    const updateValues = {
-      name: body.name ?? existingPreset.name,
-      description: body.description ?? existingPreset.description,
-      balanceVisits: body.balanceVisits ?? existingPreset.balanceVisits,
-      minimizeVehicles:
-        body.minimizeVehicles ?? existingPreset.minimizeVehicles,
-      openStart: body.openStart ?? existingPreset.openStart,
-      oneRoutePerVehicle:
-        body.oneRoutePerVehicle ?? existingPreset.oneRoutePerVehicle,
-      flexibleTimeWindows:
-        body.flexibleTimeWindows ?? existingPreset.flexibleTimeWindows,
-      groupSameLocation:
-        body.groupSameLocation ?? existingPreset.groupSameLocation,
-      maxDistanceKm: body.maxDistanceKm ?? existingPreset.maxDistanceKm,
-      trafficFactor: body.trafficFactor ?? existingPreset.trafficFactor,
-      isDefault: body.isDefault ?? existingPreset.isDefault,
-      updatedAt: new Date(),
-    };
+    // Only overwrite columns the caller actually sent. `parsed` came
+    // from `.partial()`, so undefined fields are skipped via the
+    // filter and Drizzle gets a clean SET clause.
+    const updateValues: Record<string, unknown> = { updatedAt: new Date() };
+    for (const [key, value] of Object.entries(parsed)) {
+      if (value !== undefined) updateValues[key] = value;
+    }
 
     let preset;
 
     // If this preset is being set as default, wrap in transaction to ensure
     // only one default per company at any time
-    if (body.isDefault && !existingPreset.isDefault) {
+    if (parsed.isDefault === true && !existingPreset.isDefault) {
       [preset] = await db.transaction(async (tx) => {
         // Unset all other defaults for this company
         await tx
@@ -142,7 +154,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_PRESET, Action.DELETE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_PRESET,
+      Action.DELETE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

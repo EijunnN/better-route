@@ -2,18 +2,22 @@ import { and, desc, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationPresets } from "@/db/schema";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { createPresetSchema } from "@/lib/validations/optimization-preset";
 
 /**
  * GET /api/optimization-presets - List all optimization presets
  */
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_PRESET, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_PRESET,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -45,7 +49,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_PRESET, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_PRESET,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -53,19 +61,20 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // Validate via Zod so adding a column requires updating the
+    // schema, not the handler — same contract as the PUT route.
+    const parseResult = createPresetSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: "Validation failed", issues: parseResult.error.issues },
+        { status: 400 },
+      );
+    }
+    const parsed = parseResult.data;
+
     const presetValues = {
+      ...parsed,
       companyId: tenantCtx.companyId,
-      name: body.name,
-      description: body.description,
-      balanceVisits: body.balanceVisits ?? false,
-      minimizeVehicles: body.minimizeVehicles ?? false,
-      openStart: body.openStart ?? false,
-      oneRoutePerVehicle: body.oneRoutePerVehicle ?? true,
-      flexibleTimeWindows: body.flexibleTimeWindows ?? false,
-      groupSameLocation: body.groupSameLocation ?? true,
-      maxDistanceKm: body.maxDistanceKm ?? 200,
-      trafficFactor: body.trafficFactor ?? 50,
-      isDefault: body.isDefault ?? false,
       active: true,
     };
 
@@ -73,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     // If this preset is set as default, wrap in transaction to ensure
     // only one default per company at any time
-    if (body.isDefault) {
+    if (parsed.isDefault) {
       [preset] = await db.transaction(async (tx) => {
         // Unset all other defaults for this company
         await tx
