@@ -14,14 +14,21 @@ export function TrackingHeader({
   customMessage,
 }: TrackingHeaderProps) {
   return (
-    <header className="border-b bg-card px-4 py-4">
-      <div className="mx-auto max-w-2xl flex items-center gap-3">
-        {logoUrl && (
+    <header className="border-b border-border/60 bg-card/40 backdrop-blur-sm">
+      <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-4 sm:px-6">
+        {logoUrl ? (
           <img
             src={logoUrl}
             alt={companyName}
-            className="h-8 w-8 rounded object-contain"
+            className="h-9 w-9 rounded-lg object-contain"
           />
+        ) : (
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold text-white"
+            style={{ backgroundColor: brandColor ?? "#4AB855" }}
+          >
+            {companyName.charAt(0).toUpperCase()}
+          </div>
         )}
         <h1
           className="text-lg font-semibold"
@@ -31,9 +38,9 @@ export function TrackingHeader({
         </h1>
       </div>
       {customMessage && (
-        <p className="mx-auto max-w-2xl mt-2 text-sm text-muted-foreground">
-          {customMessage}
-        </p>
+        <div className="mx-auto w-full max-w-6xl px-4 pb-3 sm:px-6">
+          <p className="text-sm text-muted-foreground">{customMessage}</p>
+        </div>
       )}
     </header>
   );
