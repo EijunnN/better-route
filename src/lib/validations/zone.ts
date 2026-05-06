@@ -1,12 +1,10 @@
 import { z } from "zod";
 
-// Zone types
-export const ZONE_TYPES = [
-  "DELIVERY",
-  "PICKUP",
-  "MIXED",
-  "RESTRICTED",
-] as const;
+// Zone types. The platform is currently scoped to last-mile delivery
+// only — pickup / mixed / restricted are out of scope until we open
+// the product to other operations, so the UI and validator only
+// accept DELIVERY. Re-add the other variants here when scope expands.
+export const ZONE_TYPES = ["DELIVERY"] as const;
 
 // Days of week for zone scheduling
 export const DAYS_OF_WEEK = [
@@ -60,9 +58,7 @@ export const zoneSchema = z.object({
     .optional()
     .nullable(),
   type: z
-    .enum(ZONE_TYPES, {
-      message: "Tipo debe ser DELIVERY, PICKUP, MIXED o RESTRICTED",
-    })
+    .enum(ZONE_TYPES, { message: "Tipo de zona inválido" })
     .default("DELIVERY"),
   // GeoJSON polygon geometry stored as JSON string
   geometry: z.string().refine(
@@ -159,9 +155,6 @@ export type UpdateZoneVehicleInput = z.infer<typeof updateZoneVehicleSchema>;
 // Zone type display names for UI
 export const ZONE_TYPE_LABELS: Record<(typeof ZONE_TYPES)[number], string> = {
   DELIVERY: "Entrega",
-  PICKUP: "Recogida",
-  MIXED: "Mixta",
-  RESTRICTED: "Restringida",
 };
 
 // Day of week display names for UI

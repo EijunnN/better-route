@@ -15,12 +15,12 @@ import { vehicles } from "./vehicles";
 // ZONES - Geographic zones for route planning
 // ============================================
 
-// Zone types
+// Zone types. Last-mile-only product — keep this in sync with
+// `lib/validations/zone.ts ZONE_TYPES`. Other operation types (pickup
+// / mixed / restricted) live as an idea, not as code, until scope
+// expands.
 export const ZONE_TYPES = {
   DELIVERY: "DELIVERY",
-  PICKUP: "PICKUP",
-  MIXED: "MIXED",
-  RESTRICTED: "RESTRICTED",
 } as const;
 
 // Zones - Geographic territories for assigning vehicles and days

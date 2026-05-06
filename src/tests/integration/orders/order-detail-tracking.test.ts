@@ -964,7 +964,7 @@ describe("Zone Update - PATCH /api/zones/[id]", () => {
     await testDb.delete(zones).where(eq(zones.companyId, companyB.id));
   });
 
-  test("updates zone name and type", async () => {
+  test("updates zone name", async () => {
     const zone = await createZone({
       companyId: companyA.id,
       name: "Old Name",
@@ -976,7 +976,7 @@ describe("Zone Update - PATCH /api/zones/[id]", () => {
       token: tokenAdminA,
       companyId: companyA.id,
       userId: adminA.id,
-      body: { name: "New Name", type: "MIXED" },
+      body: { name: "New Name" },
     });
 
     const response = await PATCH_ZONE(request, {
@@ -986,7 +986,7 @@ describe("Zone Update - PATCH /api/zones/[id]", () => {
 
     const data = await response.json();
     expect(data.name).toBe("New Name");
-    expect(data.type).toBe("MIXED");
+    expect(data.type).toBe("DELIVERY");
   });
 
   test("returns 404 when updating non-existent zone", async () => {
