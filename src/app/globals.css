@@ -63,6 +63,12 @@
 }
 
 .dark {
+  /* Hint to the user agent that built-in form controls (date/time
+     pickers, scrollbars, autofill highlights) should render with a
+     dark palette. Without this, Chrome/Edge ship a black calendar
+     icon for `<input type="date">` that disappears against our dark
+     surfaces. */
+  color-scheme: dark;
   --background: oklch(0.1448 0 0);
   --foreground: oklch(0.9702 0 0);
   --card: oklch(0.1822 0 0);
