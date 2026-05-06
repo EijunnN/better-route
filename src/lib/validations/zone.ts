@@ -1,10 +1,14 @@
 import { z } from "zod";
 
-// Zone types. The platform is currently scoped to last-mile delivery
-// only — pickup / mixed / restricted are out of scope until we open
-// the product to other operations, so the UI and validator only
-// accept DELIVERY. Re-add the other variants here when scope expands.
-export const ZONE_TYPES = ["DELIVERY"] as const;
+// Zone types. Last-mile-only product: DELIVERY zones are normal
+// service areas. RESTRICTED zones are no-delivery polygons — orders
+// whose drop-off falls inside them are pre-filtered out of the
+// optimizer input (the driver can still drive *through* a restricted
+// zone if it's the best route; we only block deliveries).
+//
+// When zones overlap, RESTRICTED always wins — see `getZoneForOrder`
+// in `lib/geo/zone-utils.ts`.
+export const ZONE_TYPES = ["DELIVERY", "RESTRICTED"] as const;
 
 // Days of week for zone scheduling
 export const DAYS_OF_WEEK = [
@@ -155,6 +159,7 @@ export type UpdateZoneVehicleInput = z.infer<typeof updateZoneVehicleSchema>;
 // Zone type display names for UI
 export const ZONE_TYPE_LABELS: Record<(typeof ZONE_TYPES)[number], string> = {
   DELIVERY: "Entrega",
+  RESTRICTED: "Zona restringida (sin entregas)",
 };
 
 // Day of week display names for UI

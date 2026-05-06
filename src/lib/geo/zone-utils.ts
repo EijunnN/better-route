@@ -118,8 +118,14 @@ export function isPointInZone(
 }
 
 /**
- * Get the zone for an order based on its coordinates
- * Returns the first matching zone, or null if no zone contains the point
+ * Get the zone for an order based on its coordinates.
+ *
+ * Priority: RESTRICTED zones win over DELIVERY zones when polygons
+ * overlap. The "more restrictive wins" rule is explicit here so two
+ * overlapping DELIVERY zones (which are still allowed) don't depend
+ * on createdAt iteration order, and a RESTRICTED polygon drawn on
+ * top of a DELIVERY area correctly excludes that pocket from
+ * routing without forcing the operator to recut polygons by hand.
  */
 export function getZoneForOrder(
   order: OrderWithLocation,
@@ -139,15 +145,34 @@ export function getZoneForOrder(
     return null;
   }
 
-  // Find first zone that contains this point
+  // 1) RESTRICTED first — most restrictive wins.
   for (const zone of zones) {
     if (!zone.active) continue;
-    if (isPointInZone(lat, lng, zone)) {
-      return zone;
-    }
+    if (zone.type !== "RESTRICTED") continue;
+    if (isPointInZone(lat, lng, zone)) return zone;
+  }
+
+  // 2) Other zones (currently only DELIVERY) — first match wins.
+  for (const zone of zones) {
+    if (!zone.active) continue;
+    if (zone.type === "RESTRICTED") continue;
+    if (isPointInZone(lat, lng, zone)) return zone;
   }
 
   return null;
+}
+
+/**
+ * True when the order's drop-off point falls inside any active
+ * RESTRICTED zone. Used by the optimizer to pre-filter unservable
+ * orders before they reach VROOM.
+ */
+export function isOrderInRestrictedZone(
+  order: OrderWithLocation,
+  zones: ZoneData[],
+): boolean {
+  const zone = getZoneForOrder(order, zones);
+  return zone?.type === "RESTRICTED";
 }
 
 /**
@@ -356,14 +381,37 @@ export function createZoneBatches<
   const warnings: string[] = [];
   const unroutable: Array<{ order: TOrder; reason: string }> = [];
 
-  // Group orders by zone
-  const ordersByZone = groupOrdersByZone(orders, zones);
+  // Pre-filter: orders whose drop-off falls inside a RESTRICTED zone
+  // never reach VROOM. Surface them as unroutable with a clear
+  // reason — the operator sees them in the "no incluidas" section
+  // of the plan results, can fix the address, and re-run.
+  const routableOrders: TOrder[] = [];
+  for (const order of orders) {
+    const zone = getZoneForOrder(order, zones);
+    if (zone?.type === "RESTRICTED") {
+      unroutable.push({
+        order,
+        reason: `Dirección dentro de zona restringida "${zone.name}"`,
+      });
+      continue;
+    }
+    routableOrders.push(order);
+  }
+
+  // Group routable orders by zone
+  const ordersByZone = groupOrdersByZone(routableOrders, zones);
 
   // Create batch for each zone with orders
   for (const [zoneId, zoneOrders] of ordersByZone.entries()) {
     if (zoneOrders.length === 0) continue;
 
     const zone = zones.find((z) => z.id === zoneId);
+
+    // Defensive: a RESTRICTED zone shouldn't produce a batch even if
+    // somehow `routableOrders` slipped one through. Skip entirely so
+    // we never assign a vehicle to a no-go area.
+    if (zone?.type === "RESTRICTED") continue;
+
     const zoneLabel = zone?.name || (zoneId === "unzoned" ? "Sin Zona" : zoneId);
     const eligibleVehicles = filterVehiclesForZone(vehicles, zoneId, day);
 

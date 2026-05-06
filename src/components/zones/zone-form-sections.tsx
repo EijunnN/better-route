@@ -61,6 +61,13 @@ export function ZoneFormBasicInfo() {
           {errors.type && (
             <p className="text-sm text-destructive">{errors.type}</p>
           )}
+          {formData.type === "RESTRICTED" && (
+            <p className="text-xs text-destructive leading-snug">
+              Las órdenes cuya dirección caiga dentro de esta zona se
+              excluirán automáticamente del ruteo. El conductor sí puede
+              atravesarla si conviene a la ruta.
+            </p>
+          )}
         </div>
 
         <div className="space-y-2 sm:col-span-2">

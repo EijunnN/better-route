@@ -22,7 +22,13 @@ interface Zone {
     coordinates: number[][][];
   } | null;
   active: boolean;
+  type?: string;
 }
+
+// Bright red for any RESTRICTED polygon, regardless of the user's
+// chosen `color`. The point is recognition at a glance — you should
+// never confuse a no-go zone with a normal service area.
+const RESTRICTED_COLOR = "#EF4444";
 
 interface ZonePreviewMapProps {
   zones: Zone[];
@@ -75,13 +81,24 @@ export function ZonePreviewMap({
           },
         });
 
+        const isRestricted = zone.type === "RESTRICTED";
+        const renderColor = isRestricted ? RESTRICTED_COLOR : zone.color;
+
         mapInstance.addLayer({
           id: `zone-fill-${zone.id}`,
           type: "fill",
           source: `zone-${zone.id}`,
           paint: {
-            "fill-color": zone.color,
-            "fill-opacity": isSelected ? 0.4 : zone.active ? 0.2 : 0.1,
+            "fill-color": renderColor,
+            "fill-opacity": isSelected
+              ? isRestricted
+                ? 0.5
+                : 0.4
+              : zone.active
+                ? isRestricted
+                  ? 0.35
+                  : 0.2
+                : 0.1,
           },
         });
 
@@ -90,9 +107,10 @@ export function ZonePreviewMap({
           type: "line",
           source: `zone-${zone.id}`,
           paint: {
-            "line-color": zone.color,
-            "line-width": isSelected ? 3 : 1.5,
+            "line-color": renderColor,
+            "line-width": isSelected ? 3 : isRestricted ? 2 : 1.5,
             "line-opacity": isSelected ? 1 : zone.active ? 0.8 : 0.4,
+            "line-dasharray": isRestricted ? [2, 2] : [1, 0],
           },
         });
 

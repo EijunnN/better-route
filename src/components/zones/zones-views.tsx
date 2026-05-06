@@ -200,6 +200,11 @@ function ZoneListItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">{zone.name}</span>
+            {zone.type === "RESTRICTED" && (
+              <Badge variant="destructive" className="text-[10px] px-1.5">
+                Restringida
+              </Badge>
+            )}
             {zone.isDefault && (
               <Badge variant="secondary" className="text-[10px] px-1.5">
                 Default
@@ -211,7 +216,13 @@ function ZoneListItem({
               </Badge>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p
+            className={`text-xs mt-1 ${
+              zone.type === "RESTRICTED"
+                ? "text-destructive"
+                : "text-muted-foreground"
+            }`}
+          >
             {ZONE_TYPE_LABELS[zone.type as keyof typeof ZONE_TYPE_LABELS] || zone.type}
           </p>
           <div className="flex items-center gap-3 mt-2">

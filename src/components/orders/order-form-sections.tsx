@@ -1,10 +1,12 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DynamicFieldRenderer } from "@/components/custom-fields";
+import { useRestrictedZones } from "@/hooks/use-restricted-zones";
 import { useOrderForm } from "./order-form-context";
 
 export function OrderFormBasicInfo() {
@@ -94,6 +96,14 @@ export function OrderFormLocation() {
   const { state, actions } = useOrderForm();
   const { formData, errors } = state;
   const { handleChange } = actions;
+  const { checkPoint } = useRestrictedZones();
+
+  const lat = parseFloat(formData.latitude);
+  const lng = parseFloat(formData.longitude);
+  const restricted =
+    !Number.isNaN(lat) && !Number.isNaN(lng)
+      ? checkPoint(lat, lng)
+      : { inRestricted: false };
 
   return (
     <div className="border-b pb-4">
@@ -152,6 +162,18 @@ export function OrderFormLocation() {
           )}
         </div>
       </div>
+
+      {restricted.inRestricted && (
+        <div className="mt-3 flex gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <p className="text-xs text-destructive leading-snug">
+            Esta dirección cae dentro de la zona restringida
+            {restricted.zoneName ? ` "${restricted.zoneName}"` : ""}. La
+            orden se podrá guardar pero será excluida automáticamente
+            del ruteo en el próximo plan.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
