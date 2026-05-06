@@ -109,11 +109,19 @@ export async function GET(
       showTimeline: settings?.showTimeline ?? true,
     };
 
-    // 5. Load the latest route stop for this order
-    const stop = await db.query.routeStops.findFirst({
+    // 5. Load the route stop for this order. When an order has been
+    // reassigned the same orderId can have multiple `routeStops` rows
+    // — the newest is the active assignment but it has no evidence,
+    // while the older COMPLETED stop holds the photos and notes the
+    // customer expects to see. Prefer the terminal stop when one
+    // exists; otherwise fall back to the most recent.
+    const stops = await db.query.routeStops.findMany({
       where: eq(routeStops.orderId, tokenRecord.orderId),
       orderBy: [desc(routeStops.createdAt)],
     });
+    const stop =
+      stops.find((s) => s.status === "COMPLETED" || s.status === "FAILED") ??
+      stops[0];
 
     // 6. Load driver info and location if applicable
     let driverData: {

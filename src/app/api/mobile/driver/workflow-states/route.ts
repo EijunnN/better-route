@@ -6,11 +6,11 @@ import {
   companyWorkflowTransitions,
   USER_ROLES,
 } from "@/db/schema";
-import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
  * GET /api/mobile/driver/workflow-states
@@ -20,7 +20,11 @@ import { EntityType, Action } from "@/lib/auth/authorization";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE_STOP,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

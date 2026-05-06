@@ -1,33 +1,49 @@
 "use client";
 
-import { AlertCircle, Bell, ChevronDown, ChevronLeft, ChevronRight, History, Loader2, MapPin, RefreshCw, Search, Users, X } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  History,
+  Loader2,
+  MapPin,
+  RefreshCw,
+  Search,
+  Users,
+  X,
+} from "lucide-react";
 import dynamic from "next/dynamic";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { AlertPanel } from "@/components/alerts/alert-panel";
-import { DriverListItem } from "./driver-list-item";
-import { DriverRouteDetail } from "./driver-route-detail";
-import { RecentEventsPanel } from "./recent-events-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { DriverListItem } from "./driver-list-item";
+import { DriverRouteDetail } from "./driver-route-detail";
 import { useMonitoring } from "./monitoring-context";
+import { RecentEventsPanel } from "./recent-events-panel";
 
 // Map ref type for flyTo
 export interface MapRef {
   flyTo: (lat: number, lng: number, zoom?: number) => void;
 }
 
-const MonitoringMap = dynamic(() => import("./monitoring-map").then((mod) => mod.MonitoringMap), {
-  ssr: false,
-  loading: () => (
-    <div className="h-full w-full bg-muted animate-pulse flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-    </div>
-  ),
-});
+const MonitoringMap = dynamic(
+  () => import("./monitoring-map").then((mod) => mod.MonitoringMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full w-full bg-muted animate-pulse flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  },
+);
 
 export function MonitoringDashboardView() {
   const { state, actions, meta } = useMonitoring();
@@ -40,15 +56,19 @@ export function MonitoringDashboardView() {
 
   // Filter drivers based on search and status
   const filteredDrivers = state.driversData.filter((driver) => {
-    const matchesSearch = searchQuery === "" ||
+    const matchesSearch =
+      searchQuery === "" ||
       driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       driver.vehiclePlate?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === null || driver.status === statusFilter;
+    const matchesStatus =
+      statusFilter === null || driver.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   // Get unique statuses for filter
-  const availableStatuses = Array.from(new Set(state.driversData.map(d => d.status)));
+  const availableStatuses = Array.from(
+    new Set(state.driversData.map((d) => d.status)),
+  );
 
   // Get unique vehicles with routes for vehicle filter
   const vehiclesWithRoutes = state.driversData
@@ -76,7 +96,9 @@ export function MonitoringDashboardView() {
         <Card className="max-w-md">
           <CardContent className="py-8 text-center">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
-            <h2 className="text-lg font-semibold mb-2">Error al cargar los datos</h2>
+            <h2 className="text-lg font-semibold mb-2">
+              Error al cargar los datos
+            </h2>
             <p className="text-muted-foreground mb-4">{state.error}</p>
             <Button onClick={() => window.location.reload()}>Reintentar</Button>
           </CardContent>
@@ -103,13 +125,23 @@ export function MonitoringDashboardView() {
             <div className="relative">
               <select
                 value={state.selectedJobId || ""}
-                onChange={(e) => actions.setSelectedJobId(e.target.value || null)}
+                onChange={(e) =>
+                  actions.setSelectedJobId(e.target.value || null)
+                }
                 className="appearance-none bg-muted/50 border border-border rounded-md px-3 py-1 pr-7 text-sm cursor-pointer hover:bg-muted focus:outline-none focus:ring-1 focus:ring-primary max-w-[220px] truncate"
               >
                 <option value="">Último plan</option>
                 {state.confirmedPlans.map((plan) => (
                   <option key={plan.id} value={plan.id}>
-                    {plan.configurationName || new Date(plan.completedAt || plan.createdAt).toLocaleDateString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    {plan.configurationName ||
+                      new Date(
+                        plan.completedAt || plan.createdAt,
+                      ).toLocaleDateString("es-PE", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                   </option>
                 ))}
               </select>
@@ -123,18 +155,23 @@ export function MonitoringDashboardView() {
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-green-500" />
                     <span className="text-muted-foreground">En ruta:</span>
-                    <span className="font-medium">{state.monitoringData.metrics.driversInRoute}</span>
+                    <span className="font-medium">
+                      {state.monitoringData.metrics.driversInRoute}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-blue-500" />
                     <span className="text-muted-foreground">Disponibles:</span>
-                    <span className="font-medium">{state.monitoringData.metrics.driversAvailable}</span>
+                    <span className="font-medium">
+                      {state.monitoringData.metrics.driversAvailable}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-amber-500" />
                     <span className="text-muted-foreground">Paradas:</span>
                     <span className="font-medium">
-                      {state.monitoringData.metrics.completedStops}/{state.monitoringData.metrics.totalStops}
+                      {state.monitoringData.metrics.completedStops}/
+                      {state.monitoringData.metrics.totalStops}
                     </span>
                   </div>
                 </div>
@@ -162,7 +199,9 @@ export function MonitoringDashboardView() {
                 setTimeout(() => setIsRefreshing(false), 1000);
               }}
             >
-              <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+              <RefreshCw
+                className={cn("w-4 h-4", isRefreshing && "animate-spin")}
+              />
             </Button>
 
             {/* Events toggle */}
@@ -190,7 +229,10 @@ export function MonitoringDashboardView() {
             >
               <Bell className="w-4 h-4" />
               {state.alertsCount > 0 && (
-                <Badge variant="secondary" className="ml-1 px-1.5 min-w-[18px] h-5 text-xs">
+                <Badge
+                  variant="secondary"
+                  className="ml-1 px-1.5 min-w-[18px] h-5 text-xs"
+                >
                   {state.alertsCount}
                 </Badge>
               )}
@@ -203,7 +245,7 @@ export function MonitoringDashboardView() {
       <div
         className={cn(
           "absolute top-20 bottom-4 left-4 z-10 transition-all duration-300 ease-in-out",
-          sidebarCollapsed ? "w-12" : "w-80"
+          sidebarCollapsed ? "w-12" : "w-80",
         )}
       >
         <Card className="h-full flex flex-col bg-background/95 backdrop-blur-sm shadow-lg">
@@ -224,7 +266,11 @@ export function MonitoringDashboardView() {
               className="h-8 w-8 shrink-0"
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             >
-              {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              {sidebarCollapsed ? (
+                <ChevronRight className="w-4 h-4" />
+              ) : (
+                <ChevronLeft className="w-4 h-4" />
+              )}
             </Button>
           </div>
 
@@ -266,7 +312,9 @@ export function MonitoringDashboardView() {
                       key={status}
                       variant={statusFilter === status ? "default" : "outline"}
                       className="cursor-pointer text-xs"
-                      onClick={() => setStatusFilter(statusFilter === status ? null : status)}
+                      onClick={() =>
+                        setStatusFilter(statusFilter === status ? null : status)
+                      }
                     >
                       {statusLabels[status] || status}
                     </Badge>
@@ -276,7 +324,9 @@ export function MonitoringDashboardView() {
                 {/* Vehicle filter chips */}
                 {vehiclesWithRoutes.length > 0 && (
                   <div className="space-y-1">
-                    <span className="text-xs text-muted-foreground">Vehículos:</span>
+                    <span className="text-xs text-muted-foreground">
+                      Vehículos:
+                    </span>
                     <div className="flex flex-wrap gap-1">
                       {state.selectedVehicleIds.length > 0 && (
                         <Badge
@@ -291,7 +341,11 @@ export function MonitoringDashboardView() {
                       {vehiclesWithRoutes.map((v) => (
                         <Badge
                           key={v.id}
-                          variant={state.selectedVehicleIds.includes(v.id) ? "default" : "outline"}
+                          variant={
+                            state.selectedVehicleIds.includes(v.id)
+                              ? "default"
+                              : "outline"
+                          }
                           className="cursor-pointer text-xs"
                           onClick={() => actions.toggleVehicleId(v.id)}
                         >
@@ -312,7 +366,9 @@ export function MonitoringDashboardView() {
                     </div>
                   ) : filteredDrivers.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground text-sm">
-                      {searchQuery || statusFilter ? "Sin resultados" : "Sin conductores"}
+                      {searchQuery || statusFilter
+                        ? "Sin resultados"
+                        : "Sin conductores"}
                     </div>
                   ) : (
                     filteredDrivers.map((driver) => (
@@ -373,7 +429,11 @@ export function MonitoringDashboardView() {
                     route={state.driverDetail.route}
                     onClose={actions.handleBackToOverview}
                     onRefresh={actions.handleDetailRefresh}
-                    locationData={state.driversData.find(d => d.id === state.selectedDriverId)?.currentLocation}
+                    locationData={
+                      state.driversData.find(
+                        (d) => d.id === state.selectedDriverId,
+                      )?.currentLocation
+                    }
                     workflowStates={state.workflowStates}
                     fieldDefinitionLabels={state.fieldDefinitionLabels}
                     customFieldDefinitions={state.routeStopFieldDefinitions}

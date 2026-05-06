@@ -10,9 +10,11 @@ import {
   XCircle,
 } from "lucide-react";
 import { useState } from "react";
+import { Can } from "@/components/auth/can";
+import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
+import { DynamicFieldRenderer } from "@/components/custom-fields/dynamic-field-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Can } from "@/components/auth/can";
 import {
   Dialog,
   DialogContent,
@@ -36,8 +38,6 @@ import {
   type STOP_STATUS,
 } from "@/db/schema";
 import type { WorkflowState } from "./monitoring-context";
-import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
-import { DynamicFieldRenderer } from "@/components/custom-fields/dynamic-field-renderer";
 
 export interface StopInfo {
   id: string;
@@ -127,13 +127,17 @@ export function StopStatusUpdateDialog({
   const [selectedStatus, setSelectedStatus] = useState<string>(
     stop?.status || "PENDING",
   );
-  const [selectedWorkflowStateId, setSelectedWorkflowStateId] = useState<string | null>(null);
+  const [selectedWorkflowStateId, setSelectedWorkflowStateId] = useState<
+    string | null
+  >(null);
   const [notes, setNotes] = useState("");
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [failureReason, setFailureReason] = useState<
     keyof typeof DELIVERY_FAILURE_REASONS | null
   >(null);
-  const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
+  const [customFieldValues, setCustomFieldValues] = useState<
+    Record<string, unknown>
+  >({});
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -150,7 +154,9 @@ export function StopStatusUpdateDialog({
     setSelectedWorkflowStateId(null);
     setSelectedReason(null);
     setFailureReason(null);
-    setCustomFieldValues((stop.customFields as Record<string, unknown> | null) ?? {});
+    setCustomFieldValues(
+      (stop.customFields as Record<string, unknown> | null) ?? {},
+    );
   }
 
   const formatTime = (isoString?: string | null) => {
@@ -168,11 +174,15 @@ export function StopStatusUpdateDialog({
     setError(null);
     try {
       const finalNotes = selectedReason
-        ? (notes ? `${selectedReason}: ${notes}` : selectedReason)
-        : (notes || undefined);
+        ? notes
+          ? `${selectedReason}: ${notes}`
+          : selectedReason
+        : notes || undefined;
       // Only send customFields if the user actually has them configured —
       // avoids a no-op payload key that would force validation on empty state.
-      const customFieldsPayload = hasCustomFields ? customFieldValues : undefined;
+      const customFieldsPayload = hasCustomFields
+        ? customFieldValues
+        : undefined;
       await onUpdate(
         stop.id,
         selectedStatus,
@@ -187,7 +197,10 @@ export function StopStatusUpdateDialog({
       setSelectedWorkflowStateId(null);
       setFailureReason(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Error al actualizar el estado de la parada";
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Error al actualizar el estado de la parada";
       setError(message);
     } finally {
       setUpdating(false);
@@ -204,11 +217,13 @@ export function StopStatusUpdateDialog({
   const willCompleteStop =
     selectedStatus === "COMPLETED" ||
     (selectedWorkflowStateId &&
-      workflowStates.find((ws) => ws.id === selectedWorkflowStateId)?.systemState === "COMPLETED");
-  const blockedByMissingFields = willCompleteStop && missingRequiredFields.length > 0;
+      workflowStates.find((ws) => ws.id === selectedWorkflowStateId)
+        ?.systemState === "COMPLETED");
+  const blockedByMissingFields =
+    willCompleteStop && missingRequiredFields.length > 0;
 
   const selectedWorkflowState = selectedWorkflowStateId
-    ? workflowStates.find(ws => ws.id === selectedWorkflowStateId)
+    ? workflowStates.find((ws) => ws.id === selectedWorkflowStateId)
     : null;
 
   // failureReason is required by /api/route-stops/[id] when transitioning to
@@ -216,10 +231,9 @@ export function StopStatusUpdateDialog({
   // accepts it but doesn't require it — still useful UX so we offer it.
   const willFailStop =
     selectedStatus === "FAILED" ||
-    (selectedWorkflowState?.systemState === "FAILED");
+    selectedWorkflowState?.systemState === "FAILED";
   const requiresFailureReason = willFailStop && !selectedWorkflowStateId;
-  const blockedByMissingFailureReason =
-    requiresFailureReason && !failureReason;
+  const blockedByMissingFailureReason = requiresFailureReason && !failureReason;
 
   const getStatusConfig = (status: string) => {
     return (
@@ -281,78 +295,92 @@ export function StopStatusUpdateDialog({
             <div className="space-y-2">
               <Label>Seleccionar nuevo estado</Label>
               <div className="grid grid-cols-1 gap-2">
-                {hasWorkflowStates ? (
-                  workflowStates.map((ws) => {
-                    const isSelected = selectedWorkflowStateId === ws.id;
-                    const isCurrent = stop.status === ws.systemState && !selectedWorkflowStateId;
+                {hasWorkflowStates
+                  ? workflowStates.map((ws) => {
+                      const isSelected = selectedWorkflowStateId === ws.id;
+                      const isCurrent =
+                        stop.status === ws.systemState &&
+                        !selectedWorkflowStateId;
 
-                    return (
-                      <button
-                        key={ws.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedWorkflowStateId(ws.id);
-                          setSelectedStatus(ws.systemState);
-                          setSelectedReason(null);
-                        }}
-                        className={`
+                      return (
+                        <button
+                          key={ws.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedWorkflowStateId(ws.id);
+                            setSelectedStatus(ws.systemState);
+                            setSelectedReason(null);
+                          }}
+                          className={`
                           flex items-start gap-3 p-3 rounded-lg border text-left transition-colors
                           ${isSelected ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-border hover:bg-muted/50"}
                         `}
-                      >
-                        <div
-                          className="w-5 h-5 rounded-full shrink-0 mt-0.5"
-                          style={{ backgroundColor: ws.color }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">{ws.label}</span>
-                            {isCurrent && (
-                              <Badge variant="outline" className="text-xs">Actual</Badge>
-                            )}
-                            {ws.isTerminal && (
-                              <Badge variant="secondary" className="text-xs">Terminal</Badge>
-                            )}
+                        >
+                          <div
+                            className="w-5 h-5 rounded-full shrink-0 mt-0.5"
+                            style={{ backgroundColor: ws.color }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">
+                                {ws.label}
+                              </span>
+                              {isCurrent && (
+                                <Badge variant="outline" className="text-xs">
+                                  Actual
+                                </Badge>
+                              )}
+                              {ws.isTerminal && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Terminal
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {ws.code}
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{ws.code}</p>
-                        </div>
-                      </button>
-                    );
-                  })
-                ) : (
-                  STOP_STATUS_OPTIONS.map((option) => {
-                    const Icon = option.icon;
-                    const isSelected = selectedStatus === option.value;
-                    const isCurrent = stop.status === option.value;
+                        </button>
+                      );
+                    })
+                  : STOP_STATUS_OPTIONS.map((option) => {
+                      const Icon = option.icon;
+                      const isSelected = selectedStatus === option.value;
+                      const isCurrent = stop.status === option.value;
 
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        disabled={isCurrent}
-                        onClick={() => setSelectedStatus(option.value)}
-                        className={`
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          disabled={isCurrent}
+                          onClick={() => setSelectedStatus(option.value)}
+                          className={`
                           flex items-start gap-3 p-3 rounded-lg border text-left transition-colors
                           ${isSelected ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-border hover:bg-muted/50"}
                           ${isCurrent ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
                         `}
-                      >
-                        <div className={option.color}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">{option.label}</span>
-                            {isCurrent && (
-                              <Badge variant="outline" className="text-xs">Actual</Badge>
-                            )}
+                        >
+                          <div className={option.color}>
+                            <Icon className="w-5 h-5" />
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{option.description}</p>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">
+                                {option.label}
+                              </span>
+                              {isCurrent && (
+                                <Badge variant="outline" className="text-xs">
+                                  Actual
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {option.description}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
               </div>
             </div>
 
@@ -360,7 +388,8 @@ export function StopStatusUpdateDialog({
             {willFailStop && (
               <div className="space-y-2">
                 <Label htmlFor="failureReason">
-                  Motivo de la falla {requiresFailureReason ? "*" : "(opcional)"}
+                  Motivo de la falla{" "}
+                  {requiresFailureReason ? "*" : "(opcional)"}
                 </Label>
                 <Select
                   value={failureReason ?? ""}
@@ -396,31 +425,39 @@ export function StopStatusUpdateDialog({
             )}
 
             {/* Reason Options (from workflow state) */}
-            {selectedWorkflowState?.requiresReason && selectedWorkflowState.reasonOptions && (
-              <div className="space-y-2">
-                <Label>Motivo</Label>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {selectedWorkflowState.reasonOptions.map((reason) => (
-                    <button
-                      key={reason}
-                      type="button"
-                      onClick={() => setSelectedReason(selectedReason === reason ? null : reason)}
-                      className={`
+            {selectedWorkflowState?.requiresReason &&
+              selectedWorkflowState.reasonOptions && (
+                <div className="space-y-2">
+                  <Label>Motivo</Label>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {selectedWorkflowState.reasonOptions.map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() =>
+                          setSelectedReason(
+                            selectedReason === reason ? null : reason,
+                          )
+                        }
+                        className={`
                         p-2.5 rounded-lg border text-left text-sm transition-colors
                         ${selectedReason === reason ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-border hover:bg-muted/50"}
                       `}
-                    >
-                      {reason}
-                    </button>
-                  ))}
+                      >
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Notes */}
             <div className="space-y-2">
               <Label htmlFor="notes">
-                Notas {selectedWorkflowState?.requiresNotes ? "(Requerido)" : "(Opcional)"}
+                Notas{" "}
+                {selectedWorkflowState?.requiresNotes
+                  ? "(Requerido)"
+                  : "(Opcional)"}
               </Label>
               <Textarea
                 id="notes"
@@ -437,8 +474,9 @@ export function StopStatusUpdateDialog({
                 <div>
                   <Label className="text-sm">Campos personalizados</Label>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Completa los campos definidos para esta entrega. Los obligatorios
-                    deben tener valor antes de marcar como completada.
+                    Completa los campos definidos para esta entrega. Los
+                    obligatorios deben tener valor antes de marcar como
+                    completada.
                   </p>
                 </div>
                 {relevantCustomFields.map((def) => (
@@ -447,7 +485,10 @@ export function StopStatusUpdateDialog({
                     definition={def}
                     value={customFieldValues[def.code]}
                     onChange={(value) =>
-                      setCustomFieldValues((prev) => ({ ...prev, [def.code]: value }))
+                      setCustomFieldValues((prev) => ({
+                        ...prev,
+                        [def.code]: value,
+                      }))
                     }
                   />
                 ))}
@@ -469,7 +510,9 @@ export function StopStatusUpdateDialog({
             )}
 
             {/* Warning for terminal states */}
-            {(selectedStatus === "FAILED" || selectedStatus === "SKIPPED" || selectedWorkflowState?.isTerminal) && (
+            {(selectedStatus === "FAILED" ||
+              selectedStatus === "SKIPPED" ||
+              selectedWorkflowState?.isTerminal) && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 dark:bg-amber-900/20 dark:border-amber-700/50">
                 <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-amber-700 dark:text-amber-300">
@@ -504,7 +547,13 @@ export function StopStatusUpdateDialog({
                 blockedByMissingFields ||
                 blockedByMissingFailureReason ||
                 (hasWorkflowStates
-                  ? !selectedWorkflowStateId || !!(selectedWorkflowState?.requiresNotes && !notes.trim()) || !!(selectedWorkflowState?.requiresReason && selectedWorkflowState.reasonOptions && !selectedReason)
+                  ? !selectedWorkflowStateId ||
+                    !!(selectedWorkflowState?.requiresNotes && !notes.trim()) ||
+                    !!(
+                      selectedWorkflowState?.requiresReason &&
+                      selectedWorkflowState.reasonOptions &&
+                      !selectedReason
+                    )
                   : selectedStatus === stop.status)
               }
             >

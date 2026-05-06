@@ -14,11 +14,32 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
  * - R2_PUBLIC_URL: Public URL for accessing files (custom domain or R2.dev URL)
  */
 
-// Validate required environment variables
+// Common placeholder strings that ship in `.env.example` and end up
+// silently copied into a real `.env` if the operator forgot to swap
+// them for the actual values. We refuse to start with these — the
+// previous behaviour was to happily sign upload URLs against a DNS
+// name that doesn't exist (`your-cloudflare-account-id.r2....`),
+// which made every photo upload fail with a network error instead of
+// a clear "you forgot to configure R2" message.
+const ENV_PLACEHOLDERS = new Set([
+  "your-cloudflare-account-id",
+  "your-r2-access-key-id",
+  "your-r2-secret-access-key",
+  "your-bucket-name",
+  "your-r2-public-url",
+  "changeme",
+]);
+
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
+  }
+  if (ENV_PLACEHOLDERS.has(value.toLowerCase())) {
+    throw new Error(
+      `${name} is still set to the .env.example placeholder ("${value}"). ` +
+        `Replace it with the real value from your Cloudflare R2 dashboard.`,
+    );
   }
   return value;
 }

@@ -2,18 +2,18 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  ORDER_STATUS,
   orders,
   routeStops,
-  users,
   USER_ROLES,
-  ORDER_STATUS,
+  users,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
  * GET /api/mobile/driver/my-orders
@@ -39,7 +39,11 @@ import { EntityType, Action } from "@/lib/auth/authorization";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -61,7 +65,10 @@ export async function GET(request: NextRequest) {
     // Obtener parametros de query
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get("status");
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100);
+    const limit = Math.min(
+      parseInt(searchParams.get("limit") || "50", 10),
+      100,
+    );
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     // Obtener los pedidos asignados al conductor a traves de route_stops
@@ -161,13 +168,18 @@ export async function GET(request: NextRequest) {
     };
 
     summaryResult.forEach((row) => {
-      const statusKey = row.status?.toLowerCase().replace("_", "") as keyof typeof summary;
+      const statusKey = row.status
+        ?.toLowerCase()
+        .replace("_", "") as keyof typeof summary;
       if (row.status === "PENDING") summary.pending = Number(row.count);
       else if (row.status === "ASSIGNED") summary.assigned = Number(row.count);
-      else if (row.status === "IN_PROGRESS") summary.inProgress = Number(row.count);
-      else if (row.status === "COMPLETED") summary.completed = Number(row.count);
+      else if (row.status === "IN_PROGRESS")
+        summary.inProgress = Number(row.count);
+      else if (row.status === "COMPLETED")
+        summary.completed = Number(row.count);
       else if (row.status === "FAILED") summary.failed = Number(row.count);
-      else if (row.status === "CANCELLED") summary.cancelled = Number(row.count);
+      else if (row.status === "CANCELLED")
+        summary.cancelled = Number(row.count);
     });
 
     // Obtener informacion de las paradas asociadas a cada pedido
@@ -218,9 +230,11 @@ export async function GET(request: NextRequest) {
         // Ventana horaria
         timeWindow: {
           presetName: order.timeWindowPreset?.name || null,
-          start: order.timeWindowStart || order.timeWindowPreset?.startTime || null,
+          start:
+            order.timeWindowStart || order.timeWindowPreset?.startTime || null,
           end: order.timeWindowEnd || order.timeWindowPreset?.endTime || null,
-          strictness: order.strictness || order.timeWindowPreset?.strictness || "SOFT",
+          strictness:
+            order.strictness || order.timeWindowPreset?.strictness || "SOFT",
         },
         // Tipo de pedido y prioridad
         orderType: order.orderType,
@@ -241,7 +255,8 @@ export async function GET(request: NextRequest) {
               status: stopInfo.status,
               sequence: stopInfo.sequence,
               routeId: stopInfo.routeId,
-              estimatedArrival: stopInfo.estimatedArrival?.toISOString() || null,
+              estimatedArrival:
+                stopInfo.estimatedArrival?.toISOString() || null,
               timeWindowStart: stopInfo.timeWindowStart?.toISOString() || null,
               timeWindowEnd: stopInfo.timeWindowEnd?.toISOString() || null,
             }

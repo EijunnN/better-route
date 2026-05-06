@@ -1,10 +1,16 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useTheme } from "@/components/layout/theme-context";
-import { getMapStyle, DEFAULT_MAP_CENTER } from "@/lib/map-styles";
+import { DEFAULT_MAP_CENTER, getMapStyle } from "@/lib/map-styles";
 
 interface MonitoringMapProps {
   jobId: string | null;
@@ -20,240 +26,269 @@ export interface MonitoringMapRef {
 
 const REFRESH_INTERVAL = 15000; // 15 seconds
 
-export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(function MonitoringMap({
-  jobId,
-  companyId,
-  selectedDriverId,
-  selectedVehicleIds = [],
-  onDriverSelect,
-}, ref) {
-  const { isDark } = useTheme();
-  const isDarkRef = useRef(isDark);
-  isDarkRef.current = isDark;
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<maplibregl.Map | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const refreshInterval = useRef<NodeJS.Timeout | null>(null);
-  const mapThemeRef = useRef<boolean | null>(null);
-  const popupRef = useRef<maplibregl.Popup | null>(null);
-
-  // Expose flyTo method to parent via ref
-  useImperativeHandle(ref, () => ({
-    flyTo: (lat: number, lng: number, zoom = 16) => {
-      map.current?.flyTo({
-        center: [lng, lat],
-        zoom,
-        duration: 1500,
-      });
+export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
+  function MonitoringMap(
+    {
+      jobId,
+      companyId,
+      selectedDriverId,
+      selectedVehicleIds = [],
+      onDriverSelect,
     },
-  }), []);
+    ref,
+  ) {
+    const { isDark } = useTheme();
+    const isDarkRef = useRef(isDark);
+    isDarkRef.current = isDark;
+    const mapContainer = useRef<HTMLDivElement>(null);
+    const map = useRef<maplibregl.Map | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const refreshInterval = useRef<NodeJS.Timeout | null>(null);
+    const mapThemeRef = useRef<boolean | null>(null);
+    const popupRef = useRef<maplibregl.Popup | null>(null);
 
-  const loadMapData = async (fitBounds = false) => {
-    if (!map.current || !companyId || !map.current.isStyleLoaded()) return;
+    // Expose flyTo method to parent via ref
+    useImperativeHandle(
+      ref,
+      () => ({
+        flyTo: (lat: number, lng: number, zoom = 16) => {
+          map.current?.flyTo({
+            center: [lng, lat],
+            zoom,
+            duration: 1500,
+          });
+        },
+      }),
+      [],
+    );
 
-    try {
-      const params = new URLSearchParams();
-      if (jobId) params.set("jobId", jobId);
-      if (selectedVehicleIds.length > 0) params.set("vehicleIds", selectedVehicleIds.join(","));
-      const queryString = params.toString();
-      const url = `/api/monitoring/geojson${queryString ? `?${queryString}` : ""}`;
+    const loadMapData = async (fitBounds = false) => {
+      if (!map.current || !companyId || !map.current.isStyleLoaded()) return;
 
-      const response = await fetch(url, {
-        headers: { "x-company-id": companyId },
-      });
+      try {
+        const params = new URLSearchParams();
+        if (jobId) params.set("jobId", jobId);
+        if (selectedVehicleIds.length > 0)
+          params.set("vehicleIds", selectedVehicleIds.join(","));
+        const queryString = params.toString();
+        const url = `/api/monitoring/geojson${queryString ? `?${queryString}` : ""}`;
 
-      if (!response.ok) throw new Error("Failed to load map data");
-
-      const geojson = await response.json();
-
-      // Check again after async operation - map might have been unmounted
-      if (!map.current) return;
-
-      // Update existing source if it exists, otherwise create new
-      const source = map.current.getSource("monitoring-data") as maplibregl.GeoJSONSource;
-
-      if (source) {
-        source.setData(geojson.data);
-      } else {
-        // First load - add source and layers
-        if (geojson.data.features.length === 0) {
-          return;
-        }
-
-        map.current.addSource("monitoring-data", {
-          type: "geojson",
-          data: geojson.data,
+        const response = await fetch(url, {
+          headers: { "x-company-id": companyId },
         });
 
-        // Add route lines layer
-        map.current.addLayer({
-          id: "route-lines",
-          type: "line",
-          source: "monitoring-data",
-          filter: ["==", ["get", "type"], "route"],
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": ["get", "color"],
-            "line-width": 3,
-            "line-opacity": 0.6,
-          },
-        });
+        if (!response.ok) throw new Error("Failed to load map data");
 
-        // Add stop points layer
-        map.current.addLayer({
-          id: "stop-points",
-          type: "circle",
-          source: "monitoring-data",
-          filter: ["==", ["get", "type"], "stop"],
-          paint: {
-            "circle-radius": [
-              "case",
-              ["==", ["get", "status"], "COMPLETED"], 6,
-              ["==", ["get", "status"], "FAILED"], 6,
-              8
-            ],
-            "circle-color": [
-              "case",
-              ["==", ["get", "status"], "COMPLETED"], "#22c55e",
-              ["==", ["get", "status"], "FAILED"], "#ef4444",
-              ["get", "color"]
-            ],
-            "circle-stroke-width": 2,
-            "circle-stroke-color": "#ffffff",
-            "circle-opacity": [
-              "case",
-              ["==", ["get", "status"], "COMPLETED"], 0.7,
-              ["==", ["get", "status"], "FAILED"], 0.7,
-              1
-            ],
-          },
-        });
+        const geojson = await response.json();
 
-        // Add stop numbers layer
-        map.current.addLayer({
-          id: "stop-labels",
-          type: "symbol",
-          source: "monitoring-data",
-          filter: ["==", ["get", "type"], "stop"],
-          layout: {
-            "text-field": ["get", "sequence"],
-            "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-            "text-size": 11,
-            "text-anchor": "center",
-          },
-          paint: {
-            "text-color": "#ffffff",
-          },
-        });
+        // Check again after async operation - map might have been unmounted
+        if (!map.current) return;
 
-        // Add driver locations layer - larger and more visible
-        map.current.addLayer({
-          id: "driver-locations",
-          type: "circle",
-          source: "monitoring-data",
-          filter: ["==", ["get", "type"], "driver_location"],
-          paint: {
-            "circle-radius": 12,
-            "circle-color": [
-              "case",
-              ["==", ["get", "isRecent"], true], ["get", "color"],
-              "#6b7280" // Gray for stale locations
-            ],
-            "circle-stroke-width": 3,
-            "circle-stroke-color": "#ffffff",
-          },
-        });
+        // Update existing source if it exists, otherwise create new
+        const source = map.current.getSource(
+          "monitoring-data",
+        ) as maplibregl.GeoJSONSource;
 
-        // Add driver location pulse animation (outer ring)
-        map.current.addLayer({
-          id: "driver-locations-pulse",
-          type: "circle",
-          source: "monitoring-data",
-          filter: [
-            "all",
-            ["==", ["get", "type"], "driver_location"],
-            ["==", ["get", "isRecent"], true],
-          ],
-          paint: {
-            "circle-radius": 18,
-            "circle-color": ["get", "color"],
-            "circle-opacity": 0.3,
-            "circle-stroke-width": 0,
-          },
-        });
+        if (source) {
+          source.setData(geojson.data);
+        } else {
+          // First load - add source and layers
+          if (geojson.data.features.length === 0) {
+            return;
+          }
 
-        // Add driver icon/label with heading direction
-        map.current.addLayer({
-          id: "driver-labels",
-          type: "symbol",
-          source: "monitoring-data",
-          filter: ["==", ["get", "type"], "driver_location"],
-          layout: {
-            "text-field": [
-              "case",
-              ["==", ["get", "isMoving"], true], "▲",
-              "●"
-            ],
-            "text-size": 16,
-            "text-anchor": "center",
-            "text-rotate": [
-              "case",
-              ["==", ["get", "isMoving"], true], ["get", "heading"],
-              0
-            ],
-            "text-allow-overlap": true,
-          },
-          paint: {
-            "text-color": "#ffffff",
-          },
-        });
-
-        // Initialize popup
-        const maplibreglModule = await import("maplibre-gl");
-        popupRef.current = new maplibreglModule.Popup({
-          closeButton: true,
-          closeOnClick: true,
-          maxWidth: "260px",
-        });
-
-        // Add click handlers
-        map.current.on("click", "stop-points", (e) => {
-          const features = map.current?.queryRenderedFeatures(e.point, {
-            layers: ["stop-points"],
+          map.current.addSource("monitoring-data", {
+            type: "geojson",
+            data: geojson.data,
           });
 
-          if (features && features.length > 0) {
-            const feature = features[0];
-            const props = feature.properties as Record<string, unknown> | null;
-            if (props?.driverId) onDriverSelect?.(props.driverId as string);
+          // Add route lines layer
+          map.current.addLayer({
+            id: "route-lines",
+            type: "line",
+            source: "monitoring-data",
+            filter: ["==", ["get", "type"], "route"],
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": ["get", "color"],
+              "line-width": 3,
+              "line-opacity": 0.6,
+            },
+          });
 
-            // Show popup
-            if (map.current && popupRef.current && feature.geometry.type === "Point") {
-              const coords = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
-              const status = (props?.status as string) || "PENDING";
-              const statusColors: Record<string, string> = {
-                COMPLETED: "#22c55e",
-                FAILED: "#ef4444",
-                IN_PROGRESS: "#3b82f6",
-                PENDING: "#6b7280",
-              };
-              const statusLabels: Record<string, string> = {
-                COMPLETED: "Completada",
-                FAILED: "Fallida",
-                IN_PROGRESS: "En progreso",
-                PENDING: "Pendiente",
-              };
-              const statusColor = statusColors[status] || "#6b7280";
-              const statusLabel = statusLabels[status] || status;
-              const sequence = props?.sequence ?? "";
-              const trackingId = props?.trackingId ?? "";
-              const address = props?.address ?? "";
+          // Add stop points layer
+          map.current.addLayer({
+            id: "stop-points",
+            type: "circle",
+            source: "monitoring-data",
+            filter: ["==", ["get", "type"], "stop"],
+            paint: {
+              "circle-radius": [
+                "case",
+                ["==", ["get", "status"], "COMPLETED"],
+                6,
+                ["==", ["get", "status"], "FAILED"],
+                6,
+                8,
+              ],
+              "circle-color": [
+                "case",
+                ["==", ["get", "status"], "COMPLETED"],
+                "#22c55e",
+                ["==", ["get", "status"], "FAILED"],
+                "#ef4444",
+                ["get", "color"],
+              ],
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#ffffff",
+              "circle-opacity": [
+                "case",
+                ["==", ["get", "status"], "COMPLETED"],
+                0.7,
+                ["==", ["get", "status"], "FAILED"],
+                0.7,
+                1,
+              ],
+            },
+          });
 
-              const html = `<div style="font-family: system-ui; font-size: 13px; line-height: 1.4; min-width: 180px;">
+          // Add stop numbers layer
+          map.current.addLayer({
+            id: "stop-labels",
+            type: "symbol",
+            source: "monitoring-data",
+            filter: ["==", ["get", "type"], "stop"],
+            layout: {
+              "text-field": ["get", "sequence"],
+              "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+              "text-size": 11,
+              "text-anchor": "center",
+            },
+            paint: {
+              "text-color": "#ffffff",
+            },
+          });
+
+          // Add driver locations layer - larger and more visible
+          map.current.addLayer({
+            id: "driver-locations",
+            type: "circle",
+            source: "monitoring-data",
+            filter: ["==", ["get", "type"], "driver_location"],
+            paint: {
+              "circle-radius": 12,
+              "circle-color": [
+                "case",
+                ["==", ["get", "isRecent"], true],
+                ["get", "color"],
+                "#6b7280", // Gray for stale locations
+              ],
+              "circle-stroke-width": 3,
+              "circle-stroke-color": "#ffffff",
+            },
+          });
+
+          // Add driver location pulse animation (outer ring)
+          map.current.addLayer({
+            id: "driver-locations-pulse",
+            type: "circle",
+            source: "monitoring-data",
+            filter: [
+              "all",
+              ["==", ["get", "type"], "driver_location"],
+              ["==", ["get", "isRecent"], true],
+            ],
+            paint: {
+              "circle-radius": 18,
+              "circle-color": ["get", "color"],
+              "circle-opacity": 0.3,
+              "circle-stroke-width": 0,
+            },
+          });
+
+          // Add driver icon/label with heading direction
+          map.current.addLayer({
+            id: "driver-labels",
+            type: "symbol",
+            source: "monitoring-data",
+            filter: ["==", ["get", "type"], "driver_location"],
+            layout: {
+              "text-field": [
+                "case",
+                ["==", ["get", "isMoving"], true],
+                "▲",
+                "●",
+              ],
+              "text-size": 16,
+              "text-anchor": "center",
+              "text-rotate": [
+                "case",
+                ["==", ["get", "isMoving"], true],
+                ["get", "heading"],
+                0,
+              ],
+              "text-allow-overlap": true,
+            },
+            paint: {
+              "text-color": "#ffffff",
+            },
+          });
+
+          // Initialize popup
+          const maplibreglModule = await import("maplibre-gl");
+          popupRef.current = new maplibreglModule.Popup({
+            closeButton: true,
+            closeOnClick: true,
+            maxWidth: "260px",
+          });
+
+          // Add click handlers
+          map.current.on("click", "stop-points", (e) => {
+            const features = map.current?.queryRenderedFeatures(e.point, {
+              layers: ["stop-points"],
+            });
+
+            if (features && features.length > 0) {
+              const feature = features[0];
+              const props = feature.properties as Record<
+                string,
+                unknown
+              > | null;
+              if (props?.driverId) onDriverSelect?.(props.driverId as string);
+
+              // Show popup
+              if (
+                map.current &&
+                popupRef.current &&
+                feature.geometry.type === "Point"
+              ) {
+                const coords = (
+                  feature.geometry as GeoJSON.Point
+                ).coordinates.slice() as [number, number];
+                const status = (props?.status as string) || "PENDING";
+                const statusColors: Record<string, string> = {
+                  COMPLETED: "#22c55e",
+                  FAILED: "#ef4444",
+                  IN_PROGRESS: "#3b82f6",
+                  PENDING: "#6b7280",
+                };
+                const statusLabels: Record<string, string> = {
+                  COMPLETED: "Completada",
+                  FAILED: "Fallida",
+                  IN_PROGRESS: "En progreso",
+                  PENDING: "Pendiente",
+                };
+                const statusColor = statusColors[status] || "#6b7280";
+                const statusLabel = statusLabels[status] || status;
+                const sequence = props?.sequence ?? "";
+                const trackingId = props?.trackingId ?? "";
+                const address = props?.address ?? "";
+
+                const html = `<div style="font-family: system-ui; font-size: 13px; line-height: 1.4; min-width: 180px;">
   <div style="font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${statusColor};"></span>
     Parada #${sequence}
@@ -263,264 +298,290 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
   <div style="margin-top: 4px; font-size: 11px; color: #888;">Estado: ${statusLabel}</div>
 </div>`;
 
-              popupRef.current.setLngLat(coords).setHTML(html).addTo(map.current);
+                popupRef.current
+                  .setLngLat(coords)
+                  .setHTML(html)
+                  .addTo(map.current);
+              }
             }
-          }
-        });
-
-        map.current.on("click", "driver-locations", (e) => {
-          const features = map.current?.queryRenderedFeatures(e.point, {
-            layers: ["driver-locations"],
           });
 
-          if (features && features.length > 0) {
-            const feature = features[0];
-            const props = feature.properties as Record<string, unknown> | null;
-            if (props?.driverId) onDriverSelect?.(props.driverId as string);
+          map.current.on("click", "driver-locations", (e) => {
+            const features = map.current?.queryRenderedFeatures(e.point, {
+              layers: ["driver-locations"],
+            });
 
-            // Show popup
-            if (map.current && popupRef.current && feature.geometry.type === "Point") {
-              const coords = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
-              const driverName = (props?.driverName as string) || "Desconocido";
-              const isRecent = props?.isRecent === true || props?.isRecent === "true";
-              const isMoving = props?.isMoving === true || props?.isMoving === "true";
-              const speed = props?.speed != null ? Number(props.speed) : null;
-              const batteryLevel = props?.batteryLevel != null ? Number(props.batteryLevel) : null;
-              const recordedAt = props?.recordedAt as string | undefined;
+            if (features && features.length > 0) {
+              const feature = features[0];
+              const props = feature.properties as Record<
+                string,
+                unknown
+              > | null;
+              if (props?.driverId) onDriverSelect?.(props.driverId as string);
 
-              // Format time ago
-              let timeAgoText = "";
-              if (recordedAt) {
-                const diffMs = Date.now() - new Date(recordedAt).getTime();
-                const diffMin = Math.floor(diffMs / 60000);
-                if (diffMin < 1) timeAgoText = "Hace menos de 1 min";
-                else if (diffMin < 60) timeAgoText = `Hace ${diffMin} min`;
-                else if (diffMin < 1440) timeAgoText = `Hace ${Math.floor(diffMin / 60)}h`;
-                else timeAgoText = `Hace ${Math.floor(diffMin / 1440)}d`;
-              }
+              // Show popup
+              if (
+                map.current &&
+                popupRef.current &&
+                feature.geometry.type === "Point"
+              ) {
+                const coords = (
+                  feature.geometry as GeoJSON.Point
+                ).coordinates.slice() as [number, number];
+                const driverName =
+                  (props?.driverName as string) || "Desconocido";
+                const isRecent =
+                  props?.isRecent === true || props?.isRecent === "true";
+                const isMoving =
+                  props?.isMoving === true || props?.isMoving === "true";
+                const speed = props?.speed != null ? Number(props.speed) : null;
+                const batteryLevel =
+                  props?.batteryLevel != null
+                    ? Number(props.batteryLevel)
+                    : null;
+                const recordedAt = props?.recordedAt as string | undefined;
 
-              let statusHtml: string;
-              if (!isRecent) {
-                // Stale data - don't show movement/speed, warn the user
-                statusHtml = `<div style="font-size: 12px; color: #f59e0b;">⚠ Sin señal reciente</div>`;
-                if (timeAgoText) {
-                  statusHtml += `<div style="font-size: 11px; color: #888; margin-top: 2px;">Última señal: ${timeAgoText}</div>`;
+                // Format time ago
+                let timeAgoText = "";
+                if (recordedAt) {
+                  const diffMs = Date.now() - new Date(recordedAt).getTime();
+                  const diffMin = Math.floor(diffMs / 60000);
+                  if (diffMin < 1) timeAgoText = "Hace menos de 1 min";
+                  else if (diffMin < 60) timeAgoText = `Hace ${diffMin} min`;
+                  else if (diffMin < 1440)
+                    timeAgoText = `Hace ${Math.floor(diffMin / 60)}h`;
+                  else timeAgoText = `Hace ${Math.floor(diffMin / 1440)}d`;
                 }
-              } else {
-                const movementText = isMoving
-                  ? `En movimiento${speed ? ` · ${Math.round(speed)} km/h` : ""}`
-                  : "Detenido";
-                statusHtml = `<div style="font-size: 12px; color: #888;">${movementText}</div>`;
-                if (timeAgoText) {
-                  statusHtml += `<div style="font-size: 11px; color: #888; margin-top: 2px;">${timeAgoText}</div>`;
+
+                let statusHtml: string;
+                if (!isRecent) {
+                  // Stale data - don't show movement/speed, warn the user
+                  statusHtml = `<div style="font-size: 12px; color: #f59e0b;">⚠ Sin señal reciente</div>`;
+                  if (timeAgoText) {
+                    statusHtml += `<div style="font-size: 11px; color: #888; margin-top: 2px;">Última señal: ${timeAgoText}</div>`;
+                  }
+                } else {
+                  const movementText = isMoving
+                    ? `En movimiento${speed ? ` · ${Math.round(speed)} km/h` : ""}`
+                    : "Detenido";
+                  statusHtml = `<div style="font-size: 12px; color: #888;">${movementText}</div>`;
+                  if (timeAgoText) {
+                    statusHtml += `<div style="font-size: 11px; color: #888; margin-top: 2px;">${timeAgoText}</div>`;
+                  }
                 }
-              }
 
-              const batteryHtml = batteryLevel !== null && isRecent
-                ? `<div style="font-size: 12px; margin-top: 4px;">\u{1F50B} ${batteryLevel}%</div>`
-                : "";
+                const batteryHtml =
+                  batteryLevel !== null && isRecent
+                    ? `<div style="font-size: 12px; margin-top: 4px;">\u{1F50B} ${batteryLevel}%</div>`
+                    : "";
 
-              const html = `<div style="font-family: system-ui; font-size: 13px; line-height: 1.4; min-width: 180px;">
+                const html = `<div style="font-family: system-ui; font-size: 13px; line-height: 1.4; min-width: 180px;">
   <div style="font-weight: 600; margin-bottom: 4px;">${driverName}</div>
   ${statusHtml}
   ${batteryHtml}
 </div>`;
 
-              popupRef.current.setLngLat(coords).setHTML(html).addTo(map.current);
+                popupRef.current
+                  .setLngLat(coords)
+                  .setHTML(html)
+                  .addTo(map.current);
+              }
             }
-          }
-        });
+          });
 
-        // Change cursor on hover
-        const setCursorPointer = () => {
-          const canvas = map.current?.getCanvas();
-          if (canvas) canvas.style.cursor = "pointer";
-        };
+          // Change cursor on hover
+          const setCursorPointer = () => {
+            const canvas = map.current?.getCanvas();
+            if (canvas) canvas.style.cursor = "pointer";
+          };
 
-        const setCursorDefault = () => {
-          const canvas = map.current?.getCanvas();
-          if (canvas) canvas.style.cursor = "";
-        };
+          const setCursorDefault = () => {
+            const canvas = map.current?.getCanvas();
+            if (canvas) canvas.style.cursor = "";
+          };
 
-        map.current.on("mouseenter", "stop-points", setCursorPointer);
-        map.current.on("mouseleave", "stop-points", setCursorDefault);
-        map.current.on("mouseenter", "driver-locations", setCursorPointer);
-        map.current.on("mouseleave", "driver-locations", setCursorDefault);
-      }
+          map.current.on("mouseenter", "stop-points", setCursorPointer);
+          map.current.on("mouseleave", "stop-points", setCursorDefault);
+          map.current.on("mouseenter", "driver-locations", setCursorPointer);
+          map.current.on("mouseleave", "driver-locations", setCursorDefault);
+        }
 
-      // Update selected driver highlight
-      if (map.current.getLayer("route-lines-selected")) {
-        map.current.removeLayer("route-lines-selected");
-      }
+        // Update selected driver highlight
+        if (map.current.getLayer("route-lines-selected")) {
+          map.current.removeLayer("route-lines-selected");
+        }
 
-      if (selectedDriverId) {
-        map.current.addLayer({
-          id: "route-lines-selected",
-          type: "line",
-          source: "monitoring-data",
-          filter: [
-            "all",
-            ["==", ["get", "type"], "route"],
-            ["==", ["get", "driverId"], selectedDriverId],
-          ],
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": ["get", "color"],
-            "line-width": 5,
-            "line-opacity": 1,
-          },
-        });
-      }
-
-      // Fit bounds on first load
-      if (fitBounds && geojson.data.features.length > 0) {
-        const maplibreglModule = await import("maplibre-gl");
-        const bounds = new maplibreglModule.LngLatBounds();
-
-        geojson.data.features.forEach((feature: GeoJSON.Feature) => {
-          if (feature.geometry.type === "Point") {
-            bounds.extend(feature.geometry.coordinates as [number, number]);
-          } else if (feature.geometry.type === "LineString") {
-            (feature.geometry.coordinates as [number, number][]).forEach((coord) => {
-              bounds.extend(coord);
-            });
-          }
-        });
-
-        // Check again after async import - map might have been unmounted
-        if (!bounds.isEmpty() && map.current) {
-          map.current.fitBounds(bounds, {
-            padding: { top: 100, bottom: 50, left: 350, right: 50 },
-            maxZoom: 15,
+        if (selectedDriverId) {
+          map.current.addLayer({
+            id: "route-lines-selected",
+            type: "line",
+            source: "monitoring-data",
+            filter: [
+              "all",
+              ["==", ["get", "type"], "route"],
+              ["==", ["get", "driverId"], selectedDriverId],
+            ],
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": ["get", "color"],
+              "line-width": 5,
+              "line-opacity": 1,
+            },
           });
         }
-      }
 
-      setError(null);
-    } catch (err) {
-      console.error("Failed to load map data:", err);
-      setError("Error al cargar datos del mapa");
-    }
-  };
+        // Fit bounds on first load
+        if (fitBounds && geojson.data.features.length > 0) {
+          const maplibreglModule = await import("maplibre-gl");
+          const bounds = new maplibreglModule.LngLatBounds();
 
-  // Stable ref to always call latest loadMapData without triggering effect re-runs
-  const loadMapDataRef = useRef(loadMapData);
-  loadMapDataRef.current = loadMapData;
+          geojson.data.features.forEach((feature: GeoJSON.Feature) => {
+            if (feature.geometry.type === "Point") {
+              bounds.extend(feature.geometry.coordinates as [number, number]);
+            } else if (feature.geometry.type === "LineString") {
+              (feature.geometry.coordinates as [number, number][]).forEach(
+                (coord) => {
+                  bounds.extend(coord);
+                },
+              );
+            }
+          });
 
-  // Initialize map - runs ONCE, not on every loadMapData change
-  useEffect(() => {
-    if (!mapContainer.current) return;
+          // Check again after async import - map might have been unmounted
+          if (!bounds.isEmpty() && map.current) {
+            map.current.fitBounds(bounds, {
+              padding: { top: 100, bottom: 50, left: 350, right: 50 },
+              maxZoom: 15,
+            });
+          }
+        }
 
-    const initMap = async () => {
-      try {
-        const maplibregl = await import("maplibre-gl");
-
-        if (!mapContainer.current) return;
-
-        mapThemeRef.current = isDarkRef.current;
-        map.current = new maplibregl.Map({
-          container: mapContainer.current,
-          style: getMapStyle(isDarkRef.current),
-          center: DEFAULT_MAP_CENTER,
-          zoom: 12,
-          attributionControl: false,
-        });
-
-        map.current.on("load", () => {
-          setIsLoading(false);
-          loadMapDataRef.current(true); // Fit bounds on first load
-        });
-
-        map.current.on("error", (e) => {
-          console.error("Map error:", e);
-          setError("Error al cargar el mapa");
-          setIsLoading(false);
-        });
+        setError(null);
       } catch (err) {
-        console.error("Failed to initialize map:", err);
-        setError("Error al inicializar el mapa");
-        setIsLoading(false);
+        console.error("Failed to load map data:", err);
+        setError("Error al cargar datos del mapa");
       }
     };
 
-    initMap();
+    // Stable ref to always call latest loadMapData without triggering effect re-runs
+    const loadMapDataRef = useRef(loadMapData);
+    loadMapDataRef.current = loadMapData;
 
-    return () => {
-      if (refreshInterval.current) {
-        clearInterval(refreshInterval.current);
+    // Initialize map - runs ONCE, not on every loadMapData change
+    useEffect(() => {
+      if (!mapContainer.current) return;
+
+      const initMap = async () => {
+        try {
+          const maplibregl = await import("maplibre-gl");
+
+          if (!mapContainer.current) return;
+
+          mapThemeRef.current = isDarkRef.current;
+          map.current = new maplibregl.Map({
+            container: mapContainer.current,
+            style: getMapStyle(isDarkRef.current),
+            center: DEFAULT_MAP_CENTER,
+            zoom: 12,
+            attributionControl: false,
+          });
+
+          map.current.on("load", () => {
+            setIsLoading(false);
+            loadMapDataRef.current(true); // Fit bounds on first load
+          });
+
+          map.current.on("error", (e) => {
+            console.error("Map error:", e);
+            setError("Error al cargar el mapa");
+            setIsLoading(false);
+          });
+        } catch (err) {
+          console.error("Failed to initialize map:", err);
+          setError("Error al inicializar el mapa");
+          setIsLoading(false);
+        }
+      };
+
+      initMap();
+
+      return () => {
+        if (refreshInterval.current) {
+          clearInterval(refreshInterval.current);
+        }
+        popupRef.current?.remove();
+        popupRef.current = null;
+        map.current?.remove();
+        map.current = null;
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Auto-refresh data
+    useEffect(() => {
+      if (!map.current || isLoading) return;
+
+      refreshInterval.current = setInterval(() => {
+        loadMapDataRef.current(false);
+      }, REFRESH_INTERVAL);
+
+      return () => {
+        if (refreshInterval.current) {
+          clearInterval(refreshInterval.current);
+        }
+      };
+    }, [isLoading]);
+
+    // Update data when selectedDriverId, jobId, or vehicleIds change
+    useEffect(() => {
+      if (map.current && !isLoading) {
+        loadMapData(true);
       }
-      popupRef.current?.remove();
-      popupRef.current = null;
-      map.current?.remove();
-      map.current = null;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedDriverId, jobId, selectedVehicleIds.join(","), isLoading]);
 
-  // Auto-refresh data
-  useEffect(() => {
-    if (!map.current || isLoading) return;
+    // React to theme changes
+    useEffect(() => {
+      if (!map.current || isLoading) return;
+      if (mapThemeRef.current === isDark) return; // Already correct style
+      mapThemeRef.current = isDark;
+      map.current.once("style.load", () => {
+        loadMapDataRef.current(false);
+      });
+      map.current.setStyle(getMapStyle(isDark), { diff: false });
+    }, [isDark, isLoading]);
 
-    refreshInterval.current = setInterval(() => {
-      loadMapDataRef.current(false);
-    }, REFRESH_INTERVAL);
+    return (
+      <div className="h-full w-full relative">
+        <div ref={mapContainer} className="w-full h-full" />
 
-    return () => {
-      if (refreshInterval.current) {
-        clearInterval(refreshInterval.current);
-      }
-    };
-  }, [isLoading]);
-
-  // Update data when selectedDriverId, jobId, or vehicleIds change
-  useEffect(() => {
-    if (map.current && !isLoading) {
-      loadMapData(true);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDriverId, jobId, selectedVehicleIds.join(","), isLoading]);
-
-  // React to theme changes
-  useEffect(() => {
-    if (!map.current || isLoading) return;
-    if (mapThemeRef.current === isDark) return; // Already correct style
-    mapThemeRef.current = isDark;
-    map.current.once("style.load", () => {
-      loadMapDataRef.current(false);
-    });
-    map.current.setStyle(getMapStyle(isDark), { diff: false });
-  }, [isDark, isLoading]);
-
-  return (
-    <div className="h-full w-full relative">
-      <div ref={mapContainer} className="w-full h-full" />
-
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
-      )}
-
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/90 z-10">
-          <div className="text-center text-muted-foreground">
-            <p>{error}</p>
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Refresh indicator */}
-      {!isLoading && !error && (
-        <div className="absolute bottom-4 right-4 z-10">
-          <div className="bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 text-xs text-muted-foreground flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            Auto-refresh: 15s
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 z-10">
+            <div className="text-center text-muted-foreground">
+              <p>{error}</p>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-});
+        )}
+
+        {/* Refresh indicator */}
+        {!isLoading && !error && (
+          <div className="absolute bottom-4 right-4 z-10">
+            <div className="bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 text-xs text-muted-foreground flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Auto-refresh: 15s
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  },
+);

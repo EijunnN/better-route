@@ -1,10 +1,10 @@
-export { MonitoringProvider, useMonitoring } from "./monitoring-context";
 export type {
-  MonitoringData,
-  DriverMonitoringData,
   DriverDetailData,
-  MonitoringState,
+  DriverMonitoringData,
   MonitoringActions,
+  MonitoringData,
   MonitoringMeta,
+  MonitoringState,
 } from "./monitoring-context";
+export { MonitoringProvider, useMonitoring } from "./monitoring-context";
 export { MonitoringDashboardView } from "./monitoring-views";

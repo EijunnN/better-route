@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, AlertTriangle } from "lucide-react";
 import {
+  TrackingDriverInfo,
+  TrackingEvidence,
   TrackingHeader,
+  TrackingHelp,
+  TrackingHero,
+  TrackingMap,
   TrackingOrderInfo,
   TrackingTimeline,
-  TrackingMap,
-  TrackingEvidence,
-  TrackingDriverInfo,
 } from "@/components/tracking";
 
 interface TrackingData {
@@ -78,7 +80,10 @@ export default function TrackingPage() {
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchTracking = async () => {
+  // Memoised by token only — without useCallback the function identity
+  // changed on every render, retriggering the effects below in an
+  // infinite fetch/setState/re-render loop.
+  const fetchTracking = useCallback(async () => {
     try {
       const res = await fetch(`/api/public/tracking/${token}`);
       if (res.status === 404) {
@@ -103,16 +108,25 @@ export default function TrackingPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   // Initial fetch
   useEffect(() => {
     fetchTracking();
   }, [fetchTracking]);
 
-  // Auto-refresh while not in terminal state
+  // Auto-refresh while not in terminal state. Depending on `data`
+  // directly would tear down and rebuild the interval on every poll
+  // (since each fetch produces a new object), defeating the throttle —
+  // we only care whether the load succeeded (`hasData`) and whether
+  // we've reached a terminal status.
+  const hasData = data !== null;
+  const isTerminal = data
+    ? TERMINAL_STATUSES.includes(data.order.status)
+    : false;
+
   useEffect(() => {
-    if (!data || TERMINAL_STATUSES.includes(data.order.status)) {
+    if (!hasData || isTerminal) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -128,7 +142,7 @@ export default function TrackingPage() {
         intervalRef.current = null;
       }
     };
-  }, [data, fetchTracking]);
+  }, [hasData, isTerminal, fetchTracking]);
 
   // Loading state
   if (loading) {
@@ -158,7 +172,16 @@ export default function TrackingPage() {
 
   const { company, settings, order, stop, driver, timeline } = data;
   const brandColor = company.brandColor;
-  const isTerminal = TERMINAL_STATUSES.includes(order.status);
+
+  // Surface "last update" in the hero. Use the most relevant
+  // timestamp for each stage so the user sees activity-correlated
+  // info: completion time when delivered, otherwise the last
+  // transition we know about.
+  const lastUpdate =
+    stop.completedAt ??
+    stop.startedAt ??
+    timeline.findLast?.((e) => e.timestamp)?.timestamp ??
+    null;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -169,90 +192,97 @@ export default function TrackingPage() {
         customMessage={company.customMessage}
       />
 
-      <main className="flex-1 px-4 py-4 mx-auto w-full max-w-2xl space-y-4">
-        {/* Map - conditional */}
-        {settings.showMap && (
-          <TrackingMap
-            deliveryLat={order.latitude}
-            deliveryLng={order.longitude}
-            driverLocation={
-              settings.showDriverLocation && driver?.location
-                ? driver.location
-                : null
-            }
-            showDriverLocation={settings.showDriverLocation}
-            brandColor={brandColor}
-          />
-        )}
-
-        {/* Order info */}
-        <TrackingOrderInfo
-          trackingId={order.trackingId}
-          status={order.status}
-          address={order.address}
-          customerName={order.customerName}
-          promisedDate={order.promisedDate}
-          timeWindowStart={order.timeWindowStart}
-          timeWindowEnd={order.timeWindowEnd}
-          estimatedArrival={stop.estimatedArrival}
-          showEta={settings.showEta}
-          brandColor={brandColor}
-        />
-
-        {/* Driver info - conditional */}
-        {settings.showDriverName && driver && (
-          <TrackingDriverInfo
-            name={driver.name}
-            photo={driver.photo}
-          />
-        )}
-
-        {/* Timeline - conditional */}
-        {settings.showTimeline && timeline.length > 0 && (
-          <div className="rounded-lg border bg-card p-4">
-            <h3 className="text-sm font-semibold mb-4">Estado del envio</h3>
-            <TrackingTimeline
-              timeline={timeline}
-              currentStatus={order.status}
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          {/* ── Main column ─────────────────────────────────────── */}
+          <div className="space-y-5">
+            <TrackingHero
+              status={order.status}
+              lastUpdate={lastUpdate}
               brandColor={brandColor}
             />
+
+            {settings.showMap && (
+              <TrackingMap
+                deliveryLat={order.latitude}
+                deliveryLng={order.longitude}
+                driverLocation={
+                  settings.showDriverLocation && driver?.location
+                    ? driver.location
+                    : null
+                }
+                showDriverLocation={settings.showDriverLocation}
+                brandColor={brandColor}
+                estimatedArrival={stop.estimatedArrival}
+                status={order.status}
+              />
+            )}
+
+            {settings.showTimeline && timeline.length > 0 && (
+              <TrackingTimeline
+                timeline={timeline}
+                currentStatus={order.status}
+                driverName={driver?.name ?? null}
+                brandColor={brandColor}
+              />
+            )}
+
+            {order.status === "FAILED" && stop.failureReason && (
+              <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4">
+                <p className="text-sm font-semibold text-destructive">
+                  Motivo del fallo
+                </p>
+                <p className="mt-1 text-sm text-destructive/80">
+                  {stop.failureReason}
+                </p>
+              </div>
+            )}
+
+            {!isTerminal && (
+              <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted-foreground">
+                <span
+                  className="inline-block h-1.5 w-1.5 animate-pulse rounded-full"
+                  style={{ backgroundColor: brandColor ?? "#4AB855" }}
+                />
+                Actualizando automáticamente
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Failure reason */}
-        {order.status === "FAILED" && stop.failureReason && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-            <p className="text-sm font-medium text-destructive">
-              Motivo: {stop.failureReason}
-            </p>
-          </div>
-        )}
-
-        {/* Evidence - conditional */}
-        {settings.showEvidence && stop.status === "COMPLETED" && (
-          <TrackingEvidence
-            evidenceUrls={stop.evidenceUrls || []}
-            completedAt={stop.completedAt}
-            notes={stop.notes}
-          />
-        )}
-
-        {/* Auto-refresh indicator */}
-        {!isTerminal && (
-          <div className="flex items-center justify-center gap-1.5 py-2">
-            <div
-              className="h-1.5 w-1.5 rounded-full animate-pulse"
-              style={
-                brandColor
-                  ? { backgroundColor: brandColor }
-                  : { backgroundColor: "var(--color-primary)" }
-              }
+          {/* ── Sidebar ─────────────────────────────────────────── */}
+          <aside className="space-y-5">
+            <TrackingOrderInfo
+              trackingId={order.trackingId}
+              status={order.status}
+              address={order.address}
+              customerName={order.customerName}
+              promisedDate={order.promisedDate}
+              timeWindowStart={order.timeWindowStart}
+              timeWindowEnd={order.timeWindowEnd}
+              estimatedArrival={stop.estimatedArrival}
+              showEta={settings.showEta}
+              brandColor={brandColor}
             />
-            <span className="text-xs text-muted-foreground">
-              Actualizando automaticamente
-            </span>
-          </div>
-        )}
+
+            {settings.showDriverName && driver && (
+              <TrackingDriverInfo
+                name={driver.name}
+                photo={driver.photo}
+                brandColor={brandColor}
+              />
+            )}
+
+            {settings.showEvidence && stop.status === "COMPLETED" && (
+              <TrackingEvidence
+                evidenceUrls={stop.evidenceUrls || []}
+                completedAt={stop.completedAt}
+                notes={stop.notes}
+              />
+            )}
+
+            <TrackingHelp brandColor={brandColor} />
+          </aside>
+        </div>
       </main>
 
       {/* Footer */}

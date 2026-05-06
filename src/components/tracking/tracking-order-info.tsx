@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { MapPin, Calendar, Clock } from "lucide-react";
+import { useState } from "react";
+import { Calendar, Clock, Copy, Check, MapPin } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface TrackingOrderInfoProps {
   trackingId: string;
@@ -17,36 +17,41 @@ interface TrackingOrderInfoProps {
   brandColor?: string | null;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "warning" | "outline" }> = {
-  PENDING: { label: "Pendiente", variant: "secondary" },
-  ASSIGNED: { label: "Asignado", variant: "outline" },
-  IN_PROGRESS: { label: "En camino", variant: "default" },
-  COMPLETED: { label: "Entregado", variant: "default" },
-  FAILED: { label: "Fallido", variant: "destructive" },
-  CANCELLED: { label: "Cancelado", variant: "destructive" },
+const STATUS_PILLS: Record<
+  string,
+  { label: string; tone: "live" | "info" | "danger" | "muted" }
+> = {
+  PENDING: { label: "Pendiente", tone: "muted" },
+  ASSIGNED: { label: "Asignado", tone: "info" },
+  IN_PROGRESS: { label: "En camino", tone: "live" },
+  COMPLETED: { label: "Entregado", tone: "live" },
+  FAILED: { label: "Fallido", tone: "danger" },
+  CANCELLED: { label: "Cancelado", tone: "muted" },
 };
 
-function formatTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleTimeString("es-PE", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
+function formatTime(value: string): string {
+  const timeOnly = /^(\d{2}):(\d{2})(?::\d{2})?$/.exec(value);
+  if (timeOnly) {
+    const [, hh, mm] = timeOnly;
+    return `${hh}:${mm}`;
   }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleTimeString("es-PE", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("es-PE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-    });
-  } catch {
-    return iso;
-  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString("es-PE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
 }
 
 export function TrackingOrderInfo({
@@ -57,74 +62,112 @@ export function TrackingOrderInfo({
   promisedDate,
   timeWindowStart,
   timeWindowEnd,
-  estimatedArrival,
-  showEta,
   brandColor,
 }: TrackingOrderInfoProps) {
-  const statusConfig = STATUS_CONFIG[status] || { label: status, variant: "outline" as const };
+  const [copied, setCopied] = useState(false);
+  const pill = STATUS_PILLS[status] ?? { label: status, tone: "muted" as const };
+  const accent = brandColor ?? "#4AB855";
+  const isLive = pill.tone === "live";
+
+  const copyTracking = async () => {
+    try {
+      await navigator.clipboard.writeText(trackingId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore — clipboard may be denied
+    }
+  };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Detalles del pedido</CardTitle>
-          <Badge
-            variant={statusConfig.variant}
-            style={
-              status === "IN_PROGRESS" && brandColor
-                ? { backgroundColor: brandColor, color: "#fff", borderColor: brandColor }
-                : undefined
-            }
-          >
-            {statusConfig.label}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="text-xs text-muted-foreground">
-          Pedido: {trackingId}
-        </div>
+    <section className="rounded-2xl border border-border/60 bg-card/80 p-5">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Detalles del pedido</h3>
+        <span
+          className={cn(
+            "rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+            pill.tone === "danger" && "bg-destructive/15 text-destructive",
+            pill.tone === "muted" && "bg-muted text-muted-foreground",
+            pill.tone === "info" && "bg-blue-500/15 text-blue-400",
+          )}
+          style={
+            isLive ? { backgroundColor: `${accent}26`, color: accent } : undefined
+          }
+        >
+          {pill.label}
+        </span>
+      </div>
 
-        <div className="text-sm font-medium">{customerName}</div>
+      <div className="mt-4 space-y-4 text-sm">
+        <Field label="Pedido">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{trackingId}</span>
+            <button
+              type="button"
+              onClick={copyTracking}
+              aria-label="Copiar ID"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-500" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
+        </Field>
 
-        <div className="flex items-start gap-2 text-sm">
-          <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-          <span>{address}</span>
-        </div>
+        <Field label="Cliente">
+          <span className="font-medium">{customerName}</span>
+        </Field>
+
+        <Field label="Dirección de entrega" icon={<MapPin className="h-3.5 w-3.5" />}>
+          <span className="leading-snug">{address}</span>
+        </Field>
 
         {promisedDate && (
-          <div className="flex items-center gap-2 text-sm">
-            <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span>{formatDate(promisedDate)}</span>
-          </div>
+          <Field
+            label="Fecha"
+            icon={<Calendar className="h-3.5 w-3.5" />}
+          >
+            <span className="capitalize">{formatDate(promisedDate)}</span>
+          </Field>
         )}
 
         {(timeWindowStart || timeWindowEnd) && (
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Field label="Hora" icon={<Clock className="h-3.5 w-3.5" />}>
             <span>
               {timeWindowStart && timeWindowEnd
-                ? `${formatTime(timeWindowStart)} - ${formatTime(timeWindowEnd)}`
+                ? `${formatTime(timeWindowStart)} – ${formatTime(timeWindowEnd)}`
                 : timeWindowStart
                   ? `Desde ${formatTime(timeWindowStart)}`
                   : `Hasta ${formatTime(timeWindowEnd!)}`}
             </span>
-          </div>
+          </Field>
         )}
+      </div>
+    </section>
+  );
+}
 
-        {showEta && estimatedArrival && status !== "COMPLETED" && status !== "FAILED" && status !== "CANCELLED" && (
-          <div
-            className="rounded-md px-3 py-2 text-sm font-medium"
-            style={
-              brandColor
-                ? { backgroundColor: brandColor + "1a", color: brandColor }
-                : undefined
-            }
-          >
-            Llegada estimada: {formatTime(estimatedArrival)}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+function Field({
+  label,
+  icon,
+  children,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="flex items-start gap-2 text-sm text-foreground">
+        {icon ? (
+          <span className="mt-0.5 text-muted-foreground">{icon}</span>
+        ) : null}
+        {children}
+      </div>
+    </div>
   );
 }

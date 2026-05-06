@@ -1,6 +1,5 @@
 "use client";
 
-import { memo } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -8,6 +7,7 @@ import {
   Clock,
   User,
 } from "lucide-react";
+import { memo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -86,28 +86,36 @@ export const DriverListItem = memo(function DriverListItem({
           "p-2.5 rounded-lg cursor-pointer transition-all",
           isSelected
             ? "bg-primary/10 ring-1 ring-primary"
-            : "hover:bg-accent/50"
+            : "hover:bg-accent/50",
         )}
         onClick={onClick}
       >
         <div className="flex items-center gap-2">
           {/* Status dot */}
-          <div className={cn("w-2 h-2 rounded-full shrink-0", statusConfig.color)} />
+          <div
+            className={cn("w-2 h-2 rounded-full shrink-0", statusConfig.color)}
+          />
 
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium text-sm truncate">{name}</span>
               <div className="flex items-center gap-1.5 shrink-0">
-                {currentLocation?.batteryLevel != null && currentLocation.isRecent && (
-                  <span className={cn(
-                    "text-xs shrink-0",
-                    currentLocation.batteryLevel > 50 ? "text-green-500" :
-                    currentLocation.batteryLevel > 20 ? "text-amber-500" : "text-red-500"
-                  )}>
-                    {currentLocation.batteryLevel}%
-                  </span>
-                )}
+                {currentLocation?.batteryLevel != null &&
+                  currentLocation.isRecent && (
+                    <span
+                      className={cn(
+                        "text-xs shrink-0",
+                        currentLocation.batteryLevel > 50
+                          ? "text-green-500"
+                          : currentLocation.batteryLevel > 20
+                            ? "text-amber-500"
+                            : "text-red-500",
+                      )}
+                    >
+                      {currentLocation.batteryLevel}%
+                    </span>
+                  )}
                 {vehiclePlate && (
                   <span className="text-xs text-muted-foreground shrink-0">
                     {vehiclePlate}
@@ -151,9 +159,7 @@ export const DriverListItem = memo(function DriverListItem({
     <Card
       className={cn(
         "transition-all cursor-pointer",
-        isSelected
-          ? "ring-2 ring-primary bg-primary/5"
-          : "hover:bg-accent/50"
+        isSelected ? "ring-2 ring-primary bg-primary/5" : "hover:bg-accent/50",
       )}
       onClick={onClick}
     >
@@ -163,14 +169,20 @@ export const DriverListItem = memo(function DriverListItem({
           <div className="flex items-start gap-3 flex-1 min-w-0">
             {/* Status Indicator */}
             <div
-              className={cn("mt-1 w-2 h-2 rounded-full flex-shrink-0", statusConfig.color)}
+              className={cn(
+                "mt-1 w-2 h-2 rounded-full flex-shrink-0",
+                statusConfig.color,
+              )}
             />
 
             {/* Driver Details */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-medium truncate">{name}</h3>
-                {(fleetNames && fleetNames.length > 0 ? fleetNames : [fleetName]).map((fn) => (
+                {(fleetNames && fleetNames.length > 0
+                  ? fleetNames
+                  : [fleetName]
+                ).map((fn) => (
                   <Badge key={fn} variant="outline" className="text-xs">
                     {fn}
                   </Badge>
@@ -183,15 +195,21 @@ export const DriverListItem = memo(function DriverListItem({
                   <span>{statusConfig.label}</span>
                 </div>
                 {hasRoute && vehiclePlate && <span>• {vehiclePlate}</span>}
-                {currentLocation?.batteryLevel != null && currentLocation.isRecent && (
-                  <span className={cn(
-                    "text-xs",
-                    currentLocation.batteryLevel > 50 ? "text-green-500" :
-                    currentLocation.batteryLevel > 20 ? "text-amber-500" : "text-red-500"
-                  )}>
-                    {currentLocation.batteryLevel}%
-                  </span>
-                )}
+                {currentLocation?.batteryLevel != null &&
+                  currentLocation.isRecent && (
+                    <span
+                      className={cn(
+                        "text-xs",
+                        currentLocation.batteryLevel > 50
+                          ? "text-green-500"
+                          : currentLocation.batteryLevel > 20
+                            ? "text-amber-500"
+                            : "text-red-500",
+                      )}
+                    >
+                      {currentLocation.batteryLevel}%
+                    </span>
+                  )}
               </div>
 
               {/* Progress for drivers with routes */}

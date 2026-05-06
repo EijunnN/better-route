@@ -1,6 +1,13 @@
 "use client";
 
-import { AlertTriangle, CheckCircle, Clock, MapPin, Package, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  MapPin,
+  Package,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,7 +65,12 @@ const EVENT_CONFIG = {
   },
 };
 
-export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap, getWorkflowLabel }: RecentEventsPanelProps) {
+export function RecentEventsPanel({
+  companyId,
+  onEventClick,
+  onLocateOnMap,
+  getWorkflowLabel,
+}: RecentEventsPanelProps) {
   const [events, setEvents] = useState<StopEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "FAILED" | "COMPLETED">("all");
@@ -87,11 +99,10 @@ export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap, getW
     return () => clearInterval(interval);
   }, [fetchEvents]);
 
-  const filteredEvents = filter === "all"
-    ? events
-    : events.filter(e => e.type === filter);
+  const filteredEvents =
+    filter === "all" ? events : events.filter((e) => e.type === filter);
 
-  const failedCount = events.filter(e => e.type === "FAILED").length;
+  const failedCount = events.filter((e) => e.type === "FAILED").length;
 
   const getTimeSince = (dateString: string) => {
     const date = new Date(dateString);
@@ -171,20 +182,28 @@ export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap, getW
               const config = EVENT_CONFIG[event.type];
               const Icon = config.icon;
 
-              const eventLabel = getWorkflowLabel ? getWorkflowLabel(event.type) : config.label;
+              const eventLabel = getWorkflowLabel
+                ? getWorkflowLabel(event.type)
+                : config.label;
 
               return (
                 <div
                   key={event.id}
                   className={cn(
                     "p-2.5 rounded-lg border cursor-pointer transition-all hover:shadow-sm",
-                    event.type === "FAILED" && "border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20"
+                    event.type === "FAILED" &&
+                      "border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20",
                   )}
                   onClick={() => onEventClick?.(event)}
                 >
                   <div className="flex items-start gap-2">
                     {/* Icon */}
-                    <div className={cn("p-1.5 rounded-full shrink-0", config.bgColor)}>
+                    <div
+                      className={cn(
+                        "p-1.5 rounded-full shrink-0",
+                        config.bgColor,
+                      )}
+                    >
                       <Icon className={cn("w-3.5 h-3.5", config.color)} />
                     </div>
 
@@ -195,7 +214,10 @@ export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap, getW
                           <span className="font-medium text-sm truncate">
                             #{event.trackingId}
                           </span>
-                          <Badge variant="outline" className="text-[10px] shrink-0">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] shrink-0"
+                          >
                             {eventLabel}
                           </Badge>
                         </div>
@@ -247,7 +269,7 @@ export function RecentEventsPanel({ companyId, onEventClick, onLocateOnMap, getW
                             e.stopPropagation();
                             onLocateOnMap(
                               parseFloat(event.latitude),
-                              parseFloat(event.longitude)
+                              parseFloat(event.longitude),
                             );
                           }}
                         >

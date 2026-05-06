@@ -1,6 +1,15 @@
 "use client";
 
-import { Check, Circle, Truck, Package, XCircle } from "lucide-react";
+import { useState } from "react";
+import {
+  Check,
+  ChevronDown,
+  Package,
+  Truck,
+  User,
+  XCircle,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface TimelineEvent {
   status: string;
@@ -11,43 +20,64 @@ interface TimelineEvent {
 interface TrackingTimelineProps {
   timeline: TimelineEvent[];
   currentStatus: string;
+  driverName?: string | null;
   brandColor?: string | null;
+  collapsible?: boolean;
 }
 
-const STATUS_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const STATUS_ICON: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   PENDING: Package,
-  ASSIGNED: Circle,
+  ASSIGNED: User,
   IN_PROGRESS: Truck,
   COMPLETED: Check,
   FAILED: XCircle,
 };
 
-function formatTimestamp(iso: string): string {
-  try {
-    const date = new Date(iso);
-    const day = date.toLocaleDateString("es-PE", {
-      day: "numeric",
-      month: "short",
-    });
-    const time = date.toLocaleTimeString("es-PE", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    return `${day}, ${time}`;
-  } catch {
-    return iso;
-  }
-}
-
 const TERMINAL_STATUSES = ["COMPLETED", "FAILED", "CANCELLED"];
 const STATUS_ORDER = ["PENDING", "ASSIGNED", "IN_PROGRESS", "COMPLETED"];
+
+function formatRelative(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleTimeString("es-PE", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function descriptionFor(status: string, driverName?: string | null): string {
+  const driver = driverName?.trim() || "El conductor";
+  switch (status) {
+    case "PENDING":
+      return "Hemos recibido tu pedido.";
+    case "ASSIGNED":
+      return driverName
+        ? `${driver} aceptó y asignó tu pedido.`
+        : "Tu pedido fue asignado a un conductor.";
+    case "IN_PROGRESS":
+      return driverName
+        ? `${driver} está en camino a tu ubicación.`
+        : "Tu pedido está en camino a tu ubicación.";
+    case "COMPLETED":
+      return "Tu pedido ha sido entregado.";
+    case "FAILED":
+      return "No pudimos completar la entrega.";
+    case "CANCELLED":
+      return "El pedido fue cancelado.";
+    default:
+      return "";
+  }
+}
 
 function getStepState(
   stepStatus: string,
   currentStatus: string,
 ): "completed" | "current" | "upcoming" {
   if (TERMINAL_STATUSES.includes(currentStatus)) {
-    // All steps up to terminal are complete; the terminal step itself is "current"
     if (stepStatus === currentStatus) return "current";
     const currentIdx = STATUS_ORDER.indexOf(currentStatus);
     const stepIdx = STATUS_ORDER.indexOf(stepStatus);
@@ -65,80 +95,116 @@ function getStepState(
 export function TrackingTimeline({
   timeline,
   currentStatus,
+  driverName,
   brandColor,
+  collapsible = true,
 }: TrackingTimelineProps) {
+  const [open, setOpen] = useState(true);
+  const accent = brandColor ?? "#4AB855";
+
   return (
-    <div className="space-y-0">
-      {timeline.map((event, index) => {
-        const state = getStepState(event.status, currentStatus);
-        const Icon = STATUS_ICONS[event.status] || Circle;
-        const isLast = index === timeline.length - 1;
-        const isFailed = event.status === "FAILED";
-
-        return (
-          <div key={event.status} className="flex gap-3">
-            {/* Vertical line + icon */}
-            <div className="flex flex-col items-center">
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${
-                  state === "completed"
-                    ? "border-transparent bg-green-500 text-white"
-                    : state === "current" && isFailed
-                      ? "border-transparent bg-destructive text-destructive-foreground"
-                      : state === "current"
-                        ? "border-transparent text-white"
-                        : "border-muted bg-background text-muted-foreground"
-                }`}
-                style={
-                  state === "current" && !isFailed && brandColor
-                    ? { backgroundColor: brandColor }
-                    : state === "current" && !isFailed
-                      ? { backgroundColor: "var(--color-primary)" }
-                      : undefined
-                }
-              >
-                <Icon className="h-4 w-4" />
-              </div>
-              {!isLast && (
-                <div
-                  className={`w-0.5 grow min-h-6 ${
-                    state === "completed" ? "bg-green-500" : "bg-muted"
-                  }`}
-                />
+    <section className="rounded-2xl border border-border/60 bg-card/80">
+      <div className="flex items-center justify-between gap-2 p-5">
+        <h3 className="font-semibold">Estado del envío</h3>
+        {collapsible && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform",
+                open && "rotate-180",
               )}
-            </div>
+            />
+          </button>
+        )}
+      </div>
 
-            {/* Content */}
-            <div className={`pb-6 ${isLast ? "pb-0" : ""}`}>
-              <p
-                className={`text-sm font-medium ${
-                  state === "upcoming" ? "text-muted-foreground" : ""
-                }`}
-              >
-                {event.label}
-              </p>
-              {event.timestamp && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {formatTimestamp(event.timestamp)}
-                </p>
-              )}
-              {state === "current" && !isFailed && !TERMINAL_STATUSES.includes(currentStatus) && (
-                <div className="flex items-center gap-1.5 mt-1">
+      {open && (
+        <ol className="relative space-y-0 px-5 pb-5">
+          {timeline.map((event, index) => {
+            const state = getStepState(event.status, currentStatus);
+            const Icon = STATUS_ICON[event.status] ?? Package;
+            const isLast = index === timeline.length - 1;
+            const isFailed = event.status === "FAILED";
+            const isTerminalCurrent =
+              state === "current" &&
+              TERMINAL_STATUSES.includes(event.status) &&
+              !isFailed;
+
+            const bubbleColor = isFailed
+              ? "var(--destructive)"
+              : state === "completed" || state === "current"
+                ? isTerminalCurrent
+                  ? "#3B82F6"
+                  : accent
+                : undefined;
+
+            return (
+              <li key={event.status} className="flex gap-4">
+                <div className="flex flex-col items-center">
                   <div
-                    className="h-1.5 w-1.5 rounded-full animate-pulse"
+                    className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                      state === "upcoming"
+                        ? "border border-border bg-background text-muted-foreground"
+                        : "text-white",
+                    )}
                     style={
-                      brandColor
-                        ? { backgroundColor: brandColor }
-                        : { backgroundColor: "var(--color-primary)" }
+                      bubbleColor
+                        ? { backgroundColor: bubbleColor }
+                        : undefined
                     }
-                  />
-                  <span className="text-xs text-muted-foreground">En curso</span>
+                  >
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  {!isLast && (
+                    <div
+                      className="w-0.5 grow"
+                      style={{
+                        backgroundColor:
+                          state === "completed" ? accent : "var(--border)",
+                        minHeight: "1.75rem",
+                      }}
+                    />
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+
+                <div className={cn("min-w-0 pb-6", isLast && "pb-0")}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+                    <p
+                      className={cn(
+                        "text-sm font-semibold",
+                        state === "upcoming" && "text-muted-foreground",
+                      )}
+                    >
+                      {event.label}
+                    </p>
+                    {event.timestamp && (
+                      <p className="text-xs text-muted-foreground">
+                        {formatRelative(event.timestamp)}
+                      </p>
+                    )}
+                  </div>
+                  <p
+                    className={cn(
+                      "mt-1 text-xs leading-relaxed",
+                      state === "upcoming"
+                        ? "text-muted-foreground/60"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {descriptionFor(event.status, driverName)}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
   );
 }
