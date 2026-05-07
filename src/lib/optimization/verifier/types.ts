@@ -5,7 +5,11 @@ import type {
   OptimizationResult,
 } from "../optimizer-interface";
 
-export type ViolationSeverity = "HARD" | "SOFT" | "INFO";
+// Canonical violation/severity types are defined in the solved-plan module.
+// The verifier's internal `Violation` carries a typed `ViolationCode` enum so
+// the checkers benefit from exhaustive switch coverage; this is structurally
+// assignable to the canonical Violation (which has `code: string`).
+export type { ViolationSeverity } from "../solved-plan";
 
 export type ViolationCode =
   | "TIME_WINDOW_VIOLATED"
@@ -36,6 +40,13 @@ export type ViolationCode =
   | "DRIVER_SKILL_MISSING"
   | "DRIVER_UNAVAILABLE";
 
+import type { ViolationSeverity } from "../solved-plan";
+
+/**
+ * Verifier-internal violation shape. Uses `ViolationCode` (typed enum) for
+ * exhaustive coverage in checkers. Structurally assignable to the canonical
+ * `Violation` from solved-plan where `code: string`.
+ */
 export interface Violation {
   code: ViolationCode;
   severity: ViolationSeverity;
@@ -47,7 +58,7 @@ export interface Violation {
   stopSequence?: number;
   expected?: string | number;
   actual?: string | number;
-  /** Arbitrary extra context for debugging (e.g. time values, matrices). */
+  /** Arbitrary debugging metadata (raw values, computed deltas, etc.). */
   context?: Record<string, unknown>;
 }
 
@@ -56,23 +67,6 @@ export interface VerifierInput {
   vehicles: OptimizerVehicle[];
   config: OptimizerConfig;
   result: OptimizationResult;
-}
-
-export interface VerifierReport {
-  optimizer: string;
-  violations: Violation[];
-  summary: {
-    hard: number;
-    soft: number;
-    info: number;
-    byCode: Record<string, number>;
-  };
-  totals: {
-    ordersInput: number;
-    ordersAssigned: number;
-    ordersUnassigned: number;
-    routes: number;
-  };
 }
 
 /**

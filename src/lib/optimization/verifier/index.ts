@@ -3,7 +3,6 @@ export type {
   ViolationCode,
   ViolationSeverity,
   VerifierInput,
-  VerifierReport,
   VerifierFn,
 } from "./types";
 
@@ -21,7 +20,7 @@ export {
 } from "./check-assignments";
 export { hhmmToSeconds, secondsToHHMM } from "./utils";
 export {
-  verifyRunnerResult,
+  verifyPlan,
   type RunnerOrderInput,
   type RunnerVehicleInput,
   type RunnerConfigInput,

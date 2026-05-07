@@ -1,4 +1,5 @@
-import type { VerifierInput, VerifierReport, Violation } from "./types";
+import type { VerificationReport } from "../solved-plan";
+import type { VerifierInput, Violation } from "./types";
 import { checkIntegrity } from "./check-integrity";
 import { checkTimeWindows } from "./check-time-windows";
 import { checkSkills } from "./check-skills";
@@ -21,7 +22,7 @@ const ALL_CHECKS = [
  * Run every verifier over the given input and produce a report.
  * Pure function — no I/O, no throws.
  */
-export function verify(input: VerifierInput): VerifierReport {
+export function verify(input: VerifierInput): VerificationReport {
   const violations: Violation[] = [];
   for (const fn of ALL_CHECKS) {
     violations.push(...fn(input));

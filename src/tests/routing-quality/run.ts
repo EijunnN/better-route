@@ -16,7 +16,7 @@ import type {
   OptimizationResult,
 } from "@/lib/optimization/optimizer-interface";
 import { verify } from "@/lib/optimization/verifier";
-import type { VerifierReport } from "@/lib/optimization/verifier";
+import type { VerificationReport } from "@/lib/optimization/solved-plan";
 import { SCENARIOS } from "./scenarios";
 import type { Scenario, ScenarioExpectations } from "./types";
 
@@ -27,7 +27,7 @@ interface RunEntry {
   ok: boolean;
   durationMs: number;
   error?: string;
-  report?: VerifierReport;
+  report?: VerificationReport;
   expectationFailures: string[];
 }
 
@@ -80,7 +80,7 @@ async function runScenarioOnSolver(
 
 function evaluateExpectations(
   expected: ScenarioExpectations,
-  report: VerifierReport,
+  report: VerificationReport,
 ): string[] {
   const failures: string[] = [];
   const maxHard = expected.maxHardViolations ?? 0;

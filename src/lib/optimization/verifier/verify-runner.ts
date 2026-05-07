@@ -1,20 +1,26 @@
 /**
- * Bridge between the runner's internal types and the verifier.
+ * Single verification gate for an AggregatedPlan.
  *
- * The runner collects orders/vehicles from DB and produces a rich
- * OptimizationResult shape with stops, unassignedOrders, etc. The verifier
- * operates on the adapter contract (OptimizerOrder / OptimizerVehicle /
- * OptimizerConfig + adapter-style OptimizationResult).
+ * The runner produces an `AggregatedPlan` (canonical shape from
+ * `solved-plan`) plus the original orders/vehicles/config it ran with.
+ * `verifyPlan` is the only place that:
+ *   1. converts those into the shapes the pure `verify()` core expects
+ *      (OptimizerOrder / OptimizerVehicle / OptimizerConfig +
+ *      adapter-shape OptimizationResult),
+ *   2. runs solver-level checks (`verify`),
+ *   3. runs driver-assignment checks (`checkDriverAssignments`),
+ *   4. merges violations into a single `VerificationReport`,
+ *   5. returns a `VerifiedPlan` (plan + report).
  *
- * This module converts the runner-level artifacts into adapter shapes and
- * runs the verifier. No DB access — pure transformation.
+ * Pure function: no DB, no throws.
  */
 
 import type {
-  OptimizationResult as RunnerResult,
-  OptimizationRoute as RunnerRoute,
-  OptimizationStop as RunnerStop,
-} from "../optimization-runner/types";
+  AggregatedPlan,
+  CapacityUsage,
+  VerificationReport,
+  VerifiedPlan,
+} from "../solved-plan";
 import type {
   OptimizerOrder,
   OptimizerVehicle,
@@ -24,14 +30,13 @@ import type {
   OptimizedStop,
 } from "../optimizer-interface";
 import { verify } from "./verify";
-import type { VerifierReport } from "./types";
 import { hhmmToSeconds } from "./utils";
 import { checkDriverAssignments } from "./check-assignments";
 
 /**
- * Shape of the DB-derived order we need. Matches the subset of fields on
- * drizzle's `orders` table that the verifier cares about, plus the
- * time-window-preset values resolved by the runner.
+ * Shape of the DB-derived order the verifier needs. Matches the subset of
+ * fields on drizzle's `orders` table that the verifier cares about, plus
+ * the time-window-preset values resolved by the runner.
  */
 export interface RunnerOrderInput {
   id: string;
@@ -53,9 +58,7 @@ export interface RunnerOrderInput {
   zoneId?: string | null;
 }
 
-/**
- * Shape of DB vehicle the verifier cares about.
- */
+/** Shape of DB vehicle the verifier cares about. */
 export interface RunnerVehicleInput {
   id: string;
   plate: string;
@@ -77,16 +80,32 @@ export interface RunnerVehicleInput {
 }
 
 export interface RunnerConfigInput {
-  depot: { latitude: number; longitude: number; timeWindowStart?: string | null; timeWindowEnd?: string | null };
+  depot: {
+    latitude: number;
+    longitude: number;
+    timeWindowStart?: string | null;
+    timeWindowEnd?: string | null;
+  };
   objective: "DISTANCE" | "TIME" | "BALANCED";
   maxDistanceKm?: number | null;
   maxTravelTimeMinutes?: number | null;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────
+
 function num(x: string | number | null | undefined, fallback = 0): number {
   if (x === null || x === undefined) return fallback;
   const n = typeof x === "string" ? Number.parseFloat(x) : x;
   return Number.isFinite(n) ? n : fallback;
+}
+
+function parseHhmmsToSeconds(iso: string | undefined): number | undefined {
+  if (!iso) return undefined;
+  if (/^\d{1,2}:\d{2}/.test(iso)) {
+    const v = hhmmToSeconds(iso);
+    return v ?? undefined;
+  }
+  return undefined;
 }
 
 function toOptimizerOrder(o: RunnerOrderInput): OptimizerOrder {
@@ -119,8 +138,14 @@ function toOptimizerVehicle(v: RunnerVehicleInput): OptimizerVehicle {
     maxValueCapacity: v.maxValueCapacity ?? undefined,
     maxUnitsCapacity: v.maxUnitsCapacity ?? undefined,
     maxOrders: v.maxOrders ?? undefined,
-    originLatitude: v.originLatitude !== null && v.originLatitude !== undefined ? num(v.originLatitude) : undefined,
-    originLongitude: v.originLongitude !== null && v.originLongitude !== undefined ? num(v.originLongitude) : undefined,
+    originLatitude:
+      v.originLatitude !== null && v.originLatitude !== undefined
+        ? num(v.originLatitude)
+        : undefined,
+    originLongitude:
+      v.originLongitude !== null && v.originLongitude !== undefined
+        ? num(v.originLongitude)
+        : undefined,
     skills: v.skills ?? [],
     timeWindowStart: v.workdayStart ?? undefined,
     timeWindowEnd: v.workdayEnd ?? undefined,
@@ -145,80 +170,77 @@ function toOptimizerConfig(c: RunnerConfigInput): OptimizerConfig {
   };
 }
 
-function parseHhmmsToSeconds(iso: string | undefined): number | undefined {
-  if (!iso) return undefined;
-  // Accept "HH:MM" directly
-  if (/^\d{1,2}:\d{2}/.test(iso)) {
-    const v = hhmmToSeconds(iso);
-    return v ?? undefined;
-  }
-  return undefined;
+function capacityValue(usage: CapacityUsage, dim: keyof CapacityUsage): number {
+  return usage[dim] ?? 0;
 }
 
-function toOptimizerStop(s: RunnerStop): OptimizedStop {
+function toAdapterStop(s: AggregatedPlan["routes"][number]["stops"][number]): OptimizedStop {
   return {
     orderId: s.orderId,
     trackingId: s.trackingId,
     address: s.address,
-    latitude: num(s.latitude),
-    longitude: num(s.longitude),
+    latitude: s.latitude,
+    longitude: s.longitude,
     sequence: s.sequence,
     arrivalTime: parseHhmmsToSeconds(s.estimatedArrival),
     serviceTime: undefined,
-    waitingTime: s.waitingTimeMinutes !== undefined ? s.waitingTimeMinutes * 60 : undefined,
+    waitingTime: s.waitingTimeSeconds,
   };
 }
 
-function toOptimizerRoute(r: RunnerRoute): OptimizedRoute {
+function toAdapterRoute(r: AggregatedPlan["routes"][number]): OptimizedRoute {
   return {
     vehicleId: r.vehicleId,
-    vehicleIdentifier: r.vehiclePlate,
-    stops: r.stops.map(toOptimizerStop),
+    vehicleIdentifier: r.vehicleIdentifier,
+    stops: r.stops.map(toAdapterStop),
     totalDistance: r.totalDistance,
     totalDuration: r.totalDuration,
     totalServiceTime: r.totalServiceTime,
     totalTravelTime: r.totalTravelTime,
-    totalWeight: r.totalWeight,
-    totalVolume: r.totalVolume,
+    totalWeight: capacityValue(r.capacityUsed, "WEIGHT"),
+    totalVolume: capacityValue(r.capacityUsed, "VOLUME"),
     geometry: r.geometry,
   };
 }
 
-function toOptimizerResult(result: RunnerResult, optimizer: string): OptimizationResult {
+function toAdapterResult(plan: AggregatedPlan, optimizer: string): OptimizationResult {
   return {
-    routes: result.routes.map(toOptimizerRoute),
-    unassigned: result.unassignedOrders.map((u) => ({
+    routes: plan.routes.map(toAdapterRoute),
+    unassigned: plan.unassignedOrders.map((u) => ({
       orderId: u.orderId,
       trackingId: u.trackingId,
       reason: u.reason,
     })),
     metrics: {
-      totalDistance: result.metrics.totalDistance,
-      totalDuration: result.metrics.totalDuration,
-      totalRoutes: result.metrics.totalRoutes,
-      totalStops: result.metrics.totalStops,
-      computingTimeMs: result.summary.processingTimeMs,
+      totalDistance: plan.metrics.totalDistance,
+      totalDuration: plan.metrics.totalDuration,
+      totalRoutes: plan.metrics.totalRoutes,
+      totalStops: plan.metrics.totalStops,
+      computingTimeMs: plan.summary.processingTimeMs,
     },
     optimizer,
   };
 }
 
+// ─── Public API ───────────────────────────────────────────────────────
+
 /**
- * Verify a runner-shape optimization output against the runner-shape input.
- * Pure function: no DB, no throws.
+ * Verify an aggregated plan against its inputs and produce a verified plan.
+ * The returned plan carries a mandatory `verification: VerificationReport`.
  */
-export function verifyRunnerResult(args: {
+export function verifyPlan(args: {
+  plan: AggregatedPlan;
   orders: RunnerOrderInput[];
   vehicles: RunnerVehicleInput[];
   config: RunnerConfigInput;
-  result: RunnerResult;
-}): VerifierReport {
+}): VerifiedPlan {
   const adapterOrders = args.orders.map(toOptimizerOrder);
   const adapterVehicles = args.vehicles.map(toOptimizerVehicle);
   const adapterConfig = toOptimizerConfig(args.config);
-  const adapterResult = toOptimizerResult(args.result, args.result.summary.engineUsed || "UNKNOWN");
+  const optimizer = args.plan.summary.engineUsed ?? "UNKNOWN";
+  const adapterResult = toAdapterResult(args.plan, optimizer);
 
-  // Solver-level verification (time windows, capacity, skills, etc.).
+  // Solver-level violations (time windows, capacity, skills, etc.)
   const base = verify({
     orders: adapterOrders,
     vehicles: adapterVehicles,
@@ -226,13 +248,11 @@ export function verifyRunnerResult(args: {
     result: adapterResult,
   });
 
-  // Driver-assignment layer: hoist per-route assignmentQuality errors/warnings
-  // (produced by assignDriversToRoutes + validateDriverAssignment in the
-  // runner) into the same Violation[] feed so the UI + CI treat them uniformly.
+  // Driver-assignment violations (lifted from per-route assignmentQuality).
   const assignmentViolations = checkDriverAssignments(
-    args.result.routes.map((r) => ({
+    args.plan.routes.map((r) => ({
       vehicleId: r.vehicleId,
-      vehicleIdentifier: r.vehiclePlate,
+      vehicleIdentifier: r.vehicleIdentifier,
       driverId: r.driverId,
       driverName: r.driverName,
       stopCount: r.stops.length,
@@ -241,7 +261,12 @@ export function verifyRunnerResult(args: {
   );
 
   const violations = [...base.violations, ...assignmentViolations];
-  const summary = { hard: 0, soft: 0, info: 0, byCode: {} as Record<string, number> };
+  const summary = {
+    hard: 0,
+    soft: 0,
+    info: 0,
+    byCode: {} as Record<string, number>,
+  };
   for (const v of violations) {
     if (v.severity === "HARD") summary.hard++;
     else if (v.severity === "SOFT") summary.soft++;
@@ -249,10 +274,12 @@ export function verifyRunnerResult(args: {
     summary.byCode[v.code] = (summary.byCode[v.code] ?? 0) + 1;
   }
 
-  return {
+  const verification: VerificationReport = {
     optimizer: base.optimizer,
     violations,
     summary,
     totals: base.totals,
   };
+
+  return { ...args.plan, verification };
 }
