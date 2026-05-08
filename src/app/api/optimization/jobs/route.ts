@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { logCreate } from "@/lib/infra/audit";
-import { createAndExecuteJob } from "@/lib/optimization/optimization-runner";
+import { createAndExecuteJob } from "@/lib/optimization/optimization-job";
 import { setTenantContext } from "@/lib/infra/tenant";
 import {
   optimizationJobCreateSchema,

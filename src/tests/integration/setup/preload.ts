@@ -100,24 +100,54 @@ mock.module("@/lib/infra/audit", () => ({
 }));
 
 mock.module("@/lib/infra/job-queue", () => ({
+  // Process-level primitives only — DB-aware ops moved to optimization-job.
   releaseCompanyLock: () => {},
   acquireCompanyLock: () => true,
   forceReleaseCompanyLock: () => {},
   markCompanyLockCompleted: () => {},
-  cancelJob: async () => true,
   canStartJob: () => true,
   registerJob: () => {},
   unregisterJob: () => {},
   setJobTimeout: () => {},
+  isJobAborting: () => false,
+  cancelJobControl: () => true,
+  getActiveJobCount: () => 0,
+}));
+
+// Mock the lifecycle module (not the barrel) so DB-aware transitions become
+// no-ops while `createAndExecuteJob` is still importable from the barrel
+// (which re-exports from this same module). Tests that hit the orchestrator
+// get a stubbed `createAndExecuteJob` that just inserts a PENDING job row
+// and returns its id — enough for HTTP-layer tests, no fire-and-forget.
+mock.module("@/lib/optimization/optimization-job/lifecycle", () => ({
+  cancelOptimizationJob: async () => true,
   updateJobProgress: async () => {},
   completeJob: async () => {},
   failJob: async () => {},
   getCachedResult: async () => null,
   getJobStatus: async () => null,
-  isJobAborting: () => false,
   calculateInputHash: () => "test-hash",
-  getActiveJobCount: () => 0,
   recoverStaleJobs: async () => {},
+  createAndExecuteJob: async (input: {
+    configurationId: string;
+    companyId: string;
+  }) => {
+    // Minimal stub: insert a PENDING job row so subsequent reads see it,
+    // skip the full pipeline (VROOM, runOptimization, etc.).
+    const { db } = await import("@/db");
+    const { optimizationJobs } = await import("@/db/schema");
+    const [newJob] = await db
+      .insert(optimizationJobs)
+      .values({
+        companyId: input.companyId,
+        configurationId: input.configurationId,
+        status: "PENDING",
+        inputHash: "test-hash",
+        timeoutMs: 300000,
+      })
+      .returning();
+    return { jobId: newJob.id, cached: false };
+  },
 }));
 
 // Plan validation — default to "valid" so confirm tests control it per-test

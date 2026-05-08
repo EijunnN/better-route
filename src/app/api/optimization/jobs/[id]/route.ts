@@ -3,7 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { cancelJob as cancelJobQueue, releaseCompanyLock } from "@/lib/infra/job-queue";
+import { releaseCompanyLock } from "@/lib/infra/job-queue";
+import { cancelOptimizationJob } from "@/lib/optimization/optimization-job";
 import { setTenantContext } from "@/lib/infra/tenant";
 
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
@@ -116,7 +117,7 @@ export async function DELETE(
     }
 
     // For PENDING/RUNNING jobs: cancel via queue
-    const cancelled = await cancelJobQueue(id);
+    const cancelled = await cancelOptimizationJob(id);
 
     if (!cancelled) {
       return NextResponse.json(

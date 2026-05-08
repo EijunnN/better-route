@@ -1,4 +1,4 @@
-import { updateJobProgress } from "../../infra/job-queue";
+import { updateJobProgress } from "../optimization-job";
 import {
   type DepotConfig,
   type OrderForOptimization,
