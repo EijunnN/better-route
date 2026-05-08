@@ -5,6 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Can } from "@/components/auth/can";
 import { ProtectedPage } from "@/components/auth/protected-page";
+import {
+  CancelOrderDialog,
+  type CancelOrderPayload,
+} from "@/components/orders/cancel-order-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,6 +67,7 @@ function OrderDetailContent() {
   const [error, setError] = useState<string | null>(null);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [reactivateOpen, setReactivateOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const { toast } = useToast();
 
@@ -144,6 +149,30 @@ function OrderDetailContent() {
         notes: latestStop.notes ?? null,
       }
     : null;
+
+  const handleCancelSubmit = async (payload: CancelOrderPayload) => {
+    if (!order || !companyId) return;
+    const res = await fetch(`/api/orders/${order.id}/cancel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": companyId,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err.error || "No se pudo cancelar el pedido");
+    }
+    toast({
+      title: "Pedido cancelado",
+      description: "El pedido se marcó como CANCELLED definitivamente.",
+    });
+    refresh();
+  };
+
+  const isTerminal =
+    order?.status === "CANCELLED" || order?.status === "COMPLETED";
 
   const handleReactivateSubmit = async (payload: ReschedulePayload) => {
     if (!order || !companyId) return;
@@ -305,6 +334,20 @@ function OrderDetailContent() {
         </Card>
       )}
 
+      {!isTerminal && (
+        <Can perm="order:update">
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setCancelOpen(true)}
+            >
+              Cancelar definitivamente
+            </Button>
+          </div>
+        </Can>
+      )}
+
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Historial de intentos</h2>
         <VisitTimeline
@@ -333,6 +376,12 @@ function OrderDetailContent() {
           onSubmit={handleReactivateSubmit}
         />
       )}
+
+      <CancelOrderDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        onConfirm={handleCancelSubmit}
+      />
     </div>
   );
 }

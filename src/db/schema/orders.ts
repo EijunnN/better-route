@@ -59,6 +59,22 @@ export const ORDER_STATUS = {
   CANCELLED: "CANCELLED",
 } as const;
 
+/**
+ * Categorías de cancelación definitiva (issue 005). Se persisten en
+ * `orders.cancellation_reason_category` cuando el operador transiciona
+ * el pedido a CANCELLED. CANCELLED es terminal — no se puede revertir.
+ */
+export const ORDER_CANCELLATION_CATEGORIES = {
+  customer_request: "customer_request",
+  unable_to_deliver: "unable_to_deliver",
+  product_not_available: "product_not_available",
+  address_invalid: "address_invalid",
+  other: "other",
+} as const;
+
+export type OrderCancellationCategory =
+  keyof typeof ORDER_CANCELLATION_CATEGORIES;
+
 // Order types for prioritization (NEW, RESCHEDULED, URGENT)
 export const ORDER_TYPES = {
   NEW: "NEW",
@@ -114,6 +130,15 @@ export const orders = pgTable("orders", {
     .notNull()
     .$type<keyof typeof ORDER_STATUS>()
     .default("PENDING"),
+  /**
+   * Categoría de cancelación, sólo poblado cuando status=CANCELLED.
+   * Ver ORDER_CANCELLATION_CATEGORIES y issue 005.
+   */
+  cancellationReasonCategory: varchar("cancellation_reason_category", {
+    length: 30,
+  }).$type<OrderCancellationCategory>(),
+  /** Nota libre obligatoria al cancelar — contexto humano para auditoría. */
+  cancellationReasonNote: text("cancellation_reason_note"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
