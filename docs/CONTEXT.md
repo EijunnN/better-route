@@ -66,6 +66,9 @@ considerá si es una traducción legítima o un naming a corregir.
 | **Evidence** | Foto subida a R2 al completar o fallar un `Stop`. Almacenada en `RouteStop.evidenceUrls` (jsonb array). |
 | **FailureReason** | Razón categorizada por la cual un `Stop` falló: `CUSTOMER_ABSENT \| CUSTOMER_REFUSED \| ADDRESS_NOT_FOUND \| PACKAGE_DAMAGED \| RESCHEDULE_REQUESTED \| UNSAFE_AREA \| OTHER`. Obligatoria al marcar `FAILED`. |
 | **WorkflowState** | Estado custom definido por la empresa que extiende los terminales del sistema (ej. "Reagendado al jueves"). Vive en `company_workflow_states`. Un `Stop` puede llevar `workflowStateId` además del `status`. |
+| **`Visit`** | Un intento físico de entregar una `Order` por parte de un `Driver`. Tiene `outcome: SUCCESS \| FAILURE`, `attempted_at`, `evidence_urls`, ubicación GPS, y en caso de fallo `failure_reason` + notas. Cada Visit referencia el `RouteStop` que la generó. **Inmutable** — los datos del intento no se borran ni sobreescriben. Vive en `delivery_visits`. |
+| **`Revisita`** | Cualquier `Visit` de una `Order` posterior a la primera. Puede ocurrir el mismo día (driver vuelve tras una falla porque el cliente llamó) o en planes posteriores (la Order entra a un nuevo Plan después de un fallo previo). El historial completo de Visits constituye la trazabilidad de entrega — nunca se pierde. |
+| **`attempt_number`** | Campo en `route_stops` que indica el N-ésimo intento físico de la `Order`. Se calcula como `COUNT(delivery_visits WHERE order_id = X) + 1` al crear el RouteStop. Permite filtrar/mostrar "Intento #2", "Intento #3" sin JOIN al historial de Visits. |
 
 ### Configuración y customización
 
@@ -98,12 +101,39 @@ puede hacer.
 **Código**: `src/components/{vehicles,fleets,zones,...}/`, `src/lib/{validations,workflow,custom-fields}/`.
 
 ### 3. Order Management
-**Qué resuelve**: ingesta y mantenimiento de pedidos.
+**Qué resuelve**: ingesta, mantenimiento y reactivación de pedidos.
 **Entidades**: `Order`, `CsvColumnMappingTemplate`.
 **Código**: `src/components/orders/`, `src/lib/orders/`, `src/lib/csv/`.
 **Reglas**:
 - Un `Order.trackingId` es único por empresa **mientras esté activo**.
 - Una `Order` cae fuera del ruteo si su geocoordinate está dentro de una `Zone` con `type=RESTRICTED`.
+- **CSV import con preview-and-confirm.** La importación nunca aplica
+  cambios sin confirmación del operador. Cuando un `trackingId` del CSV
+  colisiona con una Order existente:
+  - Si la Order existente está en `FAILED`, el preview ofrece
+    reactivarla (status → `PENDING`) para que entre al próximo Plan. Es
+    el mecanismo principal de "Revisita cross-day".
+  - Si la Order existente está en `CANCELLED`, se salta con razón
+    específica: ese estado es terminal definitivo. El operador puede
+    re-introducir el pedido con un trackingId nuevo (lo trata el
+    sistema como Order distinta).
+  - Si la Order existente está en estado **activo**
+    (`PENDING|ASSIGNED|IN_PROGRESS|COMPLETED`), el CSV la salta con
+    warning explícito.
+  El preview muestra: nuevas, reactivables, saltadas (con sub-categoría
+  de motivo). El operador confirma; recién entonces se ejecuta el
+  batch.
+- **Semántica de los estados terminales de `Order`**:
+  - `FAILED` = uno o más intentos físicos fallaron, pero la Order
+    sigue elegible para revisitas. **Reactivable** vía CSV o botón
+    manual desde el detail.
+  - `CANCELLED` = decisión humana explícita: la Order no se entregará
+    nunca más. **Estado terminal definitivo y NO reactivable**. Si el
+    cliente vuelve a pedir lo mismo, se trata como Order nueva con
+    trackingId distinto.
+- **Cancelar definitivamente** requiere razón obligatoria
+  (categoría + nota libre) y solo lo pueden ejecutar los roles
+  `PLANIFICADOR` o `ADMIN_FLOTA`. La transición se audita.
 
 ### 4. Plan Optimization
 **Qué resuelve**: convertir órdenes + flota + reglas en rutas viables.
@@ -185,9 +215,10 @@ La concurrency / locks / abort controllers viven en
 `src/lib/infra/job-queue.ts` como primitives process-level genéricas.
 
 ### 5. Route Execution
-**Qué resuelve**: la ejecución del plan en terreno por los drivers.
-**Entidades**: `RouteStop`, `RouteStopHistory`, `ReassignmentsHistory`,
-`Evidence` (URLs en R2).
+**Qué resuelve**: la ejecución del plan en terreno por los drivers, incluida
+la trazabilidad multi-intento de cada Order (Visits y Revisitas).
+**Entidades**: `RouteStop`, `RouteStopHistory`, `Visit` (`delivery_visits`),
+`ReassignmentsHistory`, `Evidence` (URLs en R2).
 **Código**: `src/lib/routing/route-helpers.ts`, `src/lib/storage/r2.ts`,
 `src/components/monitoring/`, app móvil (`test-mobile/aea`).
 **Reglas**:
@@ -196,6 +227,41 @@ La concurrency / locks / abort controllers viven en
 - `FAILED` requiere `failureReason`.
 - `Evidence` upload a R2 vía presigned URL **debe completarse** antes de cerrar la entrega — si falla, la operación se aborta (no se silencia).
 - `zoneId` se snapshot-ea en `route_stops` al confirmar el plan; preserva history aún si la zona se borra.
+- **Cada intento físico genera una `Visit` inmutable.** Cuando un driver
+  marca COMPLETED o FAILED, se persiste una row en `delivery_visits` con
+  driver, timestamp, evidencia, GPS, y motivo (si falló). Los datos del
+  intento **nunca** se sobreescriben aunque el `route_stop` se reabra.
+- **Re-intento mismo día**: el operador puede revertir un Stop FAILED a
+  PENDING. Los campos `evidenceUrls`/`failureReason`/`notes` del Stop
+  se limpian (los datos ya viven en la `Visit` previa); el driver lo ve
+  otra vez en mobile. Cuando vuelva a marcar resultado, se crea una
+  Visit nueva.
+- **Revisita cross-day**: una Order failed que vuelve a entrar a un Plan
+  posterior genera un `route_stop` nuevo (con `attempt_number` mayor que
+  el anterior). El historial de Visits acumula a través de planes.
+- **Trazabilidad de una Order**: `SELECT * FROM delivery_visits WHERE
+  order_id = X ORDER BY attempted_at` devuelve el log completo,
+  inmutable, de todos los intentos físicos.
+- **Toda `Visit` tiene un `RouteStop`** (`route_stop_id` NOT NULL).
+  BetterRoute no soporta entrega express / ad-hoc; cualquier entrega
+  pasa primero por un `Plan` (sea batch nightly o un Plan ad-hoc de
+  pocos stops generado durante el día). Si en el futuro se introduce
+  un servicio express, este invariante se relaja con un ADR superseder
+  de ADR-0005.
+- **`Visit` guarda dos pares de coordenadas**: `intended_address` /
+  `intended_latitude` / `intended_longitude` (la dirección target que
+  la Order tenía al momento del intento) y `gps_latitude` /
+  `gps_longitude` (la posición real del driver al marcar el outcome).
+  La divergencia es informativa, no un bug — puede haber GPS ruidoso o
+  coordinación remota driver-cliente sin que el driver se acerque.
+- **Re-intento mismo día solo lo dispara el operador** desde el panel
+  (no el driver desde mobile). Mantiene audit limpio y evita race
+  conditions.
+- **Reactivación cross-day** se dispara o (a) desde el preview del
+  CSV import (ADR-0006) o (b) manualmente desde el detail de la Order
+  ("Programar próxima entrega"). Ambos abren el mismo dialog con
+  campos pre-rellenados que el operador puede editar (dirección,
+  ventana horaria, fecha promesa, notas) antes de confirmar.
 
 ### 6. Public Tracking
 **Qué resuelve**: visibilidad para el cliente final sin login.
@@ -257,6 +323,15 @@ Reglas que **siempre** son ciertas. Si tu cambio las viola, está mal.
   automática.
 - **Transportistas como tenant**: cada empresa cliente trae su propia
   flota; no somos marketplace.
+- **Servicio express / on-demand**: BetterRoute no maneja entregas
+  fuera de un `Plan`. Cualquier Order pasa primero por planning (sea
+  batch nightly o un Plan ad-hoc de pocos stops creado durante el
+  día). El modelo "driver recibe Orders en tiempo real sin Plan
+  previo" (Glovo / Rappi / PedidosYa) está fuera de scope.
+- **Notificaciones automáticas a cliente / driver al reabrir o
+  reactivar Orders**: la trazabilidad queda registrada (Visit
+  history, audit log) pero no se dispara push / email / SMS. Si el
+  caso real lo demanda, se introducirá con ADR-0007.
 
 ---
 
@@ -279,3 +354,5 @@ lugar de mantenerlo. Sin migrations data-rescue todavía.
   - ADR-0002: Canonical SolvedPlan shape (cadena tipada)
   - ADR-0003: Runner como pipeline thin sobre stages explícitas
   - ADR-0004: OptimizationJob lifecycle ownership
+  - ADR-0005: Visit como entidad de primera clase (trazabilidad multi-intento)
+  - ADR-0006: CSV import con preview-and-confirm para colisiones de trackingId
