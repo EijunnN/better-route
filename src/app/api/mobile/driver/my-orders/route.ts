@@ -1,7 +1,8 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  deliveryVisits,
   ORDER_STATUS,
   orders,
   routeStops,
@@ -203,9 +204,47 @@ export async function GET(request: NextRequest) {
 
     const stopsMap = new Map(stopsInfo.map((s) => [s.orderId, s]));
 
+    // Visitas previas por Order. Cuenta cualquier intento físico
+    // registrado (mismo razonamiento que /my-route): captura tanto
+    // cross-day reactivate como same-day reopen.
+    const priorVisitsRaw = orderIds.length
+      ? await db
+          .select({
+            orderId: deliveryVisits.orderId,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(deliveryVisits)
+          .where(
+            and(
+              eq(deliveryVisits.companyId, tenantCtx.companyId),
+              inArray(deliveryVisits.orderId, orderIds),
+            ),
+          )
+          .groupBy(deliveryVisits.orderId)
+      : [];
+    const priorVisitsByOrder = new Map(
+      priorVisitsRaw.map((r) => [r.orderId, r.count]),
+    );
+
     // Formatear respuesta de pedidos
     const formattedOrders = ordersData.map((order) => {
       const stopInfo = stopsMap.get(order.id);
+      const priorVisitsCount = priorVisitsByOrder.get(order.id) ?? 0;
+      // Si el Stop existe, descontamos su propia Visit cuando ya esté
+      // en estado terminal (COMPLETED/FAILED) — su attempt sigue
+      // siendo "el actual", no uno previo.
+      const ownVisitForActiveStop =
+        stopInfo && (stopInfo.status === "COMPLETED" || stopInfo.status === "FAILED")
+          ? 1
+          : 0;
+      const effectivePriorVisits = Math.max(
+        priorVisitsCount - ownVisitForActiveStop,
+        0,
+      );
+      const visibleAttemptNumber = stopInfo
+        ? Math.max(stopInfo.attemptNumber, effectivePriorVisits + 1)
+        : effectivePriorVisits + 1;
+      const isRevisit = effectivePriorVisits > 0 || (stopInfo?.attemptNumber ?? 1) > 1;
 
       return {
         id: order.id,
@@ -251,12 +290,18 @@ export async function GET(request: NextRequest) {
         // Campos personalizados
         customFields: order.customFields,
         // Informacion de la parada (si existe)
+        // Marca de revisita a nivel Order — útil cuando el Stop aún
+        // no fue creado (caso cross-day reactivate antes de planificar).
+        priorVisitsCount: effectivePriorVisits,
+        isRevisit,
+        attemptNumber: visibleAttemptNumber,
         stop: stopInfo
           ? {
               status: stopInfo.status,
               sequence: stopInfo.sequence,
-              attemptNumber: stopInfo.attemptNumber,
-              isRevisit: stopInfo.attemptNumber > 1,
+              attemptNumber: visibleAttemptNumber,
+              priorVisitsCount: effectivePriorVisits,
+              isRevisit,
               routeId: stopInfo.routeId,
               estimatedArrival:
                 stopInfo.estimatedArrival?.toISOString() || null,

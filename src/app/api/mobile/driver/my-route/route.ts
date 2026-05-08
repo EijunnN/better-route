@@ -1,7 +1,8 @@
-import { and, asc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  deliveryVisits,
   optimizationJobs,
   routeStops,
   USER_ROLES,
@@ -351,19 +352,54 @@ export async function GET(request: NextRequest) {
       return composed.toISOString();
     };
 
+    // Cuántas visitas previas tiene cada Order representado en la ruta.
+    // Esto cubre tanto el caso cross-day reactivate (Stop nuevo, attemptNumber>1)
+    // como same-day reopen (mismo Stop, attemptNumber sigue siendo 1 pero ya
+    // hubo una Visit fallida). Excluimos las visits del propio Stop para que
+    // un Stop COMPLETED no se autocuente.
+    const stopOrderIds = stops.map((s) => s.orderId).filter(Boolean) as string[];
+    const stopIds = stops.map((s) => s.id);
+    const priorVisitsRaw = stopOrderIds.length
+      ? await db
+          .select({
+            orderId: deliveryVisits.orderId,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(deliveryVisits)
+          .where(
+            and(
+              eq(deliveryVisits.companyId, tenantCtx.companyId),
+              inArray(deliveryVisits.orderId, stopOrderIds),
+              stopIds.length > 0
+                ? sql`${deliveryVisits.routeStopId} != ALL(${stopIds})`
+                : undefined,
+            ),
+          )
+          .groupBy(deliveryVisits.orderId)
+      : [];
+    const priorVisitsByOrder = new Map(
+      priorVisitsRaw.map((r) => [r.orderId, r.count]),
+    );
+
     // Construir lista de paradas para la app movil
-    const stopsData = stops.map((stop) => ({
+    const stopsData = stops.map((stop) => {
+      const priorVisitsCount = priorVisitsByOrder.get(stop.orderId) ?? 0;
+      const isRevisit = priorVisitsCount > 0 || stop.attemptNumber > 1;
+      const visibleAttemptNumber = Math.max(stop.attemptNumber, priorVisitsCount + 1);
+      return {
       id: stop.id,
       jobId: stop.jobId,
       sequence: stop.sequence,
       /**
-       * Cuántos intentos físicos lleva este pedido (incluido este
-       * stop). 1 = primera vez. 2+ = revisita. La app debe mostrar un
-       * badge "Intento #N" cuando attemptNumber > 1 para que el
-       * conductor sepa que es un reintento (issue 001 / 003 / 004).
+       * Cuántos intentos físicos lleva este pedido. Para revisitas
+       * de mismo día (reopen), el `attempt_number` del DB sigue en 1
+       * porque el Stop es el mismo, así que computamos un número
+       * "visible" sumando las visitas previas del Order. La app debe
+       * pintar el badge "Intento #N" cuando `isRevisit` es true.
        */
-      attemptNumber: stop.attemptNumber,
-      isRevisit: stop.attemptNumber > 1,
+      attemptNumber: visibleAttemptNumber,
+      priorVisitsCount,
+      isRevisit,
       status: stop.status,
       // Ubicacion
       address: stop.address,
@@ -406,7 +442,8 @@ export async function GET(request: NextRequest) {
             customFields: stop.order.customFields,
           }
         : null,
-    }));
+      };
+    });
 
     const routeId = stops[0].routeId;
     const allJobIds = [...new Set(stops.map((s) => s.jobId))];
