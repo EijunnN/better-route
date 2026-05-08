@@ -35,7 +35,6 @@ import { KpiCard, KpiGrid } from "./kpi-card";
 import { ManualDriverAssignmentDialog } from "./manual-driver-assignment-dialog";
 import { PlanConfirmationDialog } from "./plan-confirmation-dialog";
 import { RouteMap } from "./route-map";
-import { fromCanonicalRoute } from "./route-map/types";
 
 /** Format a time window value that may be HH:mm, HH:mm:ss, or an ISO date string */
 function formatTimeWindow(value: string): string {
@@ -666,7 +665,7 @@ export function OptimizationResults({
 
         <TabsContent value="map">
           <RouteMap
-            routes={result.routes.map(fromCanonicalRoute)}
+            routes={result.routes}
             depot={result.depot}
             selectedRouteId={selectedRouteId}
             onRouteSelect={(routeId) => setSelectedRouteId(routeId)}

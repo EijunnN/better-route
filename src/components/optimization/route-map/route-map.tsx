@@ -61,10 +61,10 @@ export function RouteMap({
         } else if (routes.length > 0 && routes[0]?.stops?.length > 0) {
           const allStops = routes.flatMap((r) => r.stops);
           const avgLat =
-            allStops.reduce((sum, s) => sum + parseFloat(s.latitude), 0) /
+            allStops.reduce((sum, s) => sum + s.latitude, 0) /
             allStops.length;
           const avgLng =
-            allStops.reduce((sum, s) => sum + parseFloat(s.longitude), 0) /
+            allStops.reduce((sum, s) => sum + s.longitude, 0) /
             allStops.length;
           centerLat = avgLat;
           centerLng = avgLng;
@@ -158,15 +158,15 @@ export function RouteMap({
             }).setHTML(`
               <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 160px;">
                 <strong style="color: #fff; font-size: 14px;">Inicio: ${route.driverName || "Conductor"}</strong><br/>
-                <span style="color: ${color}; font-weight: 600;">${route.vehiclePlate}</span>
+                <span style="color: ${color}; font-weight: 600;">${route.vehicleIdentifier}</span>
                 ${route.driverOrigin.address ? `<hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/><span style="color: #888; font-size: 11px;">${route.driverOrigin.address}</span>` : ""}
               </div>
             `);
 
             const marker = new maplibregl.Marker({ element: driverOriginEl })
               .setLngLat([
-                parseFloat(route.driverOrigin.longitude),
-                parseFloat(route.driverOrigin.latitude),
+                route.driverOrigin.longitude,
+                route.driverOrigin.latitude,
               ])
               .setPopup(popup)
               .addTo(map.current);
@@ -197,8 +197,8 @@ export function RouteMap({
               // Use route's driverOrigin if available, otherwise depot
               const routeOrigin = route.driverOrigin
                 ? {
-                    longitude: parseFloat(route.driverOrigin.longitude),
-                    latitude: parseFloat(route.driverOrigin.latitude),
+                    longitude: route.driverOrigin.longitude,
+                    latitude: route.driverOrigin.latitude,
                   }
                 : depot;
 
@@ -209,8 +209,8 @@ export function RouteMap({
                 .toSorted((a, b) => a.sequence - b.sequence)
                 .forEach((stop) => {
                   coordinates.push([
-                    parseFloat(stop.longitude),
-                    parseFloat(stop.latitude),
+                    stop.longitude,
+                    stop.latitude,
                   ]);
                 });
               if (routeOrigin) {
@@ -359,7 +359,7 @@ export function RouteMap({
                         )
                         .join("")}
                     </div>
-                    <span style="color: ${color}; font-weight: 600;">${route.vehiclePlate}</span>
+                    <span style="color: ${color}; font-weight: 600;">${route.vehicleIdentifier}</span>
                     ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${route.driverName}</span>` : ""}
                     <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
                     <span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block;">${stop.address}</span>
@@ -371,7 +371,7 @@ export function RouteMap({
                       <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Parada ${stop.sequence}</span>
                       <strong style="color: #fff;">${stop.trackingId}</strong>
                     </div>
-                    <span style="color: ${color}; font-weight: 600;">${route.vehiclePlate}</span>
+                    <span style="color: ${color}; font-weight: 600;">${route.vehicleIdentifier}</span>
                     ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${route.driverName}</span>` : ""}
                     <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
                     <span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block;">${stop.address}</span>
@@ -389,8 +389,8 @@ export function RouteMap({
                   anchor: "bottom",
                 })
                   .setLngLat([
-                    parseFloat(stop.longitude),
-                    parseFloat(stop.latitude),
+                    stop.longitude,
+                    stop.latitude,
                   ])
                   .setPopup(popup)
                   .addTo(map.current);
@@ -479,8 +479,8 @@ export function RouteMap({
               anchor: "bottom",
             })
               .setLngLat([
-                parseFloat(order.longitude),
-                parseFloat(order.latitude),
+                order.longitude,
+                order.latitude,
               ])
               .setPopup(popup)
               .addTo(map.current);
@@ -569,8 +569,8 @@ export function RouteMap({
 
             const marker = new maplibregl.Marker({ element: vehicleEl })
               .setLngLat([
-                parseFloat(vehicle.originLongitude),
-                parseFloat(vehicle.originLatitude),
+                vehicle.originLongitude,
+                vehicle.originLatitude,
               ])
               .setPopup(popup)
               .addTo(map.current);
@@ -593,15 +593,15 @@ export function RouteMap({
             routes.forEach((route) => {
               if (route.driverOrigin) {
                 allCoords.push([
-                  parseFloat(route.driverOrigin.longitude),
-                  parseFloat(route.driverOrigin.latitude),
+                  route.driverOrigin.longitude,
+                  route.driverOrigin.latitude,
                 ]);
               }
 
               route.stops.forEach((stop) => {
                 allCoords.push([
-                  parseFloat(stop.longitude),
-                  parseFloat(stop.latitude),
+                  stop.longitude,
+                  stop.latitude,
                 ]);
               });
             });
@@ -610,8 +610,8 @@ export function RouteMap({
             unassignedOrders.forEach((order) => {
               if (order.latitude && order.longitude) {
                 allCoords.push([
-                  parseFloat(order.longitude),
-                  parseFloat(order.latitude),
+                  order.longitude,
+                  order.latitude,
                 ]);
               }
             });
@@ -620,8 +620,8 @@ export function RouteMap({
             vehiclesWithoutRoutes.forEach((vehicle) => {
               if (vehicle.originLatitude && vehicle.originLongitude) {
                 allCoords.push([
-                  parseFloat(vehicle.originLongitude),
-                  parseFloat(vehicle.originLatitude),
+                  vehicle.originLongitude,
+                  vehicle.originLatitude,
                 ]);
               }
             });
@@ -777,7 +777,7 @@ export function RouteMap({
                     backgroundColor: ROUTE_COLORS[i % ROUTE_COLORS.length],
                   }}
                 />
-                <span className="text-gray-200">{route.vehiclePlate}</span>
+                <span className="text-gray-200">{route.vehicleIdentifier}</span>
                 <span className="text-gray-500">({route.stops.length})</span>
               </button>
             ))}

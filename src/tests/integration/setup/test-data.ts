@@ -204,67 +204,124 @@ export async function createOptimizationConfig(
 // ---------------------------------------------------------------------------
 // Optimization Jobs
 // ---------------------------------------------------------------------------
-export interface OptimizationResultFixture {
-  routes: Array<{
-    routeId: string;
-    vehicleId: string;
-    vehiclePlate: string | null;
-    driverId?: string;
-    stops: Array<{
-      orderId: string;
-      trackingId: string;
-      sequence: number;
-      address: string;
-      latitude: string;
-      longitude: string;
-    }>;
-    totalDistance: number;
-    totalDuration: number;
-    totalWeight: number;
-    totalVolume: number;
-    utilizationPercentage: number;
-    timeWindowViolations: number;
-  }>;
-  unassignedOrders: Array<{
+
+import type {
+  AssignedSolvedRoute,
+  UnassignedOrderRecord,
+  VerifiedPlan,
+} from "@/lib/optimization/solved-plan";
+
+/**
+ * Lenient input shape used by tests to declare expected solver outputs.
+ * Accepts the canonical shape and a few legacy ergonomics (string lat/lng,
+ * `vehiclePlate` instead of `vehicleIdentifier`, flat `totalWeight`/
+ * `totalVolume`). `buildOptimizationResult` normalises everything to a
+ * canonical `VerifiedPlan` — no legacy shape ever leaves the helper.
+ */
+export interface RouteFixture {
+  routeId: string;
+  vehicleId: string;
+  vehicleIdentifier?: string;
+  vehiclePlate?: string | null;
+  driverId?: string;
+  driverName?: string;
+  stops: Array<{
     orderId: string;
     trackingId: string;
-    reason: string;
+    sequence: number;
+    address: string;
+    latitude: string | number;
+    longitude: string | number;
   }>;
-  metrics: {
-    totalDistance: number;
-    totalDuration: number;
-    totalRoutes: number;
-    totalStops: number;
-    utilizationRate: number;
-    timeWindowComplianceRate: number;
-  };
-  summary: {
-    optimizedAt: string;
-    objective: string;
-    processingTimeMs: number;
+  totalDistance: number;
+  totalDuration: number;
+  capacityUsed?: { WEIGHT?: number; VOLUME?: number };
+  totalWeight?: number;
+  totalVolume?: number;
+  utilizationPercentage?: number;
+  timeWindowViolations?: number;
+}
+
+export type OptimizationResultFixture = VerifiedPlan;
+
+function num(x: string | number): number {
+  return typeof x === "string" ? parseFloat(x) : x;
+}
+
+function expandRoute(r: RouteFixture): AssignedSolvedRoute {
+  return {
+    routeId: r.routeId,
+    vehicleId: r.vehicleId,
+    vehicleIdentifier: r.vehicleIdentifier ?? r.vehiclePlate ?? "",
+    driverId: r.driverId ?? "",
+    driverName: r.driverName ?? "",
+    stops: r.stops.map((s) => ({
+      orderId: s.orderId,
+      trackingId: s.trackingId,
+      sequence: s.sequence,
+      address: s.address,
+      latitude: num(s.latitude),
+      longitude: num(s.longitude),
+    })),
+    totalDistance: r.totalDistance,
+    totalDuration: r.totalDuration,
+    totalServiceTime: 0,
+    totalTravelTime: r.totalDuration,
+    capacityUsed: r.capacityUsed ?? {
+      WEIGHT: r.totalWeight,
+      VOLUME: r.totalVolume,
+    },
+    utilizationPercentage: r.utilizationPercentage ?? 75,
+    timeWindowViolations: r.timeWindowViolations ?? 0,
+    assignmentQuality: { score: 100, warnings: [], errors: [] },
   };
 }
 
 export function buildOptimizationResult(
-  routes: OptimizationResultFixture["routes"],
-  unassigned: OptimizationResultFixture["unassignedOrders"] = [],
-): OptimizationResultFixture {
-  const totalStops = routes.reduce((s, r) => s + r.stops.length, 0);
+  routes: RouteFixture[],
+  unassigned: UnassignedOrderRecord[] = [],
+): VerifiedPlan {
+  const expanded = routes.map(expandRoute);
+  const totalStops = expanded.reduce((s, r) => s + r.stops.length, 0);
   return {
-    routes,
+    routes: expanded,
     unassignedOrders: unassigned,
+    driversWithoutRoutes: [],
+    vehiclesWithoutRoutes: [],
     metrics: {
-      totalDistance: routes.reduce((s, r) => s + r.totalDistance, 0),
-      totalDuration: routes.reduce((s, r) => s + r.totalDuration, 0),
-      totalRoutes: routes.length,
+      totalDistance: expanded.reduce((s, r) => s + r.totalDistance, 0),
+      totalDuration: expanded.reduce((s, r) => s + r.totalDuration, 0),
+      totalRoutes: expanded.length,
       totalStops,
       utilizationRate: 75,
       timeWindowComplianceRate: 90,
+    },
+    assignmentMetrics: {
+      totalAssignments: expanded.length,
+      assignmentsWithWarnings: 0,
+      assignmentsWithErrors: 0,
+      averageScore: 100,
+      skillCoverage: 100,
+      licenseCompliance: 100,
+      fleetAlignment: 100,
+      workloadBalance: 100,
     },
     summary: {
       optimizedAt: new Date().toISOString(),
       objective: "BALANCED",
       processingTimeMs: 500,
+    },
+    depot: { latitude: 0, longitude: 0 },
+    verification: {
+      optimizer: "TEST",
+      summary: { hard: 0, soft: 0, info: 0, byCode: {} },
+      totals: {
+        ordersInput: totalStops + unassigned.length,
+        ordersAssigned: totalStops,
+        ordersUnassigned: unassigned.length,
+        routes: expanded.length,
+      },
+      violations: [],
     },
   };
 }

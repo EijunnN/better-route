@@ -166,7 +166,7 @@ export function CompactRouteCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm" style={{ color: routeColor }}>
-              {route.vehiclePlate}
+              {route.vehicleIdentifier}
             </span>
             {route.driverName && (
               <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -223,7 +223,7 @@ export function CompactRouteCard({
                     }}
                   >
                     <Truck className="h-4 w-4 mr-2 shrink-0" />
-                    <span className="truncate">{other.vehiclePlate}</span>
+                    <span className="truncate">{other.vehicleIdentifier}</span>
                     <span className="ml-auto text-xs text-muted-foreground">
                       {other.stops.length} paradas
                     </span>
@@ -277,16 +277,16 @@ export function CompactRouteCard({
                   </span>
                 )}
             </div>
-            {route.totalWeight > 0 && (
+            {(route.capacityUsed?.WEIGHT ?? 0) > 0 && (
               <div className="flex items-center gap-1">
                 <Scale className="h-3 w-3 text-muted-foreground" />
-                <span>{route.totalWeight}kg</span>
+                <span>{route.capacityUsed?.WEIGHT}kg</span>
               </div>
             )}
-            {route.totalVolume > 0 && (
+            {(route.capacityUsed?.VOLUME ?? 0) > 0 && (
               <div className="flex items-center gap-1">
                 <Package className="h-3 w-3 text-muted-foreground" />
-                <span>{route.totalVolume}L</span>
+                <span>{route.capacityUsed?.VOLUME}L</span>
               </div>
             )}
           </div>
@@ -323,7 +323,7 @@ export function CompactRouteCard({
                             trackingId,
                             stop.address,
                             route.vehicleId,
-                            route.vehiclePlate,
+                            route.vehicleIdentifier,
                             route.routeId,
                           )
                         }
@@ -373,7 +373,7 @@ export function CompactRouteCard({
                         stop.trackingId,
                         stop.address,
                         route.vehicleId,
-                        route.vehiclePlate,
+                        route.vehicleIdentifier,
                         route.routeId,
                       )
                     }
@@ -554,20 +554,7 @@ export function DashboardHeader() {
                 : "error"
           }
         />
-        {result.metrics.balanceScore !== undefined && (
-          <KpiBadge
-            icon={BarChart3}
-            label="balance"
-            value={`${result.metrics.balanceScore}%`}
-            status={
-              result.metrics.balanceScore >= 80
-                ? "success"
-                : result.metrics.balanceScore >= 60
-                  ? "warning"
-                  : "error"
-            }
-          />
-        )}
+        {/* balanceScore was removed from PlanLevelMetrics — solver-internal metric, no longer surfaced post-canonical refactor. */}
         {result.verification && (
           <KpiBadge
             icon={AlertTriangle}

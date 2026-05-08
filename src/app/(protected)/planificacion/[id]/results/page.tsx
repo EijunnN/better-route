@@ -24,89 +24,9 @@ import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
-interface OptimizationResult {
-  routes: Array<{
-    routeId: string;
-    vehicleId: string;
-    vehicleIdentifier: string;
-    vehiclePlate: string;
-    driverId?: string;
-    driverName?: string;
-    driverOrigin?: {
-      latitude: string;
-      longitude: string;
-      address?: string;
-    };
-    stops: Array<{
-      orderId: string;
-      trackingId: string;
-      sequence: number;
-      address: string;
-      latitude: string;
-      longitude: string;
-      estimatedArrival?: string;
-      timeWindow?: {
-        start: string;
-        end: string;
-      };
-    }>;
-    totalDistance: number;
-    totalDuration: number;
-    totalWeight: number;
-    totalVolume: number;
-    utilizationPercentage: number;
-    timeWindowViolations: number;
-    geometry?: string;
-    assignmentQuality?: {
-      score: number;
-      warnings: string[];
-      errors: string[];
-    };
-  }>;
-  unassignedOrders: Array<{
-    orderId: string;
-    trackingId: string;
-    reason: string;
-    latitude?: string;
-    longitude?: string;
-    address?: string;
-  }>;
-  vehiclesWithoutRoutes?: Array<{
-    id: string;
-    plate: string;
-    originLatitude?: string;
-    originLongitude?: string;
-  }>;
-  metrics: {
-    totalDistance: number;
-    totalDuration: number;
-    totalRoutes: number;
-    totalStops: number;
-    utilizationRate: number;
-    timeWindowComplianceRate: number;
-  };
-  assignmentMetrics?: {
-    totalAssignments: number;
-    assignmentsWithWarnings: number;
-    assignmentsWithErrors: number;
-    averageScore: number;
-    skillCoverage: number;
-    licenseCompliance: number;
-    fleetAlignment: number;
-    workloadBalance: number;
-  };
-  summary: {
-    optimizedAt: string;
-    objective: string;
-    processingTimeMs: number;
-    engineUsed?: string;
-  };
-  depot?: {
-    latitude: number;
-    longitude: number;
-  };
-  isPartial?: boolean;
-}
+import type { VerifiedPlan } from "@/lib/optimization/solved-plan";
+
+type OptimizationResult = VerifiedPlan;
 
 function ResultsPageContent() {
   const router = useRouter();

@@ -38,28 +38,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { exportPlanToExcel } from "@/lib/export/export-plan-excel";
+import type {
+  AssignedSolvedRoute,
+  SolvedStop,
+} from "@/lib/optimization/solved-plan";
 
-interface RouteStop {
-  trackingId: string;
-  sequence: number;
-  estimatedArrival?: string;
-  groupedTrackingIds?: string[];
-  address?: string;
-  latitude?: string;
-  longitude?: string;
-}
-
-interface RouteData {
-  routeId: string;
-  vehicleId: string;
-  vehiclePlate: string;
-  driverId?: string;
-  driverName?: string;
-  stops: RouteStop[];
-  totalWeight: number;
-  totalDuration: number;
-  totalDistance?: number;
-}
+type RouteStop = SolvedStop;
+type RouteData = AssignedSolvedRoute;
 
 interface Driver {
   id: string;
@@ -315,18 +300,7 @@ export function PlanConfirmationDialog({
     const result = validationResult.result;
     exportPlanToExcel(
       {
-        routes: result.routes.map((route) => ({
-          ...route,
-          totalDistance: route.totalDistance || 0,
-          totalVolume: 0,
-          stops: route.stops.map((stop) => ({
-            ...stop,
-            orderId: stop.trackingId,
-            address: stop.address || "",
-            latitude: stop.latitude || "0",
-            longitude: stop.longitude || "0",
-          })),
-        })),
+        routes: result.routes,
         metrics: {
           totalRoutes: result.routes.length,
           totalStops: result.routes.reduce((acc, r) => acc + r.stops.length, 0),
@@ -335,7 +309,7 @@ export function PlanConfirmationDialog({
         },
         summary: {
           optimizedAt: result.summary.optimizedAt,
-          objective: "Minimizar distancia",
+          objective: "DISTANCE",
         },
       },
       `plan-${planName || "export"}.xlsx`
@@ -555,7 +529,7 @@ export function PlanConfirmationDialog({
                       return (
                         <TableRow key={route.routeId}>
                           <TableCell className="font-medium">
-                            {route.vehiclePlate}
+                            {route.vehicleIdentifier}
                           </TableCell>
                           <TableCell>
                             <Select

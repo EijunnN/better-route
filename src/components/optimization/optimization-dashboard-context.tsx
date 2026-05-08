@@ -4,56 +4,13 @@ import type maplibregl from "maplibre-gl";
 import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
+import type {
+  AssignedSolvedRoute,
+  VerifiedPlan,
+} from "@/lib/optimization/solved-plan";
 
-// Types
-export interface RouteData {
-  routeId: string;
-  vehicleId: string;
-  /** Canonical name from solved-plan. */
-  vehicleIdentifier: string;
-  /**
-   * Legacy alias for `vehicleIdentifier`. Kept on this presentation type so
-   * the dashboard's many call sites keep compiling during the staged refactor.
-   * New code should prefer `vehicleIdentifier`.
-   */
-  vehiclePlate: string;
-  driverId?: string;
-  driverName?: string;
-  driverOrigin?: {
-    latitude: string;
-    longitude: string;
-    address?: string;
-  };
-  stops: Array<{
-    orderId: string;
-    trackingId: string;
-    sequence: number;
-    address: string;
-    latitude: string;
-    longitude: string;
-    estimatedArrival?: string;
-    timeWindow?: {
-      start: string;
-      end: string;
-    };
-    groupedOrderIds?: string[];
-    groupedTrackingIds?: string[];
-  }>;
-  totalDistance: number;
-  totalDuration: number;
-  totalServiceTime?: number;
-  totalTravelTime?: number;
-  totalWeight: number;
-  totalVolume: number;
-  utilizationPercentage: number;
-  timeWindowViolations: number;
-  geometry?: string;
-  assignmentQuality?: {
-    score: number;
-    warnings: string[];
-    errors: string[];
-  };
-}
+// The dashboard reads the canonical SolvedPlan shape end-to-end.
+export type RouteData = AssignedSolvedRoute;
 
 export interface Zone {
   id: string;
@@ -68,79 +25,7 @@ export interface Zone {
   vehicles: Array<{ id: string; plate: string | null }>;
 }
 
-export interface OptimizationResult {
-  routes: RouteData[];
-  unassignedOrders: Array<{
-    orderId: string;
-    trackingId: string;
-    reason: string;
-    latitude?: string;
-    longitude?: string;
-    address?: string;
-  }>;
-  vehiclesWithoutRoutes?: Array<{
-    id: string;
-    plate: string;
-    originLatitude?: string;
-    originLongitude?: string;
-  }>;
-  metrics: {
-    totalDistance: number;
-    totalDuration: number;
-    totalRoutes: number;
-    totalStops: number;
-    utilizationRate: number;
-    timeWindowComplianceRate: number;
-    balanceScore?: number;
-  };
-  assignmentMetrics?: {
-    totalAssignments: number;
-    assignmentsWithWarnings: number;
-    assignmentsWithErrors: number;
-    averageScore: number;
-    skillCoverage: number;
-    licenseCompliance: number;
-    fleetAlignment: number;
-    workloadBalance: number;
-  };
-  summary: {
-    optimizedAt: string;
-    objective: string;
-    processingTimeMs: number;
-    engineUsed?: string;
-  };
-  depot?: {
-    latitude: number;
-    longitude: number;
-  };
-  verification?: {
-    optimizer: string;
-    summary: {
-      hard: number;
-      soft: number;
-      info: number;
-      byCode: Record<string, number>;
-    };
-    totals: {
-      ordersInput: number;
-      ordersAssigned: number;
-      ordersUnassigned: number;
-      routes: number;
-    };
-    violations: Array<{
-      code: string;
-      severity: "HARD" | "SOFT" | "INFO";
-      message: string;
-      vehicleId?: string;
-      vehicleIdentifier?: string;
-      orderId?: string;
-      trackingId?: string;
-      stopSequence?: number;
-      expected?: string | number;
-      actual?: string | number;
-    }>;
-  };
-}
+export type OptimizationResult = VerifiedPlan;
 
 export interface SelectableOrder {
   orderId: string;
@@ -357,7 +242,7 @@ export function OptimizationDashboardProvider({
   const availableVehicles: AvailableVehicle[] = [
     ...result.routes.map((r) => ({
       id: r.vehicleId,
-      plate: r.vehiclePlate,
+      plate: r.vehicleIdentifier,
       routeId: r.routeId,
       driverName: r.driverName || null,
       hasRoute: true,
@@ -382,10 +267,10 @@ export function OptimizationDashboardProvider({
             orderId,
             trackingId: stop.groupedTrackingIds?.[idx] || stop.trackingId,
             address: stop.address,
-            latitude: parseFloat(stop.latitude),
-            longitude: parseFloat(stop.longitude),
+            latitude: stop.latitude,
+            longitude: stop.longitude,
             vehicleId: route.vehicleId,
-            vehiclePlate: route.vehiclePlate,
+            vehiclePlate: route.vehicleIdentifier,
             routeId: route.routeId,
           }));
         }
@@ -394,10 +279,10 @@ export function OptimizationDashboardProvider({
             orderId: stop.orderId,
             trackingId: stop.trackingId,
             address: stop.address,
-            latitude: parseFloat(stop.latitude),
-            longitude: parseFloat(stop.longitude),
+            latitude: stop.latitude,
+            longitude: stop.longitude,
             vehicleId: route.vehicleId,
-            vehiclePlate: route.vehiclePlate,
+            vehiclePlate: route.vehicleIdentifier,
             routeId: route.routeId,
           },
         ];
@@ -407,15 +292,15 @@ export function OptimizationDashboardProvider({
       .filter(
         (
           order,
-        ): order is typeof order & { latitude: string; longitude: string } =>
-          Boolean(order.latitude && order.longitude),
+        ): order is typeof order & { latitude: number; longitude: number } =>
+          order.latitude !== undefined && order.longitude !== undefined,
       )
       .map((order) => ({
         orderId: order.orderId,
         trackingId: order.trackingId,
         address: order.address || "Sin dirección",
-        latitude: parseFloat(order.latitude),
-        longitude: parseFloat(order.longitude),
+        latitude: order.latitude,
+        longitude: order.longitude,
         vehicleId: null,
         vehiclePlate: null,
         routeId: null,
@@ -566,10 +451,10 @@ export function OptimizationDashboardProvider({
       }
 
       const plateA =
-        result.routes.find((r) => r.vehicleId === vehicleAId)?.vehiclePlate ||
+        result.routes.find((r) => r.vehicleId === vehicleAId)?.vehicleIdentifier ||
         vehicleAId;
       const plateB =
-        result.routes.find((r) => r.vehicleId === vehicleBId)?.vehiclePlate ||
+        result.routes.find((r) => r.vehicleId === vehicleBId)?.vehicleIdentifier ||
         vehicleBId;
 
       toast({

@@ -1,47 +1,17 @@
 import * as XLSX from "xlsx";
-
-interface RouteStop {
-  orderId: string;
-  trackingId: string;
-  sequence: number;
-  address: string;
-  latitude: string;
-  longitude: string;
-  estimatedArrival?: string;
-  waitingTimeMinutes?: number;
-  timeWindow?: {
-    start: string;
-    end: string;
-  };
-  groupedOrderIds?: string[];
-  groupedTrackingIds?: string[];
-}
-
-interface RouteData {
-  routeId: string;
-  vehicleId: string;
-  vehiclePlate: string;
-  driverId?: string;
-  driverName?: string;
-  stops: RouteStop[];
-  totalDistance: number;
-  totalDuration: number;
-  totalWeight: number;
-  totalVolume: number;
-}
+import type {
+  AssignedSolvedRoute,
+  PlanLevelMetrics,
+  PlanSummary,
+} from "@/lib/optimization/solved-plan";
 
 interface ExportData {
-  routes: RouteData[];
-  metrics: {
-    totalDistance: number;
-    totalDuration: number;
-    totalRoutes: number;
-    totalStops: number;
-  };
-  summary: {
-    optimizedAt: string;
-    objective: string;
-  };
+  routes: AssignedSolvedRoute[];
+  metrics: Pick<
+    PlanLevelMetrics,
+    "totalDistance" | "totalDuration" | "totalRoutes" | "totalStops"
+  >;
+  summary: Pick<PlanSummary, "optimizedAt" | "objective">;
 }
 
 function formatTime(dateStr?: string): string {
@@ -95,8 +65,8 @@ interface PlanRow {
   "Espera (min)": string;
   "Ventana Inicio": string;
   "Ventana Fin": string;
-  Latitud: string;
-  Longitud: string;
+  Latitud: number;
+  Longitud: number;
 }
 
 interface DriverRow {
@@ -107,8 +77,8 @@ interface DriverRow {
   "Espera (min)": string;
   "Ventana Inicio": string;
   "Ventana Fin": string;
-  Latitud: string;
-  Longitud: string;
+  Latitud: number;
+  Longitud: number;
 }
 
 export function exportPlanToExcel(data: ExportData, filename?: string): void {
@@ -123,14 +93,16 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
   data.routes.forEach((route) => {
     route.stops.forEach((stop) => {
       // Handle grouped stops (multiple orders at same location)
-      const waitStr = stop.waitingTimeMinutes ? `${stop.waitingTimeMinutes}` : "-";
+      const waitStr = stop.waitingTimeSeconds
+        ? `${Math.round(stop.waitingTimeSeconds / 60)}`
+        : "-";
       if (stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1) {
         stop.groupedTrackingIds.forEach((trackingId) => {
           planRows.push({
             "N° Parada": stop.sequence,
             "Código Track": trackingId,
             Conductor: route.driverName || "Sin asignar",
-            Vehículo: route.vehiclePlate,
+            Vehículo: route.vehicleIdentifier,
             Dirección: stop.address,
             "Hora Est. Llegada": formatTime(stop.estimatedArrival),
             "Espera (min)": waitStr,
@@ -145,7 +117,7 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
           "N° Parada": stop.sequence,
           "Código Track": stop.trackingId,
           Conductor: route.driverName || "Sin asignar",
-          Vehículo: route.vehiclePlate,
+          Vehículo: route.vehicleIdentifier,
           Dirección: stop.address,
           "Hora Est. Llegada": formatTime(stop.estimatedArrival),
           "Espera (min)": waitStr,
@@ -184,7 +156,9 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
     const driverRows: DriverRow[] = [];
 
     route.stops.forEach((stop) => {
-      const waitStr = stop.waitingTimeMinutes ? `${stop.waitingTimeMinutes}` : "-";
+      const waitStr = stop.waitingTimeSeconds
+        ? `${Math.round(stop.waitingTimeSeconds / 60)}`
+        : "-";
       if (stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1) {
         stop.groupedTrackingIds.forEach((trackingId) => {
           driverRows.push({
@@ -230,7 +204,7 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
     ];
 
     // Sheet name: "Ruta N - Placa" (max 31 chars for Excel)
-    const sheetName = `Ruta ${index + 1} - ${route.vehiclePlate}`.slice(0, 31);
+    const sheetName = `Ruta ${index + 1} - ${route.vehicleIdentifier}`.slice(0, 31);
     XLSX.utils.book_append_sheet(workbook, driverSheet, sheetName);
   });
 
@@ -252,13 +226,13 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
     ["DETALLE POR RUTA"],
     ["Vehículo", "Conductor", "Paradas", "Distancia", "Duración", "Peso (kg)", "Volumen (L)"],
     ...data.routes.map((route) => [
-      route.vehiclePlate,
+      route.vehicleIdentifier,
       route.driverName || "Sin asignar",
       route.stops.length,
       formatDistance(route.totalDistance),
       formatDuration(route.totalDuration),
-      route.totalWeight || 0,
-      route.totalVolume || 0,
+      route.capacityUsed?.WEIGHT ?? 0,
+      route.capacityUsed?.VOLUME ?? 0,
     ]),
   ];
 
