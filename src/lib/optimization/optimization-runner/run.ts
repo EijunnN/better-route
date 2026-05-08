@@ -1,25 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import {
-  optimizationConfigurations,
-  optimizationPresets,
-  orders,
-  USER_ROLES,
-  users,
-  vehicles,
-  zones,
-  zoneVehicles,
-} from "@/db/schema";
-import {
-  assignDriversToRoutes,
-  DEFAULT_ASSIGNMENT_CONFIG,
-  type DriverAssignmentRequest,
-  type DriverAssignmentResult,
-  getAssignmentQualityMetrics,
-} from "../../routing/driver-assignment";
-import {
-  updateJobProgress,
-} from "../../infra/job-queue";
+import { updateJobProgress } from "../../infra/job-queue";
 import {
   type DepotConfig,
   type OrderForOptimization,
@@ -31,8 +10,6 @@ import {
   createZoneBatches,
   getDayOfWeek,
   type DayOfWeek,
-  type VehicleZoneAssignment,
-  type ZoneData,
 } from "../../geo/zone-utils";
 import { resolveProfileSchema } from "@/lib/orders/profile-schema";
 import type { OptimizationInput } from "./types";
@@ -53,6 +30,10 @@ import {
   loadTimeWindowPresetsMap,
   resolveTimeWindow,
 } from "./load-time-windows";
+import { loadInputs } from "./stages/load-inputs";
+import { aggregatePlan } from "./stages/aggregate-plan";
+import { assignDrivers } from "./stages/assign-drivers";
+import { solveBatches } from "./stages/solve-batches";
 
 /**
  * Run optimization with mock algorithm (placeholder for actual VRP solver)
@@ -143,102 +124,17 @@ export async function runOptimization(
 
   checkAbort();
 
-  // Fetch configuration
-  const config = await db.query.optimizationConfigurations.findFirst({
-    where: eq(optimizationConfigurations.id, input.configurationId),
-  });
-
-  if (!config) {
-    throw new Error("Configuration not found");
-  }
-
-  checkAbort();
-
-  // Fetch pending orders for this company
-  const pendingOrders = await db.query.orders.findMany({
-    where: and(
-      eq(orders.companyId, input.companyId),
-      eq(orders.status, "PENDING"),
-      eq(orders.active, true),
-    ),
-  });
-
-  checkAbort();
-
-  // Fetch selected vehicles with zone assignments
-  const selectedVehicles = await db.query.vehicles.findMany({
-    where: and(
-      eq(vehicles.companyId, input.companyId),
-      inArray(vehicles.id, input.vehicleIds),
-      eq(vehicles.active, true),
-    ),
-    with: {
-      vehicleFleets: {
-        with: {
-          fleet: true,
-        },
-      },
-    },
-  });
-
-  // Fetch zone assignments for selected vehicles
-  const vehicleZoneAssignments = await db
-    .select()
-    .from(zoneVehicles)
-    .where(
-      and(
-        eq(zoneVehicles.companyId, input.companyId),
-        inArray(
-          zoneVehicles.vehicleId,
-          selectedVehicles.map((v) => v.id),
-        ),
-        eq(zoneVehicles.active, true),
-      ),
-    );
-
-  // Group zone assignments by vehicle
-  const zoneAssignmentsByVehicle = new Map<string, VehicleZoneAssignment[]>();
-  for (const assignment of vehicleZoneAssignments) {
-    const existing = zoneAssignmentsByVehicle.get(assignment.vehicleId) || [];
-    existing.push({
-      zoneId: assignment.zoneId,
-      vehicleId: assignment.vehicleId,
-      assignedDays: assignment.assignedDays,
-      active: assignment.active,
-    });
-    zoneAssignmentsByVehicle.set(assignment.vehicleId, existing);
-  }
-
-  checkAbort();
-
-  // Fetch active zones for this company
-  const activeZones = await db
-    .select()
-    .from(zones)
-    .where(and(eq(zones.companyId, input.companyId), eq(zones.active, true)));
-
-  // Convert to ZoneData format
-  const zonesData: ZoneData[] = activeZones.map((z) => ({
-    id: z.id,
-    name: z.name,
-    geometry: z.geometry,
-    activeDays: z.activeDays,
-    active: z.active,
-    type: z.type || undefined,
-    color: z.color || undefined,
-  }));
-
-  checkAbort();
-
-  // Fetch selected drivers (users with role CONDUCTOR)
-  const selectedDrivers = await db.query.users.findMany({
-    where: and(
-      eq(users.companyId, input.companyId),
-      inArray(users.id, input.driverIds),
-      eq(users.active, true),
-      eq(users.role, USER_ROLES.CONDUCTOR),
-    ),
-  });
+  // Stage 1 — Load every piece of state from the DB in one shot.
+  const loaded = await loadInputs(input);
+  const {
+    config,
+    pendingOrders,
+    selectedVehicles,
+    selectedDrivers,
+    zonesData,
+    zoneAssignmentsByVehicle,
+    preset,
+  } = loaded;
 
   checkAbort();
 
@@ -421,28 +317,7 @@ export async function runOptimization(
     }
   }
 
-  // Load the optimization preset bound to this configuration. The config's
-  // `optimizationPresetId` wins — this is what the user picked for this run.
-  // NULL falls back to the company's default preset, which keeps legacy
-  // configs working. If there's no default either, the runner uses sensible
-  // system defaults (the `??` fallbacks in vroomConfig below).
-  const preset = config.optimizationPresetId
-    ? await db.query.optimizationPresets.findFirst({
-        where: and(
-          eq(optimizationPresets.id, config.optimizationPresetId),
-          eq(optimizationPresets.companyId, input.companyId),
-          eq(optimizationPresets.active, true),
-        ),
-      }) ?? null
-    : await db.query.optimizationPresets.findFirst({
-        where: and(
-          eq(optimizationPresets.companyId, input.companyId),
-          eq(optimizationPresets.isDefault, true),
-          eq(optimizationPresets.active, true),
-        ),
-      });
-
-  // Get groupSameLocation setting from preset
+  // Get groupSameLocation setting from preset (preset comes from loadInputs).
   const groupSameLocation = preset?.groupSameLocation ?? true;
 
   // Global map to track grouped orders for ungrouping later
@@ -488,14 +363,6 @@ export async function runOptimization(
   await updateJobProgress(jobId || input.configurationId, 20);
   checkAbort();
 
-  // Create zone batches if zones are configured. Routes are built without a
-  // driver during the solve loop — driver matching runs as a separate stage
-  // and produces AssignedSolvedRoute[].
-  const hasZones = zonesData.length > 0;
-  const rawRoutes: RawSolvedRoute[] = [];
-  const optimizationWarnings: string[] = [];
-  const unassignedOrders: UnassignedOrderRecord[] = [];
-
   // Helper: parse a string|number lat/lng into a number, undefined on bad input.
   const numCoord = (v: string | number | null | undefined): number | undefined => {
     if (v === null || v === undefined) return undefined;
@@ -503,7 +370,9 @@ export async function runOptimization(
     return Number.isFinite(n) ? n : undefined;
   };
 
-  // Add orders with invalid coordinates to unassigned
+  // Orders that failed coordinate validation are surfaced as unassigned up
+  // front — the solver never sees them.
+  const unassignedOrders: UnassignedOrderRecord[] = [];
   for (const order of ordersWithInvalidCoords) {
     unassignedOrders.push({
       orderId: order.id,
@@ -515,742 +384,75 @@ export async function runOptimization(
     });
   }
 
-  // Track vehicles that have been assigned routes (for oneRoutePerVehicle)
   const oneRoutePerVehicle = preset?.oneRoutePerVehicle ?? true;
-  const vehiclesWithRoutes = new Set<string>();
 
-  if (hasZones) {
-    // Zone-aware optimization: run optimization per zone batch
-    const { batches: zoneBatches, warnings: zoneWarnings, unroutable } = createZoneBatches(
-      ordersWithLocation,
-      vehiclesWithZones,
-      zonesData,
-      dayOfWeek,
-    );
-    optimizationWarnings.push(...zoneWarnings);
-
-    // Fix G7: orders whose zone has no eligible vehicles must be surfaced as
-    // unassigned with a clear reason. Without this they silently disappear.
-    for (const { order, reason } of unroutable) {
-      unassignedOrders.push({
-        orderId: order.id,
-        trackingId: order.trackingId,
-        reason,
-        latitude: orderDetailsMap.get(order.id)?.latitude,
-        longitude: orderDetailsMap.get(order.id)?.longitude,
-        address: orderDetailsMap.get(order.id)?.address,
-      });
-    }
-
-    // IMPORTANT: Sort batches to process "unzoned" (Sin Zona) FIRST
-    // This ensures unrestricted vehicles serve orders that ONLY they can handle
-    // before being used for zone orders (which may have zone-specific vehicles)
-    zoneBatches.sort((a, b) => {
-      if (a.zoneId === "unzoned") return -1;
-      if (b.zoneId === "unzoned") return 1;
-      return 0;
-    });
-
-    const progressPerBatch =
-      zoneBatches.length > 0 ? 50 / zoneBatches.length : 50;
-    let currentProgress = 20;
-
-    for (const batch of zoneBatches) {
-      checkAbort();
-
-      // Filter out vehicles that already have routes if oneRoutePerVehicle is enabled
-      const availableVehicles = oneRoutePerVehicle
-        ? batch.vehicles.filter((v) => !vehiclesWithRoutes.has(v.id))
-        : batch.vehicles;
-
-      if (availableVehicles.length === 0) {
-        // No vehicles available for this zone - mark all orders as unassigned
-        const reason =
-          oneRoutePerVehicle && batch.vehicles.length > 0
-            ? `Vehículos de zona ${batch.zoneName} ya tienen rutas asignadas (1 ruta por vehículo habilitado)`
-            : `No hay vehículos disponibles para la zona ${batch.zoneName} el día ${dayOfWeek}`;
-
-        for (const order of batch.orders) {
-          const details = orderDetailsMap.get(order.id);
-          unassignedOrders.push({
-            orderId: order.id,
-            trackingId: order.trackingId,
-            reason,
-            latitude: details?.latitude,
-            longitude: details?.longitude,
-            address: details?.address,
-          });
-        }
-        continue;
-      }
-
-      // Apply grouping if enabled
-      let ordersToProcess = batch.orders;
-      if (groupSameLocation) {
-        const { groupedOrders, groupMap } = groupOrdersByLocation(batch.orders);
-        // Store in global map for later ungrouping
-        for (const [key, value] of groupMap) {
-          globalGroupMap.set(key, value);
-        }
-        ordersToProcess = groupedOrders;
-      }
-
-      // Convert batch orders to VROOM format
-      const batchOrdersForVroom: OrderForOptimization[] = ordersToProcess.map(
-        (order) => {
-          const typedOrder = order as typeof ordersWithLocation[number];
-          // Use direct time window fields first, fallback to promisedDate
-          const timeWindowStart = typedOrder.timeWindowStart
-            ? String(typedOrder.timeWindowStart)
-            : order.promisedDate
-              ? new Date(order.promisedDate).toTimeString().slice(0, 5)
-              : undefined;
-          const timeWindowEnd = typedOrder.timeWindowEnd
-            ? String(typedOrder.timeWindowEnd)
-            : order.promisedDate
-              ? new Date(
-                  new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000,
-                )
-                  .toTimeString()
-                  .slice(0, 5)
-              : undefined;
-
-          const skillsRequired = parseRequiredSkills(typedOrder.requiredSkills);
-          return {
-            id: order.id,
-            trackingId: order.trackingId,
-            address: order.address,
-            latitude: parseFloat(String(order.latitude)),
-            longitude: parseFloat(String(order.longitude)),
-            weightRequired: order.weightRequired,
-            volumeRequired: order.volumeRequired,
-            orderValue: typedOrder.orderValue ?? 0,
-            unitsRequired: typedOrder.unitsRequired ?? 1,
-            orderType: typedOrder.orderType,
-            priority: typedOrder.priority,
-            timeWindowStart,
-            timeWindowEnd,
-            serviceTime: order.serviceTime,
-            skillsRequired: skillsRequired.length > 0 ? skillsRequired : undefined,
-            zoneId: batch.zoneId === "unzoned" ? undefined : batch.zoneId,
-          };
-        },
-      );
-
-      // Convert batch vehicles to VROOM format (using filtered available vehicles)
-      const batchVehiclesForVroom: VehicleForOptimization[] =
-        availableVehicles.map((vehicle) => ({
-          id: vehicle.id,
-          plate: vehicle.plate,
-          maxWeight: vehicle.weightCapacity ?? 10000,
-          maxVolume: vehicle.volumeCapacity ?? 100,
-          maxValueCapacity: vehicle.maxValueCapacity ?? undefined,
-          maxUnitsCapacity: vehicle.maxUnitsCapacity ?? undefined,
-          maxOrders: vehicle.maxOrders ?? 30,
-          originLatitude: vehicle.originLatitude
-            ? parseFloat(vehicle.originLatitude)
-            : undefined,
-          originLongitude: vehicle.originLongitude
-            ? parseFloat(vehicle.originLongitude)
-            : undefined,
-          skills: vehicleSkillsMap.get(vehicle.id),
-          timeWindowStart: vehicle.workdayStart ?? undefined,
-          timeWindowEnd: vehicle.workdayEnd ?? undefined,
-          hasBreakTime: vehicle.hasBreakTime,
-          breakDuration: vehicle.breakDuration ?? undefined,
-          breakTimeStart: vehicle.breakTimeStart ?? undefined,
-          breakTimeEnd: vehicle.breakTimeEnd ?? undefined,
-        }));
-
-      // Run optimization for this batch (VROOM — sole supported engine).
-      const batchResult = await vroomOptimizeRoutes(
-        batchOrdersForVroom,
-        batchVehiclesForVroom,
-        vroomConfig,
-      );
-
-      // Add batch unassigned orders (expand grouped orders)
-      for (const unassigned of batchResult.unassigned) {
-        const grouped = globalGroupMap.get(unassigned.orderId);
-        if (grouped && grouped.orderIds.length > 1) {
-          // Expand grouped order into individual unassigned
-          for (let i = 0; i < grouped.orderIds.length; i++) {
-            const details = orderDetailsMap.get(grouped.orderIds[i]);
-            unassignedOrders.push({
-              orderId: grouped.orderIds[i],
-              trackingId: grouped.trackingIds[i],
-              reason: `${unassigned.reason} (Zona: ${batch.zoneName})`,
-              latitude: details?.latitude,
-              longitude: details?.longitude,
-              address: details?.address,
-            });
-          }
-        } else {
-          const details = orderDetailsMap.get(unassigned.orderId);
-          unassignedOrders.push({
-            ...unassigned,
-            reason: `${unassigned.reason} (Zona: ${batch.zoneName})`,
-            latitude: details?.latitude,
-            longitude: details?.longitude,
-            address: details?.address,
-          });
-        }
-      }
-
-      // Convert batch routes to canonical RawSolvedRoute shape.
-      for (const vroomRoute of batchResult.routes) {
-        const vehicle = selectedVehicles.find(
-          (v) => v.id === vroomRoute.vehicleId,
-        );
-        if (!vehicle) continue;
-
-        const routeStops: SolvedStop[] = [];
-        let sequenceCounter = 1;
-        for (const stop of vroomRoute.stops) {
-          const grouped = globalGroupMap.get(stop.orderId);
-          if (grouped && grouped.orderIds.length > 1) {
-            if (groupSameLocation) {
-              routeStops.push({
-                orderId: grouped.orderIds[0],
-                trackingId: grouped.trackingIds[0],
-                sequence: sequenceCounter++,
-                address: stop.address,
-                latitude: stop.latitude,
-                longitude: stop.longitude,
-                estimatedArrival: stop.arrivalTime
-                  ? formatArrivalTime(stop.arrivalTime)
-                  : undefined,
-                waitingTimeSeconds: stop.arrivalTime
-                  ? calculateWaitingSeconds(stop.arrivalTime, grouped.orderIds[0])
-                  : undefined,
-                timeWindow: buildTimeWindow(grouped.orderIds[0]),
-                groupedOrderIds: grouped.orderIds,
-                groupedTrackingIds: grouped.trackingIds,
-              });
-            } else {
-              for (let i = 0; i < grouped.orderIds.length; i++) {
-                routeStops.push({
-                  orderId: grouped.orderIds[i],
-                  trackingId: grouped.trackingIds[i],
-                  sequence: sequenceCounter++,
-                  address: stop.address,
-                  latitude: stop.latitude,
-                  longitude: stop.longitude,
-                  estimatedArrival: stop.arrivalTime
-                    ? formatArrivalTime(stop.arrivalTime)
-                    : undefined,
-                  waitingTimeSeconds: stop.arrivalTime
-                    ? calculateWaitingSeconds(stop.arrivalTime, grouped.orderIds[i])
-                    : undefined,
-                  timeWindow: buildTimeWindow(grouped.orderIds[i]),
-                });
-              }
-            }
-          } else {
-            routeStops.push({
-              orderId: stop.orderId,
-              trackingId: stop.trackingId,
-              sequence: sequenceCounter++,
-              address: stop.address,
-              latitude: stop.latitude,
-              longitude: stop.longitude,
-              estimatedArrival: stop.arrivalTime
-                ? formatArrivalTime(stop.arrivalTime)
-                : undefined,
-              waitingTimeSeconds: stop.arrivalTime
-                ? calculateWaitingSeconds(stop.arrivalTime, stop.orderId)
-                : undefined,
-              timeWindow: buildTimeWindow(stop.orderId),
-            });
-          }
-        }
-
-        const newRoute: RawSolvedRoute = {
-          routeId: `route-${vehicle.id}-${batch.zoneId}-${Date.now()}`,
-          vehicleId: vehicle.id,
-          vehicleIdentifier: vehicle.plate || vehicle.name || vehicle.id,
-          // Only real zones carry an id — the "unzoned" bucket is a synthetic
-          // placeholder and shouldn't end up as a FK value on route_stops.
-          zoneId: batch.zoneId === "unzoned" ? undefined : batch.zoneId,
-          stops: routeStops,
-          totalDistance: vroomRoute.totalDistance,
-          totalDuration: vroomRoute.totalDuration,
-          totalServiceTime: vroomRoute.totalServiceTime,
-          totalTravelTime: vroomRoute.totalTravelTime,
-          capacityUsed: {
-            WEIGHT: vroomRoute.totalWeight,
-            VOLUME: vroomRoute.totalVolume,
-          },
-          utilizationPercentage: Math.round(
-            Math.max(
-              (vroomRoute.totalWeight / (vehicle.weightCapacity || 1)) * 100,
-              (vroomRoute.totalVolume / (vehicle.volumeCapacity || 1)) * 100,
-            ) || 0,
-          ),
-          timeWindowViolations: 0,
-          geometry: vroomRoute.geometry,
-        };
-
-        rawRoutes.push(newRoute);
-        partialRawRoutes = [...rawRoutes];
-
-        if (oneRoutePerVehicle) {
-          vehiclesWithRoutes.add(vehicle.id);
-        }
-      }
-
-      currentProgress += progressPerBatch;
-      await updateJobProgress(jobId || input.configurationId, currentProgress);
-    }
-  } else {
-    // No zones configured - run single optimization for all orders
-
-    // Apply grouping if enabled
-    let ordersToProcess = ordersWithLocation;
-    if (groupSameLocation) {
-      const { groupedOrders, groupMap } =
-        groupOrdersByLocation(ordersWithLocation);
-      // Store in global map for later ungrouping
-      for (const [key, value] of groupMap) {
-        globalGroupMap.set(key, value);
-      }
-      ordersToProcess = groupedOrders;
-    }
-
-    const ordersForVroom: OrderForOptimization[] = ordersToProcess.map(
-      (order) => {
-        // Use direct time window fields first, fallback to promisedDate
-        const timeWindowStart = order.timeWindowStart
-          ? String(order.timeWindowStart)
-          : order.promisedDate
-            ? new Date(order.promisedDate).toTimeString().slice(0, 5)
-            : undefined;
-        const timeWindowEnd = order.timeWindowEnd
-          ? String(order.timeWindowEnd)
-          : order.promisedDate
-            ? new Date(
-                new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000,
-              )
-                .toTimeString()
-                .slice(0, 5)
-            : undefined;
-
-        const skillsRequired = parseRequiredSkills(order.requiredSkills);
-        return {
-          id: order.id,
-          trackingId: order.trackingId,
-          address: order.address,
-          latitude: parseFloat(String(order.latitude)),
-          longitude: parseFloat(String(order.longitude)),
-          weightRequired: order.weightRequired,
-          volumeRequired: order.volumeRequired,
-          orderValue: order.orderValue,
-          unitsRequired: order.unitsRequired,
-          orderType: order.orderType,
-          priority: order.priority,
-          timeWindowStart,
-          timeWindowEnd,
-          serviceTime: order.serviceTime,
-          skillsRequired: skillsRequired.length > 0 ? skillsRequired : undefined,
-        };
-      },
-    );
-
-    const vehiclesForVroom: VehicleForOptimization[] = vehiclesWithZones.map(
-      (vehicle) => ({
-        id: vehicle.id,
-        plate: vehicle.plate,
-        maxWeight: vehicle.weightCapacity ?? 10000,
-        maxVolume: vehicle.volumeCapacity ?? 100,
-        maxValueCapacity: vehicle.maxValueCapacity ?? undefined,
-        maxUnitsCapacity: vehicle.maxUnitsCapacity ?? undefined,
-        maxOrders: vehicle.maxOrders ?? 30,
-        originLatitude: vehicle.originLatitude
-          ? parseFloat(vehicle.originLatitude)
-          : undefined,
-        originLongitude: vehicle.originLongitude
-          ? parseFloat(vehicle.originLongitude)
-          : undefined,
-        skills: vehicleSkillsMap.get(vehicle.id),
-        timeWindowStart: vehicle.workdayStart ?? undefined,
-        timeWindowEnd: vehicle.workdayEnd ?? undefined,
-        hasBreakTime: vehicle.hasBreakTime,
-        breakDuration: vehicle.breakDuration ?? undefined,
-        breakTimeStart: vehicle.breakTimeStart ?? undefined,
-        breakTimeEnd: vehicle.breakTimeEnd ?? undefined,
-      }),
-    );
-
-    await updateJobProgress(jobId || input.configurationId, 30);
-    checkAbort();
-
-    // Run optimization (VROOM — sole supported engine).
-    const vroomResult = await vroomOptimizeRoutes(
-      ordersForVroom,
-      vehiclesForVroom,
-      vroomConfig,
-    );
-
-    // Add unassigned orders (expand grouped orders)
-    for (const unassigned of vroomResult.unassigned) {
-      const grouped = globalGroupMap.get(unassigned.orderId);
-      if (grouped && grouped.orderIds.length > 1) {
-        // Expand grouped order into individual unassigned
-        for (let i = 0; i < grouped.orderIds.length; i++) {
-          const details = orderDetailsMap.get(grouped.orderIds[i]);
-          unassignedOrders.push({
-            orderId: grouped.orderIds[i],
-            trackingId: grouped.trackingIds[i],
-            reason: unassigned.reason,
-            latitude: details?.latitude,
-            longitude: details?.longitude,
-            address: details?.address,
-          });
-        }
-      } else {
-        const details = orderDetailsMap.get(unassigned.orderId);
-        unassignedOrders.push({
-          ...unassigned,
-          latitude: details?.latitude,
-          longitude: details?.longitude,
-          address: details?.address,
-        });
-      }
-    }
-
-    // Convert routes to canonical RawSolvedRoute shape.
-    for (const vroomRoute of vroomResult.routes) {
-      const vehicle = selectedVehicles.find(
-        (v) => v.id === vroomRoute.vehicleId,
-      );
-      if (!vehicle) continue;
-
-      const routeStops: SolvedStop[] = [];
-      let sequenceCounter = 1;
-      for (const stop of vroomRoute.stops) {
-        const grouped = globalGroupMap.get(stop.orderId);
-        if (grouped && grouped.orderIds.length > 1) {
-          if (groupSameLocation) {
-            routeStops.push({
-              orderId: grouped.orderIds[0],
-              trackingId: grouped.trackingIds[0],
-              sequence: sequenceCounter++,
-              address: stop.address,
-              latitude: stop.latitude,
-              longitude: stop.longitude,
-              estimatedArrival: stop.arrivalTime
-                ? formatArrivalTime(stop.arrivalTime)
-                : undefined,
-              waitingTimeSeconds: stop.arrivalTime
-                ? calculateWaitingSeconds(stop.arrivalTime, grouped.orderIds[0])
-                : undefined,
-              timeWindow: buildTimeWindow(grouped.orderIds[0]),
-              groupedOrderIds: grouped.orderIds,
-              groupedTrackingIds: grouped.trackingIds,
-            });
-          } else {
-            for (let i = 0; i < grouped.orderIds.length; i++) {
-              routeStops.push({
-                orderId: grouped.orderIds[i],
-                trackingId: grouped.trackingIds[i],
-                sequence: sequenceCounter++,
-                address: stop.address,
-                latitude: stop.latitude,
-                longitude: stop.longitude,
-                estimatedArrival: stop.arrivalTime
-                  ? formatArrivalTime(stop.arrivalTime)
-                  : undefined,
-                waitingTimeSeconds: stop.arrivalTime
-                  ? calculateWaitingSeconds(stop.arrivalTime, grouped.orderIds[i])
-                  : undefined,
-                timeWindow: buildTimeWindow(grouped.orderIds[i]),
-              });
-            }
-          }
-        } else {
-          routeStops.push({
-            orderId: stop.orderId,
-            trackingId: stop.trackingId,
-            sequence: sequenceCounter++,
-            address: stop.address,
-            latitude: stop.latitude,
-            longitude: stop.longitude,
-            estimatedArrival: stop.arrivalTime
-              ? formatArrivalTime(stop.arrivalTime)
-              : undefined,
-            waitingTimeSeconds: stop.arrivalTime
-              ? calculateWaitingSeconds(stop.arrivalTime, stop.orderId)
-              : undefined,
-            timeWindow: buildTimeWindow(stop.orderId),
-          });
-        }
-      }
-
-      const newRoute: RawSolvedRoute = {
-        routeId: `route-${vehicle.id}-${Date.now()}`,
-        vehicleId: vehicle.id,
-        vehicleIdentifier: vehicle.plate || vehicle.name || vehicle.id,
-        stops: routeStops,
-        totalDistance: vroomRoute.totalDistance,
-        totalDuration: vroomRoute.totalDuration,
-        totalServiceTime: vroomRoute.totalServiceTime,
-        totalTravelTime: vroomRoute.totalTravelTime,
-        capacityUsed: {
-          WEIGHT: vroomRoute.totalWeight,
-          VOLUME: vroomRoute.totalVolume,
-        },
-        utilizationPercentage: Math.round(
-          Math.max(
-            (vroomRoute.totalWeight / (vehicle.weightCapacity || 1)) * 100,
-            (vroomRoute.totalVolume / (vehicle.volumeCapacity || 1)) * 100,
-          ) || 0,
-        ),
-        timeWindowViolations: 0,
-        geometry: vroomRoute.geometry,
-      };
-
-      rawRoutes.push(newRoute);
-      partialRawRoutes = [...rawRoutes];
-    }
-  }
+  // Stage 3 — Solve: zone-aware (or single-batch) VROOM orchestration. The
+  // stage produces canonical RawSolvedRoute[]; routes don't have a driver
+  // until stage 4. The onRouteAdded callback keeps `partialRawRoutes` in
+  // sync so a cancellation mid-solve still surfaces what was computed.
+  const solveResult = await solveBatches({
+    ordersWithLocation,
+    selectedVehicles,
+    vehiclesWithZones,
+    vehicleSkillsMap,
+    zonesData,
+    dayOfWeek,
+    vroomConfig,
+    groupSameLocation,
+    oneRoutePerVehicle,
+    orderDetailsMap,
+    buildTimeWindow,
+    calculateWaitingSeconds,
+    onRouteAdded: (allRoutes) => {
+      partialRawRoutes = [...allRoutes];
+    },
+    onBatchProgress: async (progress) => {
+      await updateJobProgress(jobId || input.configurationId, progress);
+    },
+    checkAbort,
+  });
+  const rawRoutes = solveResult.rawRoutes;
+  unassignedOrders.push(...solveResult.unassignedOrders);
+  const optimizationWarnings = solveResult.warnings;
 
   await updateJobProgress(jobId || input.configurationId, 70);
   checkAbort();
 
-  // Build driver assignment requests from routes
-  // IMPORTANT: Respect pre-assigned drivers from vehicles
-  const routeAssignments: DriverAssignmentRequest[] = [];
-  const assignedDrivers = new Map<string, string>();
-
-  // Create a map of vehicleId -> assignedDriverId for quick lookup
-  const vehicleDriverMap = new Map<string, string>();
-  for (const vehicle of selectedVehicles) {
-    if (vehicle.assignedDriverId) {
-      vehicleDriverMap.set(vehicle.id, vehicle.assignedDriverId);
-    }
-  }
-
-  // Create a map of driverId -> driver details for direct assignment
-  const driverDetailsMap = new Map(selectedDrivers.map((d) => [d.id, d]));
-
-  // Create a set of selected driver IDs for validation
-  const selectedDriverIds = new Set(selectedDrivers.map((d) => d.id));
-
-  // Track which vehicles have pre-assigned drivers (to skip scoring for them)
-  const vehiclesWithPreAssignedDrivers = new Set<string>();
-
-  for (const rawRoute of rawRoutes) {
-    const preAssignedDriverId = vehicleDriverMap.get(rawRoute.vehicleId);
-
-    if (preAssignedDriverId && selectedDriverIds.has(preAssignedDriverId)) {
-      vehiclesWithPreAssignedDrivers.add(rawRoute.vehicleId);
-    } else {
-      routeAssignments.push({
-        companyId: input.companyId,
-        vehicleId: rawRoute.vehicleId,
-        routeStops: rawRoute.stops.map((s) => ({
-          orderId: s.orderId,
-          promisedDate: undefined,
-        })),
-        candidateDriverIds: selectedDrivers.map((d) => d.id),
-        assignedDrivers,
-      });
-    }
-  }
-
-  // Perform intelligent driver assignment ONLY for vehicles without pre-assigned drivers
-  checkAbort();
-  const strategy = config?.objective === "TIME" ? "AVAILABILITY" : "BALANCED";
-  const driverAssignments =
-    routeAssignments.length > 0
-      ? await assignDriversToRoutes(routeAssignments, {
-          ...DEFAULT_ASSIGNMENT_CONFIG,
-          strategy,
-        })
-      : new Map<string, DriverAssignmentResult>();
-
-  // Promote each RawSolvedRoute to AssignedSolvedRoute by matching a driver.
-  // Routes that fail to match a driver are dropped from the final plan and
-  // their orders surface as unassigned (the verifier flags this case).
-  const routes: AssignedSolvedRoute[] = [];
-  for (const rawRoute of rawRoutes) {
-    const preAssignedDriverId = vehicleDriverMap.get(rawRoute.vehicleId);
-    let driverId: string | undefined;
-    let driverName: string | undefined;
-    let assignmentQuality:
-      | { score: number; warnings: string[]; errors: string[] }
-      | undefined;
-
-    if (
-      preAssignedDriverId &&
-      vehiclesWithPreAssignedDrivers.has(rawRoute.vehicleId)
-    ) {
-      const driver = driverDetailsMap.get(preAssignedDriverId);
-      if (driver) {
-        driverId = driver.id;
-        driverName = driver.name;
-        assignmentQuality = { score: 100, warnings: [], errors: [] };
-      }
-    } else {
-      const assignment = driverAssignments.get(rawRoute.vehicleId);
-      if (assignment) {
-        driverId = assignment.driverId;
-        driverName = assignment.driverName;
-        assignmentQuality = {
-          score: assignment.score.score,
-          warnings: assignment.score.warnings,
-          errors: assignment.score.errors,
-        };
-      }
-    }
-
-    if (!driverId || !driverName || !assignmentQuality) {
-      // No driver could be matched — surface every order as unassigned so
-      // the operator can manually intervene. A route without a driver is
-      // never persisted.
-      for (const stop of rawRoute.stops) {
-        unassignedOrders.push({
-          orderId: stop.orderId,
-          trackingId: stop.trackingId,
-          reason: `No se pudo asignar conductor al vehículo ${rawRoute.vehicleIdentifier}`,
-          latitude: stop.latitude,
-          longitude: stop.longitude,
-          address: stop.address,
-        });
-      }
-      continue;
-    }
-
-    const vehicleWithZone = vehiclesWithZones.find(
-      (v) => v.id === rawRoute.vehicleId,
-    );
-    const driverOrigin =
-      vehicleWithZone?.originLatitude && vehicleWithZone?.originLongitude
-        ? {
-            latitude: parseFloat(vehicleWithZone.originLatitude),
-            longitude: parseFloat(vehicleWithZone.originLongitude),
-            address: undefined,
-          }
-        : undefined;
-
-    routes.push({
-      ...rawRoute,
-      driverId,
-      driverName,
-      driverOrigin,
-      assignmentQuality,
-    });
-  }
+  // Stage 4 — Match each RawSolvedRoute to a driver. Routes whose vehicle
+  // has a pre-assigned driver get that driver directly; the rest go through
+  // the scored assignment. Routes that can't be matched have their stops
+  // surfaced as extra unassigned orders.
+  const { routes, extraUnassigned } = await assignDrivers({
+    rawRoutes,
+    selectedDrivers,
+    selectedVehicles,
+    companyId: input.companyId,
+    objective: config?.objective,
+  });
+  unassignedOrders.push(...extraUnassigned);
 
   await updateJobProgress(jobId || input.configurationId, 90);
   checkAbort();
 
   await sleep(300);
 
-  // Calculate aggregate metrics
-  const totalDistance = routes.reduce((sum, r) => sum + r.totalDistance, 0);
-  const totalDuration = routes.reduce((sum, r) => sum + r.totalDuration, 0);
-  const totalStops = routes.reduce((sum, r) => sum + r.stops.length, 0);
-  const timeWindowViolations = routes.reduce(
-    (sum, r) => sum + r.timeWindowViolations,
-    0,
-  );
-
-  const utilizationRate =
-    routes.length > 0
-      ? routes.reduce((sum, r) => sum + r.utilizationPercentage, 0) /
-        routes.length
-      : 0;
-
-  const timeWindowComplianceRate =
-    totalStops > 0
-      ? ((totalStops - timeWindowViolations) / totalStops) * 100
-      : 100;
-
-  // Calculate assignment quality metrics. AssignedSolvedRoute guarantees
-  // driverId/driverName/assignmentQuality are present, so no filter needed.
-  const assignmentResults: DriverAssignmentResult[] = routes.map((r) => ({
-    driverId: r.driverId,
-    driverName: r.driverName,
-    score: {
-      driverId: r.driverId,
-      score: r.assignmentQuality.score,
-      factors: {
-        skillsMatch: 100, // Placeholder - not tracked per route
-        availability: 100,
-        licenseValid: 100,
-        fleetMatch: 100,
-        workload: 100,
-      },
-      warnings: r.assignmentQuality.warnings,
-      errors: r.assignmentQuality.errors,
-    },
-    isManualOverride: false,
-  }));
-
-  const assignmentMetrics =
-    await getAssignmentQualityMetrics(assignmentResults);
-
-  // Calculate drivers without routes
-  const assignedDriverIds = new Set(routes.map((r) => r.driverId));
-  const driversWithoutRoutes = selectedDrivers
-    .filter((d) => !assignedDriverIds.has(d.id))
-    .map((d) => {
-      const vehicleOrigin = driverVehicleOriginMap.get(d.id);
-      return {
-        id: d.id,
-        name: d.name,
-        originLatitude: vehicleOrigin?.latitude
-          ? parseFloat(vehicleOrigin.latitude)
-          : undefined,
-        originLongitude: vehicleOrigin?.longitude
-          ? parseFloat(vehicleOrigin.longitude)
-          : undefined,
-      };
-    });
-
-  // Calculate vehicles without routes
-  const assignedVehicleIds = new Set(routes.map((r) => r.vehicleId));
-  const vehiclesWithoutRoutes = vehiclesWithZones
-    .filter((v) => !assignedVehicleIds.has(v.id))
-    .map((v) => ({
-      id: v.id,
-      plate: v.plate,
-      originLatitude: v.originLatitude
-        ? parseFloat(v.originLatitude)
-        : undefined,
-      originLongitude: v.originLongitude
-        ? parseFloat(v.originLongitude)
-        : undefined,
-    }));
-
-  const aggregated: AggregatedPlan = {
+  // Stage 5 — Aggregate the assigned routes into the plan-level shape the
+  // verifier consumes (metrics, drivers/vehicles without routes, summary).
+  const aggregated = await aggregatePlan({
     routes,
     unassignedOrders,
-    driversWithoutRoutes,
-    vehiclesWithoutRoutes,
-    metrics: {
-      totalDistance,
-      totalDuration,
-      totalRoutes: routes.length,
-      totalStops,
-      utilizationRate: Math.round(utilizationRate),
-      timeWindowComplianceRate: Math.round(timeWindowComplianceRate),
-    },
-    assignmentMetrics,
-    warnings:
-      optimizationWarnings.length > 0 ? optimizationWarnings : undefined,
-    summary: {
-      optimizedAt: new Date().toISOString(),
-      objective: config.objective as "DISTANCE" | "TIME" | "BALANCED",
-      processingTimeMs: Date.now() - startTime,
-      engineUsed,
-    },
+    selectedDrivers,
+    driverVehicleOriginMap,
+    vehiclesForFallback: vehiclesWithZones,
+    warnings: optimizationWarnings,
+    startTime,
+    engineUsed,
+    objective: config.objective as "DISTANCE" | "TIME" | "BALANCED",
     depot: {
       latitude: parseFloat(config.depotLatitude),
       longitude: parseFloat(config.depotLongitude),
     },
-  };
+  });
 
   // Run the verifier — pure transformation that produces a VerifiedPlan with
   // the same data plus a mandatory verification report.
