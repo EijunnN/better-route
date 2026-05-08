@@ -356,6 +356,14 @@ export async function GET(request: NextRequest) {
       id: stop.id,
       jobId: stop.jobId,
       sequence: stop.sequence,
+      /**
+       * Cuántos intentos físicos lleva este pedido (incluido este
+       * stop). 1 = primera vez. 2+ = revisita. La app debe mostrar un
+       * badge "Intento #N" cuando attemptNumber > 1 para que el
+       * conductor sepa que es un reintento (issue 001 / 003 / 004).
+       */
+      attemptNumber: stop.attemptNumber,
+      isRevisit: stop.attemptNumber > 1,
       status: stop.status,
       // Ubicacion
       address: stop.address,

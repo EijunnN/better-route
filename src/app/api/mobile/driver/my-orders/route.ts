@@ -193,6 +193,7 @@ export async function GET(request: NextRequest) {
         orderId: true,
         status: true,
         sequence: true,
+        attemptNumber: true,
         estimatedArrival: true,
         timeWindowStart: true,
         timeWindowEnd: true,
@@ -254,6 +255,8 @@ export async function GET(request: NextRequest) {
           ? {
               status: stopInfo.status,
               sequence: stopInfo.sequence,
+              attemptNumber: stopInfo.attemptNumber,
+              isRevisit: stopInfo.attemptNumber > 1,
               routeId: stopInfo.routeId,
               estimatedArrival:
                 stopInfo.estimatedArrival?.toISOString() || null,
