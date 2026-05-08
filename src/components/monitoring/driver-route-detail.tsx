@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DELIVERY_FAILURE_LABELS } from "@/db/schema";
+import { useCompanyContext } from "@/hooks/use-company-context";
 import { cn } from "@/lib/utils";
 import {
   AttemptBadge,
@@ -187,6 +188,7 @@ export function DriverRouteDetail({
   fieldDefinitionLabels = {},
   customFieldDefinitions = [],
 }: DriverRouteDetailProps) {
+  const { effectiveCompanyId: companyId } = useCompanyContext();
   const [selectedStop, setSelectedStop] = useState<StopInfo | null>(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -216,14 +218,14 @@ export function DriverRouteDetail({
   };
 
   const handleReopenSubmit = async (payload: ReschedulePayload) => {
-    if (!reopenStop) return;
+    if (!reopenStop || !companyId) return;
     const res = await fetch(
       `/api/route-stops/${reopenStop.id}/reopen`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-company-id": localStorage.getItem("companyId") || "",
+          "x-company-id": companyId,
         },
         body: JSON.stringify(payload),
       },
