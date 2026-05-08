@@ -55,3 +55,7 @@ docker/osrm/*.osrm*
 
 # Claude Code harness scratch files
 /.claude
+
+# Local agent skills (per-developer, not project state)
+.agents/skills/
+skills-lock.json
