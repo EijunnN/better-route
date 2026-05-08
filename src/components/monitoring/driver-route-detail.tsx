@@ -24,7 +24,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DELIVERY_FAILURE_LABELS } from "@/db/schema";
 import { cn } from "@/lib/utils";
-import { AttemptBadge } from "@/components/visits";
+import {
+  AttemptBadge,
+  ProgramarProximaEntregaDialog,
+  type ReschedulePayload,
+  type ReschedulePrefill,
+} from "@/components/visits";
 import type { WorkflowState } from "./monitoring-context";
 import {
   type StopInfo,
@@ -186,6 +191,49 @@ export function DriverRouteDetail({
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [reopenStop, setReopenStop] = useState<{
+    id: string;
+    prefill: ReschedulePrefill;
+  } | null>(null);
+
+  const formatHHmm = (iso?: string | null) =>
+    iso ? new Date(iso).toISOString().slice(11, 16) : null;
+
+  const openReopenDialog = (stop: Stop) => {
+    if (!stop.id) return;
+    setReopenStop({
+      id: stop.id,
+      prefill: {
+        address: stop.address,
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+        timeWindowStart: formatHHmm(stop.timeWindowStart),
+        timeWindowEnd: formatHHmm(stop.timeWindowEnd),
+        promisedDate: null,
+        notes: stop.notes ?? null,
+      },
+    });
+  };
+
+  const handleReopenSubmit = async (payload: ReschedulePayload) => {
+    if (!reopenStop) return;
+    const res = await fetch(
+      `/api/route-stops/${reopenStop.id}/reopen`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": localStorage.getItem("companyId") || "",
+        },
+        body: JSON.stringify(payload),
+      },
+    );
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err.error || "No se pudo reabrir la parada");
+    }
+    if (onRefresh) await onRefresh();
+  };
 
   const handleRefresh = async () => {
     if (!onRefresh) return;
@@ -633,6 +681,18 @@ export function DriverRouteDetail({
                         <span className="text-[10px] text-muted-foreground">
                           {formatTime(stop.estimatedArrival)}
                         </span>
+                        {stop.id && stop.status === "FAILED" && (
+                          <Can perm="route_stop:update">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={() => openReopenDialog(stop)}
+                            >
+                              Reabrir
+                            </Button>
+                          </Can>
+                        )}
                         {stop.id && (
                           <Can perm="route_stop:update">
                             <Button
@@ -668,6 +728,16 @@ export function DriverRouteDetail({
         workflowStates={workflowStates}
         customFieldDefinitions={customFieldDefinitions}
       />
+
+      {reopenStop && (
+        <ProgramarProximaEntregaDialog
+          open={!!reopenStop}
+          onOpenChange={(open) => !open && setReopenStop(null)}
+          mode="same-day"
+          prefill={reopenStop.prefill}
+          onSubmit={handleReopenSubmit}
+        />
+      )}
     </>
   );
 }

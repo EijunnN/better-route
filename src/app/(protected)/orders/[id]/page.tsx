@@ -2,13 +2,21 @@
 
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Can } from "@/components/auth/can";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AttemptBadge, VisitTimeline } from "@/components/visits";
+import {
+  AttemptBadge,
+  ProgramarProximaEntregaDialog,
+  type ReschedulePayload,
+  type ReschedulePrefill,
+  VisitTimeline,
+} from "@/components/visits";
 import { useCompanyContext } from "@/hooks/use-company-context";
+import { useToast } from "@/hooks/use-toast";
 
 interface OrderDetail {
   id: string;
@@ -25,6 +33,24 @@ interface OrderDetail {
   presetName: string | null;
 }
 
+interface LatestStop {
+  id: string;
+  status: string;
+  attemptNumber: number;
+  address: string;
+  latitude: string;
+  longitude: string;
+  timeWindowStart: string | null;
+  timeWindowEnd: string | null;
+  notes: string | null;
+  failureReason: string | null;
+  createdAt: string;
+}
+
+function isoToHHmm(iso: string | null): string | null {
+  return iso ? new Date(iso).toISOString().slice(11, 16) : null;
+}
+
 function OrderDetailContent() {
   const router = useRouter();
   const params = useParams();
@@ -33,18 +59,27 @@ function OrderDetailContent() {
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [attemptCount, setAttemptCount] = useState<number>(0);
+  const [latestStop, setLatestStop] = useState<LatestStop | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const { toast } = useToast();
+
+  const refresh = useCallback(() => setRefreshTick((t) => t + 1), []);
 
   useEffect(() => {
     if (!companyId) return;
     let cancelled = false;
     (async () => {
       try {
-        const [orderRes, visitsRes] = await Promise.all([
+        const [orderRes, visitsRes, stopRes] = await Promise.all([
           fetch(`/api/orders/${orderId}`, {
             headers: { "x-company-id": companyId },
           }),
           fetch(`/api/orders/${orderId}/visits`, {
+            headers: { "x-company-id": companyId },
+          }),
+          fetch(`/api/orders/${orderId}/stops/latest`, {
             headers: { "x-company-id": companyId },
           }),
         ]);
@@ -61,6 +96,10 @@ function OrderDetailContent() {
           const v = (await visitsRes.json()) as { data: unknown[] };
           if (!cancelled) setAttemptCount(v.data.length);
         }
+        if (stopRes.ok) {
+          const s = (await stopRes.json()) as { data: LatestStop | null };
+          if (!cancelled) setLatestStop(s.data);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Error inesperado");
@@ -70,7 +109,40 @@ function OrderDetailContent() {
     return () => {
       cancelled = true;
     };
-  }, [companyId, orderId]);
+  }, [companyId, orderId, refreshTick]);
+
+  const handleReopenSubmit = async (payload: ReschedulePayload) => {
+    if (!latestStop || !companyId) return;
+    const res = await fetch(
+      `/api/route-stops/${latestStop.id}/reopen`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify(payload),
+      },
+    );
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err.error || "No se pudo reabrir la parada");
+    }
+    toast({ title: "Parada reabierta", description: "El conductor verá el pedido nuevamente en su lista." });
+    refresh();
+  };
+
+  const reopenPrefill: ReschedulePrefill | null = latestStop
+    ? {
+        address: latestStop.address,
+        latitude: latestStop.latitude,
+        longitude: latestStop.longitude,
+        timeWindowStart: isoToHHmm(latestStop.timeWindowStart),
+        timeWindowEnd: isoToHHmm(latestStop.timeWindowEnd),
+        promisedDate: null,
+        notes: latestStop.notes ?? null,
+      }
+    : null;
 
   if (!isReady || (!order && !error)) {
     return (
@@ -157,10 +229,42 @@ function OrderDetailContent() {
         </CardContent>
       </Card>
 
+      {latestStop && latestStop.status === "FAILED" && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div>
+              <div className="text-sm font-medium">Parada con entrega fallida</div>
+              <div className="text-xs text-muted-foreground">
+                Reabre la parada para que el conductor lo vuelva a intentar.
+              </div>
+            </div>
+            <Can perm="route_stop:update">
+              <Button onClick={() => setReopenOpen(true)}>
+                Reabrir parada
+              </Button>
+            </Can>
+          </CardContent>
+        </Card>
+      )}
+
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Historial de intentos</h2>
-        <VisitTimeline orderId={order.id} companyId={companyId} />
+        <VisitTimeline
+          key={refreshTick}
+          orderId={order.id}
+          companyId={companyId}
+        />
       </section>
+
+      {reopenPrefill && (
+        <ProgramarProximaEntregaDialog
+          open={reopenOpen}
+          onOpenChange={setReopenOpen}
+          mode="same-day"
+          prefill={reopenPrefill}
+          onSubmit={handleReopenSubmit}
+        />
+      )}
     </div>
   );
 }
