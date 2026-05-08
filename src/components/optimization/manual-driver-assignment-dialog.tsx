@@ -27,6 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useCompanyContext } from "@/hooks/use-company-context";
 
 export interface DriverOption {
   driverId: string;
@@ -78,6 +79,7 @@ export function ManualDriverAssignmentDialog({
   onAssign,
   onRemove,
 }: ManualDriverAssignmentDialogProps) {
+  const { effectiveCompanyId: companyId } = useCompanyContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(
     currentDriverId || null,
@@ -95,19 +97,17 @@ export function ManualDriverAssignmentDialog({
   const [removing, setRemoving] = useState(false);
 
   const loadDrivers = async () => {
+    if (!companyId) return;
     setLoading(true);
     try {
-      // Get driver suggestions for this vehicle
       const response = await fetch("/api/driver-assignment/suggestions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // In production, these would come from auth context
-          "x-company-id": localStorage.getItem("companyId") || "",
-          "x-user-id": localStorage.getItem("userId") || "",
+          "x-company-id": companyId,
         },
         body: JSON.stringify({
-          companyId: localStorage.getItem("companyId"),
+          companyId,
           vehicleId,
           routeStops: [], // We may need to pass actual route stops
           strategy: "BALANCED",
@@ -127,16 +127,16 @@ export function ManualDriverAssignmentDialog({
   };
 
   const validateDriver = async (driverId: string) => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/driver-assignment/validate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-company-id": localStorage.getItem("companyId") || "",
-          "x-user-id": localStorage.getItem("userId") || "",
+          "x-company-id": companyId,
         },
         body: JSON.stringify({
-          companyId: localStorage.getItem("companyId"),
+          companyId,
           driverId,
           vehicleId,
           routeStops: [],

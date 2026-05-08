@@ -287,9 +287,7 @@ export function DriverRouteDetail({
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          // In a real app, these would come from auth context
-          "x-company-id": localStorage.getItem("companyId") || "",
-          "x-user-id": localStorage.getItem("userId") || "",
+          ...(companyId ? { "x-company-id": companyId } : {}),
         },
         body: JSON.stringify(body),
       });

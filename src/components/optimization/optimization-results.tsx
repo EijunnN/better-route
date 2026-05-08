@@ -712,16 +712,15 @@ export function OptimizationResults({
           currentDriverId={selectedRouteForAssignment.driverId}
           currentDriverName={selectedRouteForAssignment.driverName}
           onAssign={async (driverId, overrideWarnings, reason) => {
-            // Call the API to assign driver
+            if (!companyId) throw new Error("Company context unavailable");
             const response = await fetch("/api/driver-assignment/manual", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "x-company-id": localStorage.getItem("companyId") || "",
-                "x-user-id": localStorage.getItem("userId") || "",
+                "x-company-id": companyId,
               },
               body: JSON.stringify({
-                companyId: localStorage.getItem("companyId"),
+                companyId,
                 vehicleId: selectedRouteForAssignment.vehicleId,
                 driverId,
                 routeId: selectedRouteForAssignment.routeId,
@@ -743,15 +742,14 @@ export function OptimizationResults({
             }
           }}
           onRemove={async () => {
-            // Call the API to remove assignment
+            if (!companyId) throw new Error("Company context unavailable");
             const response = await fetch(
               `/api/driver-assignment/remove/${selectedRouteForAssignment.routeId}/${selectedRouteForAssignment.vehicleId}`,
               {
                 method: "DELETE",
                 headers: {
                   "Content-Type": "application/json",
-                  "x-company-id": localStorage.getItem("companyId") || "",
-                  "x-user-id": localStorage.getItem("userId") || "",
+                  "x-company-id": companyId,
                 },
               },
             );

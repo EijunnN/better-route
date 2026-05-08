@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useCompanyContext } from "@/hooks/use-company-context";
 
 export interface AssignmentHistoryEntry {
   id: string;
@@ -51,6 +52,7 @@ export function AssignmentHistory({
   routeId,
   open = false,
 }: AssignmentHistoryProps) {
+  const { effectiveCompanyId: companyId } = useCompanyContext();
   const [history, setHistory] = useState<AssignmentHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -60,6 +62,7 @@ export function AssignmentHistory({
   } | null>(null);
 
   const loadHistory = async () => {
+    if (!companyId) return;
     setLoading(true);
     try {
       const response = await fetch(
@@ -67,8 +70,7 @@ export function AssignmentHistory({
         {
           headers: {
             "Content-Type": "application/json",
-            "x-company-id": localStorage.getItem("companyId") || "",
-            "x-user-id": localStorage.getItem("userId") || "",
+            "x-company-id": companyId,
           },
         },
       );
