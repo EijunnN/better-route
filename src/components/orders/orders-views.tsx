@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, Copy, ExternalLink, Link2, Loader2, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Check, Copy, ExternalLink, Eye, Link2, Loader2, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -262,6 +263,11 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
       })}
       <td className="p-4 text-right">
         <Can perm="order:read">
+          <Button asChild variant="ghost" size="sm" title="Ver detalle">
+            <Link href={`/orders/${order.id}`}>
+              <Eye className="h-4 w-4" />
+            </Link>
+          </Button>
           <Button
             variant="ghost"
             size="sm"

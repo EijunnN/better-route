@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DELIVERY_FAILURE_LABELS } from "@/db/schema";
 import { cn } from "@/lib/utils";
+import { AttemptBadge } from "@/components/visits";
 import type { WorkflowState } from "./monitoring-context";
 import {
   type StopInfo,
@@ -35,6 +36,7 @@ interface Stop {
   orderId: string;
   trackingId: string;
   sequence: number;
+  attemptNumber?: number;
   address: string;
   latitude: string;
   longitude: string;
@@ -557,6 +559,9 @@ export function DriverRouteDetail({
                           <span className="text-xs font-medium">
                             {stop.trackingId}
                           </span>
+                          {stop.attemptNumber && stop.attemptNumber > 1 && (
+                            <AttemptBadge attemptNumber={stop.attemptNumber} />
+                          )}
                           <StatusIcon
                             className={cn(
                               "w-3 h-3 shrink-0",

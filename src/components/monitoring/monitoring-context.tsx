@@ -115,6 +115,7 @@ export interface DriverDetailData {
       orderId: string;
       trackingId: string;
       sequence: number;
+      attemptNumber?: number;
       address: string;
       latitude: string;
       longitude: string;

@@ -291,6 +291,7 @@ export async function GET(
       orderId: stop.orderId,
       trackingId: stop.order?.trackingId || "",
       sequence: stop.sequence,
+      attemptNumber: stop.attemptNumber,
       address: stop.address,
       latitude: stop.latitude,
       longitude: stop.longitude,

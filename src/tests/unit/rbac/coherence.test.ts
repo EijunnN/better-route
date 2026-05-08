@@ -80,6 +80,12 @@ const PAGE_CONTRACTS: PageContract[] = [
   },
   {
     kind: "client",
+    route: "orders/[id]",
+    page: "order:read",
+    why: "Order detail page with delivery visit history (issue 002). Read-only entry; mutations on the order itself live behind their own permissions.",
+  },
+  {
+    kind: "client",
     route: "vehicles",
     page: "vehicle:read",
     sidebar: "vehicle:read",
