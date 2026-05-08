@@ -355,11 +355,16 @@ export async function POST(
 
     // Helper: combine a date string with an HH:mm time string into a Date
     function parseTimeWithDate(timeStr: string): Date | null {
-      // Handle HH:mm or HH:mm:ss format
+      // Handle HH:mm or HH:mm:ss format. The "HH:mm" the operator types
+      // is the wall-clock the driver should see — we treat it as UTC so
+      // the digits round-trip through Postgres `timestamp` (no TZ) and
+      // back through `.toISOString()` unchanged, regardless of which
+      // timezone the server happens to be running in. Mirrors the
+      // `setUTCHours` convention used by `composeTimestamp` in
+      // `/api/mobile/driver/my-route`.
       if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(timeStr)) {
         const fullTime = timeStr.length <= 5 ? `${timeStr}:00` : timeStr;
-        // Create date in local timezone by using YYYY-MM-DDTHH:mm:ss without Z
-        const d = new Date(`${planDate}T${fullTime}`);
+        const d = new Date(`${planDate}T${fullTime}Z`);
         return isNaN(d.getTime()) ? null : d;
       }
       // Try as full ISO string
