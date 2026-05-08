@@ -52,5 +52,9 @@ export {
   ConfigStep,
 } from "./planificacion-steps";
 
-export { CsvUploadDialog, EditOrderDialog } from "./planificacion-dialogs";
+export {
+  CsvUploadDialog,
+  CsvPreviewDialog,
+  EditOrderDialog,
+} from "./planificacion-dialogs";
 export { PlanificacionMapPanel } from "./planificacion-map";

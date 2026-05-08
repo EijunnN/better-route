@@ -10,6 +10,7 @@ import {
   OrderStep,
   ConfigStep,
   CsvUploadDialog,
+  CsvPreviewDialog,
   EditOrderDialog,
   PlanificacionMapPanel,
 } from "@/components/planificacion";
@@ -49,6 +50,7 @@ function PlanificacionContent() {
 
       {/* Dialogs */}
       <CsvUploadDialog />
+      <CsvPreviewDialog />
       <EditOrderDialog />
     </div>
   );

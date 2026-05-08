@@ -87,6 +87,8 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     csvError: state.csvError,
     csvPreview: state.csvPreview,
     csvHeaders: state.csvHeaders,
+    csvPreviewData: state.csvPreviewData,
+    showCsvPreviewDialog: state.showCsvPreviewDialog,
     editingOrder: state.editingOrder,
     editOrderData: state.editOrderData,
     isUpdatingOrder: state.isUpdatingOrder,

@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CsvSchemaGuide } from "@/components/orders/csv-schema-guide";
+import { CsvImportPreviewDialog } from "@/components/orders/csv-import-preview-dialog";
 import { usePlanificacion } from "./planificacion-context";
 
 export function CsvUploadDialog() {
@@ -82,12 +83,12 @@ export function CsvUploadDialog() {
               {state.csvUploading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Subiendo...
+                  Analizando...
                 </>
               ) : (
                 <>
                   <Upload className="w-4 h-4 mr-2" />
-                  Subir {state.csvPreview.length} pedidos
+                  Previsualizar {state.csvPreview.length} pedidos
                 </>
               )}
             </Button>
@@ -95,6 +96,21 @@ export function CsvUploadDialog() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function CsvPreviewDialog() {
+  const { state, actions } = usePlanificacion();
+  return (
+    <CsvImportPreviewDialog
+      open={state.showCsvPreviewDialog}
+      onOpenChange={(open) => {
+        if (!open) actions.handleCsvDone();
+      }}
+      preview={state.csvPreviewData}
+      onConfirm={actions.handleCsvConfirm}
+      onDone={actions.handleCsvDone}
+    />
   );
 }
 

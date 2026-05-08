@@ -52,6 +52,8 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     setCsvRawText,
     setCsvError,
     setCsvUploading,
+    setCsvPreviewData,
+    setShowCsvPreviewDialog,
     setCsvCustomFieldMappings,
     setDeletingOrderId,
     setOrders,
@@ -309,6 +311,11 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     return btoa(binary);
   };
 
+  /**
+   * Phase 1: post the CSV to the preview endpoint, get a classified
+   * preview back, and open the preview dialog. The actual writes happen
+   * in `handleCsvConfirm` once the operator approves.
+   */
   const handleCsvUpload = async () => {
     if (!companyId || !csvRawText) return;
 
@@ -316,65 +323,80 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     setCsvError(null);
 
     try {
-      const response = await fetch("/api/orders/import", {
+      const response = await fetch("/api/orders/csv-import/preview", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-company-id": companyId,
         },
-        body: JSON.stringify({
-          csvContent: toBase64Utf8(csvRawText),
-          process: true,
-        }),
+        body: JSON.stringify({ csvContent: toBase64Utf8(csvRawText) }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        let errorMsg = result.error || "Error al subir órdenes";
+        let errorMsg = result.error || "Error al previsualizar el CSV";
         if (result.details) errorMsg = `${errorMsg}: ${result.details}`;
         setCsvError(errorMsg);
         return;
       }
 
-      await loadOrders();
-
-      const messages: string[] = [];
-      if (result.importedRows > 0) messages.push(`${result.importedRows} órdenes creadas`);
-      if (result.invalidRows > 0) messages.push(`${result.invalidRows} inválidas`);
-      if (result.duplicateTrackingIds?.length > 0) {
-        messages.push(`${result.duplicateTrackingIds.length} duplicadas`);
-      }
-
-      if (result.invalidRows > 0 || result.duplicateTrackingIds?.length > 0) {
-        const details: string[] = [];
-        if (result.duplicateTrackingIds?.length > 0) {
-          details.push(
-            `Duplicados: ${result.duplicateTrackingIds.slice(0, 3).join(", ")}${
-              result.duplicateTrackingIds.length > 3 ? "..." : ""
-            }`,
-          );
-        }
-        if (result.errors && result.errors.length > 0) {
-          for (const err of result.errors.slice(0, 3)) {
-            details.push(`Fila ${err.row} · ${err.field}: ${err.message}`);
-          }
-        }
-        setCsvError(`${messages.join(", ")}\n${details.join("\n")}`);
-      }
-
-      if (result.importedRows > 0) {
-        setShowCsvUpload(false);
-        setCsvFile(null);
-        setCsvPreview([]);
-        setCsvHeaders([]);
-        setCsvRawText("");
-      }
+      setCsvPreviewData(result.data);
+      setShowCsvUpload(false);
+      setShowCsvPreviewDialog(true);
     } catch (err) {
-      setCsvError(err instanceof Error ? err.message : "Error al subir órdenes");
+      setCsvError(
+        err instanceof Error ? err.message : "Error al previsualizar el CSV",
+      );
     } finally {
       setCsvUploading(false);
     }
+  };
+
+  /**
+   * Phase 2: confirm the preview. Returns the result so the dialog can
+   * display counts in a toast; throws on error so the dialog can show
+   * a destructive toast itself.
+   */
+  const handleCsvConfirm = async (input: {
+    previewId: string;
+    reactivableSelections: string[];
+  }) => {
+    if (!companyId) return null;
+    const response = await fetch("/api/orders/csv-import/confirm", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": companyId,
+      },
+      body: JSON.stringify(input),
+    });
+    const json = await response.json();
+    if (!response.ok) {
+      throw new Error(json.error || "Error al confirmar");
+    }
+    await loadOrders();
+    return json.data as {
+      inserted: number;
+      reactivated: number;
+      raceConditions: Array<{
+        existingOrderId: string;
+        trackingId: string;
+        actualStatus: string;
+      }>;
+    };
+  };
+
+  /** Reset CSV state and close both dialogs after success or cancel. */
+  const handleCsvDone = () => {
+    setShowCsvPreviewDialog(false);
+    setCsvPreviewData(null);
+    setShowCsvUpload(false);
+    setCsvFile(null);
+    setCsvPreview([]);
+    setCsvHeaders([]);
+    setCsvRawText("");
+    setCsvError(null);
   };
 
   const resetCsvState = () => {
@@ -517,6 +539,8 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     setShowCsvUpload,
     handleCsvFileChange,
     handleCsvUpload,
+    handleCsvConfirm,
+    handleCsvDone,
     resetCsvState,
     downloadCsvTemplate,
     openEditOrder,

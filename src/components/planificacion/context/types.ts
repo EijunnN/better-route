@@ -1,3 +1,4 @@
+import type { CsvImportPreview } from "@/components/orders/csv-import-preview-dialog";
 import type {
   Vehicle,
   Fleet,
@@ -51,6 +52,8 @@ export interface PlanificacionState {
   csvError: string | null;
   csvPreview: CsvRow[];
   csvHeaders: string[];
+  csvPreviewData: CsvImportPreview | null;
+  showCsvPreviewDialog: boolean;
   // Order edit
   editingOrder: Order | null;
   editOrderData: { address: string; latitude: string; longitude: string };
@@ -94,6 +97,19 @@ export interface PlanificacionActions {
   setShowCsvUpload: (show: boolean) => void;
   handleCsvFileChange: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleCsvUpload: () => Promise<void>;
+  handleCsvConfirm: (input: {
+    previewId: string;
+    reactivableSelections: string[];
+  }) => Promise<{
+    inserted: number;
+    reactivated: number;
+    raceConditions: Array<{
+      existingOrderId: string;
+      trackingId: string;
+      actualStatus: string;
+    }>;
+  } | null>;
+  handleCsvDone: () => void;
   resetCsvState: () => void;
   downloadCsvTemplate: () => Promise<void>;
   // Order edit

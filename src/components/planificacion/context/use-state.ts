@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { CsvImportPreview } from "@/components/orders/csv-import-preview-dialog";
 import type {
   Vehicle,
   Fleet,
@@ -79,6 +80,11 @@ export function usePlanificacionState() {
    * and POST to /api/orders/import without re-reading the File.
    */
   const [csvRawText, setCsvRawText] = useState<string>("");
+
+  // CSV preview-and-confirm state (issue 006).
+  const [csvPreviewData, setCsvPreviewData] =
+    useState<CsvImportPreview | null>(null);
+  const [showCsvPreviewDialog, setShowCsvPreviewDialog] = useState(false);
 
   // Custom field definitions
   const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
@@ -171,6 +177,10 @@ export function usePlanificacionState() {
     setCsvHeaders,
     csvRawText,
     setCsvRawText,
+    csvPreviewData,
+    setCsvPreviewData,
+    showCsvPreviewDialog,
+    setShowCsvPreviewDialog,
     // field definitions
     fieldDefinitions,
     setFieldDefinitions,
