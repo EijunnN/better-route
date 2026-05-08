@@ -1,3 +1,16 @@
+// route-map keeps a local presentation shape (lat/lng as strings) because
+// the rendering pipeline below mixes string interpolation, geometry parsing,
+// and DOM attributes that all expect strings. The canonical SolvedPlan uses
+// numbers; `fromCanonicalRoute` and friends convert at the boundary.
+
+import type {
+  AssignedSolvedRoute,
+  SolvedStop,
+  UnassignedOrderRecord,
+  VehicleWithoutRoute as CanonicalVehicleWithoutRoute,
+} from "@/lib/optimization/solved-plan";
+import type maplibregl from "maplibre-gl";
+
 export interface RouteStop {
   orderId: string;
   trackingId: string;
@@ -5,7 +18,6 @@ export interface RouteStop {
   address: string;
   latitude: string;
   longitude: string;
-  // For grouped stops (multiple orders at same location)
   groupedOrderIds?: string[];
   groupedTrackingIds?: string[];
 }
@@ -73,4 +85,66 @@ export interface RouteMapProps {
   onMapReady?: (map: maplibregl.Map) => void;
   /** Order IDs that should be highlighted as selected (for pencil selection feedback) */
   highlightedOrderIds?: string[];
+}
+
+// ─── Canonical → presentation adapters ────────────────────────────────
+
+function stopFromCanonical(s: SolvedStop): RouteStop {
+  return {
+    orderId: s.orderId,
+    trackingId: s.trackingId,
+    sequence: s.sequence,
+    address: s.address,
+    latitude: String(s.latitude),
+    longitude: String(s.longitude),
+    groupedOrderIds: s.groupedOrderIds,
+    groupedTrackingIds: s.groupedTrackingIds,
+  };
+}
+
+export function fromCanonicalRoute(r: AssignedSolvedRoute): Route {
+  return {
+    routeId: r.routeId,
+    vehicleId: r.vehicleId,
+    vehiclePlate: r.vehicleIdentifier,
+    driverId: r.driverId,
+    driverName: r.driverName,
+    driverOrigin: r.driverOrigin
+      ? {
+          latitude: String(r.driverOrigin.latitude),
+          longitude: String(r.driverOrigin.longitude),
+          address: r.driverOrigin.address,
+        }
+      : undefined,
+    stops: r.stops.map(stopFromCanonical),
+    totalDistance: r.totalDistance,
+    totalDuration: r.totalDuration,
+    geometry: r.geometry,
+  };
+}
+
+export function fromCanonicalUnassigned(
+  u: UnassignedOrderRecord,
+): UnassignedOrder {
+  return {
+    orderId: u.orderId,
+    trackingId: u.trackingId,
+    reason: u.reason,
+    latitude: u.latitude !== undefined ? String(u.latitude) : undefined,
+    longitude: u.longitude !== undefined ? String(u.longitude) : undefined,
+    address: u.address,
+  };
+}
+
+export function fromCanonicalVehicleWithoutRoute(
+  v: CanonicalVehicleWithoutRoute,
+): VehicleWithoutRoute {
+  return {
+    id: v.id,
+    plate: v.plate,
+    originLatitude:
+      v.originLatitude !== undefined ? String(v.originLatitude) : undefined,
+    originLongitude:
+      v.originLongitude !== undefined ? String(v.originLongitude) : undefined,
+  };
 }

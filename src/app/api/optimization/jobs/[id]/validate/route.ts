@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
-import type { OptimizationResult } from "@/lib/optimization/optimization-runner";
+import type { VerifiedPlan } from "@/lib/optimization/optimization-runner";
 import {
   getIssuesByCategory,
   getIssuesBySeverity,
@@ -121,10 +121,10 @@ export async function GET(
     }
 
     // Parse optimization result
-    let result: OptimizationResult | null = null;
+    let result: VerifiedPlan | null = null;
     try {
       result = job.result
-        ? (safeParseJson(job.result) as OptimizationResult)
+        ? (safeParseJson(job.result) as VerifiedPlan)
         : null;
     } catch (_error) {
       return NextResponse.json(

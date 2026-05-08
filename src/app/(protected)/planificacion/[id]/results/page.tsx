@@ -28,6 +28,7 @@ interface OptimizationResult {
   routes: Array<{
     routeId: string;
     vehicleId: string;
+    vehicleIdentifier: string;
     vehiclePlate: string;
     driverId?: string;
     driverName?: string;

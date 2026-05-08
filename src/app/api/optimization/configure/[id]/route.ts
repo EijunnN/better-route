@@ -6,7 +6,7 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { forceReleaseCompanyLock } from "@/lib/infra/job-queue";
 import { setTenantContext } from "@/lib/infra/tenant";
-import type { OptimizationResult } from "@/lib/optimization/optimization-runner";
+import type { VerifiedPlan } from "@/lib/optimization/optimization-runner";
 import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-config";
 
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
@@ -227,7 +227,7 @@ export async function DELETE(
 
       if (job?.result) {
         try {
-          const result = safeParseJson(job.result) as OptimizationResult;
+          const result = safeParseJson(job.result) as VerifiedPlan;
           const assignedOrderIds: string[] = [];
 
           for (const route of result.routes || []) {

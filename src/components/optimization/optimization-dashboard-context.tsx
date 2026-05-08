@@ -9,6 +9,13 @@ import { useToast } from "@/hooks/use-toast";
 export interface RouteData {
   routeId: string;
   vehicleId: string;
+  /** Canonical name from solved-plan. */
+  vehicleIdentifier: string;
+  /**
+   * Legacy alias for `vehicleIdentifier`. Kept on this presentation type so
+   * the dashboard's many call sites keep compiling during the staged refactor.
+   * New code should prefer `vehicleIdentifier`.
+   */
   vehiclePlate: string;
   driverId?: string;
   driverName?: string;

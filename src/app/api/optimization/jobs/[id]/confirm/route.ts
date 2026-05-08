@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs, orders, planMetrics, routeStops } from "@/db/schema";
 import { createAuditLog } from "@/lib/infra/audit";
 import { releaseCompanyLock } from "@/lib/infra/job-queue";
-import type { OptimizationResult } from "@/lib/optimization/optimization-runner";
+import type { VerifiedPlan } from "@/lib/optimization/optimization-runner";
 import {
   calculateComparisonMetrics,
   calculatePlanMetrics,
@@ -170,10 +170,10 @@ export async function POST(
     }
 
     // Parse optimization result
-    let result: OptimizationResult | null = null;
+    let result: VerifiedPlan | null = null;
     try {
       result = job.result
-        ? (safeParseJson(job.result) as OptimizationResult)
+        ? (safeParseJson(job.result) as VerifiedPlan)
         : null;
     } catch (_error) {
       return NextResponse.json(
@@ -418,8 +418,8 @@ export async function POST(
             orderId,
             sequence: stop.sequence,
             address: stop.address,
-            latitude: stop.latitude,
-            longitude: stop.longitude,
+            latitude: String(stop.latitude),
+            longitude: String(stop.longitude),
             estimatedArrival,
             estimatedServiceTime: 600, // Default 10 minutes
             timeWindowStart,

@@ -35,6 +35,7 @@ import { KpiCard, KpiGrid } from "./kpi-card";
 import { ManualDriverAssignmentDialog } from "./manual-driver-assignment-dialog";
 import { PlanConfirmationDialog } from "./plan-confirmation-dialog";
 import { RouteMap } from "./route-map";
+import { fromCanonicalRoute } from "./route-map/types";
 
 /** Format a time window value that may be HH:mm, HH:mm:ss, or an ISO date string */
 function formatTimeWindow(value: string): string {
@@ -44,110 +45,19 @@ function formatTimeWindow(value: string): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-// Re-export types from optimization-runner
+import type { VerifiedPlan } from "@/lib/optimization/solved-plan";
+
+// Re-export the canonical shape so callers that imported the legacy
+// OptimizationResult/Route/Stop names from this module still resolve.
 export type {
-  OptimizationResult,
-  OptimizationRoute,
-  OptimizationStop,
-} from "@/lib/optimization/optimization-runner";
+  AssignedSolvedRoute,
+  SolvedStop,
+  VerifiedPlan,
+} from "@/lib/optimization/solved-plan";
 
 interface OptimizationResultsProps {
   jobId?: string;
-  result: {
-    routes: Array<{
-      routeId: string;
-      vehicleId: string;
-      vehiclePlate: string;
-      driverId?: string;
-      driverName?: string;
-      stops: Array<{
-        orderId: string;
-        trackingId: string;
-        sequence: number;
-        address: string;
-        latitude: string;
-        longitude: string;
-        estimatedArrival?: string;
-        waitingTimeMinutes?: number;
-        timeWindow?: {
-          start: string;
-          end: string;
-        };
-      }>;
-      totalDistance: number;
-      totalDuration: number;
-      totalWeight: number;
-      totalVolume: number;
-      utilizationPercentage: number;
-      timeWindowViolations: number;
-      geometry?: string; // Encoded polyline from VROOM/OSRM
-      assignmentQuality?: {
-        score: number;
-        warnings: string[];
-        errors: string[];
-      };
-    }>;
-    unassignedOrders: Array<{
-      orderId: string;
-      trackingId: string;
-      reason: string;
-    }>;
-    metrics: {
-      totalDistance: number;
-      totalDuration: number;
-      totalRoutes: number;
-      totalStops: number;
-      utilizationRate: number;
-      timeWindowComplianceRate: number;
-      balanceScore?: number; // 0-100, distribution balance
-    };
-    assignmentMetrics?: {
-      totalAssignments: number;
-      assignmentsWithWarnings: number;
-      assignmentsWithErrors: number;
-      averageScore: number;
-      skillCoverage: number;
-      licenseCompliance: number;
-      fleetAlignment: number;
-      workloadBalance: number;
-    };
-    summary: {
-      optimizedAt: string;
-      objective: string;
-      processingTimeMs: number;
-    };
-    depot?: {
-      latitude: number;
-      longitude: number;
-    };
-    verification?: {
-      optimizer: string;
-      summary: {
-        hard: number;
-        soft: number;
-        info: number;
-        byCode: Record<string, number>;
-      };
-      totals: {
-        ordersInput: number;
-        ordersAssigned: number;
-        ordersUnassigned: number;
-        routes: number;
-      };
-      violations: Array<{
-        code: string;
-        severity: "HARD" | "SOFT" | "INFO";
-        message: string;
-        vehicleId?: string;
-        vehicleIdentifier?: string;
-        orderId?: string;
-        trackingId?: string;
-        stopSequence?: number;
-        expected?: string | number;
-        actual?: string | number;
-      }>;
-    };
-  };
+  result: VerifiedPlan;
   onReoptimize?: () => void;
   onConfirm?: () => void;
   onReassignDriver?: (routeId: string, vehicleId: string) => void;
@@ -252,7 +162,7 @@ function RouteCard({
               <Truck className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base">{route.vehiclePlate}</CardTitle>
+              <CardTitle className="text-base">{route.vehicleIdentifier}</CardTitle>
               <CardDescription className="flex items-center gap-2">
                 {route.driverName && (
                   <>
@@ -314,22 +224,27 @@ function RouteCard({
           </div>
 
           {/* Capacity Info */}
-          {(route.totalWeight > 0 || route.totalVolume > 0) && (
-            <div className="flex gap-4 mb-4 text-xs text-muted-foreground">
-              {route.totalWeight > 0 && (
-                <div className="flex items-center gap-1">
-                  <Scale className="h-3 w-3" />
-                  {route.totalWeight}kg
-                </div>
-              )}
-              {route.totalVolume > 0 && (
-                <div className="flex items-center gap-1">
-                  <Package className="h-3 w-3" />
-                  {route.totalVolume}L
-                </div>
-              )}
-            </div>
-          )}
+          {(() => {
+            const w = route.capacityUsed?.WEIGHT ?? 0;
+            const v = route.capacityUsed?.VOLUME ?? 0;
+            if (w === 0 && v === 0) return null;
+            return (
+              <div className="flex gap-4 mb-4 text-xs text-muted-foreground">
+                {w > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Scale className="h-3 w-3" />
+                    {w}kg
+                  </div>
+                )}
+                {v > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Package className="h-3 w-3" />
+                    {v}L
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Driver Assignment Quality */}
           <div className="mb-4">
@@ -379,9 +294,9 @@ function RouteCard({
                     {stop.estimatedArrival && (
                       <p className="text-xs text-muted-foreground">
                         ETA: {stop.estimatedArrival}
-                        {stop.waitingTimeMinutes ? (
+                        {stop.waitingTimeSeconds ? (
                           <span className="text-orange-500 ml-1">
-                            (espera {stop.waitingTimeMinutes} min)
+                            (espera {Math.round(stop.waitingTimeSeconds / 60)} min)
                           </span>
                         ) : null}
                       </p>
@@ -494,7 +409,7 @@ export function OptimizationResults({
       setSelectedRouteForAssignment({
         routeId: route.routeId,
         vehicleId: route.vehicleId,
-        vehiclePlate: route.vehiclePlate,
+        vehiclePlate: route.vehicleIdentifier,
         driverId: route.driverId,
         driverName: route.driverName,
       });
@@ -561,24 +476,9 @@ export function OptimizationResults({
           />
         </KpiGrid>
 
-        {/* Balance Score if available */}
-        {result.metrics.balanceScore !== undefined && (
-          <KpiGrid columns={4}>
-            <KpiCard
-              title="Balance de Rutas"
-              value={`${result.metrics.balanceScore}%`}
-              subtitle="Distribuci\u00f3n equitativa de paradas"
-              icon={BarChart3}
-              status={
-                result.metrics.balanceScore >= 80
-                  ? "success"
-                  : result.metrics.balanceScore >= 60
-                    ? "warning"
-                    : "error"
-              }
-            />
-          </KpiGrid>
-        )}
+        {/* balanceScore was removed from PlanLevelMetrics \u2014 the canonical
+            shape no longer surfaces it; the value is part of solver-internal
+            metrics that the verifier doesn't need to track. */}
 
         {result.unassignedOrders.length > 0 && (
           <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg dark:bg-orange-950 dark:border-orange-800">
@@ -766,7 +666,7 @@ export function OptimizationResults({
 
         <TabsContent value="map">
           <RouteMap
-            routes={result.routes}
+            routes={result.routes.map(fromCanonicalRoute)}
             depot={result.depot}
             selectedRouteId={selectedRouteId}
             onRouteSelect={(routeId) => setSelectedRouteId(routeId)}

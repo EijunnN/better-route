@@ -58,7 +58,7 @@ const solvedStopSchema: z.ZodType<SolvedStop> = z.object({
       end: hhmm,
     })
     .optional(),
-  capacityUsed: capacityUsageSchema,
+  capacityUsed: capacityUsageSchema.optional(),
   groupedOrderIds: z.array(z.string()).optional(),
   groupedTrackingIds: z.array(z.string()).optional(),
 });

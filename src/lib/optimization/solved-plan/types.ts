@@ -58,8 +58,10 @@ export interface SolvedStop {
   };
   /**
    * Capacity consumed by this stop, only the dimensions the company tracks.
+   * Optional because not all solver paths populate per-stop usage —
+   * route-level `capacityUsed` is always populated.
    */
-  capacityUsed: CapacityUsage;
+  capacityUsed?: CapacityUsage;
   /**
    * When multiple orders share an exact (lat,lng) and the preset has
    * `groupSameLocation: true`, the route shows ONE stop and lists the

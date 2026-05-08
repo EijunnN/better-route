@@ -34,7 +34,7 @@ export interface DriverAssignmentDisplayProps {
   route: {
     routeId: string;
     vehicleId: string;
-    vehiclePlate: string;
+    vehicleIdentifier: string;
     driverId?: string;
     driverName?: string;
     assignmentQuality?: AssignmentQuality;

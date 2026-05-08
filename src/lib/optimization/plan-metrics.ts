@@ -1,7 +1,7 @@
 import { and, desc, eq, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { optimizationJobs, planMetrics } from "@/db/schema";
-import type { OptimizationResult } from "./optimization-runner";
+import type { VerifiedPlan } from "./optimization-runner";
 import type { PlanValidationResult } from "./plan-validation";
 
 /**
@@ -83,11 +83,11 @@ export function calculatePlanMetrics(
   companyId: string,
   jobId: string,
   configurationId: string,
-  result: OptimizationResult,
+  result: VerifiedPlan,
   validationResult: PlanValidationResult,
 ): PlanMetricsData {
-  const routes = result.routes || [];
-  const metrics = result.metrics || {};
+  const routes = result.routes;
+  const metrics = result.metrics;
   const assignmentMetrics = result.assignmentMetrics;
   const validationMetrics = validationResult.metrics || {};
   const summary = validationResult.summary || {};

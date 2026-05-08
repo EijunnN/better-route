@@ -2,8 +2,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { USER_ROLES, users } from "@/db/schema";
 import type {
-  OptimizationResult,
-  OptimizationRoute,
+  AssignedSolvedRoute,
+  VerifiedPlan,
 } from "./optimization-runner";
 
 /**
@@ -90,12 +90,12 @@ export const DEFAULT_VALIDATION_CONFIG: PlanValidationConfig = {
  */
 export async function validatePlanForConfirmation(
   companyId: string,
-  result: OptimizationResult,
+  result: VerifiedPlan,
   config: PlanValidationConfig = DEFAULT_VALIDATION_CONFIG,
 ): Promise<PlanValidationResult> {
   const issues: ValidationIssue[] = [];
-  const routes = result.routes || [];
-  const unassignedOrders = result.unassignedOrders || [];
+  const routes = result.routes;
+  const unassignedOrders = result.unassignedOrders;
 
   // Initialize summary
   const summary = {
@@ -282,7 +282,7 @@ export async function validatePlanForConfirmation(
  */
 async function validateDriverLicensesAndSkills(
   companyId: string,
-  routes: OptimizationRoute[],
+  routes: AssignedSolvedRoute[],
   config: PlanValidationConfig,
 ): Promise<ValidationIssue[]> {
   const issues: ValidationIssue[] = [];
