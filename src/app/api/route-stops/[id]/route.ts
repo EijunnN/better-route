@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  deliveryVisits,
   orders,
   routeStopHistory,
   routeStops,
@@ -111,7 +112,15 @@ export async function PATCH(
     const { id: stopId } = await params;
 
     const body = await request.json();
-    const { workflowStateId, notes, failureReason, evidenceUrls, customFields: customFieldsInput } = body;
+    const {
+      workflowStateId,
+      notes,
+      failureReason,
+      evidenceUrls,
+      customFields: customFieldsInput,
+      gpsLatitude,
+      gpsLongitude,
+    } = body;
     let { status } = body;
     const hasCustomFieldsUpdate =
       customFieldsInput && typeof customFieldsInput === "object" && !Array.isArray(customFieldsInput);
@@ -419,6 +428,33 @@ export async function PATCH(
           notes: notes || null,
           metadata: historyMetadata,
         });
+
+        // Persist a `Visit` for terminal driver-side transitions (ADR-0005).
+        // Append-only: each COMPLETED/FAILED transition is one immutable
+        // physical attempt. The Stop's evidence/reason live on the Stop
+        // until reopened; the Visit is the historical snapshot.
+        if (status === "COMPLETED" || status === "FAILED") {
+          await tx.insert(deliveryVisits).values({
+            companyId: tenantCtx.companyId,
+            orderId: currentStop.orderId,
+            routeStopId: stopId,
+            driverId: currentStop.userId,
+            planId: currentStop.jobId,
+            attemptedAt: currentStop.startedAt ?? now,
+            completedAt: now,
+            outcome: status === "COMPLETED" ? "SUCCESS" : "FAILURE",
+            failureReason: status === "FAILED" ? failureReason ?? null : null,
+            notes: notes || null,
+            evidenceUrls: evidenceUrls ?? null,
+            intendedAddress: currentStop.address,
+            intendedLatitude: currentStop.latitude,
+            intendedLongitude: currentStop.longitude,
+            gpsLatitude:
+              typeof gpsLatitude === "string" ? gpsLatitude : null,
+            gpsLongitude:
+              typeof gpsLongitude === "string" ? gpsLongitude : null,
+          });
+        }
 
         return result;
       });

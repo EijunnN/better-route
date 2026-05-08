@@ -12,4 +12,5 @@ export * from "./rbac";
 export * from "./tracking";
 export * from "./workflow";
 export * from "./custom-fields";
+export * from "./visits";
 export * from "./relations";

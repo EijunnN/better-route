@@ -119,6 +119,15 @@ mock.module("@/lib/infra/job-queue", () => ({
 // (which re-exports from this same module). Tests that hit the orchestrator
 // get a stubbed `createAndExecuteJob` that just inserts a PENDING job row
 // and returns its id — enough for HTTP-layer tests, no fire-and-forget.
+// Stub the VROOM HTTP client so engine-availability checks are deterministic
+// and tests don't depend on a real VROOM server being up.
+mock.module("@/lib/optimization/vroom-client", () => ({
+  isVroomAvailable: async () => true,
+  solveVRP: async () => ({ code: 0, summary: { cost: 0, distance: 0, duration: 0 }, routes: [], unassigned: [] }),
+  createVroomJob: () => ({}),
+  createVroomVehicle: () => ({}),
+}));
+
 mock.module("@/lib/optimization/optimization-job/lifecycle", () => ({
   cancelOptimizationJob: async () => true,
   updateJobProgress: async () => {},

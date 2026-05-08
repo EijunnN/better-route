@@ -82,6 +82,13 @@ export const routeStops = pgTable("route_stops", {
     .notNull()
     .references(() => orders.id, { onDelete: "restrict" }),
   sequence: integer("sequence").notNull(), // Order in the route (1, 2, 3, ...)
+  /**
+   * Which physical attempt of this Order this RouteStop represents.
+   * 1 = first attempt; 2+ = revisita. Computed as
+   * `COUNT(delivery_visits WHERE order_id) + 1` at insert time.
+   * See ADR-0005.
+   */
+  attemptNumber: integer("attempt_number").notNull().default(1),
   // Stop details
   address: text("address").notNull(),
   latitude: varchar("latitude", { length: 20 }).notNull(),

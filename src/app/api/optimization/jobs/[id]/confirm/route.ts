@@ -494,11 +494,39 @@ export async function POST(
         ordersUpdatedCount = updatedOrders.length;
       }
 
-      // 3. Insert route stops
+      // 3. Insert route stops with computed `attempt_number`.
+      // For each Order being assigned, attempt_number = (existing
+      // delivery_visits for that Order) + 1. First-time Orders get 1;
+      // revisitas (Orders that previously had a Visit logged) get 2+.
+      // See ADR-0005.
       let routeStopsCreatedCount = 0;
       if (routeStopsToCreate.length > 0) {
-        await tx.insert(routeStops).values(routeStopsToCreate);
-        routeStopsCreatedCount = routeStopsToCreate.length;
+        const visitCountByOrder = new Map<string, number>();
+        if (assignedOrderIds.length > 0) {
+          const { deliveryVisits } = await import("@/db/schema");
+          const counts = await tx
+            .select({
+              orderId: deliveryVisits.orderId,
+              c: sql<number>`count(*)::int`,
+            })
+            .from(deliveryVisits)
+            .where(
+              and(
+                eq(deliveryVisits.companyId, tenantContext.companyId),
+                inArray(deliveryVisits.orderId, assignedOrderIds),
+              ),
+            )
+            .groupBy(deliveryVisits.orderId);
+          for (const row of counts) {
+            visitCountByOrder.set(row.orderId, row.c);
+          }
+        }
+        const enriched = routeStopsToCreate.map((rs) => ({
+          ...rs,
+          attemptNumber: (visitCountByOrder.get(rs.orderId) ?? 0) + 1,
+        }));
+        await tx.insert(routeStops).values(enriched);
+        routeStopsCreatedCount = enriched.length;
       }
 
       // 4. Save plan metrics
