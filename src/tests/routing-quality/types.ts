@@ -2,7 +2,7 @@ import type {
   OptimizerConfig,
   OptimizerOrder,
   OptimizerVehicle,
-} from "@/lib/optimization/optimizer-interface";
+} from "@/lib/optimization/verifier";
 
 export interface ScenarioExpectations {
   /** Maximum tolerated HARD violations. Default 0. */

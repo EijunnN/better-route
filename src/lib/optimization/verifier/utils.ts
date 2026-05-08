@@ -1,4 +1,5 @@
-import type { OptimizerVehicle, OptimizerOrder } from "../optimizer-interface";
+import type { OptimizerVehicle, OptimizerOrder } from "./input-types";
+import type { SolvedStop } from "../solved-plan";
 
 /** Parse "HH:MM" or "HH:MM:SS" or ISO string → seconds since 00:00. Returns null if unparseable. */
 export function hhmmToSeconds(value: string | undefined | null): number | null {
@@ -55,4 +56,13 @@ export function sumBy<T>(items: T[], selector: (t: T) => number): number {
   let total = 0;
   for (const it of items) total += selector(it) || 0;
   return total;
+}
+
+/**
+ * Resolve a SolvedStop's arrival as seconds since 00:00. The canonical
+ * shape stores `estimatedArrival` as "HH:MM"; the verifier checkers think
+ * in seconds, so this is the bridge.
+ */
+export function stopArrivalSeconds(stop: SolvedStop): number | null {
+  return hhmmToSeconds(stop.estimatedArrival);
 }

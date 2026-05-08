@@ -5,12 +5,12 @@ import { orderById, vehicleById } from "./utils";
  * Every order assigned to a vehicle must have all required skills covered
  * by the vehicle's skill set.
  */
-export const checkSkills: VerifierFn = ({ orders, vehicles, result }) => {
+export const checkSkills: VerifierFn = ({ orders, vehicles, plan }) => {
   const violations: Violation[] = [];
   const orderMap = orderById(orders);
   const vehicleMap = vehicleById(vehicles);
 
-  for (const route of result.routes) {
+  for (const route of plan.routes) {
     const vehicle = vehicleMap.get(route.vehicleId);
     const vehicleSkills = new Set(vehicle?.skills ?? []);
 

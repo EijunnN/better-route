@@ -1,5 +1,12 @@
 import type { VerifierFn, Violation } from "./types";
-import { hhmmToSeconds, normalizeArrivalSeconds, orderById, secondsToHHMM, vehicleById } from "./utils";
+import {
+  hhmmToSeconds,
+  normalizeArrivalSeconds,
+  orderById,
+  secondsToHHMM,
+  stopArrivalSeconds,
+  vehicleById,
+} from "./utils";
 
 /**
  * When config.flexibleTimeWindows is true, VROOM widens order time windows
@@ -19,20 +26,20 @@ const FLEX_TOLERANCE_SEC = 30 * 60;
  * Also checks vehicle workday windows (HARD): every stop arrival must be inside the
  * vehicle's [timeWindowStart, timeWindowEnd] if those are set.
  */
-export const checkTimeWindows: VerifierFn = ({ orders, vehicles, config, result }) => {
+export const checkTimeWindows: VerifierFn = ({ orders, vehicles, config, plan }) => {
   const violations: Violation[] = [];
   const orderMap = orderById(orders);
   const vehicleMap = vehicleById(vehicles);
   const flex = config.flexibleTimeWindows ? FLEX_TOLERANCE_SEC : 0;
 
-  for (const route of result.routes) {
+  for (const route of plan.routes) {
     const vehicle = vehicleMap.get(route.vehicleId);
     const vWindowStart = hhmmToSeconds(vehicle?.timeWindowStart);
     const vWindowEnd = hhmmToSeconds(vehicle?.timeWindowEnd);
 
     for (const stop of route.stops) {
       const order = orderMap.get(stop.orderId);
-      const arrival = normalizeArrivalSeconds(stop.arrivalTime);
+      const arrival = normalizeArrivalSeconds(stopArrivalSeconds(stop) ?? undefined);
 
       if (arrival === null) {
         // Solver did not emit arrival time. Only report if the order had
@@ -58,7 +65,7 @@ export const checkTimeWindows: VerifierFn = ({ orders, vehicles, config, result 
       // `arrival + waitingTime`. We validate against the service-start time,
       // not the raw arrival — otherwise every "arrive early, wait, serve on
       // time" plan falsely reports a violation.
-      const waiting = stop.waitingTime ?? 0;
+      const waiting = stop.waitingTimeSeconds ?? 0;
       const serviceStart = arrival + waiting;
 
       const orderStartRaw = hhmmToSeconds(order?.timeWindowStart);

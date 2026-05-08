@@ -5,10 +5,10 @@ import type { VerifierFn, Violation } from "./types";
  * - maxDistanceKm  → HARD if totalDistance exceeds
  * - maxTravelTimeMinutes → HARD if totalTravelTime exceeds
  */
-export const checkTravelLimits: VerifierFn = ({ config, result }) => {
+export const checkTravelLimits: VerifierFn = ({ config, plan }) => {
   const violations: Violation[] = [];
 
-  for (const route of result.routes) {
+  for (const route of plan.routes) {
     if (config.maxDistanceKm && route.totalDistance > 0) {
       const distanceKm = route.totalDistance / 1000;
       if (distanceKm > config.maxDistanceKm + 0.5) {

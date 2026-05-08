@@ -10,13 +10,20 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { vroomAdapter } from "@/lib/optimization/vroom-adapter";
-import type {
-  IOptimizer,
-  OptimizationResult,
-} from "@/lib/optimization/optimizer-interface";
+import {
+  optimizeRoutes as vroomOptimizeRoutes,
+  type OrderForOptimization,
+  type VehicleForOptimization,
+  type OptimizationConfig as VroomConfig,
+} from "@/lib/optimization/vroom-optimizer";
 import { verify } from "@/lib/optimization/verifier";
-import type { VerificationReport } from "@/lib/optimization/solved-plan";
+import type {
+  AggregatedPlan,
+  AssignedSolvedRoute,
+  SolvedStop,
+  VerificationReport,
+} from "@/lib/optimization/solved-plan";
+import { secondsToHHMM } from "@/lib/optimization/verifier";
 import { SCENARIOS } from "./scenarios";
 import type { Scenario, ScenarioExpectations } from "./types";
 
@@ -33,32 +40,194 @@ interface RunEntry {
 
 const OUT_DIR = resolve("results/routing-quality");
 const REPORT_PATH = resolve("docs/routing-quality-report.md");
+const SOLVER_NAME = "VROOM";
 
-async function runScenarioOnSolver(
-  scenario: Scenario,
-  solver: IOptimizer,
-): Promise<RunEntry> {
+// ─── Conversion: scenario inputs (verifier shape) → VROOM shape ────────
+
+function toVroomOrder(o: Scenario["orders"][number]): OrderForOptimization {
+  return {
+    id: o.id,
+    trackingId: o.trackingId,
+    address: o.address,
+    latitude: o.latitude,
+    longitude: o.longitude,
+    weightRequired: o.weightRequired,
+    volumeRequired: o.volumeRequired,
+    orderValue: o.orderValue,
+    unitsRequired: o.unitsRequired,
+    orderType: o.orderType,
+    timeWindowStart: o.timeWindowStart,
+    timeWindowEnd: o.timeWindowEnd,
+    skillsRequired: o.skillsRequired,
+    priority: o.priority,
+    serviceTime: o.serviceTime,
+    zoneId: o.zoneId,
+  };
+}
+
+function toVroomVehicle(
+  v: Scenario["vehicles"][number],
+): VehicleForOptimization {
+  return {
+    id: v.id,
+    plate: v.identifier,
+    maxWeight: v.maxWeight,
+    maxVolume: v.maxVolume,
+    maxValueCapacity: v.maxValueCapacity,
+    maxUnitsCapacity: v.maxUnitsCapacity,
+    maxOrders: v.maxOrders,
+    originLatitude: v.originLatitude,
+    originLongitude: v.originLongitude,
+    skills: v.skills,
+    speedFactor: v.speedFactor,
+    timeWindowStart: v.timeWindowStart,
+    timeWindowEnd: v.timeWindowEnd,
+    hasBreakTime: v.hasBreakTime,
+    breakDuration: v.breakDuration,
+    breakTimeStart: v.breakTimeStart,
+    breakTimeEnd: v.breakTimeEnd,
+  };
+}
+
+function toVroomConfig(c: Scenario["config"]): VroomConfig {
+  return {
+    depot: {
+      latitude: c.depot.latitude,
+      longitude: c.depot.longitude,
+      timeWindowStart: c.depot.timeWindowStart,
+      timeWindowEnd: c.depot.timeWindowEnd,
+    },
+    objective: c.objective,
+    profile: c.profile,
+    balanceVisits: c.balanceVisits,
+    maxDistanceKm: c.maxDistanceKm,
+    maxTravelTimeMinutes: c.maxTravelTimeMinutes,
+    trafficFactor: c.trafficFactor,
+    routeEndMode: c.routeEndMode,
+    endDepot: c.endDepot,
+    openStart: c.openStart,
+    minimizeVehicles: c.minimizeVehicles,
+    flexibleTimeWindows: c.flexibleTimeWindows,
+    maxRoutes: c.maxRoutes,
+  };
+}
+
+// ─── Conversion: VROOM output → AggregatedPlan ─────────────────────────
+
+/**
+ * The routing-quality harness doesn't run the full runner pipeline, so
+ * driver assignment is a stub: every route gets a synthetic perfect
+ * assignment. The verifier only consumes assignmentQuality for the
+ * driver-level checks, which the harness deliberately ignores.
+ */
+function toAssignedRoute(
+  vroomRoute: Awaited<
+    ReturnType<typeof vroomOptimizeRoutes>
+  >["routes"][number],
+): AssignedSolvedRoute {
+  const stops: SolvedStop[] = vroomRoute.stops.map((s) => ({
+    orderId: s.orderId,
+    trackingId: s.trackingId,
+    sequence: s.sequence,
+    address: s.address,
+    latitude: s.latitude,
+    longitude: s.longitude,
+    estimatedArrival:
+      s.arrivalTime !== undefined ? secondsToHHMM(s.arrivalTime) : undefined,
+    waitingTimeSeconds: s.waitingTime,
+  }));
+
+  return {
+    routeId: `route-${vroomRoute.vehicleId}`,
+    vehicleId: vroomRoute.vehicleId,
+    vehicleIdentifier: vroomRoute.vehiclePlate,
+    stops,
+    totalDistance: vroomRoute.totalDistance,
+    totalDuration: vroomRoute.totalDuration,
+    totalServiceTime: vroomRoute.totalServiceTime,
+    totalTravelTime: vroomRoute.totalTravelTime,
+    capacityUsed: {
+      WEIGHT: vroomRoute.totalWeight,
+      VOLUME: vroomRoute.totalVolume,
+    },
+    utilizationPercentage: 0,
+    timeWindowViolations: 0,
+    geometry: vroomRoute.geometry,
+    driverId: "harness-driver",
+    driverName: "Harness Driver",
+    assignmentQuality: { score: 100, warnings: [], errors: [] },
+  };
+}
+
+function toAggregatedPlan(
+  vroomOutput: Awaited<ReturnType<typeof vroomOptimizeRoutes>>,
+  startedAt: number,
+  config: Scenario["config"],
+): AggregatedPlan {
+  const routes = vroomOutput.routes.map(toAssignedRoute);
+  const totalStops = routes.reduce((s, r) => s + r.stops.length, 0);
+  return {
+    routes,
+    unassignedOrders: vroomOutput.unassigned.map((u) => ({
+      orderId: u.orderId,
+      trackingId: u.trackingId,
+      reason: u.reason,
+    })),
+    driversWithoutRoutes: [],
+    vehiclesWithoutRoutes: [],
+    metrics: {
+      totalRoutes: routes.length,
+      totalStops,
+      totalDistance: vroomOutput.metrics.totalDistance,
+      totalDuration: vroomOutput.metrics.totalDuration,
+      utilizationRate: 0,
+      timeWindowComplianceRate: 100,
+    },
+    assignmentMetrics: {
+      totalAssignments: routes.length,
+      assignmentsWithWarnings: 0,
+      assignmentsWithErrors: 0,
+      averageScore: 100,
+      skillCoverage: 100,
+      licenseCompliance: 100,
+      fleetAlignment: 100,
+      workloadBalance: 100,
+    },
+    summary: {
+      optimizedAt: new Date().toISOString(),
+      objective: config.objective,
+      processingTimeMs: Date.now() - startedAt,
+      engineUsed: SOLVER_NAME,
+    },
+    depot: {
+      latitude: config.depot.latitude,
+      longitude: config.depot.longitude,
+    },
+  };
+}
+
+// ─── Scenario runner ──────────────────────────────────────────────────
+
+async function runScenario(scenario: Scenario): Promise<RunEntry> {
   const start = Date.now();
   try {
-    const result: OptimizationResult = await solver.optimize(
-      scenario.orders,
-      scenario.vehicles,
-      scenario.config,
+    const vroomOutput = await vroomOptimizeRoutes(
+      scenario.orders.map(toVroomOrder),
+      scenario.vehicles.map(toVroomVehicle),
+      toVroomConfig(scenario.config),
     );
+    const plan = toAggregatedPlan(vroomOutput, start, scenario.config);
     const report = verify({
       orders: scenario.orders,
       vehicles: scenario.vehicles,
       config: scenario.config,
-      result,
+      plan,
     });
-    const expectationFailures = evaluateExpectations(
-      scenario.expected,
-      report,
-    );
+    const expectationFailures = evaluateExpectations(scenario.expected, report);
     return {
       scenario: scenario.name,
       description: scenario.description,
-      solver: solver.name,
+      solver: SOLVER_NAME,
       ok: expectationFailures.length === 0,
       durationMs: Date.now() - start,
       report,
@@ -69,7 +238,7 @@ async function runScenarioOnSolver(
     return {
       scenario: scenario.name,
       description: scenario.description,
-      solver: solver.name,
+      solver: SOLVER_NAME,
       ok: false,
       durationMs: Date.now() - start,
       error: message,
@@ -132,7 +301,7 @@ function formatSummary(entries: RunEntry[]): string {
   lines.push("|---|---|");
   for (const scenario of SCENARIOS) {
     const vroom = entries.find(
-      (e) => e.scenario === scenario.name && e.solver === "VROOM",
+      (e) => e.scenario === scenario.name && e.solver === SOLVER_NAME,
     );
     const cell = (e: RunEntry | undefined) => {
       if (!e) return "skipped";
@@ -158,7 +327,7 @@ function formatSummary(entries: RunEntry[]): string {
     lines.push(scenario.description);
     lines.push("");
     const e = entries.find(
-      (x) => x.scenario === scenario.name && x.solver === "VROOM",
+      (x) => x.scenario === scenario.name && x.solver === SOLVER_NAME,
     );
     if (!e) continue;
     lines.push(`**VROOM** — ${e.ok ? "PASS" : "FAIL"} in ${e.durationMs}ms`);
@@ -211,8 +380,8 @@ async function main() {
   const entries: RunEntry[] = [];
 
   for (const scenario of SCENARIOS) {
-    process.stdout.write(`  → ${scenario.name} / VROOM ...`);
-    const entry = await runScenarioOnSolver(scenario, vroomAdapter);
+    process.stdout.write(`  → ${scenario.name} / ${SOLVER_NAME} ...`);
+    const entry = await runScenario(scenario);
     entries.push(entry);
     const status = entry.ok ? "✓" : entry.error ? "⚠" : "✗";
     process.stdout.write(` ${status} (${entry.durationMs}ms)\n`);

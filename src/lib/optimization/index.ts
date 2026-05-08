@@ -1,30 +1,23 @@
 /**
- * Optimization Module - Unified exports for route optimization
+ * Optimization Module — public surface.
+ *
+ * The canonical solver-output shapes live in `solved-plan/`; the verifier
+ * exposes its own input shapes for callers that need to verify a plan.
+ * VROOM is the only supported solver — the previous `IOptimizer` /
+ * `VroomAdapter` / `optimizer-factory` indirection was deleted as a
+ * hypothetical seam.
  */
 
-// Interface and types
 export type {
-  IOptimizer,
-  OptimizerCapabilities,
-  OptimizerConfig,
-  OptimizerOrder,
-  OptimizerVehicle,
-  OptimizerDepot,
-  OptimizedStop,
-  OptimizedRoute,
-  UnassignedOrder,
-  OptimizationMetrics,
-  OptimizationResult,
-  OptimizerType,
-  OptimizerInfo,
-} from "./optimizer-interface";
-
-// Adapters (VROOM only — PyVRP was removed as a strategic decision)
-export { VroomAdapter, vroomAdapter } from "./vroom-adapter";
-
-// Factory (thin pass-through over vroomAdapter)
-export {
-  selectOptimizer,
-  getAvailableOptimizers,
-  optimize,
-} from "./optimizer-factory";
+  AggregatedPlan,
+  AssignedSolvedRoute,
+  CapacityDimension,
+  CapacityUsage,
+  RawSolvedRoute,
+  SolvedStop,
+  UnassignedOrderRecord,
+  VerificationReport,
+  VerifiedPlan,
+  Violation,
+  ViolationSeverity,
+} from "./solved-plan";

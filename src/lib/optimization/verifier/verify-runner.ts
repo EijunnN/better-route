@@ -4,9 +4,9 @@
  * The runner produces an `AggregatedPlan` (canonical shape from
  * `solved-plan`) plus the original orders/vehicles/config it ran with.
  * `verifyPlan` is the only place that:
- *   1. converts those into the shapes the pure `verify()` core expects
- *      (OptimizerOrder / OptimizerVehicle / OptimizerConfig +
- *      adapter-shape OptimizationResult),
+ *   1. converts those into the verifier's `OptimizerOrder` /
+ *      `OptimizerVehicle` / `OptimizerConfig` inputs (purely a
+ *      normalisation: same data, slightly different shape),
  *   2. runs solver-level checks (`verify`),
  *   3. runs driver-assignment checks (`checkDriverAssignments`),
  *   4. merges violations into a single `VerificationReport`,
@@ -17,7 +17,6 @@
 
 import type {
   AggregatedPlan,
-  CapacityUsage,
   VerificationReport,
   VerifiedPlan,
 } from "../solved-plan";
@@ -25,12 +24,8 @@ import type {
   OptimizerOrder,
   OptimizerVehicle,
   OptimizerConfig,
-  OptimizationResult,
-  OptimizedRoute,
-  OptimizedStop,
-} from "../optimizer-interface";
+} from "./input-types";
 import { verify } from "./verify";
-import { hhmmToSeconds } from "./utils";
 import { checkDriverAssignments } from "./check-assignments";
 
 /**
@@ -99,15 +94,6 @@ function num(x: string | number | null | undefined, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function parseHhmmsToSeconds(iso: string | undefined): number | undefined {
-  if (!iso) return undefined;
-  if (/^\d{1,2}:\d{2}/.test(iso)) {
-    const v = hhmmToSeconds(iso);
-    return v ?? undefined;
-  }
-  return undefined;
-}
-
 function toOptimizerOrder(o: RunnerOrderInput): OptimizerOrder {
   return {
     id: o.id,
@@ -170,58 +156,6 @@ function toOptimizerConfig(c: RunnerConfigInput): OptimizerConfig {
   };
 }
 
-function capacityValue(usage: CapacityUsage, dim: keyof CapacityUsage): number {
-  return usage[dim] ?? 0;
-}
-
-function toAdapterStop(s: AggregatedPlan["routes"][number]["stops"][number]): OptimizedStop {
-  return {
-    orderId: s.orderId,
-    trackingId: s.trackingId,
-    address: s.address,
-    latitude: s.latitude,
-    longitude: s.longitude,
-    sequence: s.sequence,
-    arrivalTime: parseHhmmsToSeconds(s.estimatedArrival),
-    serviceTime: undefined,
-    waitingTime: s.waitingTimeSeconds,
-  };
-}
-
-function toAdapterRoute(r: AggregatedPlan["routes"][number]): OptimizedRoute {
-  return {
-    vehicleId: r.vehicleId,
-    vehicleIdentifier: r.vehicleIdentifier,
-    stops: r.stops.map(toAdapterStop),
-    totalDistance: r.totalDistance,
-    totalDuration: r.totalDuration,
-    totalServiceTime: r.totalServiceTime,
-    totalTravelTime: r.totalTravelTime,
-    totalWeight: capacityValue(r.capacityUsed, "WEIGHT"),
-    totalVolume: capacityValue(r.capacityUsed, "VOLUME"),
-    geometry: r.geometry,
-  };
-}
-
-function toAdapterResult(plan: AggregatedPlan, optimizer: string): OptimizationResult {
-  return {
-    routes: plan.routes.map(toAdapterRoute),
-    unassigned: plan.unassignedOrders.map((u) => ({
-      orderId: u.orderId,
-      trackingId: u.trackingId,
-      reason: u.reason,
-    })),
-    metrics: {
-      totalDistance: plan.metrics.totalDistance,
-      totalDuration: plan.metrics.totalDuration,
-      totalRoutes: plan.metrics.totalRoutes,
-      totalStops: plan.metrics.totalStops,
-      computingTimeMs: plan.summary.processingTimeMs,
-    },
-    optimizer,
-  };
-}
-
 // ─── Public API ───────────────────────────────────────────────────────
 
 /**
@@ -234,18 +168,17 @@ export function verifyPlan(args: {
   vehicles: RunnerVehicleInput[];
   config: RunnerConfigInput;
 }): VerifiedPlan {
-  const adapterOrders = args.orders.map(toOptimizerOrder);
-  const adapterVehicles = args.vehicles.map(toOptimizerVehicle);
-  const adapterConfig = toOptimizerConfig(args.config);
-  const optimizer = args.plan.summary.engineUsed ?? "UNKNOWN";
-  const adapterResult = toAdapterResult(args.plan, optimizer);
+  const verifierOrders = args.orders.map(toOptimizerOrder);
+  const verifierVehicles = args.vehicles.map(toOptimizerVehicle);
+  const verifierConfig = toOptimizerConfig(args.config);
 
-  // Solver-level violations (time windows, capacity, skills, etc.)
+  // Solver-level violations (time windows, capacity, skills, etc.) — read
+  // the canonical AggregatedPlan directly. No more adapter-shape conversion.
   const base = verify({
-    orders: adapterOrders,
-    vehicles: adapterVehicles,
-    config: adapterConfig,
-    result: adapterResult,
+    orders: verifierOrders,
+    vehicles: verifierVehicles,
+    config: verifierConfig,
+    plan: args.plan,
   });
 
   // Driver-assignment violations (lifted from per-route assignmentQuality).

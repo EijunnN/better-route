@@ -1,15 +1,7 @@
-import type {
-  OptimizerOrder,
-  OptimizerVehicle,
-  OptimizerConfig,
-  OptimizationResult,
-} from "../optimizer-interface";
+import type { AggregatedPlan, ViolationSeverity } from "../solved-plan";
+import type { OptimizerConfig, OptimizerOrder, OptimizerVehicle } from "./input-types";
 
-// Canonical violation/severity types are defined in the solved-plan module.
-// The verifier's internal `Violation` carries a typed `ViolationCode` enum so
-// the checkers benefit from exhaustive switch coverage; this is structurally
-// assignable to the canonical Violation (which has `code: string`).
-export type { ViolationSeverity } from "../solved-plan";
+export type { ViolationSeverity };
 
 export type ViolationCode =
   | "TIME_WINDOW_VIOLATED"
@@ -40,8 +32,6 @@ export type ViolationCode =
   | "DRIVER_SKILL_MISSING"
   | "DRIVER_UNAVAILABLE";
 
-import type { ViolationSeverity } from "../solved-plan";
-
 /**
  * Verifier-internal violation shape. Uses `ViolationCode` (typed enum) for
  * exhaustive coverage in checkers. Structurally assignable to the canonical
@@ -66,7 +56,8 @@ export interface VerifierInput {
   orders: OptimizerOrder[];
   vehicles: OptimizerVehicle[];
   config: OptimizerConfig;
-  result: OptimizationResult;
+  /** The aggregated solver output to validate. */
+  plan: AggregatedPlan;
 }
 
 /**

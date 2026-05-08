@@ -3,7 +3,7 @@ import type {
   OptimizerVehicle,
   OptimizerDepot,
   OptimizerConfig,
-} from "@/lib/optimization/optimizer-interface";
+} from "@/lib/optimization/verifier";
 
 /**
  * Lima, Peru coordinate cluster. OSRM container is loaded with peru-latest.

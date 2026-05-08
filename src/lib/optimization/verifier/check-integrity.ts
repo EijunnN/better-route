@@ -12,7 +12,7 @@ import { orderById, vehicleById } from "./utils";
 export const checkIntegrity: VerifierFn = ({
   orders,
   vehicles,
-  result,
+  plan,
 }) => {
   const violations: Violation[] = [];
   const orderMap = orderById(orders);
@@ -21,7 +21,7 @@ export const checkIntegrity: VerifierFn = ({
   const assignedOrderIds = new Set<string>();
   const duplicates = new Set<string>();
 
-  for (const route of result.routes) {
+  for (const route of plan.routes) {
     if (!vehicleMap.has(route.vehicleId)) {
       violations.push({
         code: "UNKNOWN_VEHICLE_ID",
@@ -82,7 +82,7 @@ export const checkIntegrity: VerifierFn = ({
     });
   }
 
-  const unassignedIds = new Set(result.unassigned.map((u) => u.orderId));
+  const unassignedIds = new Set(plan.unassignedOrders.map((u) => u.orderId));
   for (const order of orders) {
     const isAssigned = assignedOrderIds.has(order.id);
     const isUnassigned = unassignedIds.has(order.id);

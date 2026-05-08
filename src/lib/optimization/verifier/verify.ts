@@ -41,20 +41,20 @@ export function verify(input: VerifierInput): VerificationReport {
     summary.byCode[v.code] = (summary.byCode[v.code] ?? 0) + 1;
   }
 
-  const assignedCount = input.result.routes.reduce(
+  const assignedCount = input.plan.routes.reduce(
     (acc, r) => acc + r.stops.length,
     0,
   );
 
   return {
-    optimizer: input.result.optimizer,
+    optimizer: input.plan.summary.engineUsed ?? "UNKNOWN",
     violations,
     summary,
     totals: {
       ordersInput: input.orders.length,
       ordersAssigned: assignedCount,
-      ordersUnassigned: input.result.unassigned.length,
-      routes: input.result.routes.length,
+      ordersUnassigned: input.plan.unassignedOrders.length,
+      routes: input.plan.routes.length,
     },
   };
 }

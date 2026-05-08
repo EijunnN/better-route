@@ -1,38 +1,48 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getAvailableOptimizers } from "@/lib/optimization";
+import { isVroomAvailable } from "@/lib/optimization/vroom-client";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { EntityType, Action } from "@/lib/auth/authorization";
 import { handleError } from "@/lib/routing/route-helpers";
 
-// GET - List available optimization engines
+// GET - List available optimization engines.
+// VROOM is the only supported solver after PyVRP was removed (see ADR / CONTEXT.md
+// invariants). The previous IOptimizer / VroomAdapter / factory indirection was
+// deleted as a hypothetical seam; this route now reports the static VROOM
+// capabilities + a runtime availability probe.
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_CONFIG,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
 
-    const optimizers = await getAvailableOptimizers();
+    const available = await isVroomAvailable();
 
     return NextResponse.json({
       data: {
-        optimizers: optimizers.map((opt) => ({
-          type: opt.type,
-          name: opt.name,
-          displayName: opt.displayName,
-          description: opt.description,
-          available: opt.available,
-          capabilities: {
-            supportsTimeWindows: opt.capabilities.supportsTimeWindows,
-            supportsSkills: opt.capabilities.supportsSkills,
-            supportsMultiDimensionalCapacity: opt.capabilities.supportsMultiDimensionalCapacity,
-            supportsPriorities: opt.capabilities.supportsPriorities,
-            supportsBalancing: opt.capabilities.supportsBalancing,
-            maxOrders: opt.capabilities.maxOrders,
-            maxVehicles: opt.capabilities.maxVehicles,
-            speed: opt.capabilities.typicalSpeed,
-            quality: opt.capabilities.qualityLevel,
+        optimizers: [
+          {
+            type: "VROOM" as const,
+            name: "VROOM",
+            displayName: "Optimización Rápida",
+            description: "VROOM solver",
+            available,
+            capabilities: {
+              supportsTimeWindows: true,
+              supportsSkills: true,
+              supportsMultiDimensionalCapacity: true,
+              supportsPriorities: true,
+              supportsBalancing: true,
+              maxOrders: 10000,
+              maxVehicles: 500,
+              speed: "fast" as const,
+              quality: "good" as const,
+            },
           },
-        })),
-        recommended: optimizers.find((o) => o.available)?.type || "VROOM",
+        ],
+        recommended: "VROOM" as const,
       },
     });
   } catch (error) {

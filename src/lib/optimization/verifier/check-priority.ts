@@ -6,11 +6,11 @@ import { orderById } from "./utils";
  * URGENT orders should never be left unassigned when an equivalent vehicle exists.
  * This is a SOFT check because sometimes geometry / capacity truly prevents it.
  */
-export const checkPriority: VerifierFn = ({ orders, result }) => {
+export const checkPriority: VerifierFn = ({ orders, plan }) => {
   const violations: Violation[] = [];
   const orderMap = orderById(orders);
 
-  for (const un of result.unassigned) {
+  for (const un of plan.unassignedOrders) {
     const order = orderMap.get(un.orderId);
     if (!order) continue;
     if (order.orderType === "URGENT") {
