@@ -28,7 +28,6 @@
  * the OptimizationConfiguration / VerifiedPlan domain shapes.
  */
 
-import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -50,26 +49,11 @@ import {
 } from "@/lib/infra/job-queue";
 import { runOptimization } from "../optimization-runner/run";
 import type { OptimizationInput } from "../optimization-runner/types";
+import { calculateInputHash } from "./input-hash";
+
+export { calculateInputHash };
 
 // ─── Hash + cache primitives ───────────────────────────────────────────
-
-/**
- * Deterministic hash of a job's inputs. Same inputs ⇒ same hash ⇒ cache hit.
- */
-export function calculateInputHash(
-  configurationId: string,
-  vehicleIds: string[],
-  driverIds: string[],
-  pendingOrderIds: string[],
-): string {
-  const data = JSON.stringify({
-    configurationId,
-    vehicleIds: vehicleIds.sort(),
-    driverIds: driverIds.sort(),
-    pendingOrderIds: pendingOrderIds.sort(),
-  });
-  return createHash("sha256").update(data).digest("hex");
-}
 
 /**
  * Find a previously COMPLETED job with the same input hash. Returns the
