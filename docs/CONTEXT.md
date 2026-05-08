@@ -128,14 +128,61 @@ puede hacer.
 
 Adentro del pipeline: trust the types, sin overhead Zod.
 
-**Código**: `src/lib/optimization/`, `src/lib/geo/zone-utils.ts`,
-`src/components/optimization/`, `src/components/planificacion/`.
+**Estructura del módulo `src/lib/optimization/`**:
+
+```
+solved-plan/          — canonical shapes (types + Zod schemas).
+                        Single source of truth for what a route/stop/plan
+                        looks like across the entire system.
+verifier/             — independent constraint checker. Consumes
+                        AggregatedPlan, returns VerifiedPlan. Owns its
+                        own input shapes (OptimizerOrder/Vehicle/Config).
+optimization-job/     — OptimizationJob lifecycle (state machine, DB
+                        transitions, orchestrator). API routes are thin
+                        wrappers over this module.
+optimization-runner/  — pipeline that produces a VerifiedPlan:
+                          run.ts          — thin orchestrator
+                          stages/load-inputs.ts    — DB I/O (Stage 1)
+                          stages/solve-batches.ts  — VROOM (Stage 3)
+                          stages/assign-drivers.ts — Raw → Assigned (Stage 4)
+                          stages/aggregate-plan.ts — metrics (Stage 5)
+                        (Verification is Stage 6 via verifier/.)
+vroom-optimizer.ts    — VROOM domain adapter (orders/vehicles/config →
+                        VROOM request, response → OptimizationOutput).
+vroom-client.ts       — HTTP client to VROOM.
+osrm-client.ts        — OSRM road network client.
+```
+
+**Código adicional**: `src/lib/geo/zone-utils.ts`, `src/components/optimization/`,
+`src/components/planificacion/`.
+
 **Reglas**:
-- VROOM es el **único** solver. No hay fallback.
-- El optimizador opera por **batches de zona** (`createZoneBatches`) para isolation hard entre zonas.
-- Pre-filtro: órdenes en zonas `RESTRICTED` se excluyen ANTES de invocar VROOM.
-- El `verifier` valida HARD/SOFT/INFO violations sobre el resultado, independiente del solver.
+- VROOM es el **único** solver (no hay `IOptimizer` interface — fue eliminada
+  como hypothetical seam).
+- El optimizador opera por **batches de zona** (`createZoneBatches`) para
+  isolation hard entre zonas.
+- Pre-filtro: órdenes en zonas `RESTRICTED` se excluyen ANTES de invocar
+  VROOM.
+- El `verifier` corre por defecto al final del pipeline — la invariante
+  "todo plan es verificado" la cumple el sistema de tipos
+  (`VerifiedPlan extends AggregatedPlan` con `verification` obligatorio).
+- Una `OptimizationConfiguration` con `status: CONFIRMED` no puede
+  re-optimizarse — el guard vive en `createAndExecuteJob`, no en la API
+  route.
 - Test harness golden en `src/tests/routing-quality/` con 28 escenarios.
+
+**OptimizationJob state machine** (gestionado por `optimization-job/lifecycle.ts`):
+
+```
+PENDING ──createAndExecuteJob──> RUNNING
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              ▼                     ▼                     ▼
+          COMPLETED              FAILED              CANCELLED
+```
+Estados terminales (COMPLETED, FAILED, CANCELLED) no transicionan back.
+La concurrency / locks / abort controllers viven en
+`src/lib/infra/job-queue.ts` como primitives process-level genéricas.
 
 ### 5. Route Execution
 **Qué resuelve**: la ejecución del plan en terreno por los drivers.
@@ -227,5 +274,8 @@ lugar de mantenerlo. Sin migrations data-rescue todavía.
 - `docs/SISTEMA_OPTIMIZACION.md` — detalle del solver y su integración.
 - `docs/ROLES-PERMISSIONS.md` — catálogo completo de permisos y roles.
 - `docs/ESTADO_PROYECTO.md` — estado de features.
-- `docs/adr/` — decisiones arquitectónicas con su motivación (en
-  construcción).
+- `docs/adr/` — decisiones arquitectónicas con su motivación:
+  - ADR-0001: VROOM como único solver
+  - ADR-0002: Canonical SolvedPlan shape (cadena tipada)
+  - ADR-0003: Runner como pipeline thin sobre stages explícitas
+  - ADR-0004: OptimizationJob lifecycle ownership
