@@ -62,6 +62,7 @@ function OrderDetailContent() {
   const [latestStop, setLatestStop] = useState<LatestStop | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reopenOpen, setReopenOpen] = useState(false);
+  const [reactivateOpen, setReactivateOpen] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const { toast } = useToast();
 
@@ -141,6 +142,45 @@ function OrderDetailContent() {
         timeWindowEnd: isoToHHmm(latestStop.timeWindowEnd),
         promisedDate: null,
         notes: latestStop.notes ?? null,
+      }
+    : null;
+
+  const handleReactivateSubmit = async (payload: ReschedulePayload) => {
+    if (!order || !companyId) return;
+    const res = await fetch(`/api/orders/${order.id}/reactivate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": companyId,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err.error || "No se pudo reactivar el pedido");
+    }
+    toast({
+      title: "Pedido reactivado",
+      description: "Entrará en el próximo plan disponible.",
+    });
+    refresh();
+  };
+
+  const reactivatePrefill: ReschedulePrefill | null = order
+    ? {
+        address: order.address,
+        latitude: latestStop?.latitude ?? "",
+        longitude: latestStop?.longitude ?? "",
+        timeWindowStart: order.timeWindowStart
+          ? order.timeWindowStart.slice(0, 5)
+          : null,
+        timeWindowEnd: order.timeWindowEnd
+          ? order.timeWindowEnd.slice(0, 5)
+          : null,
+        promisedDate: order.promisedDate
+          ? order.promisedDate.slice(0, 10)
+          : null,
+        notes: order.notes ?? null,
       }
     : null;
 
@@ -247,6 +287,24 @@ function OrderDetailContent() {
         </Card>
       )}
 
+      {order.status === "FAILED" && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div>
+              <div className="text-sm font-medium">Pedido marcado como fallido</div>
+              <div className="text-xs text-muted-foreground">
+                Reactívalo para que entre en el próximo plan disponible.
+              </div>
+            </div>
+            <Can perm="order:update">
+              <Button onClick={() => setReactivateOpen(true)}>
+                Programar próxima entrega
+              </Button>
+            </Can>
+          </CardContent>
+        </Card>
+      )}
+
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Historial de intentos</h2>
         <VisitTimeline
@@ -263,6 +321,16 @@ function OrderDetailContent() {
           mode="same-day"
           prefill={reopenPrefill}
           onSubmit={handleReopenSubmit}
+        />
+      )}
+
+      {reactivatePrefill && (
+        <ProgramarProximaEntregaDialog
+          open={reactivateOpen}
+          onOpenChange={setReactivateOpen}
+          mode="cross-day"
+          prefill={reactivatePrefill}
+          onSubmit={handleReactivateSubmit}
         />
       )}
     </div>
