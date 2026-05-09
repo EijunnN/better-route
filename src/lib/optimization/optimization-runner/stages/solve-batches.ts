@@ -360,6 +360,9 @@ export async function solveBatches(
   const warnings: string[] = [];
   const globalGroupMap: OrderGroupMap = new Map();
   const vehiclesWithRoutes = new Set<string>();
+  const selectedVehiclesById = new Map(
+    selectedVehicles.map((v) => [v.id, v]),
+  );
   const helpers: BuildStopHelpers = {
     globalGroupMap,
     groupSameLocation,
@@ -491,9 +494,7 @@ export async function solveBatches(
 
       // Materialise routes
       for (const vroomRoute of batchResult.routes) {
-        const vehicle = selectedVehicles.find(
-          (v) => v.id === vroomRoute.vehicleId,
-        );
+        const vehicle = selectedVehiclesById.get(vroomRoute.vehicleId);
         if (!vehicle) continue;
 
         const route = buildRawSolvedRoute({
@@ -565,9 +566,7 @@ export async function solveBatches(
 
     // Materialise routes
     for (const vroomRoute of vroomResult.routes) {
-      const vehicle = selectedVehicles.find(
-        (v) => v.id === vroomRoute.vehicleId,
-      );
+      const vehicle = selectedVehiclesById.get(vroomRoute.vehicleId);
       if (!vehicle) continue;
 
       const route = buildRawSolvedRoute({

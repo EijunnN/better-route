@@ -92,24 +92,35 @@ export async function aggregatePlan(
 
   // Drivers and vehicles that didn't end up on a route
   const assignedDriverIds = new Set(routes.map((r) => r.driverId));
-  const driversWithoutRoutes = args.selectedDrivers
-    .filter((d) => !assignedDriverIds.has(d.id))
-    .map((d) => {
-      const origin = args.driverVehicleOriginMap.get(d.id);
-      return {
-        id: d.id,
-        name: d.name,
-        originLatitude: origin?.latitude ? parseFloat(origin.latitude) : undefined,
-        originLongitude: origin?.longitude
-          ? parseFloat(origin.longitude)
-          : undefined,
-      };
+  const driversWithoutRoutes: Array<{
+    id: string;
+    name: string;
+    originLatitude: number | undefined;
+    originLongitude: number | undefined;
+  }> = [];
+  for (const d of args.selectedDrivers) {
+    if (assignedDriverIds.has(d.id)) continue;
+    const origin = args.driverVehicleOriginMap.get(d.id);
+    driversWithoutRoutes.push({
+      id: d.id,
+      name: d.name,
+      originLatitude: origin?.latitude ? parseFloat(origin.latitude) : undefined,
+      originLongitude: origin?.longitude
+        ? parseFloat(origin.longitude)
+        : undefined,
     });
+  }
 
   const assignedVehicleIds = new Set(routes.map((r) => r.vehicleId));
-  const vehiclesWithoutRoutes = args.vehiclesForFallback
-    .filter((v) => !assignedVehicleIds.has(v.id))
-    .map((v) => ({
+  const vehiclesWithoutRoutes: Array<{
+    id: string;
+    plate: string;
+    originLatitude: number | undefined;
+    originLongitude: number | undefined;
+  }> = [];
+  for (const v of args.vehiclesForFallback) {
+    if (assignedVehicleIds.has(v.id)) continue;
+    vehiclesWithoutRoutes.push({
       id: v.id,
       plate: v.plate,
       originLatitude: v.originLatitude
@@ -118,7 +129,8 @@ export async function aggregatePlan(
       originLongitude: v.originLongitude
         ? parseFloat(v.originLongitude)
         : undefined,
-    }));
+    });
+  }
 
   return {
     routes,

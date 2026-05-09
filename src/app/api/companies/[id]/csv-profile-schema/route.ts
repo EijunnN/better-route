@@ -24,13 +24,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id: targetCompanyId } = await params;
+  const [{ id: targetCompanyId }, authResult] = await Promise.all([
+    params,
+    requireRoutePermission(request, EntityType.COMPANY, Action.READ),
+  ]);
 
-  const authResult = await requireRoutePermission(
-    request,
-    EntityType.COMPANY,
-    Action.READ,
-  );
   if (authResult instanceof NextResponse) return authResult;
 
   if (

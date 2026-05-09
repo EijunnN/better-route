@@ -70,55 +70,52 @@ export async function POST(request: NextRequest) {
 
     const expiryHours = settings?.tokenExpiryHours ?? 48;
 
-    // Generate tokens for each order
-    const results: { trackingId: string; token: string; url: string }[] = [];
+    // Generate tokens for each order. Each order is independent — fan out
+    // the per-order check + (optional) refresh + insert concurrently.
+    const results = await Promise.all(
+      resolvedOrders.map(async (order) => {
+        const existingToken = await db.query.trackingTokens.findFirst({
+          where: and(
+            eq(trackingTokens.companyId, tenantCtx.companyId),
+            eq(trackingTokens.orderId, order.id),
+            eq(trackingTokens.active, true),
+          ),
+        });
 
-    for (const order of resolvedOrders) {
-      // Check if an active token already exists for this order
-      const existingToken = await db.query.trackingTokens.findFirst({
-        where: and(
-          eq(trackingTokens.companyId, tenantCtx.companyId),
-          eq(trackingTokens.orderId, order.id),
-          eq(trackingTokens.active, true),
-        ),
-      });
-
-      if (existingToken) {
-        // Check if not expired
-        if (!existingToken.expiresAt || existingToken.expiresAt > new Date()) {
-          results.push({
-            trackingId: order.trackingId,
-            token: existingToken.token,
-            url: `/tracking/${existingToken.token}`,
-          });
-          continue;
+        if (existingToken) {
+          if (!existingToken.expiresAt || existingToken.expiresAt > new Date()) {
+            return {
+              trackingId: order.trackingId,
+              token: existingToken.token,
+              url: `/tracking/${existingToken.token}`,
+            };
+          }
+          // Deactivate expired token
+          await db
+            .update(trackingTokens)
+            .set({ active: false, updatedAt: new Date() })
+            .where(eq(trackingTokens.id, existingToken.id));
         }
-        // Deactivate expired token
-        await db
-          .update(trackingTokens)
-          .set({ active: false, updatedAt: new Date() })
-          .where(eq(trackingTokens.id, existingToken.id));
-      }
 
-      // Generate a new token
-      const token = randomBytes(32).toString("base64url");
-      const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
+        const token = randomBytes(32).toString("base64url");
+        const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
 
-      await db.insert(trackingTokens).values({
-        companyId: tenantCtx.companyId,
-        orderId: order.id,
-        trackingId: order.trackingId,
-        token,
-        active: true,
-        expiresAt,
-      });
+        await db.insert(trackingTokens).values({
+          companyId: tenantCtx.companyId,
+          orderId: order.id,
+          trackingId: order.trackingId,
+          token,
+          active: true,
+          expiresAt,
+        });
 
-      results.push({
-        trackingId: order.trackingId,
-        token,
-        url: `/tracking/${token}`,
-      });
-    }
+        return {
+          trackingId: order.trackingId,
+          token,
+          url: `/tracking/${token}`,
+        };
+      }),
+    );
 
     return NextResponse.json({ data: results });
   } catch (error) {

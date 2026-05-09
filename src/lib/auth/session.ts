@@ -289,10 +289,8 @@ export async function invalidateUserSessions(userId: string): Promise<void> {
       `${USER_SESSIONS_PREFIX}${userId}`,
     );
 
-    // Invalidate each session
-    for (const sessionId of sessionIds) {
-      await invalidateSession(sessionId);
-    }
+    // Invalidate each session in parallel; entries are independent.
+    await Promise.all(sessionIds.map((sessionId) => invalidateSession(sessionId)));
 
     // Remove user's sessions list
     await redis.del(`${USER_SESSIONS_PREFIX}${userId}`);
@@ -317,10 +315,8 @@ export async function invalidateAllSessions(): Promise<number> {
     // Get all session IDs
     const sessionIds = await redis.smembers<string[]>(ALL_SESSIONS_SET);
 
-    // Invalidate each session
-    for (const sessionId of sessionIds) {
-      await invalidateSession(sessionId);
-    }
+    // Invalidate each session in parallel; entries are independent.
+    await Promise.all(sessionIds.map((sessionId) => invalidateSession(sessionId)));
 
     return sessionIds.length;
   } catch (error) {
@@ -347,14 +343,13 @@ export async function getUserSessions(userId: string): Promise<SessionData[]> {
       `${USER_SESSIONS_PREFIX}${userId}`,
     );
 
-    const sessions: SessionData[] = [];
-
-    for (const sessionId of sessionIds) {
-      const session = await getSession(sessionId);
-      if (session) {
-        sessions.push(session);
-      }
-    }
+    // Fetch sessions in parallel; each lookup is independent.
+    const fetched = await Promise.all(
+      sessionIds.map((sessionId) => getSession(sessionId)),
+    );
+    const sessions: SessionData[] = fetched.filter(
+      (s): s is SessionData => s !== null,
+    );
 
     return sessions;
   } catch (error) {
@@ -381,14 +376,11 @@ export async function getUserSessionCount(userId: string): Promise<number> {
       `${USER_SESSIONS_PREFIX}${userId}`,
     );
 
-    // Filter out expired sessions
-    let activeCount = 0;
-    for (const sessionId of sessionIds) {
-      const exists = await redis.exists(`${SESSION_PREFIX}${sessionId}`);
-      if (exists) {
-        activeCount++;
-      }
-    }
+    // Filter out expired sessions; check existence in parallel.
+    const existsResults = await Promise.all(
+      sessionIds.map((sessionId) => redis.exists(`${SESSION_PREFIX}${sessionId}`)),
+    );
+    const activeCount = existsResults.reduce((n, e) => n + (e ? 1 : 0), 0);
 
     return activeCount;
   } catch (error) {
@@ -412,14 +404,11 @@ export async function getGlobalSessionCount(): Promise<number> {
   try {
     const sessionIds = await redis.smembers<string[]>(ALL_SESSIONS_SET);
 
-    // Filter out expired sessions
-    let activeCount = 0;
-    for (const sessionId of sessionIds) {
-      const exists = await redis.exists(`${SESSION_PREFIX}${sessionId}`);
-      if (exists) {
-        activeCount++;
-      }
-    }
+    // Filter out expired sessions; check existence in parallel.
+    const existsResults = await Promise.all(
+      sessionIds.map((sessionId) => redis.exists(`${SESSION_PREFIX}${sessionId}`)),
+    );
+    const activeCount = existsResults.reduce((n, e) => n + (e ? 1 : 0), 0);
 
     return activeCount;
   } catch (error) {
@@ -443,21 +432,17 @@ export async function cleanupExpiredSessions(): Promise<number> {
 
   try {
     const sessionIds = await redis.smembers<string[]>(ALL_SESSIONS_SET);
-    let cleanedCount = 0;
 
-    for (const sessionId of sessionIds) {
-      const exists = await redis.exists(`${SESSION_PREFIX}${sessionId}`);
-
-      if (!exists) {
-        // Session expired, clean up references
-        // Remove from global set
+    // Per-id cleanup is independent: check + srem can run in parallel.
+    const cleaned = await Promise.all(
+      sessionIds.map(async (sessionId): Promise<number> => {
+        const exists = await redis.exists(`${SESSION_PREFIX}${sessionId}`);
+        if (exists) return 0;
         await redis.srem(ALL_SESSIONS_SET, sessionId);
-
-        // Note: user sessions list will be cleaned when user tries to access
-        // or during periodic cleanup
-        cleanedCount++;
-      }
-    }
+        return 1;
+      }),
+    );
+    const cleanedCount = cleaned.reduce<number>((n, c) => n + c, 0);
 
     return cleanedCount;
   } catch (error) {

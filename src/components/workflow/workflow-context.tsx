@@ -254,56 +254,71 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     if (!companyId) return;
     const template = WORKFLOW_TEMPLATES[templateType];
 
-    // Delete all existing states (which cascades transitions via soft-delete)
+    // Delete all existing states in parallel (each cascades transitions
+    // via soft-delete and entries are independent).
     const currentStates = Array.isArray(states) ? states : [];
-    for (const s of currentStates) {
-      await fetch(`/api/companies/${companyId}/workflow-states/${s.id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-    }
-
-    // Create all template states
-    const codeToId: Record<string, string> = {};
-    for (const stateConfig of template.states) {
-      const response = await fetch(`/api/companies/${companyId}/workflow-states`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
-        body: JSON.stringify({
-          code: stateConfig.code,
-          label: stateConfig.label,
-          systemState: stateConfig.systemState,
-          color: stateConfig.color,
-          position: stateConfig.position,
-          isDefault: stateConfig.isDefault ?? false,
-          isTerminal: stateConfig.isTerminal ?? false,
-          requiresPhoto: stateConfig.requiresPhoto ?? false,
-          requiresSignature: stateConfig.requiresSignature ?? false,
-          requiresNotes: stateConfig.requiresNotes ?? false,
-          requiresReason: stateConfig.requiresReason ?? false,
-          reasonOptions: stateConfig.reasonOptions ?? [],
+    await Promise.all(
+      currentStates.map((s) =>
+        fetch(`/api/companies/${companyId}/workflow-states/${s.id}`, {
+          method: "DELETE",
+          headers: { "x-company-id": companyId },
         }),
-      });
-      if (!response.ok) {
-        throw new Error(`Error al crear estado ${stateConfig.label}`);
-      }
-      const result = await response.json();
-      const created = result.data;
-      codeToId[stateConfig.code] = created.id;
-    }
+      ),
+    );
 
-    // Create all transitions
-    for (const [fromCode, toCode] of template.transitions) {
-      const fromId = codeToId[fromCode];
-      const toId = codeToId[toCode];
-      if (fromId && toId) {
-        await fetch(`/api/companies/${companyId}/workflow-transitions`, {
+    // Create all template states in parallel; codeToId is built from the
+    // resolved responses so it is fully populated before transitions run.
+    const created = await Promise.all(
+      template.states.map(async (stateConfig) => {
+        const response = await fetch(
+          `/api/companies/${companyId}/workflow-states`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-company-id": companyId,
+            },
+            body: JSON.stringify({
+              code: stateConfig.code,
+              label: stateConfig.label,
+              systemState: stateConfig.systemState,
+              color: stateConfig.color,
+              position: stateConfig.position,
+              isDefault: stateConfig.isDefault ?? false,
+              isTerminal: stateConfig.isTerminal ?? false,
+              requiresPhoto: stateConfig.requiresPhoto ?? false,
+              requiresSignature: stateConfig.requiresSignature ?? false,
+              requiresNotes: stateConfig.requiresNotes ?? false,
+              requiresReason: stateConfig.requiresReason ?? false,
+              reasonOptions: stateConfig.reasonOptions ?? [],
+            }),
+          },
+        );
+        if (!response.ok) {
+          throw new Error(`Error al crear estado ${stateConfig.label}`);
+        }
+        const result = await response.json();
+        return [stateConfig.code, result.data.id as string] as const;
+      }),
+    );
+    const codeToId: Record<string, string> = Object.fromEntries(created);
+
+    // Create all transitions in parallel; entries are independent.
+    await Promise.all(
+      template.transitions.map(([fromCode, toCode]) => {
+        const fromId = codeToId[fromCode];
+        const toId = codeToId[toCode];
+        if (!fromId || !toId) return Promise.resolve();
+        return fetch(`/api/companies/${companyId}/workflow-transitions`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-company-id": companyId },
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": companyId,
+          },
           body: JSON.stringify({ fromStateId: fromId, toStateId: toId }),
         });
-      }
-    }
+      }),
+    );
 
     await Promise.all([mutateStates(), mutateTransitions()]);
     toast({ title: "Plantilla aplicada", description: `Se configuro el flujo "${template.name}" con ${template.states.length} estados.` });

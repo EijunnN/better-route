@@ -201,18 +201,21 @@ export async function createAuthSession(
   },
   options?: { userAgent?: string; ipAddress?: string },
 ): Promise<string> {
-  const sessionId = await createSession(
-    {
-      userId: user.id,
-      companyId: user.companyId,
-      email: user.email,
-      role: user.role,
-    },
-    options,
-  );
+  // Session creation and cookies() lookup are independent — race them.
+  const [sessionId, cookieStore] = await Promise.all([
+    createSession(
+      {
+        userId: user.id,
+        companyId: user.companyId,
+        email: user.email,
+        role: user.role,
+      },
+      options,
+    ),
+    cookies(),
+  ]);
 
   // Set session cookie
-  const cookieStore = await cookies();
   cookieStore.set(SESSION_ID_COOKIE, sessionId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

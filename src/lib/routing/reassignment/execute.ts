@@ -48,80 +48,91 @@ export async function executeReassignment(
     };
   }
 
-  // Prepare operations with driver names
+  // Prepare operations with driver names. Each reassignment is keyed by a
+  // distinct (routeId, vehicleId), and the driver/stop lookups are
+  // independent — fan them out and merge results back deterministically.
   const operations: ReassignmentOperation[] = [];
+  const prepResults = await Promise.all(
+    reassignments.map(async (reassignment) => {
+      const replacementDriver = await db.query.users.findFirst({
+        where: and(
+          eq(users.companyId, companyId),
+          eq(users.id, reassignment.toDriverId),
+          eq(users.role, USER_ROLES.CONDUCTOR),
+        ),
+      });
 
-  for (const reassignment of reassignments) {
-    const replacementDriver = await db.query.users.findFirst({
-      where: and(
-        eq(users.companyId, companyId),
-        eq(users.id, reassignment.toDriverId),
-        eq(users.role, USER_ROLES.CONDUCTOR),
-      ),
-    });
+      if (!replacementDriver) {
+        return {
+          kind: "error" as const,
+          message: `Replacement driver ${reassignment.toDriverId} not found`,
+        };
+      }
 
-    if (!replacementDriver) {
-      errors.push(`Replacement driver ${reassignment.toDriverId} not found`);
-      continue;
-    }
+      if (
+        replacementDriver.driverStatus === "UNAVAILABLE" ||
+        replacementDriver.driverStatus === "ABSENT"
+      ) {
+        return {
+          kind: "error" as const,
+          message: `Replacement driver ${replacementDriver.name} is not available`,
+        };
+      }
 
-    // Validate driver availability
-    if (
-      replacementDriver.driverStatus === "UNAVAILABLE" ||
-      replacementDriver.driverStatus === "ABSENT"
-    ) {
-      errors.push(
-        `Replacement driver ${replacementDriver.name} is not available`,
+      const currentStops = await db.query.routeStops.findMany({
+        where: and(
+          eq(routeStops.companyId, companyId),
+          eq(routeStops.routeId, reassignment.routeId),
+          eq(routeStops.vehicleId, reassignment.vehicleId),
+          eq(routeStops.userId, absentDriverId),
+          inArray(routeStops.id, reassignment.stopIds),
+        ),
+      });
+
+      const pendingStopsForReassignment = currentStops.filter(
+        (s) => s.status === "PENDING",
       );
-      continue;
-    }
-
-    // Capture current state for potential rollback
-    const currentStops = await db.query.routeStops.findMany({
-      where: and(
-        eq(routeStops.companyId, companyId),
-        eq(routeStops.routeId, reassignment.routeId),
-        eq(routeStops.vehicleId, reassignment.vehicleId),
-        eq(routeStops.userId, absentDriverId),
-        inArray(routeStops.id, reassignment.stopIds),
-      ),
-    });
-
-    // Only reassign PENDING stops - IN_PROGRESS or COMPLETED stops should not be moved
-    const pendingStopsForReassignment = currentStops.filter(
-      (s) => s.status === "PENDING",
-    );
-    const inProgressStops = currentStops.filter(
-      (s) => s.status === "IN_PROGRESS",
-    );
-
-    if (pendingStopsForReassignment.length === 0) {
-      errors.push(
-        `No pending stops available for reassignment on route ${reassignment.routeId}. All stops are in progress or completed.`,
+      const inProgressStops = currentStops.filter(
+        (s) => s.status === "IN_PROGRESS",
       );
-      continue;
+
+      if (pendingStopsForReassignment.length === 0) {
+        return {
+          kind: "error" as const,
+          message: `No pending stops available for reassignment on route ${reassignment.routeId}. All stops are in progress or completed.`,
+        };
+      }
+
+      const pendingStopIds = pendingStopsForReassignment.map((s) => s.id);
+
+      return {
+        kind: "ok" as const,
+        warning:
+          inProgressStops.length > 0
+            ? `${inProgressStops.length} in-progress stop(s) on route ${reassignment.routeId} were skipped (not reassigned).`
+            : null,
+        operation: {
+          routeId: reassignment.routeId,
+          vehicleId: reassignment.vehicleId,
+          toDriverId: reassignment.toDriverId,
+          toDriverName: replacementDriver.name,
+          stopIds: pendingStopIds,
+          stopIdsBeforeUpdate: pendingStopsForReassignment.map((s) => ({
+            id: s.id,
+            driverId: s.userId,
+            status: s.status,
+          })),
+        } satisfies ReassignmentOperation,
+      };
+    }),
+  );
+  for (const r of prepResults) {
+    if (r.kind === "error") {
+      errors.push(r.message);
+    } else {
+      if (r.warning) warnings.push(r.warning);
+      operations.push(r.operation);
     }
-
-    if (inProgressStops.length > 0) {
-      warnings.push(
-        `${inProgressStops.length} in-progress stop(s) on route ${reassignment.routeId} were skipped (not reassigned).`,
-      );
-    }
-
-    const pendingStopIds = pendingStopsForReassignment.map((s) => s.id);
-
-    operations.push({
-      routeId: reassignment.routeId,
-      vehicleId: reassignment.vehicleId,
-      toDriverId: reassignment.toDriverId,
-      toDriverName: replacementDriver.name,
-      stopIds: pendingStopIds,
-      stopIdsBeforeUpdate: pendingStopsForReassignment.map((s) => ({
-        id: s.id,
-        driverId: s.userId,
-        status: s.status,
-      })),
-    });
   }
 
   if (errors.length > 0) {
@@ -141,22 +152,32 @@ export async function executeReassignment(
     stopCountsByDriver.set(op.toDriverId, current + op.stopIds.length);
   }
 
-  for (const [driverId, newStopsCount] of stopCountsByDriver) {
-    const existingPendingStops = await db.query.routeStops.findMany({
-      where: and(
-        eq(routeStops.companyId, companyId),
-        eq(routeStops.userId, driverId),
-        eq(routeStops.status, "PENDING"),
-      ),
-      columns: { id: true },
-    });
-
-    const maxCapacity = 50;
-    const projectedStops = existingPendingStops.length + newStopsCount;
-
+  // Per-driver capacity check: each query is independent.
+  const capacityChecks = await Promise.all(
+    Array.from(stopCountsByDriver.entries()).map(
+      async ([driverId, newStopsCount]) => {
+        const existingPendingStops = await db.query.routeStops.findMany({
+          where: and(
+            eq(routeStops.companyId, companyId),
+            eq(routeStops.userId, driverId),
+            eq(routeStops.status, "PENDING"),
+          ),
+          columns: { id: true },
+        });
+        return {
+          driverId,
+          newStopsCount,
+          existingCount: existingPendingStops.length,
+        };
+      },
+    ),
+  );
+  const maxCapacity = 50;
+  for (const { driverId, newStopsCount, existingCount } of capacityChecks) {
+    const projectedStops = existingCount + newStopsCount;
     if (projectedStops > maxCapacity) {
       errors.push(
-        `Replacement driver ${driverId} cannot absorb ${newStopsCount} stops. Current: ${existingPendingStops.length}, Projected: ${projectedStops}, Max: ${maxCapacity}`,
+        `Replacement driver ${driverId} cannot absorb ${newStopsCount} stops. Current: ${existingCount}, Projected: ${projectedStops}, Max: ${maxCapacity}`,
       );
     }
   }

@@ -197,17 +197,17 @@ export async function PATCH(
             ),
           );
 
-        // Record history for removed fleets
-        for (const fleetId of fleetsToRemove) {
-          await db.insert(vehicleFleetHistory).values({
+        // Record history for removed fleets — single batched insert.
+        await db.insert(vehicleFleetHistory).values(
+          fleetsToRemove.map((fleetId) => ({
             companyId: tenantCtx.companyId,
             vehicleId: id,
             previousFleetId: fleetId,
             newFleetId: null,
             userId: tenantCtx.userId,
             reason: body.reason || "Vehículo removido de la flota",
-          });
-        }
+          })),
+        );
       }
 
       // Add new fleet associations
@@ -220,17 +220,17 @@ export async function PATCH(
           })),
         );
 
-        // Record history for added fleets
-        for (const fleetId of fleetsToAdd) {
-          await db.insert(vehicleFleetHistory).values({
+        // Record history for added fleets — single batched insert.
+        await db.insert(vehicleFleetHistory).values(
+          fleetsToAdd.map((fleetId) => ({
             companyId: tenantCtx.companyId,
             vehicleId: id,
             previousFleetId: null,
             newFleetId: fleetId,
             userId: tenantCtx.userId,
             reason: body.reason || "Vehículo asignado a la flota",
-          });
-        }
+          })),
+        );
       }
     }
 

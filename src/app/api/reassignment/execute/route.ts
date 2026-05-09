@@ -102,16 +102,20 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Create individual audit logs for each reassignment
-      for (const reassignment of data.reassignments) {
-        const replacementDriver = await db.query.users.findFirst({
-          where: and(
-            eq(users.id, reassignment.toDriverId),
-            eq(users.role, USER_ROLES.CONDUCTOR),
-          ),
-        });
+      // Create individual audit logs for each reassignment in parallel —
+      // each entry is independent and the order of audit log inserts
+      // does not matter.
+      await Promise.all(
+        data.reassignments.map(async (reassignment) => {
+          const replacementDriver = await db.query.users.findFirst({
+            where: and(
+              eq(users.id, reassignment.toDriverId),
+              eq(users.role, USER_ROLES.CONDUCTOR),
+            ),
+          });
 
-        if (replacementDriver) {
+          if (!replacementDriver) return;
+
           await createAuditLog({
             entityType: "route_stop",
             entityId: reassignment.routeId,
@@ -126,8 +130,8 @@ export async function POST(request: NextRequest) {
               stopCount: reassignment.stopIds.length,
             },
           });
-        }
-      }
+        }),
+      );
 
       // Check if output regeneration is requested
       const regenerateOutput = body.regenerateOutput === true;

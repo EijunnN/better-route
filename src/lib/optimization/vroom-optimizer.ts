@@ -492,29 +492,33 @@ async function optimizeWithVroom(
 
     // Only rebalance if there's room for improvement (score < 80)
     if (initialScore < 80) {
-      const balanceableRoutes: BalanceableRoute[] = result.routes.map((r) => ({
-        vehicleId: r.vehicleId,
-        vehiclePlate: r.vehiclePlate,
-        stops: r.stops.map((s) => {
-          const order = orders.find((o) => o.id === s.orderId);
-          return {
-            orderId: s.orderId,
-            trackingId: s.trackingId,
-            address: s.address,
-            latitude: s.latitude,
-            longitude: s.longitude,
-            weight: order?.weightRequired || 0,
-            volume: order?.volumeRequired || 0,
-            sequence: s.sequence,
-          };
-        }),
-        totalWeight: r.totalWeight,
-        totalVolume: r.totalVolume,
-        maxWeight:
-          vehicles.find((v) => v.id === r.vehicleId)?.maxWeight ?? 10000,
-        maxVolume: vehicles.find((v) => v.id === r.vehicleId)?.maxVolume ?? 100,
-        maxOrders: vehicles.find((v) => v.id === r.vehicleId)?.maxOrders ?? 50,
-      }));
+      const ordersById = new Map(orders.map((o) => [o.id, o]));
+      const vehiclesById = new Map(vehicles.map((v) => [v.id, v]));
+      const balanceableRoutes: BalanceableRoute[] = result.routes.map((r) => {
+        const vehicle = vehiclesById.get(r.vehicleId);
+        return {
+          vehicleId: r.vehicleId,
+          vehiclePlate: r.vehiclePlate,
+          stops: r.stops.map((s) => {
+            const order = ordersById.get(s.orderId);
+            return {
+              orderId: s.orderId,
+              trackingId: s.trackingId,
+              address: s.address,
+              latitude: s.latitude,
+              longitude: s.longitude,
+              weight: order?.weightRequired || 0,
+              volume: order?.volumeRequired || 0,
+              sequence: s.sequence,
+            };
+          }),
+          totalWeight: r.totalWeight,
+          totalVolume: r.totalVolume,
+          maxWeight: vehicle?.maxWeight ?? 10000,
+          maxVolume: vehicle?.maxVolume ?? 100,
+          maxOrders: vehicle?.maxOrders ?? 50,
+        };
+      });
 
       const balanceResult = redistributeOrders(balanceableRoutes, {
         enabled: true,
@@ -524,11 +528,12 @@ async function optimizeWithVroom(
 
       // Only apply if improvement is significant
       if (balanceResult.newScore > initialScore + 5) {
+        const routesByVehicleId = new Map(
+          result.routes.map((r) => [r.vehicleId, r]),
+        );
         // Update routes with balanced results
         for (const balancedRoute of balanceResult.routes) {
-          const originalRoute = result.routes.find(
-            (r) => r.vehicleId === balancedRoute.vehicleId,
-          );
+          const originalRoute = routesByVehicleId.get(balancedRoute.vehicleId);
           if (originalRoute) {
             originalRoute.stops = balancedRoute.stops.map((s) => ({
               orderId: s.orderId,
@@ -552,6 +557,7 @@ async function optimizeWithVroom(
   // Enforce max distance: trim stops from routes that exceed the limit
   if (config.maxDistanceKm) {
     const maxDistanceMeters = config.maxDistanceKm * 1000;
+    const ordersByIdForTrim = new Map(orders.map((o) => [o.id, o]));
 
     for (const route of result.routes) {
       if (route.totalDistance > maxDistanceMeters) {
@@ -559,7 +565,7 @@ async function optimizeWithVroom(
         // Estimate distance per stop as totalDistance / (stops + 1 return leg)
         while (route.stops.length > 1 && route.totalDistance > maxDistanceMeters) {
           const removed = route.stops.pop()!;
-          const order = orders.find((o) => o.id === removed.orderId);
+          const order = ordersByIdForTrim.get(removed.orderId);
           // Approximate: reduce distance proportionally
           const avgLegDist = route.totalDistance / (route.stops.length + 2); // +2 for start+end legs
           route.totalDistance -= avgLegDist;

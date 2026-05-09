@@ -288,8 +288,11 @@ export async function POST(
     }
 
     // Recalculate sequences for affected source routes
+    const routesByIdForResequence = new Map(
+      result.routes.map((r) => [r.routeId, r]),
+    );
     for (const sourceRouteId of affectedSourceRouteIds) {
-      const route = result.routes.find((r) => r.routeId === sourceRouteId);
+      const route = routesByIdForResequence.get(sourceRouteId);
       if (route) {
         route.stops.forEach((stop, idx) => {
           stop.sequence = idx + 1;
@@ -301,7 +304,7 @@ export async function POST(
     // Collect all affected route IDs (source routes + target route)
     const affectedRouteIds: string[] = [
       ...Array.from(affectedSourceRouteIds).filter((routeId) => {
-        const route = result.routes.find((r) => r.routeId === routeId);
+        const route = routesByIdForResequence.get(routeId);
         return route && route.stops.length > 0;
       }),
       result.routes[targetRouteIndex].routeId,
@@ -309,7 +312,7 @@ export async function POST(
 
     // Get order details for reoptimization
     const allOrderIds = affectedRouteIds.flatMap((routeId) => {
-      const route = result.routes.find((r) => r.routeId === routeId);
+      const route = routesByIdForResequence.get(routeId);
       if (!route) return [];
       return route.stops.flatMap((s) => s.groupedOrderIds || [s.orderId]);
     });
@@ -326,7 +329,7 @@ export async function POST(
       // Get vehicle data
       const vehicleIds = affectedRouteIds
         .map((routeId) => {
-          const route = result.routes.find((r) => r.routeId === routeId);
+          const route = routesByIdForResequence.get(routeId);
           return route?.vehicleId;
         })
         .filter((id): id is string => !!id);
@@ -337,6 +340,7 @@ export async function POST(
           withTenantFilter(vehicles, [], tenantCtx.companyId),
         ),
       });
+      const vehicleDataById = new Map(vehicleData.map((v) => [v.id, v]));
 
       // Reoptimize each affected route. Load the preset bound to
       // this job so reassign honors the same routeEndMode /
@@ -351,10 +355,10 @@ export async function POST(
 
       // Reoptimize each affected route
       for (const routeId of affectedRouteIds) {
-        const route = result.routes.find((r) => r.routeId === routeId);
+        const route = routesByIdForResequence.get(routeId);
         if (!route || route.stops.length === 0) continue;
 
-        const vehicleInfo = vehicleData.find((v) => v.id === route.vehicleId);
+        const vehicleInfo = vehicleDataById.get(route.vehicleId);
         if (!vehicleInfo) continue;
 
         const routeOrderIds = route.stops.flatMap(
@@ -418,14 +422,21 @@ export async function POST(
           if (optimResult.routes.length > 0) {
             const optimRoute = optimResult.routes[0];
 
+            // Pre-index original stops by orderId AND grouped order ids so
+            // the per-stop lookup below is O(1).
+            const stopByOrderId = new Map<string, (typeof route.stops)[number]>();
+            for (const s of route.stops) {
+              stopByOrderId.set(s.orderId, s);
+              if (s.groupedOrderIds) {
+                for (const gid of s.groupedOrderIds) {
+                  stopByOrderId.set(gid, s);
+                }
+              }
+            }
+
             // Map optimized stops back to our format
             const optimizedStops = optimRoute.stops.map((optStop, idx) => {
-              const originalStop = route.stops.find(
-                (s) =>
-                  s.orderId === optStop.orderId ||
-                  (s.groupedOrderIds &&
-                    s.groupedOrderIds.includes(optStop.orderId)),
-              );
+              const originalStop = stopByOrderId.get(optStop.orderId);
               // Convert arrival time to ISO string if it's a number (timestamp)
               const arrivalTime = optStop.arrivalTime
                 ? typeof optStop.arrivalTime === "number"

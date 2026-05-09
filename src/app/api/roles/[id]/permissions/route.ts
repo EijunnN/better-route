@@ -153,38 +153,38 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Update each permission
-    for (const permUpdate of validatedData.permissions) {
-      // Check if role_permission entry exists
-      const [existing] = await db
-        .select()
-        .from(rolePermissions)
-        .where(
-          and(
-            eq(rolePermissions.roleId, id),
-            eq(rolePermissions.permissionId, permUpdate.permissionId),
-          ),
-        )
-        .limit(1);
+    // Update each permission in parallel — each (roleId, permissionId)
+    // pair is independent.
+    await Promise.all(
+      validatedData.permissions.map(async (permUpdate) => {
+        const [existing] = await db
+          .select()
+          .from(rolePermissions)
+          .where(
+            and(
+              eq(rolePermissions.roleId, id),
+              eq(rolePermissions.permissionId, permUpdate.permissionId),
+            ),
+          )
+          .limit(1);
 
-      if (existing) {
-        // Update existing
-        await db
-          .update(rolePermissions)
-          .set({
+        if (existing) {
+          await db
+            .update(rolePermissions)
+            .set({
+              enabled: permUpdate.enabled,
+              updatedAt: new Date(),
+            })
+            .where(eq(rolePermissions.id, existing.id));
+        } else {
+          await db.insert(rolePermissions).values({
+            roleId: id,
+            permissionId: permUpdate.permissionId,
             enabled: permUpdate.enabled,
-            updatedAt: new Date(),
-          })
-          .where(eq(rolePermissions.id, existing.id));
-      } else {
-        // Create new
-        await db.insert(rolePermissions).values({
-          roleId: id,
-          permissionId: permUpdate.permissionId,
-          enabled: permUpdate.enabled,
-        });
-      }
-    }
+          });
+        }
+      }),
+    );
 
     // Return updated permissions
     const updatedPerms = await db

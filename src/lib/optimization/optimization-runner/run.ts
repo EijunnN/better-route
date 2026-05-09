@@ -158,43 +158,59 @@ export async function runOptimization(
   // VROOM sees no time window and assigns the stop at any hour of the day.
   const timeWindowPresetsMap = await loadTimeWindowPresetsMap(input.companyId);
 
-  // Prepare orders with location info - filter out orders with missing coordinates
+  // Prepare orders with location info - filter out orders with missing coordinates.
+  // Single pass: collect invalid-coord orders + transform valid ones in one go
+  // (the list can be 1000+ orders, so the second iteration would be wasteful).
   const ordersWithInvalidCoords: typeof pendingOrders = [];
-  const ordersWithLocation = pendingOrders
-    .filter((order) => {
-      const lat = parseFloat(String(order.latitude));
-      const lng = parseFloat(String(order.longitude));
-      if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-        ordersWithInvalidCoords.push(order);
-        return false;
-      }
-      return true;
-    })
-    .map((order) => {
-      const resolvedTw = resolveTimeWindow(order, timeWindowPresetsMap);
-      return {
-        id: order.id,
-        trackingId: order.trackingId,
-        address: order.address,
-        latitude: order.latitude,
-        longitude: order.longitude,
-        weightRequired: order.weightRequired || 0,
-        volumeRequired: order.volumeRequired || 0,
-        orderValue: order.orderValue || 0,
-        unitsRequired: order.unitsRequired || 1, // Default 1 unit per order
-        orderType: order.orderType as "NEW" | "RESCHEDULED" | "URGENT" | undefined,
-        priority: order.priority ?? undefined,
-        promisedDate: order.promisedDate,
-        serviceTime: serviceTimeSeconds,
-        // Effective time window — already resolved via preset if the order
-        // only had `timeWindowPresetId`. "HH:mm" strings or undefined.
-        timeWindowStart: resolvedTw.start ?? undefined,
-        timeWindowEnd: resolvedTw.end ?? undefined,
-        // CSV of skill codes (e.g. "REFRIGERADO, FRAGIL"). Parsed per-vehicle
-        // below; VROOM needs them as an array of strings.
-        requiredSkills: order.requiredSkills ?? null,
-      };
+  const ordersWithLocation: Array<{
+    id: string;
+    trackingId: string;
+    address: string;
+    latitude: (typeof pendingOrders)[number]["latitude"];
+    longitude: (typeof pendingOrders)[number]["longitude"];
+    weightRequired: number;
+    volumeRequired: number;
+    orderValue: number;
+    unitsRequired: number;
+    orderType: "NEW" | "RESCHEDULED" | "URGENT" | undefined;
+    priority: number | undefined;
+    promisedDate: (typeof pendingOrders)[number]["promisedDate"];
+    serviceTime: number;
+    timeWindowStart: string | undefined;
+    timeWindowEnd: string | undefined;
+    requiredSkills: string | null;
+  }> = [];
+  for (const order of pendingOrders) {
+    const lat = parseFloat(String(order.latitude));
+    const lng = parseFloat(String(order.longitude));
+    if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+      ordersWithInvalidCoords.push(order);
+      continue;
+    }
+    const resolvedTw = resolveTimeWindow(order, timeWindowPresetsMap);
+    ordersWithLocation.push({
+      id: order.id,
+      trackingId: order.trackingId,
+      address: order.address,
+      latitude: order.latitude,
+      longitude: order.longitude,
+      weightRequired: order.weightRequired || 0,
+      volumeRequired: order.volumeRequired || 0,
+      orderValue: order.orderValue || 0,
+      unitsRequired: order.unitsRequired || 1, // Default 1 unit per order
+      orderType: order.orderType as "NEW" | "RESCHEDULED" | "URGENT" | undefined,
+      priority: order.priority ?? undefined,
+      promisedDate: order.promisedDate,
+      serviceTime: serviceTimeSeconds,
+      // Effective time window — already resolved via preset if the order
+      // only had `timeWindowPresetId`. "HH:mm" strings or undefined.
+      timeWindowStart: resolvedTw.start ?? undefined,
+      timeWindowEnd: resolvedTw.end ?? undefined,
+      // CSV of skill codes (e.g. "REFRIGERADO, FRAGIL"). Parsed per-vehicle
+      // below; VROOM needs them as an array of strings.
+      requiredSkills: order.requiredSkills ?? null,
     });
+  }
 
   // Orders with invalid coordinates are added to unassigned list below
 

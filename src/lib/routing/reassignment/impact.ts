@@ -244,16 +244,16 @@ export async function calculateReassignmentImpact(
     return `${minutes}m`;
   };
 
-  // Get skills required by all orders
+  // Orders + skills loads are independent — race them.
   const orderIds = pendingStops.map((s) => s.orderId);
-  const ordersList = await db.query.orders.findMany({
-    where: and(eq(orders.companyId, companyId), inArray(orders.id, orderIds)),
-  });
-
-  // Get skill names for missing skills
-  const allSkills = await db.query.vehicleSkills.findMany({
-    where: eq(vehicleSkills.companyId, companyId),
-  });
+  const [ordersList, allSkills] = await Promise.all([
+    db.query.orders.findMany({
+      where: and(eq(orders.companyId, companyId), inArray(orders.id, orderIds)),
+    }),
+    db.query.vehicleSkills.findMany({
+      where: eq(vehicleSkills.companyId, companyId),
+    }),
+  ]);
 
   const skillNameMap = new Map(allSkills.map((s) => [s.id, s.name]));
 

@@ -97,53 +97,55 @@ export async function evaluateDriverLicenseAlerts(
 
   const createdAlerts: (typeof alerts.$inferSelect)[] = [];
 
-  for (const driver of expiringDrivers) {
-    // Skip if no license expiry date
-    if (!driver.licenseExpiry) continue;
+  // Each driver is independent — fan out the lookup+insert pair concurrently.
+  const driverAlerts = await Promise.all(
+    expiringDrivers.map(async (driver) => {
+      if (!driver.licenseExpiry) return null;
 
-    const expiryDate = new Date(driver.licenseExpiry);
-    const daysUntilExpiry = Math.ceil(
-      (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-    );
+      const expiryDate = new Date(driver.licenseExpiry);
+      const daysUntilExpiry = Math.ceil(
+        (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+      );
 
-    // Skip if alert already exists
-    if (
-      await hasActiveAlert(
-        context,
-        "DRIVER_LICENSE_EXPIRING",
-        "DRIVER",
-        driver.id,
-      )
-    ) {
-      continue;
-    }
+      if (
+        await hasActiveAlert(
+          context,
+          "DRIVER_LICENSE_EXPIRING",
+          "DRIVER",
+          driver.id,
+        )
+      ) {
+        return null;
+      }
 
-    const isExpired = daysUntilExpiry <= 0;
-    const alertType = isExpired
-      ? "DRIVER_LICENSE_EXPIRED"
-      : "DRIVER_LICENSE_EXPIRING";
-    const severity = isExpired ? "CRITICAL" : "WARNING";
+      const isExpired = daysUntilExpiry <= 0;
+      const alertType = isExpired
+        ? "DRIVER_LICENSE_EXPIRED"
+        : "DRIVER_LICENSE_EXPIRING";
+      const severity = isExpired ? "CRITICAL" : "WARNING";
 
-    const alert = await createAlert(context, {
-      type: alertType as AlertData["type"],
-      severity: severity as AlertData["severity"],
-      entityType: "DRIVER",
-      entityId: driver.id,
-      title: isExpired
-        ? `Driver License Expired: ${driver.name}`
-        : `Driver License Expiring Soon: ${driver.name}`,
-      description: isExpired
-        ? `Driver ${driver.name} has an expired license (${driver.licenseNumber}).`
-        : `Driver ${driver.name}'s license expires in ${daysUntilExpiry} days.`,
-      metadata: {
-        driverName: driver.name,
-        licenseNumber: driver.licenseNumber,
-        expiryDate: driver.licenseExpiry,
-        daysUntilExpiry,
-      },
-    });
-
-    createdAlerts.push(alert);
+      return createAlert(context, {
+        type: alertType as AlertData["type"],
+        severity: severity as AlertData["severity"],
+        entityType: "DRIVER",
+        entityId: driver.id,
+        title: isExpired
+          ? `Driver License Expired: ${driver.name}`
+          : `Driver License Expiring Soon: ${driver.name}`,
+        description: isExpired
+          ? `Driver ${driver.name} has an expired license (${driver.licenseNumber}).`
+          : `Driver ${driver.name}'s license expires in ${daysUntilExpiry} days.`,
+        metadata: {
+          driverName: driver.name,
+          licenseNumber: driver.licenseNumber,
+          expiryDate: driver.licenseExpiry,
+          daysUntilExpiry,
+        },
+      });
+    }),
+  );
+  for (const alert of driverAlerts) {
+    if (alert) createdAlerts.push(alert);
   }
 
   return createdAlerts;
@@ -159,110 +161,116 @@ export async function evaluateVehicleDocumentAlerts(
   const thresholdDate = new Date();
   thresholdDate.setDate(thresholdDate.getDate() + daysThreshold);
 
-  // Check insurance expiry
-  const expiringInsurance = await db.query.vehicles.findMany({
-    where: and(
-      eq(vehicles.companyId, context.companyId),
-      eq(vehicles.active, true),
-      sql`${vehicles.insuranceExpiry} <= ${thresholdDate}`,
-    ),
-  });
-
-  // Check inspection expiry
-  const expiringInspection = await db.query.vehicles.findMany({
-    where: and(
-      eq(vehicles.companyId, context.companyId),
-      eq(vehicles.active, true),
-      sql`${vehicles.inspectionExpiry} <= ${thresholdDate}`,
-    ),
-  });
+  // Check insurance + inspection expiry concurrently — independent queries.
+  const [expiringInsurance, expiringInspection] = await Promise.all([
+    db.query.vehicles.findMany({
+      where: and(
+        eq(vehicles.companyId, context.companyId),
+        eq(vehicles.active, true),
+        sql`${vehicles.insuranceExpiry} <= ${thresholdDate}`,
+      ),
+    }),
+    db.query.vehicles.findMany({
+      where: and(
+        eq(vehicles.companyId, context.companyId),
+        eq(vehicles.active, true),
+        sql`${vehicles.inspectionExpiry} <= ${thresholdDate}`,
+      ),
+    }),
+  ]);
 
   const createdAlerts: (typeof alerts.$inferSelect)[] = [];
 
-  for (const vehicle of expiringInsurance) {
-    if (
-      await hasActiveAlert(
-        context,
-        "VEHICLE_INSURANCE_EXPIRING",
-        "VEHICLE",
-        vehicle.id,
-      )
-    ) {
-      continue;
-    }
+  const insuranceAlerts = await Promise.all(
+    expiringInsurance.map(async (vehicle) => {
+      if (
+        await hasActiveAlert(
+          context,
+          "VEHICLE_INSURANCE_EXPIRING",
+          "VEHICLE",
+          vehicle.id,
+        )
+      ) {
+        return null;
+      }
 
-    if (!vehicle.insuranceExpiry) continue;
-    const expiryDate = new Date(vehicle.insuranceExpiry);
-    const daysUntilExpiry = Math.ceil(
-      (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-    );
-    const isExpired = daysUntilExpiry <= 0;
-    const severity = isExpired ? "CRITICAL" : "WARNING";
+      if (!vehicle.insuranceExpiry) return null;
+      const expiryDate = new Date(vehicle.insuranceExpiry);
+      const daysUntilExpiry = Math.ceil(
+        (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+      );
+      const isExpired = daysUntilExpiry <= 0;
+      const severity = isExpired ? "CRITICAL" : "WARNING";
 
-    const alert = await createAlert(context, {
-      type: "VEHICLE_INSURANCE_EXPIRING",
-      severity: severity as AlertData["severity"],
-      entityType: "VEHICLE",
-      entityId: vehicle.id,
-      title: isExpired
-        ? `Vehicle Insurance Expired: ${vehicle.plate}`
-        : `Vehicle Insurance Expiring: ${vehicle.plate}`,
-      description: isExpired
-        ? `Vehicle ${vehicle.plate} (${vehicle.brand} ${vehicle.model}) has expired insurance.`
-        : `Vehicle ${vehicle.plate} (${vehicle.brand} ${vehicle.model}) insurance expires in ${daysUntilExpiry} days.`,
-      metadata: {
-        plate: vehicle.plate,
-        brand: vehicle.brand,
-        model: vehicle.model,
-        expiryDate: vehicle.insuranceExpiry,
-        daysUntilExpiry,
-      },
-    });
-
-    createdAlerts.push(alert);
+      return createAlert(context, {
+        type: "VEHICLE_INSURANCE_EXPIRING",
+        severity: severity as AlertData["severity"],
+        entityType: "VEHICLE",
+        entityId: vehicle.id,
+        title: isExpired
+          ? `Vehicle Insurance Expired: ${vehicle.plate}`
+          : `Vehicle Insurance Expiring: ${vehicle.plate}`,
+        description: isExpired
+          ? `Vehicle ${vehicle.plate} (${vehicle.brand} ${vehicle.model}) has expired insurance.`
+          : `Vehicle ${vehicle.plate} (${vehicle.brand} ${vehicle.model}) insurance expires in ${daysUntilExpiry} days.`,
+        metadata: {
+          plate: vehicle.plate,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          expiryDate: vehicle.insuranceExpiry,
+          daysUntilExpiry,
+        },
+      });
+    }),
+  );
+  for (const alert of insuranceAlerts) {
+    if (alert) createdAlerts.push(alert);
   }
 
-  for (const vehicle of expiringInspection) {
-    if (
-      await hasActiveAlert(
-        context,
-        "VEHICLE_INSPECTION_EXPIRING",
-        "VEHICLE",
-        vehicle.id,
-      )
-    ) {
-      continue;
-    }
+  const inspectionAlerts = await Promise.all(
+    expiringInspection.map(async (vehicle) => {
+      if (
+        await hasActiveAlert(
+          context,
+          "VEHICLE_INSPECTION_EXPIRING",
+          "VEHICLE",
+          vehicle.id,
+        )
+      ) {
+        return null;
+      }
 
-    if (!vehicle.inspectionExpiry) continue;
-    const expiryDate = new Date(vehicle.inspectionExpiry);
-    const daysUntilExpiry = Math.ceil(
-      (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-    );
-    const isExpired = daysUntilExpiry <= 0;
-    const severity = isExpired ? "CRITICAL" : "WARNING";
+      if (!vehicle.inspectionExpiry) return null;
+      const expiryDate = new Date(vehicle.inspectionExpiry);
+      const daysUntilExpiry = Math.ceil(
+        (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+      );
+      const isExpired = daysUntilExpiry <= 0;
+      const severity = isExpired ? "CRITICAL" : "WARNING";
 
-    const alert = await createAlert(context, {
-      type: "VEHICLE_INSPECTION_EXPIRING",
-      severity: severity as AlertData["severity"],
-      entityType: "VEHICLE",
-      entityId: vehicle.id,
-      title: isExpired
-        ? `Vehicle Inspection Expired: ${vehicle.plate}`
-        : `Vehicle Inspection Expiring: ${vehicle.plate}`,
-      description: isExpired
-        ? `Vehicle ${vehicle.plate} (${vehicle.brand} ${vehicle.model}) has expired inspection.`
-        : `Vehicle ${vehicle.plate} (${vehicle.brand} ${vehicle.model}) inspection expires in ${daysUntilExpiry} days.`,
-      metadata: {
-        plate: vehicle.plate,
-        brand: vehicle.brand,
-        model: vehicle.model,
-        expiryDate: vehicle.inspectionExpiry,
-        daysUntilExpiry,
-      },
-    });
-
-    createdAlerts.push(alert);
+      return createAlert(context, {
+        type: "VEHICLE_INSPECTION_EXPIRING",
+        severity: severity as AlertData["severity"],
+        entityType: "VEHICLE",
+        entityId: vehicle.id,
+        title: isExpired
+          ? `Vehicle Inspection Expired: ${vehicle.plate}`
+          : `Vehicle Inspection Expiring: ${vehicle.plate}`,
+        description: isExpired
+          ? `Vehicle ${vehicle.plate} (${vehicle.brand} ${vehicle.model}) has expired inspection.`
+          : `Vehicle ${vehicle.plate} (${vehicle.brand} ${vehicle.model}) inspection expires in ${daysUntilExpiry} days.`,
+        metadata: {
+          plate: vehicle.plate,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          expiryDate: vehicle.inspectionExpiry,
+          daysUntilExpiry,
+        },
+      });
+    }),
+  );
+  for (const alert of inspectionAlerts) {
+    if (alert) createdAlerts.push(alert);
   }
 
   return createdAlerts;
@@ -282,25 +290,28 @@ export async function evaluateDriverAbsentAlerts(context: AlertContext) {
 
   const createdAlerts: (typeof alerts.$inferSelect)[] = [];
 
-  for (const driver of absentDrivers) {
-    if (await hasActiveAlert(context, "DRIVER_ABSENT", "DRIVER", driver.id)) {
-      continue;
-    }
+  const absentAlertResults = await Promise.all(
+    absentDrivers.map(async (driver) => {
+      if (await hasActiveAlert(context, "DRIVER_ABSENT", "DRIVER", driver.id)) {
+        return null;
+      }
 
-    const alert = await createAlert(context, {
-      type: "DRIVER_ABSENT",
-      severity: "CRITICAL",
-      entityType: "DRIVER",
-      entityId: driver.id,
-      title: `Driver Marked as Absent: ${driver.name}`,
-      description: `Driver ${driver.name} has been marked as absent. Route reassignment may be required.`,
-      metadata: {
-        driverName: driver.name,
-        status: driver.driverStatus,
-      },
-    });
-
-    createdAlerts.push(alert);
+      return createAlert(context, {
+        type: "DRIVER_ABSENT",
+        severity: "CRITICAL",
+        entityType: "DRIVER",
+        entityId: driver.id,
+        title: `Driver Marked as Absent: ${driver.name}`,
+        description: `Driver ${driver.name} has been marked as absent. Route reassignment may be required.`,
+        metadata: {
+          driverName: driver.name,
+          status: driver.driverStatus,
+        },
+      });
+    }),
+  );
+  for (const alert of absentAlertResults) {
+    if (alert) createdAlerts.push(alert);
   }
 
   return createdAlerts;
@@ -321,29 +332,32 @@ export async function evaluateOptimizationFailedAlerts(context: AlertContext) {
 
   const createdAlerts: (typeof alerts.$inferSelect)[] = [];
 
-  for (const job of failedJobs) {
-    if (await hasActiveAlert(context, "OPTIMIZATION_FAILED", "JOB", job.id)) {
-      continue;
-    }
+  const failedJobAlerts = await Promise.all(
+    failedJobs.map(async (job) => {
+      if (await hasActiveAlert(context, "OPTIMIZATION_FAILED", "JOB", job.id)) {
+        return null;
+      }
 
-    const alert = await createAlert(context, {
-      type: "OPTIMIZATION_FAILED",
-      severity: "WARNING",
-      entityType: "JOB",
-      entityId: job.id,
-      title: `Optimization Job Failed`,
-      description: job.error
-        ? `Optimization job failed: ${job.error}`
-        : `Optimization job failed without error message.`,
-      metadata: {
-        jobId: job.id,
-        configurationId: job.configurationId,
-        error: job.error,
-        startedAt: job.startedAt,
-      },
-    });
-
-    createdAlerts.push(alert);
+      return createAlert(context, {
+        type: "OPTIMIZATION_FAILED",
+        severity: "WARNING",
+        entityType: "JOB",
+        entityId: job.id,
+        title: `Optimization Job Failed`,
+        description: job.error
+          ? `Optimization job failed: ${job.error}`
+          : `Optimization job failed without error message.`,
+        metadata: {
+          jobId: job.id,
+          configurationId: job.configurationId,
+          error: job.error,
+          startedAt: job.startedAt,
+        },
+      });
+    }),
+  );
+  for (const alert of failedJobAlerts) {
+    if (alert) createdAlerts.push(alert);
   }
 
   return createdAlerts;

@@ -113,52 +113,67 @@ export async function confirmCsvImport(
   const raceConditions: ConfirmCsvImportResult["raceConditions"] = [];
   let reactivated = 0;
 
-  for (const target of targets) {
-    // Re-read status; only proceed if still FAILED (race-safe).
-    const current = await db.query.orders.findFirst({
-      where: and(
-        eq(orders.id, target.existingOrderId),
-        eq(orders.companyId, context.companyId),
-      ),
-    });
-    if (!current) {
-      raceConditions.push({
-        existingOrderId: target.existingOrderId,
-        trackingId: target.trackingId,
-        actualStatus: "DELETED",
-      });
-      continue;
-    }
-    if (current.status !== "FAILED") {
-      raceConditions.push({
-        existingOrderId: target.existingOrderId,
-        trackingId: target.trackingId,
-        actualStatus: current.status,
-      });
-      continue;
-    }
-
-    const overrides = buildReactivationOverrides(target.data);
-    const [result] = await db
-      .update(orders)
-      .set({
-        ...overrides,
-        status: "PENDING",
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
+  // Each reactivation operates on a distinct order id, so we can run them
+  // concurrently. Race conditions are still detected via the WHERE clause
+  // on the UPDATE (status = FAILED).
+  const reactivationOutcomes = await Promise.all(
+    targets.map(async (target) => {
+      // Re-read status; only proceed if still FAILED (race-safe).
+      const current = await db.query.orders.findFirst({
+        where: and(
           eq(orders.id, target.existingOrderId),
-          eq(orders.status, "FAILED"),
+          eq(orders.companyId, context.companyId),
         ),
-      )
-      .returning({ id: orders.id });
-    if (result) reactivated += 1;
-    else {
-      raceConditions.push({
+      });
+      if (!current) {
+        return {
+          kind: "race" as const,
+          existingOrderId: target.existingOrderId,
+          trackingId: target.trackingId,
+          actualStatus: "DELETED" as const,
+        };
+      }
+      if (current.status !== "FAILED") {
+        return {
+          kind: "race" as const,
+          existingOrderId: target.existingOrderId,
+          trackingId: target.trackingId,
+          actualStatus: current.status,
+        };
+      }
+
+      const overrides = buildReactivationOverrides(target.data);
+      const [result] = await db
+        .update(orders)
+        .set({
+          ...overrides,
+          status: "PENDING",
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(orders.id, target.existingOrderId),
+            eq(orders.status, "FAILED"),
+          ),
+        )
+        .returning({ id: orders.id });
+      if (result) return { kind: "ok" as const };
+      return {
+        kind: "race" as const,
         existingOrderId: target.existingOrderId,
         trackingId: target.trackingId,
-        actualStatus: "RACE",
+        actualStatus: "RACE" as const,
+      };
+    }),
+  );
+  for (const outcome of reactivationOutcomes) {
+    if (outcome.kind === "ok") {
+      reactivated += 1;
+    } else {
+      raceConditions.push({
+        existingOrderId: outcome.existingOrderId,
+        trackingId: outcome.trackingId,
+        actualStatus: outcome.actualStatus,
       });
     }
   }

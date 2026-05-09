@@ -238,26 +238,30 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     const rolesToAdd = roleIds.filter((id) => !currentRoleIds.includes(id));
     const rolesToRemove = currentRoleIds.filter((id) => !roleIds.includes(id));
 
-    for (const roleId of rolesToAdd) {
-      await fetch(`/api/users/${userId}/roles`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": effectiveCompanyId,
-        },
-        body: JSON.stringify({
-          roleId,
-          isPrimary: rolesToAdd.indexOf(roleId) === 0,
+    await Promise.all(
+      rolesToAdd.map((roleId, idx) =>
+        fetch(`/api/users/${userId}/roles`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": effectiveCompanyId,
+          },
+          body: JSON.stringify({
+            roleId,
+            isPrimary: idx === 0,
+          }),
         }),
-      });
-    }
+      ),
+    );
 
-    for (const roleId of rolesToRemove) {
-      await fetch(`/api/users/${userId}/roles?roleId=${roleId}`, {
-        method: "DELETE",
-        headers: { "x-company-id": effectiveCompanyId },
-      });
-    }
+    await Promise.all(
+      rolesToRemove.map((roleId) =>
+        fetch(`/api/users/${userId}/roles?roleId=${roleId}`, {
+          method: "DELETE",
+          headers: { "x-company-id": effectiveCompanyId },
+        }),
+      ),
+    );
   };
 
   const handleCreate = async (data: CreateUserInput, selectedRoleIds: string[]) => {

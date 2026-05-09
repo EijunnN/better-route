@@ -13,43 +13,40 @@ export async function generateReassignmentOptions(
   jobId?: string,
   limit: number = 5,
 ): Promise<ReassignmentOption[]> {
-  // Get available replacement drivers
-  const replacementDrivers = await getAvailableReplacementDrivers(
-    companyId,
-    absentDriverId,
-    strategy,
-    jobId,
-    limit,
-  );
-
-  // Get affected routes
-  const affectedRoutes = await getAffectedRoutesForAbsentDriver(
-    companyId,
-    absentDriverId,
-    jobId,
-  );
+  // Replacement drivers and affected routes are independent — race them.
+  const [replacementDrivers, affectedRoutes] = await Promise.all([
+    getAvailableReplacementDrivers(
+      companyId,
+      absentDriverId,
+      strategy,
+      jobId,
+      limit,
+    ),
+    getAffectedRoutesForAbsentDriver(companyId, absentDriverId, jobId),
+  ]);
 
   const routeIds = affectedRoutes.map((r) => r.routeId);
 
-  // Calculate impact for each replacement driver
-  const options: ReassignmentOption[] = [];
+  // Calculate impact for each replacement driver in parallel — each call
+  // is independent and the slowest one gates the response, not the sum.
+  const options: ReassignmentOption[] = await Promise.all(
+    replacementDrivers.map(async (driver) => {
+      const impact = await calculateReassignmentImpact(
+        companyId,
+        absentDriverId,
+        driver.id,
+        jobId,
+      );
 
-  for (const driver of replacementDrivers) {
-    const impact = await calculateReassignmentImpact(
-      companyId,
-      absentDriverId,
-      driver.id,
-      jobId,
-    );
-
-    options.push({
-      optionId: `${absentDriverId}-${driver.id}`,
-      replacementDriver: driver,
-      impact,
-      strategy,
-      routeIds,
-    });
-  }
+      return {
+        optionId: `${absentDriverId}-${driver.id}`,
+        replacementDriver: driver,
+        impact,
+        strategy,
+        routeIds,
+      };
+    }),
+  );
 
   // Sort by priority first, then by validity, then by impact
   options.sort((a, b) => {

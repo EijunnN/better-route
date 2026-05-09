@@ -59,30 +59,76 @@ export async function loadInputs(
     throw new Error("Configuration not found");
   }
 
-  // Pending orders for this company
-  const pendingOrders = await db.query.orders.findMany({
-    where: and(
-      eq(orders.companyId, input.companyId),
-      eq(orders.status, "PENDING"),
-      eq(orders.active, true),
-    ),
-  });
-
-  // Selected vehicles (with their fleets resolved for downstream display)
-  const selectedVehicles = await db.query.vehicles.findMany({
-    where: and(
-      eq(vehicles.companyId, input.companyId),
-      inArray(vehicles.id, input.vehicleIds),
-      eq(vehicles.active, true),
-    ),
-    with: {
-      vehicleFleets: {
-        with: { fleet: true },
+  // Most loads are independent — race them. vehicleZoneAssignments depends
+  // on selectedVehicles' ids, so it's loaded in a second wave.
+  const [
+    pendingOrders,
+    selectedVehicles,
+    activeZones,
+    selectedDrivers,
+    preset,
+  ] = await Promise.all([
+    db.query.orders.findMany({
+      where: and(
+        eq(orders.companyId, input.companyId),
+        eq(orders.status, "PENDING"),
+        eq(orders.active, true),
+      ),
+    }),
+    db.query.vehicles.findMany({
+      where: and(
+        eq(vehicles.companyId, input.companyId),
+        inArray(vehicles.id, input.vehicleIds),
+        eq(vehicles.active, true),
+      ),
+      with: {
+        vehicleFleets: {
+          with: { fleet: true },
+        },
       },
-    },
-  });
+    }),
+    db
+      .select()
+      .from(zones)
+      .where(
+        and(eq(zones.companyId, input.companyId), eq(zones.active, true)),
+      ),
+    db.query.users.findMany({
+      where: and(
+        eq(users.companyId, input.companyId),
+        inArray(users.id, input.driverIds),
+        eq(users.active, true),
+        eq(users.role, USER_ROLES.CONDUCTOR),
+      ),
+    }),
+    // Optimization preset bound to this configuration. The config's
+    // `optimizationPresetId` wins — this is what the user picked for this
+    // run. NULL falls back to the company's default preset, which keeps
+    // legacy configs working. If there's no default either, the runner
+    // uses sensible system defaults (the `??` fallbacks at vroomConfig
+    // assembly time).
+    config.optimizationPresetId
+      ? db.query.optimizationPresets
+          .findFirst({
+            where: and(
+              eq(optimizationPresets.id, config.optimizationPresetId),
+              eq(optimizationPresets.companyId, input.companyId),
+              eq(optimizationPresets.active, true),
+            ),
+          })
+          .then((p) => p ?? null)
+      : db.query.optimizationPresets
+          .findFirst({
+            where: and(
+              eq(optimizationPresets.companyId, input.companyId),
+              eq(optimizationPresets.isDefault, true),
+              eq(optimizationPresets.active, true),
+            ),
+          })
+          .then((p) => p ?? null),
+  ]);
 
-  // Vehicle zone assignments
+  // Vehicle zone assignments (depends on selectedVehicles ids)
   const vehicleZoneAssignments = await db
     .select()
     .from(zoneVehicles)
@@ -109,12 +155,6 @@ export async function loadInputs(
     zoneAssignmentsByVehicle.set(assignment.vehicleId, existing);
   }
 
-  // Active zones
-  const activeZones = await db
-    .select()
-    .from(zones)
-    .where(and(eq(zones.companyId, input.companyId), eq(zones.active, true)));
-
   const zonesData: ZoneData[] = activeZones.map((z) => ({
     id: z.id,
     name: z.name,
@@ -124,37 +164,6 @@ export async function loadInputs(
     type: z.type || undefined,
     color: z.color || undefined,
   }));
-
-  // Drivers (users with role CONDUCTOR)
-  const selectedDrivers = await db.query.users.findMany({
-    where: and(
-      eq(users.companyId, input.companyId),
-      inArray(users.id, input.driverIds),
-      eq(users.active, true),
-      eq(users.role, USER_ROLES.CONDUCTOR),
-    ),
-  });
-
-  // Optimization preset bound to this configuration. The config's
-  // `optimizationPresetId` wins — this is what the user picked for this run.
-  // NULL falls back to the company's default preset, which keeps legacy
-  // configs working. If there's no default either, the runner uses sensible
-  // system defaults (the `??` fallbacks at vroomConfig assembly time).
-  const preset = config.optimizationPresetId
-    ? ((await db.query.optimizationPresets.findFirst({
-        where: and(
-          eq(optimizationPresets.id, config.optimizationPresetId),
-          eq(optimizationPresets.companyId, input.companyId),
-          eq(optimizationPresets.active, true),
-        ),
-      })) ?? null)
-    : ((await db.query.optimizationPresets.findFirst({
-        where: and(
-          eq(optimizationPresets.companyId, input.companyId),
-          eq(optimizationPresets.isDefault, true),
-          eq(optimizationPresets.active, true),
-        ),
-      })) ?? null);
 
   return {
     config,

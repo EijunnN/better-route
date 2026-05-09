@@ -366,9 +366,11 @@ export function clearUserPermissionCache(userId: string): void {
 export async function clearUserPermissionCacheByRole(
   roleId: string,
 ): Promise<void> {
-  const { db } = await import("@/db");
-  const { userRoles } = await import("@/db/schema");
-  const { eq, and } = await import("drizzle-orm");
+  const [{ db }, { userRoles }, { eq, and }] = await Promise.all([
+    import("@/db"),
+    import("@/db/schema"),
+    import("drizzle-orm"),
+  ]);
 
   const rows = await db
     .select({ userId: userRoles.userId })

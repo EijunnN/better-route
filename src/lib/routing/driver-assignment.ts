@@ -107,33 +107,29 @@ export async function assignDriversToRoutes(
     requests[0].companyId,
     allDriverIds,
   );
+  const candidateDriversById = new Map(
+    candidateDrivers.map((d) => [d.id, d]),
+  );
 
   // Calculate scores for each request
   for (const request of requests) {
-    const vehicle = await getVehicleWithSkills(request.vehicleId);
+    const [vehicle, requiredSkills] = await Promise.all([
+      getVehicleWithSkills(request.vehicleId),
+      getRequiredSkillsForRoute(request.companyId, request.routeStops),
+    ]);
     if (!vehicle) {
       continue;
     }
 
-    const requiredSkills = await getRequiredSkillsForRoute(
-      request.companyId,
-      request.routeStops,
-    );
-
-    const scores: AssignmentScore[] = [];
-
-    for (const driver of candidateDrivers) {
-      const score = await calculateDriverScore(
-        driver,
-        vehicle,
-        requiredSkills,
-        {
+    // Per-driver scoring is independent — fan it out within this request.
+    const scores: AssignmentScore[] = await Promise.all(
+      candidateDrivers.map((driver) =>
+        calculateDriverScore(driver, vehicle, requiredSkills, {
           ...config,
           assignedDrivers: request.assignedDrivers,
-        },
-      );
-      scores.push(score);
-    }
+        }),
+      ),
+    );
 
     // Filter out drivers with errors
     const validScores = scores.filter((s) => s.errors.length === 0);
@@ -141,7 +137,7 @@ export async function assignDriversToRoutes(
     if (validScores.length === 0) {
       // No valid drivers - assign best candidate with errors
       const bestScore = scores.sort((a, b) => b.score - a.score)[0];
-      const driver = candidateDrivers.find((d) => d.id === bestScore.driverId);
+      const driver = candidateDriversById.get(bestScore.driverId);
       if (driver) {
         results.set(request.vehicleId, {
           driverId: driver.id,
@@ -158,9 +154,7 @@ export async function assignDriversToRoutes(
 
     // Assign the best driver
     const bestScore = sortedScores[0];
-    const bestDriver = candidateDrivers.find(
-      (d) => d.id === bestScore.driverId,
-    );
+    const bestDriver = candidateDriversById.get(bestScore.driverId);
 
     if (bestDriver) {
       results.set(request.vehicleId, {

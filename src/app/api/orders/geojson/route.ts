@@ -123,42 +123,50 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(orders.createdAt))
       .limit(limit);
 
-    // Convert to GeoJSON FeatureCollection
-    const features = ordersList
-      .filter((order) => {
-        // Filter out invalid coordinates
-        const lat = parseFloat(order.latitude);
-        const lng = parseFloat(order.longitude);
-        return (
-          !Number.isNaN(lat) &&
-          !Number.isNaN(lng) &&
-          lat >= -90 &&
-          lat <= 90 &&
-          lng >= -180 &&
-          lng <= 180 &&
-          !(lat === 0 && lng === 0) // Filter out null island
-        );
-      })
-      .map((order) => {
-        const lat = parseFloat(order.latitude);
-        const lng = parseFloat(order.longitude);
-
-        return {
-          type: "Feature" as const,
-          geometry: {
-            type: "Point" as const,
-            coordinates: [lng, lat], // GeoJSON uses [longitude, latitude] order
-          },
-          properties: {
-            id: order.id,
-            trackingId: order.trackingId,
-            customerName: order.customerName || "",
-            address: order.address,
-            status: order.status,
-            color: STATUS_COLORS[order.status] || STATUS_COLORS.PENDING,
-          },
-        };
+    // Convert to GeoJSON FeatureCollection. Single pass: validates coordinates
+    // and builds the feature in one iteration (orders list can be 1000s).
+    const features: Array<{
+      type: "Feature";
+      geometry: { type: "Point"; coordinates: [number, number] };
+      properties: {
+        id: string;
+        trackingId: string;
+        customerName: string;
+        address: string;
+        status: (typeof ordersList)[number]["status"];
+        color: string;
+      };
+    }> = [];
+    for (const order of ordersList) {
+      const lat = parseFloat(order.latitude);
+      const lng = parseFloat(order.longitude);
+      if (
+        Number.isNaN(lat) ||
+        Number.isNaN(lng) ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180 ||
+        (lat === 0 && lng === 0) // skip null island
+      ) {
+        continue;
+      }
+      features.push({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [lng, lat], // GeoJSON uses [longitude, latitude] order
+        },
+        properties: {
+          id: order.id,
+          trackingId: order.trackingId,
+          customerName: order.customerName || "",
+          address: order.address,
+          status: order.status,
+          color: STATUS_COLORS[order.status] || STATUS_COLORS.PENDING,
+        },
       });
+    }
 
     const geojson = {
       type: "FeatureCollection",

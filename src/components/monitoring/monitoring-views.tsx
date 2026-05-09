@@ -71,10 +71,17 @@ export function MonitoringDashboardView() {
   );
 
   // Get unique vehicles with routes for vehicle filter
-  const vehiclesWithRoutes = state.driversData
-    .filter((d) => d.hasRoute && d.vehicleId && d.vehiclePlate)
-    .map((d) => ({ id: d.vehicleId!, plate: d.vehiclePlate! }))
-    .filter((v, i, arr) => arr.findIndex((a) => a.id === v.id) === i);
+  const vehiclesWithRoutes = (() => {
+    const seen = new Set<string>();
+    const out: Array<{ id: string; plate: string }> = [];
+    for (const d of state.driversData) {
+      if (!d.hasRoute || !d.vehicleId || !d.vehiclePlate) continue;
+      if (seen.has(d.vehicleId)) continue;
+      seen.add(d.vehicleId);
+      out.push({ id: d.vehicleId, plate: d.vehiclePlate });
+    }
+    return out;
+  })();
 
   // Status labels in Spanish
   const statusLabels: Record<string, string> = {

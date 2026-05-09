@@ -414,11 +414,12 @@ export async function POST(request: NextRequest) {
 
     const emailsToCheck = validRows.map(({ data }) => data.email);
     const usernamesToCheck = validRows.map(({ data }) => data.username);
-    const identificationsToCheck = validRows
-      .map(({ data }) =>
-        data.role === "CONDUCTOR" ? data.identification : null,
-      )
-      .filter((identification): identification is string => Boolean(identification));
+    const identificationsToCheck: string[] = [];
+    for (const { data } of validRows) {
+      if (data.role === "CONDUCTOR" && data.identification) {
+        identificationsToCheck.push(data.identification);
+      }
+    }
 
     const [existingEmails, existingUsernames, existingIdentifications] =
       await Promise.all([
@@ -463,12 +464,10 @@ export async function POST(request: NextRequest) {
     const existingUsernameSet = new Set(
       existingUsernames.map(({ value }) => value.toLowerCase()),
     );
-    const existingIdentificationSet = new Set(
-      existingIdentifications
-        .map(({ value }) => value)
-        .filter((value): value is string => Boolean(value))
-        .map((value) => value.toLowerCase()),
-    );
+    const existingIdentificationSet = new Set<string>();
+    for (const { value } of existingIdentifications) {
+      if (value) existingIdentificationSet.add(value.toLowerCase());
+    }
 
     // Create users
     let created = 0;

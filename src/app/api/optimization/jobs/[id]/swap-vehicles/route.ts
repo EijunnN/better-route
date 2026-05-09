@@ -278,14 +278,21 @@ export async function POST(
           if (optimResult.routes.length > 0) {
             const optimRoute = optimResult.routes[0];
 
+            // Pre-index stops by orderId AND grouped order ids so the
+            // per-stop lookup below is O(1) instead of O(n*m).
+            const stopByOrderId = new Map<string, (typeof route.stops)[number]>();
+            for (const s of route.stops) {
+              stopByOrderId.set(s.orderId, s);
+              if (s.groupedOrderIds) {
+                for (const gid of s.groupedOrderIds) {
+                  stopByOrderId.set(gid, s);
+                }
+              }
+            }
+
             // Map optimized stops back to our format
             const optimizedStops = optimRoute.stops.map((optStop, idx) => {
-              const originalStop = route.stops.find(
-                (s) =>
-                  s.orderId === optStop.orderId ||
-                  (s.groupedOrderIds &&
-                    s.groupedOrderIds.includes(optStop.orderId)),
-              );
+              const originalStop = stopByOrderId.get(optStop.orderId);
               // Convert arrival time to ISO string if it's a number (timestamp)
               const arrivalTime = optStop.arrivalTime
                 ? typeof optStop.arrivalTime === "number"

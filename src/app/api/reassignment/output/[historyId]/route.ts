@@ -112,45 +112,25 @@ export async function GET(
       ...new Set(reassignmentsData.map((r) => r.driverId)),
     ] as string[];
 
-    // Generate route output for each replacement driver
-    const driverRoutes: DriverRouteOutput[] = [];
+    // Generate route output for each replacement driver. Each driver's
+    // lookups are independent — fan them out concurrently.
+    const driverRouteResults = await Promise.all(
+      driverIds.map(async (driverId): Promise<DriverRouteOutput | null> => {
+        const driver = await db.query.users.findFirst({
+          where: and(
+            eq(users.id, driverId),
+            eq(users.companyId, tenantCtx.companyId),
+            eq(users.role, USER_ROLES.CONDUCTOR),
+          ),
+        });
 
-    for (const driverId of driverIds) {
-      // Get driver info
-      const driver = await db.query.users.findFirst({
-        where: and(
-          eq(users.id, driverId),
-          eq(users.companyId, tenantCtx.companyId),
-          eq(users.role, USER_ROLES.CONDUCTOR),
-        ),
-      });
+        if (!driver) return null;
 
-      if (!driver) continue;
+        const reassignedStopIds = reassignmentsData
+          .filter((r) => r.driverId === driverId)
+          .flatMap((r) => r.stopIds);
 
-      // Get all stops for this driver that were part of the reassignment
-      const reassignedStopIds = reassignmentsData
-        .filter((r) => r.driverId === driverId)
-        .flatMap((r) => r.stopIds);
-
-      const stops = await db.query.routeStops.findMany({
-        where: and(
-          eq(routeStops.companyId, tenantCtx.companyId),
-          eq(routeStops.userId, driverId),
-        ),
-        with: {
-          vehicle: true,
-          order: true,
-        },
-      });
-
-      // Filter stops to only those relevant to this reassignment
-      const relevantStops = stops.filter((stop) =>
-        reassignedStopIds.includes(stop.id),
-      );
-
-      if (relevantStops.length === 0) {
-        // If no specific stops, get all current stops for the driver
-        const allDriverStops = await db.query.routeStops.findMany({
+        const stops = await db.query.routeStops.findMany({
           where: and(
             eq(routeStops.companyId, tenantCtx.companyId),
             eq(routeStops.userId, driverId),
@@ -161,15 +141,32 @@ export async function GET(
           },
         });
 
-        if (allDriverStops.length > 0) {
+        const relevantStops = stops.filter((stop) =>
+          reassignedStopIds.includes(stop.id),
+        );
+
+        if (relevantStops.length === 0) {
+          // If no specific stops, get all current stops for the driver
+          const allDriverStops = await db.query.routeStops.findMany({
+            where: and(
+              eq(routeStops.companyId, tenantCtx.companyId),
+              eq(routeStops.userId, driverId),
+            ),
+            with: {
+              vehicle: true,
+              order: true,
+            },
+          });
+
+          if (allDriverStops.length === 0) return null;
+
           const vehicleId = allDriverStops[0].vehicleId;
 
-          // Get vehicle info
           const vehicle = await db.query.vehicles.findFirst({
             where: eq(vehicles.id, vehicleId),
           });
 
-          driverRoutes.push({
+          return {
             driverId: driver.id,
             driverName: driver.name,
             vehicleId: vehicleId,
@@ -192,17 +189,16 @@ export async function GET(
             completedStops: allDriverStops.filter(
               (s) => s.status === "COMPLETED",
             ).length,
-          });
+          };
         }
-      } else {
+
         const vehicleId = relevantStops[0].vehicleId;
 
-        // Get vehicle info
         const vehicle = await db.query.vehicles.findFirst({
           where: eq(vehicles.id, vehicleId),
         });
 
-        driverRoutes.push({
+        return {
           driverId: driver.id,
           driverName: driver.name,
           vehicleId: vehicleId,
@@ -224,9 +220,12 @@ export async function GET(
             .length,
           completedStops: relevantStops.filter((s) => s.status === "COMPLETED")
             .length,
-        });
-      }
-    }
+        };
+      }),
+    );
+    const driverRoutes: DriverRouteOutput[] = driverRouteResults.filter(
+      (r): r is DriverRouteOutput => r !== null,
+    );
 
     // Build summary
     const totalStops = driverRoutes.reduce(
@@ -316,26 +315,27 @@ export async function POST(
       ...new Set(reassignmentsData.map((r) => r.driverId)),
     ] as string[];
 
-    // Get driver details for notifications
-    const notifiedDrivers = [];
-    for (const driverId of driverIds) {
-      const driver = await db.query.users.findFirst({
-        where: and(
-          eq(users.id, driverId),
-          eq(users.companyId, tenantCtx.companyId),
-          eq(users.role, USER_ROLES.CONDUCTOR),
-        ),
-      });
-
-      if (driver) {
-        notifiedDrivers.push({
-          id: driver.id,
-          name: driver.name,
-          email: driver.email,
-          phone: driver.phone,
-        });
-      }
-    }
+    // Get driver details for notifications. Lookups are independent —
+    // fan them out so the slowest one gates the response, not their sum.
+    const driverLookups = await Promise.all(
+      driverIds.map((driverId) =>
+        db.query.users.findFirst({
+          where: and(
+            eq(users.id, driverId),
+            eq(users.companyId, tenantCtx.companyId),
+            eq(users.role, USER_ROLES.CONDUCTOR),
+          ),
+        }),
+      ),
+    );
+    const notifiedDrivers = driverLookups
+      .filter((driver): driver is NonNullable<typeof driver> => Boolean(driver))
+      .map((driver) => ({
+        id: driver.id,
+        name: driver.name,
+        email: driver.email,
+        phone: driver.phone,
+      }));
 
     // In a real implementation, this would:
     // 1. Generate PDF/CSV output files
