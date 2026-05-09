@@ -54,7 +54,7 @@ export function PresetsListView() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Settings2 className="h-6 w-6" />
+            <Settings2 className="size-6" />
             Presets de Optimización
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -64,7 +64,7 @@ export function PresetsListView() {
         <div className="flex items-center gap-3">
           <Can perm="optimization_preset:create">
             <Button onClick={actions.handleCreate}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="size-4 mr-2" />
               Nuevo Preset
             </Button>
           </Can>
@@ -97,14 +97,14 @@ export function PresetsListView() {
       ) : state.presets.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Settings2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <Settings2 className="size-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium">No hay presets configurados</h3>
             <p className="text-muted-foreground mt-2">
               Crea tu primer preset para personalizar la optimización de rutas
             </p>
             <Can perm="optimization_preset:create">
               <Button className="mt-4" onClick={actions.handleCreate}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="size-4 mr-2" />
                 Crear Preset
               </Button>
             </Can>
@@ -135,7 +135,7 @@ function PresetCard({ preset }: { preset: OptimizationPreset }) {
               {preset.name}
               {preset.isDefault && (
                 <Badge variant="default" className="text-xs">
-                  <Star className="h-3 w-3 mr-1" />
+                  <Star className="size-3 mr-1" />
                   Activo
                 </Badge>
               )}
@@ -194,14 +194,14 @@ function PresetCard({ preset }: { preset: OptimizationPreset }) {
         <div className="flex items-center gap-2 pt-2 border-t">
           <Can perm="optimization_preset:update">
             <Button variant="outline" size="sm" className="flex-1" onClick={() => actions.handleEdit(preset)}>
-              <Edit className="h-4 w-4 mr-1" />
+              <Edit className="size-4 mr-1" />
               Editar
             </Button>
           </Can>
           {!preset.isDefault && (
             <Can perm="optimization_preset:update">
               <Button variant="outline" size="sm" onClick={() => actions.handleSetDefault(preset)} title="Usar como predeterminado">
-                <Star className="h-4 w-4" />
+                <Star className="size-4" />
               </Button>
             </Can>
           )}
@@ -212,7 +212,7 @@ function PresetCard({ preset }: { preset: OptimizationPreset }) {
               className="text-destructive hover:text-destructive"
               onClick={() => actions.handleDelete(preset.id)}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="size-4" />
             </Button>
           </Can>
         </div>
@@ -400,7 +400,7 @@ function PresetDialog() {
                   : "bg-gray-300 text-gray-600 dark:bg-gray-600 dark:text-gray-300"
               }`}
             >
-              <Star className={`h-4 w-4 ${state.editingPreset?.isDefault ? "fill-current" : ""}`} />
+              <Star className={`size-4 ${state.editingPreset?.isDefault ? "fill-current" : ""}`} />
               {state.editingPreset?.isDefault ? "ACTIVO" : "INACTIVO"}
             </div>
           </button>

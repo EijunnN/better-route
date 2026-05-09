@@ -78,7 +78,7 @@ export function WorkflowTemplatePicker({
         {onCancel && (
           <div className="flex justify-end">
             <Button variant="ghost" size="sm" onClick={onCancel}>
-              <X className="mr-1 h-4 w-4" />
+              <X className="mr-1 size-4" />
               Volver
             </Button>
           </div>
@@ -91,7 +91,7 @@ export function WorkflowTemplatePicker({
         </p>
         {hasExistingStates && (
           <div className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-            <AlertTriangle className="h-3.5 w-3.5" />
+            <AlertTriangle className="size-3.5" />
             Aplicar una plantilla reemplazará los {existingCount} estados
             actuales.
           </div>
@@ -118,8 +118,8 @@ export function WorkflowTemplatePicker({
             >
               <CardContent className="space-y-4 p-5">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="size-5" />
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm font-semibold">{template.name}</h3>
@@ -136,7 +136,7 @@ export function WorkflowTemplatePicker({
                       className="flex items-center gap-1 rounded-full bg-muted/50 px-2 py-0.5"
                     >
                       <span
-                        className="h-2 w-2 shrink-0 rounded-full"
+                        className="size-2 shrink-0 rounded-full"
                         style={{ backgroundColor: s.color }}
                         aria-hidden="true"
                       />
@@ -168,7 +168,7 @@ export function WorkflowTemplatePicker({
                   >
                     {isApplying ? (
                       <>
-                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-1.5 size-4 animate-spin" />
                         Aplicando…
                       </>
                     ) : (
@@ -188,8 +188,8 @@ export function WorkflowTemplatePicker({
           }`}
         >
           <CardContent className="flex h-full flex-col items-center justify-center space-y-4 p-5 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-              <Sparkles className="h-5 w-5" />
+            <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <Sparkles className="size-5" />
             </div>
             <div>
               <h3 className="text-sm font-semibold">Personalizado</h3>

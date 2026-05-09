@@ -121,7 +121,7 @@ function SidebarLogo() {
 
   return (
     <Link href="/dashboard" className="flex items-center gap-2">
-      <LogoAnt className="h-9 w-9 shrink-0 text-sidebar-foreground" />
+      <LogoAnt className="size-9 shrink-0 text-sidebar-foreground" />
       {!state.collapsed && (
         <span className="text-sm font-semibold text-sidebar-foreground">BetterRoute</span>
       )}
@@ -137,13 +137,13 @@ function SidebarCollapseButton() {
       variant="ghost"
       size="icon"
       onClick={actions.toggleCollapse}
-      className="h-7 w-7 text-sidebar-foreground hover:bg-sidebar-accent"
+      className="size-7 text-sidebar-foreground hover:bg-sidebar-accent"
       aria-label={state.collapsed ? "Expandir menu" : "Colapsar menu"}
     >
       {state.collapsed ? (
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className="size-3.5" />
       ) : (
-        <ChevronLeft className="h-3.5 w-3.5" />
+        <ChevronLeft className="size-3.5" />
       )}
     </Button>
   );
@@ -242,13 +242,13 @@ function SidebarNavItem({ item }: { item: NavItem }) {
           )}
           title={state.collapsed ? item.title : undefined}
         >
-          <item.icon className="h-4 w-4 shrink-0" />
+          <item.icon className="size-4 shrink-0" />
           {!state.collapsed && (
             <>
               <span className="flex-1 text-left">{item.title}</span>
               <ChevronDown
                 className={cn(
-                  "h-3.5 w-3.5 shrink-0 transition-transform",
+                  "size-3.5 shrink-0 transition-transform",
                   isExpanded && "rotate-180"
                 )}
               />
@@ -291,7 +291,7 @@ function SidebarNavLink({
       )}
       title={state.collapsed ? item.title : undefined}
     >
-      <item.icon className={cn("shrink-0", isChild ? "h-3.5 w-3.5" : "h-4 w-4")} />
+      <item.icon className={cn("shrink-0", isChild ? "size-3.5" : "size-4")} />
       {!state.collapsed && <span>{item.title}</span>}
       {!state.collapsed && item.badge && (
         <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[11px] text-primary-foreground">
@@ -322,9 +322,9 @@ function SidebarThemeToggle() {
       title={state.collapsed ? (isDark ? "Modo claro" : "Modo oscuro") : undefined}
     >
       {isDark ? (
-        <Sun className="h-4 w-4 shrink-0" />
+        <Sun className="size-4 shrink-0" />
       ) : (
-        <Moon className="h-4 w-4 shrink-0" />
+        <Moon className="size-4 shrink-0" />
       )}
       {!state.collapsed && <span>{isDark ? "Modo Claro" : "Modo Oscuro"}</span>}
     </Button>
@@ -346,7 +346,7 @@ function SidebarLogoutButton() {
         window.location.href = "/login";
       }}
     >
-      <LogOut className="h-4 w-4 shrink-0" />
+      <LogOut className="size-4 shrink-0" />
       {!state.collapsed && <span>Cerrar Sesion</span>}
     </Button>
   );
@@ -375,7 +375,7 @@ function SidebarCompanySwitcher() {
               className="flex h-9 w-full items-center justify-center rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
               title={selectedCompany?.commercialName || "Seleccionar empresa"}
             >
-              <Building2 className="h-5 w-5 shrink-0" />
+              <Building2 className="size-5 shrink-0" />
             </button>
           </PopoverTrigger>
           <PopoverContent side="right" align="start" className="w-56 p-1">
@@ -391,10 +391,10 @@ function SidebarCompanySwitcher() {
                   company.id === selectedCompanyId && "bg-accent"
                 )}
               >
-                <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
                 <span className="flex-1 truncate text-left">{company.commercialName}</span>
                 {company.id === selectedCompanyId && (
-                  <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <Check className="size-3.5 shrink-0 text-primary" />
                 )}
               </button>
             ))}
@@ -414,15 +414,15 @@ function SidebarCompanySwitcher() {
               "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}
           >
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-sidebar-border bg-sidebar-accent/50">
-              <Building2 className="h-3.5 w-3.5" />
+            <div className="flex size-6 shrink-0 items-center justify-center rounded-md border border-sidebar-border bg-sidebar-accent/50">
+              <Building2 className="size-3.5" />
             </div>
             <span className="flex-1 truncate text-left font-medium">
               {isLoadingCompanies
                 ? "Cargando..."
                 : selectedCompany?.commercialName || "Empresa"}
             </span>
-            <ChevronsUpDown className="h-4 w-4 shrink-0 text-sidebar-foreground/50" />
+            <ChevronsUpDown className="size-4 shrink-0 text-sidebar-foreground/50" />
           </button>
         </PopoverTrigger>
         <PopoverContent side="right" align="start" className="w-64 p-1">
@@ -438,12 +438,12 @@ function SidebarCompanySwitcher() {
                 company.id === selectedCompanyId && "bg-accent"
               )}
             >
-              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded border bg-muted">
-                <Building2 className="h-3 w-3 text-muted-foreground" />
+              <div className="flex size-5 shrink-0 items-center justify-center rounded border bg-muted">
+                <Building2 className="size-3 text-muted-foreground" />
               </div>
               <span className="flex-1 truncate text-left">{company.commercialName}</span>
               {company.id === selectedCompanyId && (
-                <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <Check className="size-3.5 shrink-0 text-primary" />
               )}
             </button>
           ))}

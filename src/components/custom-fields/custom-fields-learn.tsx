@@ -213,7 +213,7 @@ export function CustomFieldsLearn({
           <Card>
             <CardContent className="p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-muted-foreground" />
+                <Package className="size-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Si es campo de Pedido</span>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -225,7 +225,7 @@ export function CustomFieldsLearn({
           <Card>
             <CardContent className="p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <MapPin className="size-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Si es campo de Entrega</span>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -273,7 +273,7 @@ export function CustomFieldsLearn({
         <div className="mt-8 flex justify-center">
           <Can perm="company:update">
             <Button onClick={onPrimaryAction}>
-              <Plus className="h-4 w-4 mr-1.5" />
+              <Plus className="size-4 mr-1.5" />
               Crear mi primer campo
             </Button>
           </Can>
@@ -306,7 +306,7 @@ function FlowStep({ number, title, body, tone }: FlowStepProps) {
         </div>
         <p className="text-xs leading-relaxed opacity-90">{body}</p>
       </div>
-      <ArrowRight className="hidden sm:block absolute -right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 last:hidden" />
+      <ArrowRight className="hidden sm:block absolute -right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40 last:hidden" />
     </div>
   );
 }
@@ -329,7 +329,7 @@ function ComparisonCard({ icon: Icon, title, who, when, examples, tone }: Compar
     <Card className={toneClass}>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 text-muted-foreground" />
+          <Icon className="size-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">{title}</h3>
         </div>
         <div className="space-y-1 text-xs">
@@ -405,7 +405,7 @@ function TypeCard({ icon: Icon, label, description }: TypeCardProps) {
   return (
     <div className="rounded-lg border p-3 space-y-1">
       <div className="flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+        <Icon className="size-3.5 text-muted-foreground" />
         <span className="text-xs font-medium">{label}</span>
       </div>
       <p className="text-[11px] text-muted-foreground leading-tight">{description}</p>
@@ -422,8 +422,8 @@ interface VisibilityRowProps {
 function VisibilityRow({ icon: Icon, title, body }: VisibilityRowProps) {
   return (
     <div className="flex items-start gap-3 rounded-md border p-3">
-      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
-        <Icon className="h-3.5 w-3.5" />
+      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+        <Icon className="size-3.5" />
       </div>
       <div className="min-w-0">
         <p className="text-sm font-medium">{title}</p>

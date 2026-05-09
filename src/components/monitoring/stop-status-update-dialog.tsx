@@ -261,7 +261,7 @@ export function StopStatusUpdateDialog({
             {/* Stop Info */}
             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted">
               <div className={`mt-0.5 ${currentStatusConfig?.color}`}>
-                <StatusIcon className="w-5 h-5" />
+                <StatusIcon className="size-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -276,12 +276,12 @@ export function StopStatusUpdateDialog({
                   </Badge>
                 </div>
                 <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />
+                  <MapPin className="size-3 flex-shrink-0" />
                   <span className="truncate">{stop.address}</span>
                 </div>
                 {(stop.timeWindowStart || stop.timeWindowEnd) && (
                   <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" />
+                    <Clock className="size-3" />
                     <span>
                       Ventana: {formatTime(stop.timeWindowStart)} -{" "}
                       {formatTime(stop.timeWindowEnd)}
@@ -317,7 +317,7 @@ export function StopStatusUpdateDialog({
                         `}
                         >
                           <div
-                            className="w-5 h-5 rounded-full shrink-0 mt-0.5"
+                            className="size-5 rounded-full shrink-0 mt-0.5"
                             style={{ backgroundColor: ws.color }}
                           />
                           <div className="flex-1 min-w-0">
@@ -361,7 +361,7 @@ export function StopStatusUpdateDialog({
                         `}
                         >
                           <div className={option.color}>
-                            <Icon className="w-5 h-5" />
+                            <Icon className="size-5" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
@@ -504,7 +504,7 @@ export function StopStatusUpdateDialog({
             {/* Error message */}
             {error && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
-                <XCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                <XCircle className="size-4 text-destructive mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-destructive">{error}</p>
               </div>
             )}
@@ -514,7 +514,7 @@ export function StopStatusUpdateDialog({
               selectedStatus === "SKIPPED" ||
               selectedWorkflowState?.isTerminal) && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 dark:bg-amber-900/20 dark:border-amber-700/50">
-                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-amber-700 dark:text-amber-300">
                   <p className="font-medium">Nota importante</p>
                   <p className="mt-1">
@@ -557,7 +557,7 @@ export function StopStatusUpdateDialog({
                   : selectedStatus === stop.status)
               }
             >
-              {updating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {updating && <Loader2 className="size-4 mr-2 animate-spin" />}
               Actualizar estado
             </Button>
           </Can>

@@ -339,13 +339,13 @@ export function PlanConfirmationDialog({
         {isValidating ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+              <Loader2 className="size-8 animate-spin mx-auto mb-4 text-muted-foreground" />
               <p className="text-muted-foreground">Cargando plan...</p>
             </div>
           </div>
         ) : error ? (
           <div className="flex items-center gap-3 p-4 m-4 bg-destructive/10 text-destructive rounded-md">
-            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            <AlertCircle className="size-5 flex-shrink-0" />
             <div>
               <p className="font-medium">Error</p>
               <p className="text-sm">{error}</p>
@@ -353,7 +353,7 @@ export function PlanConfirmationDialog({
           </div>
         ) : validationResult?.alreadyConfirmed ? (
           <div className="flex items-center gap-3 p-4 m-4 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400 rounded-md">
-            <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+            <CheckCircle2 className="size-5 flex-shrink-0" />
             <div>
               <p className="font-medium">Plan ya confirmado</p>
               <p className="text-sm">{validationResult.message}</p>
@@ -364,7 +364,7 @@ export function PlanConfirmationDialog({
             {/* Confirm Error */}
             {error && (
               <div className="flex items-center gap-3 p-3 mx-4 mt-4 bg-destructive/10 text-destructive rounded-md">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <AlertCircle className="size-4 flex-shrink-0" />
                 <p className="text-sm">{error}</p>
               </div>
             )}
@@ -424,7 +424,7 @@ export function PlanConfirmationDialog({
               <div className="px-4 pt-4 space-y-2">
                 {hasUnassigned && (
                   <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-900">
-                    <AlertTriangle className="h-4 w-4 text-orange-600 flex-shrink-0" />
+                    <AlertTriangle className="size-4 text-orange-600 flex-shrink-0" />
                     <div className="flex-1 flex items-center justify-between">
                       <p className="text-sm text-orange-800 dark:text-orange-400">
                         {validationResult.summary.unassignedOrders} pedido(s) sin
@@ -451,7 +451,7 @@ export function PlanConfirmationDialog({
                 {hasWarnings && (
                   <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-900">
                     <div className="flex items-center gap-3 mb-2">
-                      <AlertTriangle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                      <AlertTriangle className="size-4 text-yellow-600 flex-shrink-0" />
                       <div className="flex-1 flex items-center justify-between">
                         <p className="text-sm font-medium text-yellow-800 dark:text-yellow-400">
                           {validationResult.summary.warningCount} advertencia(s)
@@ -601,11 +601,11 @@ export function PlanConfirmationDialog({
                   onClick={handleDownload}
                   className="bg-primary"
                 >
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="size-4 mr-2" />
                   Descargar
                 </Button>
                 <Button variant="default" size="sm" disabled className="bg-primary">
-                  <Upload className="h-4 w-4 mr-2" />
+                  <Upload className="size-4 mr-2" />
                   Subir
                 </Button>
               </div>
@@ -625,7 +625,7 @@ export function PlanConfirmationDialog({
                   }
                 >
                   {isConfirming && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="size-4 mr-2 animate-spin" />
                   )}
                   Guardar
                 </Button>

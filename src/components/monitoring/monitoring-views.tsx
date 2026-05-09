@@ -38,8 +38,8 @@ const MonitoringMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-full w-full bg-muted animate-pulse flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="size-full bg-muted animate-pulse flex items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     ),
   },
@@ -95,7 +95,7 @@ export function MonitoringDashboardView() {
       <div className="h-screen flex items-center justify-center bg-background">
         <Card className="max-w-md">
           <CardContent className="py-8 text-center">
-            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
+            <AlertCircle className="size-12 mx-auto mb-4 text-destructive" />
             <h2 className="text-lg font-semibold mb-2">
               Error al cargar los datos
             </h2>
@@ -116,7 +116,7 @@ export function MonitoringDashboardView() {
         <div className="flex items-center gap-3">
           <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg px-4 py-2 flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary" />
+              <MapPin className="size-5 text-primary" />
               <span className="font-semibold">Monitoreo</span>
             </div>
 
@@ -145,7 +145,7 @@ export function MonitoringDashboardView() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground pointer-events-none" />
             </div>
 
             {state.monitoringData && (
@@ -153,21 +153,21 @@ export function MonitoringDashboardView() {
                 <div className="h-6 w-px bg-border" />
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <div className="size-2 rounded-full bg-green-500" />
                     <span className="text-muted-foreground">En ruta:</span>
                     <span className="font-medium">
                       {state.monitoringData.metrics.driversInRoute}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <div className="size-2 rounded-full bg-blue-500" />
                     <span className="text-muted-foreground">Disponibles:</span>
                     <span className="font-medium">
                       {state.monitoringData.metrics.driversAvailable}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                    <div className="size-2 rounded-full bg-amber-500" />
                     <span className="text-muted-foreground">Paradas:</span>
                     <span className="font-medium">
                       {state.monitoringData.metrics.completedStops}/
@@ -184,7 +184,7 @@ export function MonitoringDashboardView() {
         <div className="flex items-center gap-2">
           <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg px-2 py-1 flex items-center gap-2">
             <Badge variant="outline" className="text-xs bg-background">
-              <RefreshCw className="w-3 h-3 mr-1" />
+              <RefreshCw className="size-3 mr-1" />
               {actions.formatLastUpdate(state.lastUpdate)}
             </Badge>
 
@@ -200,7 +200,7 @@ export function MonitoringDashboardView() {
               }}
             >
               <RefreshCw
-                className={cn("w-4 h-4", isRefreshing && "animate-spin")}
+                className={cn("size-4", isRefreshing && "animate-spin")}
               />
             </Button>
 
@@ -214,7 +214,7 @@ export function MonitoringDashboardView() {
               }}
               className="h-8"
             >
-              <History className="w-4 h-4" />
+              <History className="size-4" />
             </Button>
 
             {/* Alerts toggle */}
@@ -227,7 +227,7 @@ export function MonitoringDashboardView() {
               }}
               className="h-8"
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="size-4" />
               {state.alertsCount > 0 && (
                 <Badge
                   variant="secondary"
@@ -253,7 +253,7 @@ export function MonitoringDashboardView() {
           <div className="flex items-center justify-between p-3 border-b">
             {!sidebarCollapsed && (
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-muted-foreground" />
+                <Users className="size-4 text-muted-foreground" />
                 <span className="font-medium text-sm">Conductores</span>
                 <Badge variant="secondary" className="text-xs">
                   {filteredDrivers.length}
@@ -263,13 +263,13 @@ export function MonitoringDashboardView() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0"
+              className="size-8 shrink-0"
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             >
               {sidebarCollapsed ? (
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="size-4" />
               ) : (
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="size-4" />
               )}
             </Button>
           </div>
@@ -279,7 +279,7 @@ export function MonitoringDashboardView() {
               {/* Search and Filters */}
               <div className="p-3 space-y-2 border-b">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <Input
                     placeholder="Buscar conductor..."
                     value={searchQuery}
@@ -290,10 +290,10 @@ export function MonitoringDashboardView() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 size-6"
                       onClick={() => setSearchQuery("")}
                     >
-                      <X className="w-3 h-3" />
+                      <X className="size-3" />
                     </Button>
                   )}
                 </div>
@@ -334,7 +334,7 @@ export function MonitoringDashboardView() {
                           className="cursor-pointer text-xs"
                           onClick={() => actions.setSelectedVehicleIds([])}
                         >
-                          <X className="w-2.5 h-2.5 mr-0.5" />
+                          <X className="size-2.5 mr-0.5" />
                           Limpiar
                         </Badge>
                       )}
@@ -362,7 +362,7 @@ export function MonitoringDashboardView() {
                 <div className="p-3 space-y-2">
                   {state.isLoadingDrivers ? (
                     <div className="flex justify-center py-8">
-                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      <Loader2 className="size-5 animate-spin text-muted-foreground" />
                     </div>
                   ) : filteredDrivers.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground text-sm">
@@ -398,12 +398,12 @@ export function MonitoringDashboardView() {
           {/* Collapsed state - just icons */}
           {sidebarCollapsed && (
             <div className="flex-1 flex flex-col items-center py-4 gap-2">
-              <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+              <div className="size-8 rounded-full bg-green-500/10 flex items-center justify-center">
                 <span className="text-xs font-medium text-green-600">
                   {state.monitoringData?.metrics.driversInRoute || 0}
                 </span>
               </div>
-              <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+              <div className="size-8 rounded-full bg-blue-500/10 flex items-center justify-center">
                 <span className="text-xs font-medium text-blue-600">
                   {state.monitoringData?.metrics.driversAvailable || 0}
                 </span>
@@ -419,7 +419,7 @@ export function MonitoringDashboardView() {
           <Card className="h-full bg-background/95 backdrop-blur-sm shadow-lg overflow-hidden flex flex-col">
             {state.isLoadingDetail ? (
               <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                <Loader2 className="size-8 animate-spin text-muted-foreground" />
               </div>
             ) : state.driverDetail ? (
               <ScrollArea className="flex-1">

@@ -154,7 +154,7 @@ export function UserImportDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
+            <FileSpreadsheet className="size-5" />
             Importar Usuarios
           </DialogTitle>
           <DialogDescription>
@@ -172,7 +172,7 @@ export function UserImportDialog({
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={downloadTemplate}>
-              <Download className="h-4 w-4 mr-1" />
+              <Download className="size-4 mr-1" />
               Descargar
             </Button>
           </div>
@@ -195,13 +195,13 @@ export function UserImportDialog({
               type="file"
               accept=".csv"
               onChange={handleFileChange}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              className="absolute inset-0 size-full opacity-0 cursor-pointer"
               disabled={isUploading}
             />
 
             {file ? (
               <div className="space-y-2">
-                <CheckCircle2 className="h-8 w-8 mx-auto text-green-500" />
+                <CheckCircle2 className="size-8 mx-auto text-green-500" />
                 <p className="text-sm font-medium">{file.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {(file.size / 1024).toFixed(1)} KB
@@ -217,13 +217,13 @@ export function UserImportDialog({
                   }}
                   disabled={isUploading}
                 >
-                  <X className="h-4 w-4 mr-1" />
+                  <X className="size-4 mr-1" />
                   Quitar
                 </Button>
               </div>
             ) : (
               <div className="space-y-2">
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                <Upload className="size-8 mx-auto text-muted-foreground" />
                 <p className="text-sm font-medium">
                   Arrastra un archivo CSV aquí
                 </p>
@@ -247,7 +247,7 @@ export function UserImportDialog({
             >
               {result.success && result.created > 0 && (
                 <p className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2 className="size-4" />
                   {result.created} usuario{result.created > 1 ? "s" : ""} creado
                   {result.created > 1 ? "s" : ""} exitosamente
                 </p>
@@ -255,7 +255,7 @@ export function UserImportDialog({
               {result.errors.length > 0 && (
                 <div className="space-y-1">
                   <p className="flex items-center gap-2 font-medium">
-                    <AlertCircle className="h-4 w-4" />
+                    <AlertCircle className="size-4" />
                     {result.errors.length} error
                     {result.errors.length > 1 ? "es" : ""}:
                   </p>
@@ -315,12 +315,12 @@ export function UserImportDialog({
             >
               {isUploading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="size-4 mr-2 animate-spin" />
                   Importando...
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
+                  <Upload className="size-4 mr-2" />
                   Importar
                 </>
               )}

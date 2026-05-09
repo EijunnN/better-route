@@ -179,7 +179,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <AlertTriangle className="size-5 text-amber-500" />
             <h2 className="text-lg font-semibold">Alerts</h2>
             {criticalCount > 0 && (
               <Badge variant="destructive" className="ml-2">
@@ -194,7 +194,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
             disabled={isLoading}
           >
             <RefreshCw
-              className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+              className={`size-4 ${isLoading ? "animate-spin" : ""}`}
             />
           </Button>
         </div>
@@ -202,7 +202,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
         {/* Filters */}
         <div className="flex gap-2">
           <div className="flex-1 relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               placeholder="Search alerts..."
               value={searchQuery}
@@ -215,7 +215,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2"
               >
-                <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                <X className="size-4 text-muted-foreground hover:text-foreground" />
               </button>
             )}
           </div>
@@ -251,15 +251,15 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
               All ({filteredAlerts.length})
             </TabsTrigger>
             <TabsTrigger value="critical" className="flex-1">
-              <AlertTriangle className="w-4 h-4 mr-1" />
+              <AlertTriangle className="size-4 mr-1" />
               Critical ({criticalCount})
             </TabsTrigger>
             <TabsTrigger value="warning" className="flex-1">
-              <AlertCircle className="w-4 h-4 mr-1" />
+              <AlertCircle className="size-4 mr-1" />
               Warning ({warningCount})
             </TabsTrigger>
             <TabsTrigger value="info" className="flex-1">
-              <Info className="w-4 h-4 mr-1" />
+              <Info className="size-4 mr-1" />
               Info ({infoCount})
             </TabsTrigger>
           </TabsList>
@@ -269,11 +269,11 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
         <TabsContent value={activeTab} className="flex-1 overflow-auto p-4 m-0">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
-              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+              <RefreshCw className="size-6 animate-spin text-muted-foreground" />
             </div>
           ) : filteredAlerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              <AlertTriangle className="w-12 h-12 mb-4 opacity-50" />
+              <AlertTriangle className="size-12 mb-4 opacity-50" />
               <p className="font-medium">No alerts found</p>
               <p className="text-sm">
                 {searchQuery

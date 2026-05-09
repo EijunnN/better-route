@@ -35,36 +35,36 @@ export function Toolbar({
         size="sm"
         onClick={() => onSwitchMode("select")}
         title="Seleccionar"
-        className="h-9 w-9 p-0"
+        className="size-9 p-0"
       >
-        <MousePointer2 className="h-4 w-4" />
+        <MousePointer2 className="size-4" />
       </Button>
       <Button
         variant={drawMode === "draw" ? "default" : "ghost"}
         size="sm"
         onClick={() => onSwitchMode("draw")}
         title="Dibujar puntos"
-        className="h-9 w-9 p-0"
+        className="size-9 p-0"
       >
-        <PenTool className="h-4 w-4" />
+        <PenTool className="size-4" />
       </Button>
       <Button
         variant={drawMode === "freehand" ? "default" : "ghost"}
         size="sm"
         onClick={() => onSwitchMode("freehand")}
         title="Dibujo libre (lapiz)"
-        className="h-9 w-9 p-0"
+        className="size-9 p-0"
       >
-        <Pencil className="h-4 w-4" />
+        <Pencil className="size-4" />
       </Button>
       <Button
         variant={drawMode === "delete" ? "default" : "ghost"}
         size="sm"
         onClick={() => onSwitchMode("delete")}
         title="Eliminar punto"
-        className="h-9 w-9 p-0"
+        className="size-9 p-0"
       >
-        <Eraser className="h-4 w-4" />
+        <Eraser className="size-4" />
       </Button>
       <div className="w-px bg-border mx-1" />
       <Button
@@ -73,9 +73,9 @@ export function Toolbar({
         onClick={onUndo}
         disabled={pointsCount === 0}
         title="Deshacer"
-        className="h-9 w-9 p-0"
+        className="size-9 p-0"
       >
-        <Undo className="h-4 w-4" />
+        <Undo className="size-4" />
       </Button>
       <Button
         variant="ghost"
@@ -83,9 +83,9 @@ export function Toolbar({
         onClick={onClear}
         disabled={pointsCount === 0 && freehandPathCount === 0}
         title="Limpiar todo"
-        className="h-9 w-9 p-0"
+        className="size-9 p-0"
       >
-        <Trash2 className="h-4 w-4" />
+        <Trash2 className="size-4" />
       </Button>
     </div>
   );
@@ -157,7 +157,7 @@ export function StatusBar({ pointsCount, isPolygonClosed }: StatusBarProps) {
       </span>
       {isPolygonClosed && (
         <span className="text-green-500 font-medium flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-green-500" />
+          <span className="size-2 rounded-full bg-green-500" />
           Cerrado
         </span>
       )}
@@ -192,7 +192,7 @@ export function LoadingOverlay() {
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20 rounded-lg">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
+        <div className="animate-spin rounded-full size-8 border-b-2 border-primary mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">Cargando mapa...</p>
       </div>
     </div>

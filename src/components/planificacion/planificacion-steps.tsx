@@ -78,14 +78,14 @@ export function PlanificacionHeader() {
               >
                 <div className="flex items-center gap-2">
                   {isCompleted && !isActive ? (
-                    <Check className="w-4 h-4" />
+                    <Check className="size-4" />
                   ) : (
-                    <StepIcon className="w-4 h-4" />
+                    <StepIcon className="size-4" />
                   )}
                   <span className="font-medium">{step.label}</span>
                 </div>
                 {index < STEPS.length - 1 && (
-                  <ChevronRight className="w-4 h-4 ml-2 text-muted-foreground" />
+                  <ChevronRight className="size-4 ml-2 text-muted-foreground" />
                 )}
               </button>
             );
@@ -146,7 +146,7 @@ export function VehicleStep() {
             </SelectContent>
           </Select>
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               placeholder="Buscar..."
               value={state.vehicleSearch}
@@ -181,11 +181,11 @@ export function VehicleStep() {
         <div className="space-y-1.5">
           {state.vehiclesLoading ? (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="size-5 animate-spin" />
             </div>
           ) : derived.filteredVehicles.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
-              <Truck className="w-10 h-10 mx-auto mb-2 opacity-50" />
+              <Truck className="size-10 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No hay vehículos disponibles</p>
             </div>
           ) : (
@@ -227,7 +227,7 @@ export function VehicleStep() {
                       )}
                       {vehicle.assignedDriver && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <User className="w-3 h-3" />
+                          <User className="size-3" />
                           {vehicle.assignedDriver.name}
                         </span>
                       )}
@@ -240,7 +240,7 @@ export function VehicleStep() {
                       {vehicle.maxOrders && <span>Max {vehicle.maxOrders} ped.</span>}
                       {vehicle.originAddress && (
                         <span className="truncate flex items-center gap-1">
-                          <MapPin className="w-3 h-3 shrink-0" />
+                          <MapPin className="size-3 shrink-0" />
                           {vehicle.originAddress}
                         </span>
                       )}
@@ -262,7 +262,7 @@ export function VehicleStep() {
           disabled={!derived.canProceedFromVehiculos}
         >
           Continuar a Visitas
-          <ChevronRight className="w-4 h-4 ml-2" />
+          <ChevronRight className="size-4 ml-2" />
         </Button>
       </div>
     </div>
@@ -285,7 +285,7 @@ export function OrderStep() {
               className="h-8"
               onClick={() => actions.setShowCsvUpload(true)}
             >
-              <Upload className="w-3.5 h-3.5 mr-1.5" />
+              <Upload className="size-3.5 mr-1.5" />
               CSV
             </Button>
           </Can>
@@ -298,10 +298,10 @@ export function OrderStep() {
               Todas ({state.orders.length})
             </TabsTrigger>
             <TabsTrigger value="alertas" className="flex-1 text-xs h-7">
-              <AlertTriangle className="w-3 h-3 mr-1" />({derived.ordersWithIssues.length})
+              <AlertTriangle className="size-3 mr-1" />({derived.ordersWithIssues.length})
             </TabsTrigger>
             <TabsTrigger value="conHorario" className="flex-1 text-xs h-7">
-              <Clock className="w-3 h-3 mr-1" />
+              <Clock className="size-3 mr-1" />
               Horario
             </TabsTrigger>
           </TabsList>
@@ -312,7 +312,7 @@ export function OrderStep() {
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             placeholder="Buscar..."
             value={state.orderSearch}
@@ -346,11 +346,11 @@ export function OrderStep() {
         <div className="space-y-1">
           {state.ordersLoading ? (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="size-5 animate-spin" />
             </div>
           ) : derived.filteredOrders.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
-              <Package className="w-10 h-10 mx-auto mb-2 opacity-50" />
+              <Package className="size-10 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No hay pedidos pendientes</p>
             </div>
           ) : (
@@ -376,7 +376,7 @@ export function OrderStep() {
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium text-sm truncate">{order.trackingId}</span>
                         {hasIssue && (
-                          <AlertTriangle className="w-3 h-3 text-orange-500 shrink-0" />
+                          <AlertTriangle className="size-3 text-orange-500 shrink-0" />
                         )}
                         {order.priority === "HIGH" && (
                           <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">
@@ -397,7 +397,7 @@ export function OrderStep() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0"
+                          className="size-6 p-0"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -405,14 +405,14 @@ export function OrderStep() {
                           }}
                           title="Editar coordenadas"
                         >
-                          <Pencil className="w-3 h-3" />
+                          <Pencil className="size-3" />
                         </Button>
                       </Can>
                       <Can perm="order:delete">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 text-red-500 hover:bg-destructive hover:text-destructive-foreground"
+                          className="size-6 p-0 text-red-500 hover:bg-destructive hover:text-destructive-foreground"
                           disabled={state.deletingOrderId === order.id}
                           onClick={async (e) => {
                             e.preventDefault();
@@ -422,9 +422,9 @@ export function OrderStep() {
                           title="Eliminar pedido"
                         >
                           {state.deletingOrderId === order.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <Loader2 className="size-3.5 animate-spin" />
                           ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="size-3.5" />
                           )}
                         </Button>
                       </Can>
@@ -448,7 +448,7 @@ export function OrderStep() {
           disabled={!derived.canProceedFromVisitas}
         >
           Continuar
-          <ChevronRight className="w-4 h-4 ml-2" />
+          <ChevronRight className="size-4 ml-2" />
         </Button>
       </div>
     </div>
@@ -617,7 +617,7 @@ export function ConfigStep() {
         <div className="px-4">
           <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-900">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-orange-600 flex-shrink-0" />
+              <AlertTriangle className="size-4 text-orange-600 flex-shrink-0" />
               <p className="text-sm text-orange-800 dark:text-orange-400 flex-1">
                 <span className="font-medium">{ordersOutsideZones.length}</span> pedido{ordersOutsideZones.length > 1 ? "s" : ""} fuera de las zonas configuradas.
                 No ser{ordersOutsideZones.length > 1 ? "án" : "á"} incluido{ordersOutsideZones.length > 1 ? "s" : ""} en la optimización.
@@ -627,7 +627,7 @@ export function ConfigStep() {
                 onClick={() => setShowOutsideDetails(!showOutsideDetails)}
                 className="text-orange-600 hover:text-orange-800 dark:text-orange-400"
               >
-                {showOutsideDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {showOutsideDetails ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               </button>
             </div>
             {showOutsideDetails && (
@@ -654,12 +654,12 @@ export function ConfigStep() {
           >
             {state.isSubmitting ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="size-4 mr-2 animate-spin" />
                 Optimizando...
               </>
             ) : (
               <>
-                <Route className="w-4 h-4 mr-2" />
+                <Route className="size-4 mr-2" />
                 Optimizar rutas
               </>
             )}

@@ -55,19 +55,19 @@ export function TrackingHero({
           motion without competing with the live map below. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-25 blur-3xl"
+        className="pointer-events-none absolute -right-20 -top-20 size-64 rounded-full opacity-25 blur-3xl"
         style={{ backgroundColor: accent }}
       />
       <div className="relative flex flex-col gap-6 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="flex items-start gap-4 min-w-0">
           <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            className="flex size-12 shrink-0 items-center justify-center rounded-xl"
             style={{
               backgroundColor: `${accent}26`,
               color: accent,
             }}
           >
-            <Package className="h-6 w-6" />
+            <Package className="size-6" />
           </div>
           <div className="min-w-0 space-y-1">
             <h2 className="text-xl font-semibold leading-tight sm:text-2xl">
@@ -78,7 +78,7 @@ export function TrackingHero({
                 <span>Última actualización: {formatRelative(lastUpdate)}</span>
                 {isLive && (
                   <span
-                    className="inline-block h-1.5 w-1.5 animate-pulse rounded-full"
+                    className="inline-block size-1.5 animate-pulse rounded-full"
                     style={{ backgroundColor: accent }}
                   />
                 )}

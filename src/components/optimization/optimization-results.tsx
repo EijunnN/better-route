@@ -99,7 +99,7 @@ function MetricCard({
 
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-      <Icon className={`h-5 w-5 ${colorClasses[color]}`} />
+      <Icon className={`size-5 ${colorClasses[color]}`} />
       <div className="flex-1">
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="text-lg font-semibold">
@@ -158,14 +158,14 @@ function RouteCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
-              <Truck className="h-5 w-5 text-primary" />
+              <Truck className="size-5 text-primary" />
             </div>
             <div>
               <CardTitle className="text-base">{route.vehicleIdentifier}</CardTitle>
               <CardDescription className="flex items-center gap-2">
                 {route.driverName && (
                   <>
-                    <User className="h-3 w-3" />
+                    <User className="size-3" />
                     {route.driverName}
                   </>
                 )}
@@ -178,15 +178,15 @@ function RouteCard({
                 variant="outline"
                 className="border-orange-300 text-orange-700"
               >
-                <AlertTriangle className="h-3 w-3 mr-1" />
+                <AlertTriangle className="size-3 mr-1" />
                 {route.timeWindowViolations} violation
                 {route.timeWindowViolations > 1 ? "s" : ""}
               </Badge>
             )}
             {isSelected ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              <ChevronUp className="size-4 text-muted-foreground" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <ChevronDown className="size-4 text-muted-foreground" />
             )}
           </div>
         </div>
@@ -197,24 +197,24 @@ function RouteCard({
           {/* Route Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="flex items-center gap-2 text-sm">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <MapPin className="size-4 text-muted-foreground" />
               <span className="font-medium">{route.stops.length}</span>
               <span className="text-muted-foreground">stops</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <Ruler className="h-4 w-4 text-muted-foreground" />
+              <Ruler className="size-4 text-muted-foreground" />
               <span className="font-medium">
                 {formatDistance(route.totalDistance)}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Clock className="size-4 text-muted-foreground" />
               <span className="font-medium">
                 {formatDuration(route.totalDuration)}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <TrendingUp className={`h-4 w-4 ${utilizationColor}`} />
+              <TrendingUp className={`size-4 ${utilizationColor}`} />
               <span className={`font-medium ${utilizationColor}`}>
                 {route.utilizationPercentage}%
               </span>
@@ -231,13 +231,13 @@ function RouteCard({
               <div className="flex gap-4 mb-4 text-xs text-muted-foreground">
                 {w > 0 && (
                   <div className="flex items-center gap-1">
-                    <Scale className="h-3 w-3" />
+                    <Scale className="size-3" />
                     {w}kg
                   </div>
                 )}
                 {v > 0 && (
                   <div className="flex items-center gap-1">
-                    <Package className="h-3 w-3" />
+                    <Package className="size-3" />
                     {v}L
                   </div>
                 )}
@@ -266,7 +266,7 @@ function RouteCard({
                   }}
                 >
                   <div className="flex flex-col items-center">
-                    <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
+                    <div className="size-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
                       {stop.sequence}
                     </div>
                     {index < route.stops.length - 1 && (
@@ -280,7 +280,7 @@ function RouteCard({
                       </span>
                       {stop.timeWindow && (
                         <Badge variant="outline" className="text-xs">
-                          <Clock className="h-2 w-2 mr-1" />
+                          <Clock className="size-2 mr-1" />
                           {formatTimeWindow(stop.timeWindow.start)}
                           {" - "}
                           {formatTimeWindow(stop.timeWindow.end)}
@@ -320,7 +320,7 @@ function UnassignedOrdersList({
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
+        <CheckCircle2 className="size-12 text-green-500 mb-4" />
         <p className="text-lg font-medium">All orders assigned!</p>
         <p className="text-sm text-muted-foreground">
           Every pending order has been successfully included in a route.
@@ -341,7 +341,7 @@ function UnassignedOrdersList({
               containIntrinsicSize: "0 50px",
             }}
           >
-            <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0" />
+            <AlertTriangle className="size-5 text-orange-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm">{order.trackingId}</p>
               <p className="text-xs text-muted-foreground mt-1">
@@ -358,9 +358,9 @@ function UnassignedOrdersList({
 // Map placeholder component
 function _RouteMapPlaceholder() {
   return (
-    <div className="w-full h-full min-h-[400px] rounded-lg border-2 border-dashed flex items-center justify-center bg-muted/20">
+    <div className="size-full min-h-[400px] rounded-lg border-2 border-dashed flex items-center justify-center bg-muted/20">
       <div className="text-center">
-        <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <MapPin className="size-12 text-muted-foreground mx-auto mb-4" />
         <p className="text-lg font-medium text-muted-foreground">Route Map</p>
         <p className="text-sm text-muted-foreground mt-2">
           Map visualization will be displayed here.
@@ -482,7 +482,7 @@ export function OptimizationResults({
         {result.unassignedOrders.length > 0 && (
           <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg dark:bg-orange-950 dark:border-orange-800">
             <div className="flex items-center gap-2 text-orange-800 dark:text-orange-300">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="size-4" />
               <span className="font-medium text-sm">
                 {result.unassignedOrders.length} pedido
                 {result.unassignedOrders.length > 1 ? "s" : ""} no pudo ser
@@ -518,8 +518,8 @@ export function OptimizationResults({
                 <AlertTriangle
                   className={
                     result.verification.summary.hard > 0
-                      ? "h-4 w-4 text-red-600"
-                      : "h-4 w-4 text-orange-600"
+                      ? "size-4 text-red-600"
+                      : "size-4 text-orange-600"
                   }
                 />
                 Verificación de restricciones
@@ -612,7 +612,7 @@ export function OptimizationResults({
           {result.routes.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <Truck className="size-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-lg font-medium text-muted-foreground">
                   No routes generated
                 </p>
@@ -694,7 +694,7 @@ export function OptimizationResults({
           )}
           {isPlanConfirmed && (
             <Badge variant="default" className="bg-green-600">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
+              <CheckCircle2 className="size-3 mr-1" />
               Plan Confirmed
             </Badge>
           )}

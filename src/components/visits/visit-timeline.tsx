@@ -154,9 +154,9 @@ function VisitCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           {isSuccess ? (
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
           ) : (
-            <XCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+            <XCircle className="size-5 text-rose-600 dark:text-rose-400" />
           )}
           <div>
             <div className="font-medium">
@@ -185,7 +185,7 @@ function VisitCard({
       )}
 
       <div className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
-        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <MapPin className="mt-0.5 size-3.5 shrink-0" />
         <span className="break-words">{visit.intendedAddress}</span>
       </div>
 
@@ -196,13 +196,13 @@ function VisitCard({
               key={url}
               type="button"
               onClick={() => onOpenImage(url)}
-              className="block h-16 w-16 overflow-hidden rounded border bg-muted transition hover:border-foreground"
+              className="block size-16 overflow-hidden rounded border bg-muted transition hover:border-foreground"
               title="Ver evidencia"
             >
               <img
                 src={url}
                 alt="Evidencia"
-                className="h-full w-full object-cover"
+                className="size-full object-cover"
               />
             </button>
           ))}
@@ -210,7 +210,7 @@ function VisitCard({
       ) : (
         !isSuccess && (
           <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ImageOff className="h-3.5 w-3.5" />
+            <ImageOff className="size-3.5" />
             Sin evidencia adjunta
           </div>
         )

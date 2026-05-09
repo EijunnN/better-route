@@ -130,7 +130,7 @@ export function UserFormBasic() {
           </Select>
           {formData.role && ROLE_PERMISSIONS_INFO[formData.role] && (
             <p className="text-xs text-muted-foreground flex items-start gap-1 mt-1">
-              <Info className="h-3 w-3 mt-0.5 shrink-0" />
+              <Info className="size-3 mt-0.5 shrink-0" />
               {ROLE_PERMISSIONS_INFO[formData.role]}
             </p>
           )}

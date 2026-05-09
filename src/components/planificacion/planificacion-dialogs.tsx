@@ -82,12 +82,12 @@ export function CsvUploadDialog() {
             >
               {state.csvUploading ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="size-4 mr-2 animate-spin" />
                   Analizando...
                 </>
               ) : (
                 <>
-                  <Upload className="w-4 h-4 mr-2" />
+                  <Upload className="size-4 mr-2" />
                   Previsualizar {state.csvPreview.length} pedidos
                 </>
               )}
@@ -205,7 +205,7 @@ export function EditOrderDialog() {
             >
               {state.isUpdatingOrder ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="size-4 mr-2 animate-spin" />
                   Guardando...
                 </>
               ) : (

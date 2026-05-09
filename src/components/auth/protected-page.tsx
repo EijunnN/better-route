@@ -78,7 +78,7 @@ export function ProtectedPage({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+        <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
       </div>
     );
   }
@@ -86,7 +86,7 @@ export function ProtectedPage({
   if (shouldRedirectToLogin) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+        <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
       </div>
     );
   }
@@ -95,7 +95,7 @@ export function ProtectedPage({
     if (shouldRedirectNoAccess) {
       return (
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+          <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
         </div>
       );
     }
@@ -104,7 +104,7 @@ export function ProtectedPage({
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
         <div className="rounded-full bg-destructive/10 p-4 mb-4">
           <svg
-            className="h-12 w-12 text-destructive"
+            className="size-12 text-destructive"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

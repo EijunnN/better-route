@@ -109,9 +109,9 @@ export function TrackingOrderInfo({
               className="text-muted-foreground transition-colors hover:text-foreground"
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
+                <Check className="size-3.5 text-green-500" />
               ) : (
-                <Copy className="h-3.5 w-3.5" />
+                <Copy className="size-3.5" />
               )}
             </button>
           </div>
@@ -121,21 +121,21 @@ export function TrackingOrderInfo({
           <span className="font-medium">{customerName}</span>
         </Field>
 
-        <Field label="Dirección de entrega" icon={<MapPin className="h-3.5 w-3.5" />}>
+        <Field label="Dirección de entrega" icon={<MapPin className="size-3.5" />}>
           <span className="leading-snug">{address}</span>
         </Field>
 
         {promisedDate && (
           <Field
             label="Fecha"
-            icon={<Calendar className="h-3.5 w-3.5" />}
+            icon={<Calendar className="size-3.5" />}
           >
             <span className="capitalize">{formatDate(promisedDate)}</span>
           </Field>
         )}
 
         {(timeWindowStart || timeWindowEnd) && (
-          <Field label="Hora" icon={<Clock className="h-3.5 w-3.5" />}>
+          <Field label="Hora" icon={<Clock className="size-3.5" />}>
             <span>
               {timeWindowStart && timeWindowEnd
                 ? `${formatTime(timeWindowStart)} – ${formatTime(timeWindowEnd)}`

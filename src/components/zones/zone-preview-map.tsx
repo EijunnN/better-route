@@ -273,35 +273,35 @@ export function ZonePreviewMap({
   };
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative size-full">
       {/* Controls */}
       <div className="absolute top-4 right-4 z-10 flex flex-col gap-1">
         <Button
           variant="secondary"
           size="icon"
-          className="h-8 w-8 bg-background/90 backdrop-blur-sm hover:bg-background"
+          className="size-8 bg-background/90 backdrop-blur-sm hover:bg-background"
           onClick={handleZoomIn}
           aria-label="Acercar"
         >
-          <ZoomIn className="h-4 w-4" />
+          <ZoomIn className="size-4" />
         </Button>
         <Button
           variant="secondary"
           size="icon"
-          className="h-8 w-8 bg-background/90 backdrop-blur-sm hover:bg-background"
+          className="size-8 bg-background/90 backdrop-blur-sm hover:bg-background"
           onClick={handleZoomOut}
           aria-label="Alejar"
         >
-          <ZoomOut className="h-4 w-4" />
+          <ZoomOut className="size-4" />
         </Button>
         <Button
           variant="secondary"
           size="icon"
-          className="h-8 w-8 bg-background/90 backdrop-blur-sm hover:bg-background"
+          className="size-8 bg-background/90 backdrop-blur-sm hover:bg-background"
           onClick={handleFitAll}
           aria-label="Ver todas las zonas"
         >
-          <Layers className="h-4 w-4" />
+          <Layers className="size-4" />
         </Button>
       </div>
 
@@ -315,7 +315,7 @@ export function ZonePreviewMap({
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/80 z-20 rounded-lg">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
+            <div className="animate-spin rounded-full size-8 border-b-2 border-primary mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Cargando mapa...</p>
           </div>
         </div>
@@ -325,13 +325,13 @@ export function ZonePreviewMap({
       {!isLoading && zones.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="text-center text-muted-foreground">
-            <Crosshair className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <Crosshair className="size-12 mx-auto mb-3 opacity-50" />
             <p className="text-sm">No hay zonas para mostrar</p>
           </div>
         </div>
       )}
 
-      <div ref={mapContainer} className="h-full w-full rounded-lg" />
+      <div ref={mapContainer} className="size-full rounded-lg" />
     </div>
   );
 }

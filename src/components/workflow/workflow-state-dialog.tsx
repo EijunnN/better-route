@@ -280,7 +280,7 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                     onClick={() => handlePickSystemState(option)}
                     className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${option.bgClass}`}
                   >
-                    <Icon className="h-5 w-5 shrink-0" />
+                    <Icon className="size-5 shrink-0" />
                     <div className="min-w-0">
                       <div className="font-medium text-sm">{option.label}</div>
                       <div className="text-xs opacity-75">{option.description}</div>
@@ -310,7 +310,7 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                 className="w-fit -mt-2"
                 onClick={() => setStep(1)}
               >
-                <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+                <ArrowLeft className="size-3.5 mr-1" />
                 Cambiar tipo
               </Button>
             )}
@@ -360,7 +360,7 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                       key={color}
                       type="button"
                       onClick={() => setFormData((p) => ({ ...p, color }))}
-                      className="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
+                      className="size-6 rounded-full border-2 transition-transform hover:scale-110"
                       style={{
                         backgroundColor: color,
                         borderColor: formData.color === color ? "var(--foreground)" : "transparent",
@@ -389,7 +389,7 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                         }`}
                         disabled={isSubmitting}
                       >
-                        <r.icon className="h-3.5 w-3.5" />
+                        <r.icon className="size-3.5" />
                         {r.label}
                       </button>
                     );
@@ -443,7 +443,7 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                   Cancelar
                 </Button>
                 <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {isSubmitting && <Loader2 className="size-4 mr-1 animate-spin" />}
                   {isSubmitting ? "Guardando..." : isEdit ? "Actualizar" : "Crear estado"}
                 </Button>
               </div>

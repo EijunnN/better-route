@@ -77,7 +77,7 @@ export function CsvSchemaGuide({
     return (
       <div className={wrapperClass(className)}>
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="size-4 animate-spin" />
           Cargando esquema del CSV…
         </div>
       </div>
@@ -88,7 +88,7 @@ export function CsvSchemaGuide({
     return (
       <div className={wrapperClass(className)}>
         <div className="flex items-center gap-2 text-sm text-destructive py-4">
-          <XCircle className="h-4 w-4" />
+          <XCircle className="size-4" />
           No se pudo cargar el esquema: {error?.message ?? "error desconocido"}
         </div>
       </div>
@@ -124,7 +124,7 @@ export function CsvSchemaGuide({
             size="sm"
             onClick={() => downloadTemplate(template)}
           >
-            <Download className="h-3.5 w-3.5 mr-1.5" />
+            <Download className="size-3.5 mr-1.5" />
             Plantilla
           </Button>
         )}
@@ -165,7 +165,7 @@ export function CsvSchemaGuide({
       {validation && validation.extra.length > 0 && (
         <div className="pt-2 border-t">
           <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
-            <FileQuestion className="h-3 w-3" />
+            <FileQuestion className="size-3" />
             Columnas en tu CSV que no se reconocieron
           </p>
           <div className="flex flex-wrap gap-1">
@@ -215,7 +215,7 @@ function ValidationBar({
 
   return (
     <div className={`rounded-md border px-3 py-2 flex items-start gap-2 ${tone}`}>
-      <Icon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+      <Icon className="size-4 mt-0.5 flex-shrink-0" />
       <div className="flex-1 text-xs">
         <p className="font-medium">
           {allRequired
@@ -301,7 +301,7 @@ function FieldChip({
       className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] ${statusClass}`}
       title={`${field.description} · ejemplo: ${field.example || "—"}`}
     >
-      {Icon && <Icon className="h-3 w-3" />}
+      {Icon && <Icon className="size-3" />}
       <span className="font-mono">{field.label}</span>
       <span className="opacity-70">({field.kind})</span>
     </div>

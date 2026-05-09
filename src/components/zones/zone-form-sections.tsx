@@ -170,7 +170,7 @@ export function ZoneFormAppearance() {
               type="button"
               onClick={() => updateField("color", color)}
               disabled={isSubmitting}
-              className={`w-8 h-8 rounded-full border-2 transition-transform ${
+              className={`size-8 rounded-full border-2 transition-transform ${
                 formData.color === color
                   ? "border-foreground scale-110"
                   : "border-transparent hover:scale-105"
@@ -288,7 +288,7 @@ export function ZoneFormVehicles() {
       </p>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <Input
           placeholder="Buscar vehículo..."
           value={vehicleSearch}
@@ -322,7 +322,7 @@ export function ZoneFormVehicles() {
       <div className="max-h-[250px] overflow-y-auto border rounded-lg">
         {filteredVehicles.length === 0 ? (
           <div className="p-6 text-center text-muted-foreground">
-            <Truck className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <Truck className="size-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">
               {vehicleSearch
                 ? "No se encontraron vehículos"
@@ -344,15 +344,15 @@ export function ZoneFormVehicles() {
                   }`}
                 >
                   <div
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    className={`size-5 rounded border-2 flex items-center justify-center transition-colors ${
                       isSelected ? "bg-primary border-primary" : "border-input"
                     }`}
                   >
                     {isSelected && (
-                      <Check className="w-3 h-3 text-primary-foreground" />
+                      <Check className="size-3 text-primary-foreground" />
                     )}
                   </div>
-                  <Truck className="w-4 h-4 text-muted-foreground" />
+                  <Truck className="size-4 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">
                       {vehicle.plate || vehicle.name}
@@ -389,7 +389,7 @@ export function ZoneFormOptions() {
             checked={formData.isDefault}
             onChange={(e) => updateField("isDefault", e.target.checked)}
             disabled={isSubmitting}
-            className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
+            className="size-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
           />
           <Label htmlFor="isDefault" className="cursor-pointer">
             Zona por defecto
@@ -407,7 +407,7 @@ export function ZoneFormOptions() {
             checked={formData.active}
             onChange={(e) => updateField("active", e.target.checked)}
             disabled={isSubmitting}
-            className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
+            className="size-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
           />
           <Label htmlFor="active" className="cursor-pointer">
             Zona {formData.active ? "Activa" : "Inactiva"}
@@ -428,7 +428,7 @@ export function ZoneFormActions() {
       <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? (
           <>
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="size-4 animate-spin" />
             Guardando
           </>
         ) : submitLabel}

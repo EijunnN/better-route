@@ -122,8 +122,8 @@ export function DepotSelector({
     const depotElement = document.createElement("div");
     depotElement.className = "depot-marker";
     depotElement.innerHTML = `
-      <div class="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-full border-4 border-white shadow-lg">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+      <div class="flex items-center justify-center size-10 bg-blue-600 rounded-full border-4 border-white shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="size-5 text-white" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
         </svg>
       </div>
@@ -227,7 +227,7 @@ export function DepotSelector({
           size="sm"
           onClick={() => setManualInputMode(!manualInputMode)}
         >
-          <MapPin className="w-4 h-4 mr-2" />
+          <MapPin className="size-4 mr-2" />
           {manualInputMode ? "Map Mode" : "Manual Input"}
         </Button>
       </div>
@@ -281,7 +281,7 @@ export function DepotSelector({
               Set Location
             </Button>
             <Button type="button" variant="outline" onClick={handleLocateUser}>
-              <Navigation className="w-4 h-4 mr-2" />
+              <Navigation className="size-4 mr-2" />
               Use My Location
             </Button>
           </div>

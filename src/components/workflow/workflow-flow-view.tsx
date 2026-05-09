@@ -265,7 +265,7 @@ function FlowCanvas({
       <Can perm="company:update">
         <Panel position="top-right" className="!m-3">
           <Button size="sm" onClick={onAddState}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            <Plus className="mr-1.5 size-3.5" />
             Agregar estado
           </Button>
         </Panel>
@@ -412,13 +412,13 @@ function WorkflowStateNode({
       />
 
       <div
-        className={`relative flex h-[72px] w-[72px] items-center justify-center rounded-xl bg-card shadow-sm transition-shadow ${ringClass} ${selectedClass} ${canEdit ? "cursor-pointer hover:shadow-md" : ""}`}
+        className={`relative flex size-[72px] items-center justify-center rounded-xl bg-card shadow-sm transition-shadow ${ringClass} ${selectedClass} ${canEdit ? "cursor-pointer hover:shadow-md" : ""}`}
         style={{
           boxShadow: `inset 0 0 0 9999px ${hexToRgba(s.color, 0.12)}`,
         }}
       >
         <Icon
-          className="h-9 w-9"
+          className="size-9"
           style={{ color: s.color }}
           aria-hidden="true"
         />
@@ -430,7 +430,7 @@ function WorkflowStateNode({
             {activeReqs.map((r) => (
               <r.icon
                 key={r.key}
-                className="h-2.5 w-2.5 text-muted-foreground"
+                className="size-2.5 text-muted-foreground"
                 aria-hidden="true"
               />
             ))}
@@ -573,10 +573,10 @@ function WorkflowEdge({
                 e.stopPropagation();
                 data?.onDelete?.();
               }}
-              className="flex h-6 w-6 items-center justify-center rounded-full border bg-background text-destructive shadow hover:bg-destructive hover:text-destructive-foreground"
+              className="flex size-6 items-center justify-center rounded-full border bg-background text-destructive shadow hover:bg-destructive hover:text-destructive-foreground"
               aria-label="Eliminar transición"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="size-3" />
             </button>
           </div>
         </EdgeLabelRenderer>

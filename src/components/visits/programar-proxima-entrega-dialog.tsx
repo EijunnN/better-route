@@ -264,7 +264,7 @@ export function ProgramarProximaEntregaDialog({
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={!canSubmit}>
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {submitting && <Loader2 className="mr-2 size-4 animate-spin" />}
             {copy.submit}
           </Button>
         </DialogFooter>

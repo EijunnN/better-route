@@ -49,7 +49,7 @@ export function RolesListView() {
             </div>
             {state.isLoading ? (
               <div className="flex justify-center py-8">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
+                <div className="size-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
               </div>
             ) : state.roles.length === 0 ? (
               <div className="p-4 text-center text-muted-foreground text-sm">No hay roles configurados</div>
@@ -87,9 +87,9 @@ export function RolesListView() {
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 {state.deletingId === role.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <Loader2 className="size-4 animate-spin" />
                                 ) : (
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="size-4" />
                                 )}
                               </Button>
                             </AlertDialogTrigger>
@@ -139,7 +139,7 @@ export function RolesListView() {
               </div>
             ) : state.isLoadingPermissions ? (
               <div className="flex justify-center py-8">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
+                <div className="size-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
               </div>
             ) : state.rolePermissions ? (
               <div className="divide-y divide-border max-h-[600px] overflow-y-auto">

@@ -701,13 +701,13 @@ export function RouteMap({
   // Fullscreen variant
   if (variant === "fullscreen") {
     return (
-      <div className="relative h-full w-full bg-[#1a1a2e]">
+      <div className="relative size-full bg-[#1a1a2e]">
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a2e]/80 z-10">
-            <Loader2 className="h-8 w-8 animate-spin text-[#4ECDC4]" />
+            <Loader2 className="size-8 animate-spin text-[#4ECDC4]" />
           </div>
         )}
-        <div ref={mapContainer} className="h-full w-full" />
+        <div ref={mapContainer} className="size-full" />
 
         {/* Selection hint */}
         {selectedRouteId && (
@@ -739,10 +739,10 @@ export function RouteMap({
         <div className="relative h-[400px] w-full rounded-b-lg overflow-hidden">
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a2e]/80 z-10">
-              <Loader2 className="h-8 w-8 animate-spin text-[#4ECDC4]" />
+              <Loader2 className="size-8 animate-spin text-[#4ECDC4]" />
             </div>
           )}
-          <div ref={mapContainer} className="h-full w-full" />
+          <div ref={mapContainer} className="size-full" />
         </div>
 
         {/* Legend */}
@@ -772,7 +772,7 @@ export function RouteMap({
                 }
               >
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className="size-3 rounded-full"
                   style={{
                     backgroundColor: ROUTE_COLORS[i % ROUTE_COLORS.length],
                   }}

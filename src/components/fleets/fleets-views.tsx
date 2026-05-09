@@ -37,7 +37,7 @@ export function FleetsListView() {
 
         {state.isLoading ? (
           <div className="flex justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+            <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
           </div>
         ) : state.error ? (
           <ErrorState title="Error al cargar flotas" error={state.error} onRetry={actions.fetchFleets} />
@@ -103,7 +103,7 @@ function FleetRow({ fleet }: { fleet: Fleet }) {
                   className="text-destructive hover:text-destructive"
                   disabled={state.deletingId === fleet.id}
                 >
-                  {state.deletingId === fleet.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {state.deletingId === fleet.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>

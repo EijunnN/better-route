@@ -148,7 +148,7 @@ export default function TrackingPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -158,7 +158,7 @@ export default function TrackingPage() {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="text-center space-y-3">
-          <AlertTriangle className="h-12 w-12 mx-auto text-muted-foreground" />
+          <AlertTriangle className="size-12 mx-auto text-muted-foreground" />
           <h2 className="text-lg font-semibold">
             {error || "No se encontro la informacion"}
           </h2>
@@ -241,7 +241,7 @@ export default function TrackingPage() {
             {!isTerminal && (
               <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted-foreground">
                 <span
-                  className="inline-block h-1.5 w-1.5 animate-pulse rounded-full"
+                  className="inline-block size-1.5 animate-pulse rounded-full"
                   style={{ backgroundColor: brandColor ?? "#4AB855" }}
                 />
                 Actualizando automáticamente

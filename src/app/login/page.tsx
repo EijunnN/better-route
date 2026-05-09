@@ -111,7 +111,7 @@ export default function LoginPage() {
       <Card className="relative w-full max-w-md border-border bg-card/95 shadow-2xl backdrop-blur-sm">
         <CardHeader className="space-y-4 text-center">
           {/* Logo */}
-          <LogoAnt className="mx-auto h-20 w-20" />
+          <LogoAnt className="mx-auto size-20" />
           <div>
             <CardTitle className="text-2xl font-bold text-foreground">
               BetterRoute
@@ -168,9 +168,9 @@ export default function LoginPage() {
                   tabIndex={-1}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeOff className="size-4" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="size-4" />
                   )}
                 </button>
               </div>
@@ -187,7 +187,7 @@ export default function LoginPage() {
             >
               {isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 size-4 animate-spin" />
                   Iniciando sesión...
                 </>
               ) : (

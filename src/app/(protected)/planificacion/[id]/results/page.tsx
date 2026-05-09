@@ -231,7 +231,7 @@ function ResultsPageContent() {
         <Card className="w-full max-w-md">
           <CardContent className="py-12">
             <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <Loader2 className="size-12 animate-spin text-primary" />
               <p className="text-lg font-medium">
                 {!isReady ? "Cargando..." : "Iniciando optimización..."}
               </p>
@@ -251,21 +251,21 @@ function ResultsPageContent() {
         <Card className="w-full max-w-md">
           <CardContent className="py-12">
             <div className="flex flex-col items-center gap-4">
-              <AlertCircle className="h-12 w-12 text-destructive" />
+              <AlertCircle className="size-12 text-destructive" />
               <p className="text-lg font-medium">Error en la optimización</p>
               <p className="text-sm text-muted-foreground text-center">
                 {startError}
               </p>
               <div className="flex gap-3 mt-4">
                 <Button variant="outline" onClick={handleReoptimize}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className="size-4 mr-2" />
                   Reintentar
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => router.push("/planificacion")}
                 >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  <ArrowLeft className="size-4 mr-2" />
                   Volver
                 </Button>
               </div>
@@ -288,7 +288,7 @@ function ResultsPageContent() {
               size="sm"
               onClick={() => router.push("/planificacion")}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="size-4 mr-2" />
               Volver
             </Button>
             <h1 className="text-lg font-semibold">Optimizando rutas...</h1>
@@ -333,7 +333,7 @@ function ResultsPageContent() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="text-green-600 flex items-center gap-2">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Plan confirmado exitosamente
@@ -380,7 +380,7 @@ export default function PlanificacionResultsPage() {
       <Suspense
         fallback={
           <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin" />
+            <Loader2 className="size-8 animate-spin" />
           </div>
         }
       >

@@ -93,7 +93,7 @@ export const DriverListItem = memo(function DriverListItem({
         <div className="flex items-center gap-2">
           {/* Status dot */}
           <div
-            className={cn("w-2 h-2 rounded-full shrink-0", statusConfig.color)}
+            className={cn("size-2 rounded-full shrink-0", statusConfig.color)}
           />
 
           {/* Info */}
@@ -137,7 +137,7 @@ export const DriverListItem = memo(function DriverListItem({
             {/* Show status if no route */}
             {!hasRoute && (
               <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-                <StatusIcon className="w-3 h-3" />
+                <StatusIcon className="size-3" />
                 <span>{statusConfig.label}</span>
               </div>
             )}
@@ -146,7 +146,7 @@ export const DriverListItem = memo(function DriverListItem({
           {/* Alert indicator */}
           {alerts.length > 0 && (
             <div className="shrink-0">
-              <AlertTriangle className="w-4 h-4 text-destructive" />
+              <AlertTriangle className="size-4 text-destructive" />
             </div>
           )}
         </div>
@@ -170,7 +170,7 @@ export const DriverListItem = memo(function DriverListItem({
             {/* Status Indicator */}
             <div
               className={cn(
-                "mt-1 w-2 h-2 rounded-full flex-shrink-0",
+                "mt-1 size-2 rounded-full flex-shrink-0",
                 statusConfig.color,
               )}
             />
@@ -191,7 +191,7 @@ export const DriverListItem = memo(function DriverListItem({
 
               <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <StatusIcon className="w-3 h-3" />
+                  <StatusIcon className="size-3" />
                   <span>{statusConfig.label}</span>
                 </div>
                 {hasRoute && vehiclePlate && <span>• {vehiclePlate}</span>}
@@ -234,7 +234,7 @@ export const DriverListItem = memo(function DriverListItem({
                       variant="destructive"
                       className="text-xs"
                     >
-                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      <AlertTriangle className="size-3 mr-1" />
                       {alert}
                     </Badge>
                   ))}
@@ -244,7 +244,7 @@ export const DriverListItem = memo(function DriverListItem({
           </div>
 
           {/* Right: Chevron */}
-          <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <ChevronRight className="size-5 text-muted-foreground flex-shrink-0" />
         </div>
       </div>
     </Card>

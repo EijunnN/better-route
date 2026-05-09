@@ -361,7 +361,7 @@ export function FieldDefinitionDialog() {
                     onClick={() => handlePickType(option)}
                     className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${option.bgClass}`}
                   >
-                    <Icon className="h-5 w-5 shrink-0" />
+                    <Icon className="size-5 shrink-0" />
                     <div className="min-w-0">
                       <div className="font-medium text-sm">{option.label}</div>
                       <div className="text-xs opacity-75">{option.description}</div>
@@ -391,7 +391,7 @@ export function FieldDefinitionDialog() {
                 className="w-fit -mt-2"
                 onClick={() => setStep(1)}
               >
-                <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+                <ArrowLeft className="size-3.5 mr-1" />
                 Cambiar tipo
               </Button>
             )}
@@ -406,7 +406,7 @@ export function FieldDefinitionDialog() {
               {/* Type badge */}
               {selectedTypeOption && (
                 <div className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${selectedTypeOption.bgClass}`}>
-                  <selectedTypeOption.icon className="h-3.5 w-3.5" />
+                  <selectedTypeOption.icon className="size-3.5" />
                   {selectedTypeOption.label}
                 </div>
               )}
@@ -471,7 +471,7 @@ export function FieldDefinitionDialog() {
                             : "border-border text-muted-foreground hover:bg-muted"
                         }`}
                       >
-                        <ent.icon className="h-4 w-4 shrink-0" />
+                        <ent.icon className="size-4 shrink-0" />
                         <div className="min-w-0">
                           <div className="text-sm font-medium">{ent.label}</div>
                           <div className="text-[11px] opacity-75">{ent.description}</div>
@@ -535,7 +535,7 @@ export function FieldDefinitionDialog() {
                         }`}
                         disabled={isSubmitting}
                       >
-                        <v.icon className="h-3.5 w-3.5" />
+                        <v.icon className="size-3.5" />
                         {v.label}
                       </button>
                     );
@@ -620,7 +620,7 @@ export function FieldDefinitionDialog() {
                   Cancelar
                 </Button>
                 <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {isSubmitting && <Loader2 className="size-4 mr-1 animate-spin" />}
                   {isSubmitting ? "Guardando..." : isEdit ? "Actualizar" : "Crear campo"}
                 </Button>
               </div>

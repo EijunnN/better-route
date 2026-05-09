@@ -167,7 +167,7 @@ export function FleetForm({
       <div className="flex flex-col min-h-0 rounded-lg border bg-card flex-1">
         <div className="flex items-center justify-between px-3 pt-3 pb-2">
           <div className="flex items-center gap-2 text-sm font-medium">
-            <Truck className="h-4 w-4 text-muted-foreground" />
+            <Truck className="size-4 text-muted-foreground" />
             Vehículos
           </div>
           <Badge variant="secondary" className="text-xs">
@@ -176,7 +176,7 @@ export function FleetForm({
         </div>
         <div className="flex items-center gap-2 px-3 pb-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Buscar..."
               value={vehicleSearch}
@@ -273,7 +273,7 @@ export function FleetForm({
           </Button>
         )}
         <Button type="submit" size="sm" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin" />}
           {isSubmitting ? "Guardando" : submitLabel}
         </Button>
       </div>

@@ -180,7 +180,7 @@ export function LocationPicker({
       {/* Search bar */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             placeholder="Buscar direccion..."
             value={searchQuery}
@@ -209,7 +209,7 @@ export function LocationPicker({
       >
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-muted">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
+            <div className="size-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
           </div>
         )}
       </div>
@@ -217,7 +217,7 @@ export function LocationPicker({
       {/* Coordinates display */}
       {value?.lat && value?.lng && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <MapPin className="h-3 w-3" />
+          <MapPin className="size-3" />
           <span>
             {value.lat}, {value.lng}
           </span>

@@ -152,7 +152,7 @@ export function AlertItem({
             <div
               className={`mt-0.5 ${severityConfig.color} rounded-full p-1.5`}
             >
-              <SeverityIcon className="w-4 h-4 text-white" />
+              <SeverityIcon className="size-4 text-white" />
             </div>
 
             {/* Content */}
@@ -182,7 +182,7 @@ export function AlertItem({
 
                   <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
+                      <Clock className="size-3" />
                       <span>{getTimeSince(alert.createdAt)}</span>
                     </div>
                     <span className="uppercase">{alert.entityType}</span>
@@ -199,8 +199,8 @@ export function AlertItem({
                       asChild
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <MoreVertical className="w-4 h-4" />
+                      <Button variant="ghost" size="sm" className="size-8 p-0">
+                        <MoreVertical className="size-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -211,7 +211,7 @@ export function AlertItem({
                             setAcknowledgeDialogOpen(true);
                           }}
                         >
-                          <Check className="w-4 h-4 mr-2" />
+                          <Check className="size-4 mr-2" />
                           Acknowledge
                         </DropdownMenuItem>
                       )}
@@ -222,7 +222,7 @@ export function AlertItem({
                             setDismissDialogOpen(true);
                           }}
                         >
-                          <X className="w-4 h-4 mr-2" />
+                          <X className="size-4 mr-2" />
                           Dismiss
                         </DropdownMenuItem>
                       )}

@@ -106,7 +106,7 @@ export default function OnboardingPage() {
   if (authLoading || checkingCompanies) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -126,8 +126,8 @@ export default function OnboardingPage() {
       <Card className="relative w-full max-w-2xl border-border bg-card/95 shadow-2xl backdrop-blur-sm">
         <CardHeader className="space-y-4 text-center pb-2">
           {/* Logo */}
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary shadow-lg">
-            <Route className="h-8 w-8 text-primary-foreground" />
+          <div className="mx-auto flex size-14 items-center justify-center rounded-xl bg-primary shadow-lg">
+            <Route className="size-8 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold text-foreground">
             BetterRoute

@@ -111,11 +111,11 @@ export function TrackingTimeline({
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
+            className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
           >
             <ChevronDown
               className={cn(
-                "h-4 w-4 transition-transform",
+                "size-4 transition-transform",
                 open && "rotate-180",
               )}
             />
@@ -148,7 +148,7 @@ export function TrackingTimeline({
                 <div className="flex flex-col items-center">
                   <div
                     className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                      "flex size-9 shrink-0 items-center justify-center rounded-full",
                       state === "upcoming"
                         ? "border border-border bg-background text-muted-foreground"
                         : "text-white",
@@ -159,7 +159,7 @@ export function TrackingTimeline({
                         : undefined
                     }
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="size-4" />
                   </div>
                   {!isLast && (
                     <div

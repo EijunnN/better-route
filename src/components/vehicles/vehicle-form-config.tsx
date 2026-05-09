@@ -166,7 +166,7 @@ export function VehicleFormConfig() {
         <Card>
           <CardContent className="pt-4 space-y-4">
             <div className="flex items-center gap-2">
-              <Wrench className="h-4 w-4 text-muted-foreground" />
+              <Wrench className="size-4 text-muted-foreground" />
               <h4 className="font-medium text-sm">Habilidades del Vehículo</h4>
             </div>
             <p className="text-xs text-muted-foreground">

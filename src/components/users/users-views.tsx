@@ -63,7 +63,7 @@ export function UsersListView() {
               onClick={() => actions.setShowImportDialog(true)}
               disabled={meta.isSystemAdmin && !meta.effectiveCompanyId}
             >
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="size-4 mr-2" />
               Importar CSV
             </Button>
           </Can>
@@ -91,7 +91,7 @@ export function UsersListView() {
 
       {state.isLoading ? (
         <div className="flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+          <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
         </div>
       ) : state.error ? (
         <ErrorState title="Error al cargar usuarios" error={state.error} onRetry={actions.fetchUsers} />
@@ -273,9 +273,9 @@ function UserRow({ user }: { user: User }) {
                   disabled={state.deletingId === user.id}
                 >
                   {state.deletingId === user.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="size-4" />
                   )}
                 </Button>
               </AlertDialogTrigger>

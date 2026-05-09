@@ -130,7 +130,7 @@ export function AssignmentHistory({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+              <Clock className="size-5" />
               Assignment History
             </CardTitle>
             <CardDescription>
@@ -143,9 +143,9 @@ export function AssignmentHistory({
             onClick={() => setExpanded(!expanded)}
           >
             {expanded ? (
-              <ChevronUp className="h-4 w-4" />
+              <ChevronUp className="size-4" />
             ) : (
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="size-4" />
             )}
           </Button>
         </div>
@@ -154,7 +154,7 @@ export function AssignmentHistory({
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
           ) : history.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
@@ -237,8 +237,8 @@ function HistoryEntry({ entry, showConnector }: HistoryEntryProps) {
         <div className="absolute left-[11px] top-6 w-0.5 h-8 bg-border" />
       )}
       <div className="flex gap-3">
-        <div className="h-6 w-6 rounded-full bg-primary/10 border border-primary flex items-center justify-center flex-shrink-0">
-          <User className="h-3 w-3 text-primary" />
+        <div className="size-6 rounded-full bg-primary/10 border border-primary flex items-center justify-center flex-shrink-0">
+          <User className="size-3 text-primary" />
         </div>
         <div className="flex-1 min-w-0 pb-4">
           <div className="flex items-center gap-2 flex-wrap">
@@ -261,7 +261,7 @@ function HistoryEntry({ entry, showConnector }: HistoryEntryProps) {
           {/* Assignment Details */}
           {entry.changes.driverName && (
             <div className="mt-2 flex items-center gap-2 text-sm">
-              <User className="h-4 w-4 text-muted-foreground" />
+              <User className="size-4 text-muted-foreground" />
               <span className="font-medium">{entry.changes.driverName}</span>
               {entry.changes.previousDriverName && (
                 <>
@@ -278,7 +278,7 @@ function HistoryEntry({ entry, showConnector }: HistoryEntryProps) {
           {/* Override Warning */}
           {entry.changes.overrideWarnings && (
             <div className="mt-2 flex items-center gap-2 text-xs text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 rounded">
-              <AlertTriangle className="h-3 w-3" />
+              <AlertTriangle className="size-3" />
               <span>Manual override - warnings were present</span>
             </div>
           )}
@@ -315,7 +315,7 @@ function HistoryEntry({ entry, showConnector }: HistoryEntryProps) {
                 entry.changes.validation.warnings.length === 0 &&
                 entry.changes.validation.errors.length === 0 && (
                   <div className="flex items-center gap-1 text-xs text-green-600">
-                    <CheckCircle2 className="h-3 w-3" />
+                    <CheckCircle2 className="size-3" />
                     <span>Valid assignment</span>
                   </div>
                 )}

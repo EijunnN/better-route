@@ -46,11 +46,11 @@ interface JobProgressProps {
 }
 
 const STATUS_ICONS: Record<JobStatus, React.ReactNode> = {
-  PENDING: <Clock className="h-5 w-5 text-yellow-500" />,
-  RUNNING: <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />,
-  COMPLETED: <CheckCircle2 className="h-5 w-5 text-green-500" />,
-  FAILED: <AlertCircle className="h-5 w-5 text-red-500" />,
-  CANCELLED: <XCircle className="h-5 w-5 text-gray-500" />,
+  PENDING: <Clock className="size-5 text-yellow-500" />,
+  RUNNING: <Loader2 className="size-5 text-blue-500 animate-spin" />,
+  COMPLETED: <CheckCircle2 className="size-5 text-green-500" />,
+  FAILED: <AlertCircle className="size-5 text-red-500" />,
+  CANCELLED: <XCircle className="size-5 text-gray-500" />,
 };
 
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -206,12 +206,12 @@ export function JobProgress({
             >
               {isCancelling ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="size-4 mr-2 animate-spin" />
                   Cancelling...
                 </>
               ) : (
                 <>
-                  <XCircle className="h-4 w-4 mr-2" />
+                  <XCircle className="size-4 mr-2" />
                   Cancel
                 </>
               )}

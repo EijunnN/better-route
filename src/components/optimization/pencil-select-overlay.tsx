@@ -96,12 +96,12 @@ export function PencilSelectOverlay({
         >
           {isActive ? (
             <>
-              <X className="w-4 h-4 mr-2" />
+              <X className="size-4 mr-2" />
               Cancelar
             </>
           ) : (
             <>
-              <Pencil className="w-4 h-4 mr-2" />
+              <Pencil className="size-4 mr-2" />
               Seleccionar con lápiz
             </>
           )}

@@ -32,7 +32,7 @@ export function WorkflowPipelineView({
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-xl font-semibold">
-              <GitBranch className="h-5 w-5" />
+              <GitBranch className="size-5" />
               Flujo de entregas
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">

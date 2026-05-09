@@ -84,7 +84,7 @@ export function TrackingSettingsSection() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Globe className="h-4 w-4" />
+          <Globe className="size-4" />
           Seguimiento público
         </CardTitle>
         <CardDescription>
@@ -123,7 +123,7 @@ export function TrackingSettingsSection() {
                       className="flex items-center justify-between gap-4 px-4 py-3"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Icon className="size-4 text-muted-foreground shrink-0" />
                         <div className="min-w-0">
                           <p className="text-sm font-medium">{t.label}</p>
                           <p className="text-xs text-muted-foreground">
@@ -273,7 +273,7 @@ function BrandPreviewCard({
         <div className="border-b px-4 py-3">
           <div className="flex items-center gap-2">
             <div
-              className="flex h-7 w-7 items-center justify-center rounded text-xs font-bold text-white"
+              className="flex size-7 items-center justify-center rounded text-xs font-bold text-white"
               style={{ backgroundColor: brandColor }}
               aria-hidden="true"
             >

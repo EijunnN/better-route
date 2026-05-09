@@ -20,11 +20,11 @@ export function TrackingHeader({
           <img
             src={logoUrl}
             alt={companyName}
-            className="h-9 w-9 rounded-lg object-contain"
+            className="size-9 rounded-lg object-contain"
           />
         ) : (
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold text-white"
+            className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-white"
             style={{ backgroundColor: brandColor ?? "#4AB855" }}
           >
             {companyName.charAt(0).toUpperCase()}

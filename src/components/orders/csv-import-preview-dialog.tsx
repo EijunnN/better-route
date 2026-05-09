@@ -188,22 +188,22 @@ export function CsvImportPreviewDialog({
         >
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="new">
-              <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Nuevas {badge(newCount)}
+              <CheckCircle2 className="mr-1 size-3.5" /> Nuevas {badge(newCount)}
             </TabsTrigger>
             <TabsTrigger value="reactivable">
-              <RotateCcw className="mr-1 h-3.5 w-3.5" /> Reactivables{" "}
+              <RotateCcw className="mr-1 size-3.5" /> Reactivables{" "}
               {badge(reactivableCount)}
             </TabsTrigger>
             <TabsTrigger value="skippedActive">
-              <PauseCircle className="mr-1 h-3.5 w-3.5" /> Activas{" "}
+              <PauseCircle className="mr-1 size-3.5" /> Activas{" "}
               {badge(skippedActiveCount)}
             </TabsTrigger>
             <TabsTrigger value="skippedCancelled">
-              <Ban className="mr-1 h-3.5 w-3.5" /> Canceladas{" "}
+              <Ban className="mr-1 size-3.5" /> Canceladas{" "}
               {badge(skippedCancelledCount)}
             </TabsTrigger>
             <TabsTrigger value="invalid">
-              <AlertTriangle className="mr-1 h-3.5 w-3.5" /> Inválidas{" "}
+              <AlertTriangle className="mr-1 size-3.5" /> Inválidas{" "}
               {badge(invalidCount)}
             </TabsTrigger>
           </TabsList>
@@ -248,7 +248,7 @@ export function CsvImportPreviewDialog({
             onClick={handleConfirm}
             disabled={submitting || willApply === 0}
           >
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {submitting && <Loader2 className="mr-2 size-4 animate-spin" />}
             Confirmar y aplicar ({willApply})
           </Button>
         </DialogFooter>

@@ -28,7 +28,7 @@ export function UserFormRoles() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <Shield className="h-4 w-4" />
+          <Shield className="size-4" />
           Roles
         </CardTitle>
         {showRolesSection && (
@@ -46,7 +46,7 @@ export function UserFormRoles() {
           <div className="space-y-2">
             {isLoadingAllPermissions && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted border-t-primary" />
+                <div className="size-3 animate-spin rounded-full border-2 border-muted border-t-primary" />
                 Cargando...
               </div>
             )}
@@ -84,7 +84,7 @@ export function UserFormRoles() {
                       </p>
                     </div>
                     {isSelected && (
-                      <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                      <ShieldCheck className="size-4 text-primary shrink-0" />
                     )}
                   </div>
 

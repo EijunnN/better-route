@@ -216,7 +216,7 @@ function OrderDetailContent() {
   if (!isReady || (!order && !error)) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="size-8 animate-spin" />
       </div>
     );
   }
@@ -229,7 +229,7 @@ function OrderDetailContent() {
           size="sm"
           onClick={() => router.push("/orders")}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+          <ArrowLeft className="mr-2 size-4" /> Volver
         </Button>
         <Card className="mt-4">
           <CardContent className="py-12 text-center text-destructive">
@@ -252,7 +252,7 @@ function OrderDetailContent() {
           size="sm"
           onClick={() => router.push("/orders")}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+          <ArrowLeft className="mr-2 size-4" /> Volver
         </Button>
       </div>
 

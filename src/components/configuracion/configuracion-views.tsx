@@ -17,7 +17,7 @@ export function ConfiguracionView() {
   if (state.isLoading && !state.profile) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -29,7 +29,7 @@ export function ConfiguracionView() {
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-xl font-semibold">
-              <Settings className="h-5 w-5" />
+              <Settings className="size-5" />
               Configuración de la empresa
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
@@ -52,7 +52,7 @@ export function ConfiguracionView() {
                 onClick={actions.downloadCsvTemplate}
                 title="Descarga la plantilla CSV con los campos configurados"
               >
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="size-4 mr-2" />
                 Plantilla CSV
               </Button>
             </Can>
@@ -63,9 +63,9 @@ export function ConfiguracionView() {
                 size="sm"
               >
                 {state.isSaving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="size-4 mr-2 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="size-4 mr-2" />
                 )}
                 Guardar cambios
               </Button>
@@ -97,7 +97,7 @@ export function ConfiguracionView() {
               onClick={actions.resetProfile}
               className="text-muted-foreground hover:text-foreground"
             >
-              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              <RotateCcw className="size-3.5 mr-1.5" />
               Restablecer perfil a valores predeterminados
             </Button>
           </div>

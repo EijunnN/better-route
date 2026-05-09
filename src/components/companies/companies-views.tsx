@@ -23,7 +23,7 @@ export function CompaniesListView() {
   if (state.isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -31,7 +31,7 @@ export function CompaniesListView() {
   if (state.error) {
     return (
       <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-12 text-center">
-        <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+        <AlertCircle className="size-12 mx-auto text-destructive mb-4" />
         <h3 className="text-lg font-semibold text-foreground mb-2">Error al cargar empresas</h3>
         <p className="text-muted-foreground mb-4">No se pudieron cargar las empresas. Por favor, intente nuevamente.</p>
         <Button onClick={() => actions.mutate()} variant="outline">
@@ -122,7 +122,7 @@ function CompanyRow({ company }: { company: Company }) {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={isDeleting}>
-                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {isDeleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>

@@ -211,7 +211,7 @@ function JobMetricsExpansion({
   if (loading) {
     return (
       <div className="px-3 py-3 border-t flex items-center gap-2 text-xs text-muted-foreground">
-        <Loader2 className="w-3 h-3 animate-spin" />
+        <Loader2 className="size-3 animate-spin" />
         Cargando métricas...
       </div>
     );
@@ -323,7 +323,7 @@ function HistorialSearch() {
 
   return (
     <div className="relative">
-      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
       <Input
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
@@ -339,8 +339,8 @@ export function HistorialHeader() {
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-3">
         <Link href="/planificacion">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <ArrowLeft className="w-4 h-4" />
+          <Button variant="ghost" size="icon" className="size-8">
+            <ArrowLeft className="size-4" />
           </Button>
         </Link>
         <h1 className="text-lg font-semibold">Historial</h1>
@@ -349,7 +349,7 @@ export function HistorialHeader() {
       </div>
       <Link href="/planificacion">
         <Button size="sm">
-          <RotateCcw className="w-4 h-4 mr-2" />
+          <RotateCcw className="size-4 mr-2" />
           Nueva Planificación
         </Button>
       </Link>
@@ -396,7 +396,7 @@ export function HistorialError() {
 export function HistorialLoading() {
   return (
     <div className="flex justify-center py-8">
-      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <Loader2 className="size-6 animate-spin text-muted-foreground" />
     </div>
   );
 }
@@ -436,7 +436,7 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
       <CardContent className="px-3 py-2">
         <div className="flex items-center gap-3">
           <Badge className={`${statusConfig.color} text-xs py-0 shrink-0`}>
-            <StatusIcon name={statusConfig.icon} className="w-3 h-3 mr-1" />
+            <StatusIcon name={statusConfig.icon} className="size-3 mr-1" />
             {statusConfig.label}
           </Badge>
 
@@ -477,8 +477,8 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
               onClick={() => setShowMetrics((v) => !v)}
               title={showMetrics ? "Ocultar métricas" : "Ver métricas detalladas"}
             >
-              <BarChart3 className="w-4 h-4 mr-1" />
-              {showMetrics ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              <BarChart3 className="size-4 mr-1" />
+              {showMetrics ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
             </Button>
           )}
 
@@ -503,7 +503,7 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
           size="sm"
           onClick={() => actions.navigateToResults(job)}
         >
-          <Eye className="w-4 h-4" />
+          <Eye className="size-4" />
         </Button>
         {job.configurationId && (
           <Button
@@ -511,7 +511,7 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
             size="sm"
             onClick={() => actions.handleReoptimize(job)}
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="size-4" />
           </Button>
         )}
         <AlertDialog>
@@ -521,7 +521,7 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
               size="sm"
               className="text-destructive hover:text-destructive"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="size-4" />
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -554,7 +554,7 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
           size="sm"
           onClick={() => actions.navigateToResults(job)}
         >
-          <Eye className="w-4 h-4 mr-1" />
+          <Eye className="size-4 mr-1" />
           Ver progreso
         </Button>
       </div>
@@ -571,7 +571,7 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
             size="sm"
             className="text-destructive hover:text-destructive"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="size-4" />
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>

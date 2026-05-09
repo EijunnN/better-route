@@ -93,7 +93,7 @@ export function KpiBadge({
         statusColors[status],
       )}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="size-4" />
       <span className="font-medium">{value}</span>
       <span className="text-xs opacity-70 hidden sm:inline">{label}</span>
     </div>
@@ -158,10 +158,10 @@ export function CompactRouteCard({
         onClick={handleSelect}
       >
         <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+          className="size-8 rounded-lg flex items-center justify-center shrink-0"
           style={{ backgroundColor: routeColor }}
         >
-          <Truck className="h-4 w-4 text-white" />
+          <Truck className="size-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -170,7 +170,7 @@ export function CompactRouteCard({
             </span>
             {route.driverName && (
               <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <User className="h-3 w-3" />
+                <User className="size-3" />
                 {route.driverName}
               </span>
             )}
@@ -189,7 +189,7 @@ export function CompactRouteCard({
               variant="outline"
               className="border-orange-300 text-orange-700 text-xs"
             >
-              <AlertTriangle className="h-3 w-3 mr-1" />
+              <AlertTriangle className="size-3 mr-1" />
               {route.timeWindowViolations}
             </Badge>
           )}
@@ -199,15 +199,15 @@ export function CompactRouteCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6"
+                  className="size-6"
                   disabled={isSwapping}
                   onClick={(e) => e.stopPropagation()}
                   aria-label="Intercambiar ruta"
                 >
                   {isSwapping ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin" />
                   ) : (
-                    <ArrowLeftRight className="h-3.5 w-3.5" />
+                    <ArrowLeftRight className="size-3.5" />
                   )}
                 </Button>
               </DropdownMenuTrigger>
@@ -222,7 +222,7 @@ export function CompactRouteCard({
                       swapVehicleRoutes(route.vehicleId, other.vehicleId);
                     }}
                   >
-                    <Truck className="h-4 w-4 mr-2 shrink-0" />
+                    <Truck className="size-4 mr-2 shrink-0" />
                     <span className="truncate">{other.vehicleIdentifier}</span>
                     <span className="ml-auto text-xs text-muted-foreground">
                       {other.stops.length} paradas
@@ -235,7 +235,7 @@ export function CompactRouteCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6"
+            className="size-6"
             onClick={(e) => {
               e.stopPropagation();
               handleToggle();
@@ -243,9 +243,9 @@ export function CompactRouteCard({
             aria-label={isExpanded ? "Colapsar ruta" : "Expandir ruta"}
           >
             {isExpanded ? (
-              <ChevronUp className="h-4 w-4" />
+              <ChevronUp className="size-4" />
             ) : (
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="size-4" />
             )}
           </Button>
         </div>
@@ -256,7 +256,7 @@ export function CompactRouteCard({
           {/* Compact Route Metrics */}
           <div className="flex items-center gap-3 text-xs px-1">
             <div className="flex items-center gap-1">
-              <Ruler className="h-3 w-3 text-muted-foreground" />
+              <Ruler className="size-3 text-muted-foreground" />
               <span className="font-medium">
                 {formatDistance(route.totalDistance)}
               </span>
@@ -265,7 +265,7 @@ export function CompactRouteCard({
               className="flex items-center gap-1"
               title="Tiempo total (viaje + servicio)"
             >
-              <Clock className="h-3 w-3 text-muted-foreground" />
+              <Clock className="size-3 text-muted-foreground" />
               <span className="font-medium">
                 {formatDuration(route.totalDuration)}
               </span>
@@ -279,13 +279,13 @@ export function CompactRouteCard({
             </div>
             {(route.capacityUsed?.WEIGHT ?? 0) > 0 && (
               <div className="flex items-center gap-1">
-                <Scale className="h-3 w-3 text-muted-foreground" />
+                <Scale className="size-3 text-muted-foreground" />
                 <span>{route.capacityUsed?.WEIGHT}kg</span>
               </div>
             )}
             {(route.capacityUsed?.VOLUME ?? 0) > 0 && (
               <div className="flex items-center gap-1">
-                <Package className="h-3 w-3 text-muted-foreground" />
+                <Package className="size-3 text-muted-foreground" />
                 <span>{route.capacityUsed?.VOLUME}L</span>
               </div>
             )}
@@ -330,14 +330,14 @@ export function CompactRouteCard({
                       >
                         <div
                           className={cn(
-                            "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                            "size-4 rounded border flex items-center justify-center shrink-0 transition-colors",
                             selected
                               ? "bg-primary border-primary"
                               : "border-muted-foreground/30",
                           )}
                         >
                           {selected && (
-                            <Check className="h-3 w-3 text-primary-foreground" />
+                            <Check className="size-3 text-primary-foreground" />
                           )}
                         </div>
                         <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">
@@ -380,14 +380,14 @@ export function CompactRouteCard({
                   >
                     <div
                       className={cn(
-                        "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                        "size-4 rounded border flex items-center justify-center shrink-0 transition-colors",
                         selected
                           ? "bg-primary border-primary"
                           : "border-muted-foreground/30",
                       )}
                     >
                       {selected && (
-                        <Check className="h-3 w-3 text-primary-foreground" />
+                        <Check className="size-3 text-primary-foreground" />
                       )}
                     </div>
                     <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">
@@ -433,15 +433,15 @@ export function UnassignedOrdersPanel() {
         className="w-full flex items-center justify-between px-3 py-2 hover:bg-orange-100/50 dark:hover:bg-orange-900/30 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <AlertTriangle className="size-4 text-orange-600 dark:text-orange-400" />
           <span className="text-sm font-medium text-orange-800 dark:text-orange-300">
             {orders.length} sin asignar
           </span>
         </div>
         {unassignedExpanded ? (
-          <ChevronUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <ChevronUp className="size-4 text-orange-600 dark:text-orange-400" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <ChevronDown className="size-4 text-orange-600 dark:text-orange-400" />
         )}
       </button>
 
@@ -472,14 +472,14 @@ export function UnassignedOrdersPanel() {
                 >
                   <div
                     className={cn(
-                      "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                      "size-4 rounded border flex items-center justify-center shrink-0 transition-colors",
                       selected
                         ? "bg-primary border-primary"
                         : "border-orange-400/50",
                     )}
                   >
                     {selected && (
-                      <Check className="h-3 w-3 text-primary-foreground" />
+                      <Check className="size-3 text-primary-foreground" />
                     )}
                   </div>
                   <span className="font-medium text-orange-900 dark:text-orange-200">
@@ -509,7 +509,7 @@ export function DashboardHeader() {
     <div className="flex items-center justify-between px-4 py-2 border-b bg-background shrink-0">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="size-4 mr-2" />
           Volver
         </Button>
         <div className="h-6 w-px bg-border" />
@@ -585,7 +585,7 @@ export function DashboardHeader() {
       <div className="flex items-center gap-2">
         <Link href="/planificacion/historial">
           <Button variant="ghost" size="sm">
-            <History className="h-4 w-4 mr-2" />
+            <History className="size-4 mr-2" />
             <span className="hidden sm:inline">Historial</span>
           </Button>
         </Link>
@@ -600,18 +600,18 @@ export function DashboardHeader() {
             })
           }
         >
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="size-4 mr-2" />
           <span className="hidden sm:inline">Exportar</span>
         </Button>
         {onReoptimize && (
           <Button variant="outline" size="sm" onClick={onReoptimize}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="size-4 mr-2" />
             <span className="hidden sm:inline">Reoptimizar</span>
           </Button>
         )}
         {onConfirm && jobId && (
           <Button size="sm" onClick={() => setConfirmDialogOpen(true)}>
-            <CheckCircle2 className="h-4 w-4 mr-2" />
+            <CheckCircle2 className="size-4 mr-2" />
             Confirmar
           </Button>
         )}
@@ -700,12 +700,12 @@ export function DashboardRoutesPanel() {
                 onClick={clearSelection}
                 className="h-7 px-2"
               >
-                <X className="h-3 w-3 mr-1" />
+                <X className="size-3 mr-1" />
                 Limpiar
               </Button>
             </div>
             <Button size="sm" onClick={openReassignModal}>
-              <ArrowRight className="h-4 w-4 mr-2" />
+              <ArrowRight className="size-4 mr-2" />
               Reasignar
             </Button>
           </div>
@@ -773,9 +773,9 @@ export function DashboardMapPanel() {
             }`}
           >
             {showZones ? (
-              <Eye className="w-4 h-4" />
+              <Eye className="size-4" />
             ) : (
-              <EyeOff className="w-4 h-4" />
+              <EyeOff className="size-4" />
             )}
             Zonas ({zones.length})
           </button>
@@ -848,7 +848,7 @@ export function ReassignmentDialog() {
             <div className="max-h-24 overflow-y-auto border rounded-lg p-2 space-y-1">
               {selectedOrdersForReassign.map((order) => (
                 <div key={order.orderId} className="flex items-center gap-2 text-xs">
-                  <Package className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <Package className="size-3 text-muted-foreground shrink-0" />
                   <span className="font-medium">{order.trackingId}</span>
                   {order.vehiclePlate && (
                     <span className="text-muted-foreground">
@@ -877,7 +877,7 @@ export function ReassignmentDialog() {
                   )}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <Truck className="h-4 w-4 shrink-0" />
+                    <Truck className="size-4 shrink-0" />
                     <span className="font-medium truncate">{vehicle.plate}</span>
                     {vehicle.driverName && (
                       <span className="text-xs opacity-70 truncate">
@@ -917,12 +917,12 @@ export function ReassignmentDialog() {
           >
             {isReassigning ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="size-4 mr-2 animate-spin" />
                 Reasignando...
               </>
             ) : (
               <>
-                <ArrowRight className="h-4 w-4 mr-2" />
+                <ArrowRight className="size-4 mr-2" />
                 Reasignar{" "}
                 {selectedOrdersForReassign.length > 1
                   ? `(${selectedOrdersForReassign.length})`

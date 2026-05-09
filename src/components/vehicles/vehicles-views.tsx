@@ -45,7 +45,7 @@ export function VehiclesListView() {
       {state.isLoading ? (
         <Card>
           <CardContent className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <Loader2 className="size-8 animate-spin text-muted-foreground" />
           </CardContent>
         </Card>
       ) : state.error ? (
@@ -175,9 +175,9 @@ function VehicleRow({ vehicle }: { vehicle: Vehicle }) {
                   disabled={state.deletingId === vehicle.id}
                 >
                   {state.deletingId === vehicle.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="size-4" />
                   )}
                 </Button>
               </AlertDialogTrigger>

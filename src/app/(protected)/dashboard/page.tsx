@@ -69,7 +69,7 @@ function MetricCard({
           {title}
         </CardTitle>
         <div className={`rounded-lg p-2 ${variantStyles[variant]}`}>
-          <Icon className="h-4 w-4" />
+          <Icon className="size-4" />
         </div>
       </CardHeader>
       <CardContent>
@@ -80,9 +80,9 @@ function MetricCard({
               className={`flex items-center font-medium ${trend.isPositive ? "text-[hsl(var(--chart-2))]" : "text-destructive"}`}
             >
               {trend.isPositive ? (
-                <ArrowUpRight className="h-3 w-3" />
+                <ArrowUpRight className="size-3" />
               ) : (
-                <ArrowDownRight className="h-3 w-3" />
+                <ArrowDownRight className="size-3" />
               )}
               {Math.abs(trend.value)}%
             </span>
@@ -127,8 +127,8 @@ function RecentOrderItem({
   return (
     <div className="flex items-center justify-between py-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-          <Package className="h-5 w-5 text-primary" />
+        <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
+          <Package className="size-5 text-primary" />
         </div>
         <div>
           <p className="font-medium">{customerName || trackingId}</p>
@@ -170,8 +170,8 @@ function ActiveDriverItem({
   return (
     <div className="flex items-center justify-between py-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--chart-2))]/10">
-          <Users className="h-5 w-5 text-[hsl(var(--chart-2))]" />
+        <div className="flex size-10 items-center justify-center rounded-full bg-[hsl(var(--chart-2))]/10">
+          <Users className="size-5 text-[hsl(var(--chart-2))]" />
         </div>
         <div>
           <p className="font-medium">{name}</p>
@@ -179,7 +179,7 @@ function ActiveDriverItem({
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <div className={`h-2 w-2 rounded-full ${config.color}`} />
+        <div className={`size-2 rounded-full ${config.color}`} />
         <span className="text-sm text-muted-foreground">{config.label}</span>
       </div>
     </div>
@@ -356,7 +356,7 @@ export default async function DashboardPage() {
           <Card className="cursor-pointer transition-shadow hover:border-primary hover:shadow-md">
             <CardContent className="flex items-center gap-4 p-6">
               <div className={`rounded-xl p-3 ${iconBgStyles.chart1}`}>
-                <Package className="h-6 w-6 text-primary-foreground" />
+                <Package className="size-6 text-primary-foreground" />
               </div>
               <div>
                 <h3 className="font-semibold">Gestionar Pedidos</h3>
@@ -371,7 +371,7 @@ export default async function DashboardPage() {
           <Card className="cursor-pointer transition-shadow hover:border-primary hover:shadow-md">
             <CardContent className="flex items-center gap-4 p-6">
               <div className={`rounded-xl p-3 ${iconBgStyles.chart2}`}>
-                <Route className="h-6 w-6 text-primary-foreground" />
+                <Route className="size-6 text-primary-foreground" />
               </div>
               <div>
                 <h3 className="font-semibold">Planificación</h3>
@@ -386,7 +386,7 @@ export default async function DashboardPage() {
           <Card className="cursor-pointer transition-shadow hover:border-primary hover:shadow-md">
             <CardContent className="flex items-center gap-4 p-6">
               <div className={`rounded-xl p-3 ${iconBgStyles.chart4}`}>
-                <TrendingUp className="h-6 w-6 text-primary-foreground" />
+                <TrendingUp className="size-6 text-primary-foreground" />
               </div>
               <div>
                 <h3 className="font-semibold">Monitorear</h3>
@@ -417,7 +417,7 @@ export default async function DashboardPage() {
           <CardContent>
             {recentOrders.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
-                <Package className="mx-auto h-12 w-12 opacity-50" />
+                <Package className="mx-auto size-12 opacity-50" />
                 <p className="mt-2">No hay pedidos registrados</p>
                 <Link href="/orders">
                   <Button variant="link" className="mt-2">
@@ -451,7 +451,7 @@ export default async function DashboardPage() {
           <CardContent>
             {activeDriversList.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
-                <Users className="mx-auto h-12 w-12 opacity-50" />
+                <Users className="mx-auto size-12 opacity-50" />
                 <p className="mt-2">No hay conductores registrados</p>
                 <Link href="/users">
                   <Button variant="link" className="mt-2">
@@ -475,7 +475,7 @@ export default async function DashboardPage() {
         <Card className="border-[hsl(var(--chart-4))]/30 bg-[hsl(var(--chart-4))]/5">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+              <AlertTriangle className="size-5 text-[hsl(var(--chart-4))]" />
               <CardTitle className="text-[hsl(var(--chart-4))]">
                 Primeros pasos
               </CardTitle>
@@ -487,7 +487,7 @@ export default async function DashboardPage() {
                 href="/fleets"
                 className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors"
               >
-                <Truck className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+                <Truck className="size-5 text-[hsl(var(--chart-4))]" />
                 <div>
                   <p className="font-medium">1. Crear flotas</p>
                   <p className="text-sm text-muted-foreground">
@@ -499,7 +499,7 @@ export default async function DashboardPage() {
                 href="/vehicles"
                 className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors"
               >
-                <Truck className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+                <Truck className="size-5 text-[hsl(var(--chart-4))]" />
                 <div>
                   <p className="font-medium">2. Agregar vehículos</p>
                   <p className="text-sm text-muted-foreground">
@@ -511,7 +511,7 @@ export default async function DashboardPage() {
                 href="/users"
                 className="flex items-center gap-3 rounded-lg bg-card p-3 border border-border hover:border-primary transition-colors"
               >
-                <Users className="h-5 w-5 text-[hsl(var(--chart-4))]" />
+                <Users className="size-5 text-[hsl(var(--chart-4))]" />
                 <div>
                   <p className="font-medium">3. Agregar conductores</p>
                   <p className="text-sm text-muted-foreground">

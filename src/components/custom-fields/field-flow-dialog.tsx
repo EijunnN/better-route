@@ -151,7 +151,7 @@ export function FieldFlowDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <TypeIcon className="h-4 w-4 text-muted-foreground" />
+            <TypeIcon className="size-4 text-muted-foreground" />
             <span>{definition.label}</span>
             <Badge variant="secondary" className="text-[10px]">
               {FIELD_TYPE_LABELS[definition.fieldType]}
@@ -185,7 +185,7 @@ export function FieldFlowDialog({
 
             {definition.required && (
               <div className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400 pt-1 border-t border-amber-500/20">
-                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <AlertCircle className="size-3.5 mt-0.5 shrink-0" />
                 <span>
                   <strong>Obligatorio.</strong>{" "}
                   {isOrders
@@ -272,13 +272,13 @@ function SurfaceRow({ surface }: { surface: Surface }) {
       <CardContent className="p-3">
         <div className="flex items-start gap-3">
           <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded ${
+            className={`flex size-8 shrink-0 items-center justify-center rounded ${
               isFilled
                 ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
                 : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
             }`}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -297,7 +297,7 @@ function SurfaceRow({ surface }: { surface: Surface }) {
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="h-2.5 w-2.5 mr-1" />Se muestra aquí
+                    <CheckCircle2 className="size-2.5 mr-1" />Se muestra aquí
                   </>
                 )}
               </Badge>
@@ -322,7 +322,7 @@ function HiddenRow({
 }) {
   return (
     <div className="flex items-start gap-2 rounded-md border border-dashed p-2.5 opacity-70">
-      <Icon className="h-3.5 w-3.5 mt-0.5 text-muted-foreground" />
+      <Icon className="size-3.5 mt-0.5 text-muted-foreground" />
       <div className="min-w-0">
         <p className="text-xs font-medium text-muted-foreground">{title}</p>
         <p className="text-[11px] text-muted-foreground">{hint}</p>

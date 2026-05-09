@@ -555,12 +555,12 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
     }, [isDark, isLoading]);
 
     return (
-      <div className="h-full w-full relative">
-        <div ref={mapContainer} className="w-full h-full" />
+      <div className="size-full relative">
+        <div ref={mapContainer} className="size-full" />
 
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <Loader2 className="size-8 animate-spin text-muted-foreground" />
           </div>
         )}
 
@@ -576,7 +576,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
         {!isLoading && !error && (
           <div className="absolute bottom-4 right-4 z-10">
             <div className="bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 text-xs text-muted-foreground flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              <div className="size-1.5 rounded-full bg-green-500 animate-pulse" />
               Auto-refresh: 15s
             </div>
           </div>

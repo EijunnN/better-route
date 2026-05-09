@@ -114,13 +114,13 @@ export function UserSkillsListView() {
       {state.isLoading ? (
         <Card>
           <CardContent className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <Loader2 className="size-8 animate-spin text-muted-foreground" />
           </CardContent>
         </Card>
       ) : state.filteredUserSkills.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <AlertCircle className="mx-auto size-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No hay habilidades asignadas. Asigne la primera habilidad a un usuario.</p>
           </CardContent>
         </Card>
@@ -224,7 +224,7 @@ function UserSkillRow({ userSkill }: { userSkill: UserSkill }) {
                   className="text-destructive hover:text-destructive"
                   disabled={state.deletingId === userSkill.id}
                 >
-                  {state.deletingId === userSkill.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {state.deletingId === userSkill.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>

@@ -84,7 +84,7 @@ export function CapacityConstraintsSummary({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </CardContent>
       </Card>
     );
@@ -130,7 +130,7 @@ export function CapacityConstraintsSummary({
         {/* Overview Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-            <Package className="w-5 h-5 text-muted-foreground" />
+            <Package className="size-5 text-muted-foreground" />
             <div>
               <p className="text-sm text-muted-foreground">Total Orders</p>
               <p className="text-lg font-semibold">{summary.totalOrders}</p>
@@ -138,7 +138,7 @@ export function CapacityConstraintsSummary({
           </div>
 
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-            <Package className="w-5 h-5 text-blue-500" />
+            <Package className="size-5 text-blue-500" />
             <div>
               <p className="text-sm text-muted-foreground">Total Weight</p>
               <p className="text-lg font-semibold">
@@ -148,7 +148,7 @@ export function CapacityConstraintsSummary({
           </div>
 
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-            <Volume className="w-5 h-5 text-green-500" />
+            <Volume className="size-5 text-green-500" />
             <div>
               <p className="text-sm text-muted-foreground">Total Volume</p>
               <p className="text-lg font-semibold">
@@ -158,7 +158,7 @@ export function CapacityConstraintsSummary({
           </div>
 
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-            <Wrench className="w-5 h-5 text-orange-500" />
+            <Wrench className="size-5 text-orange-500" />
             <div>
               <p className="text-sm text-muted-foreground">Required Skills</p>
               <p className="text-lg font-semibold">

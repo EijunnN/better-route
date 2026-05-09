@@ -108,7 +108,7 @@ export function CustomFieldsDashboardView() {
     return (
       <div className="flex-1 bg-background p-8">
         <div className="mx-auto max-w-5xl flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+          <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
         </div>
       </div>
     );
@@ -179,12 +179,12 @@ export function CustomFieldsDashboardView() {
               size="sm"
               onClick={() => setShowLearnDialog(true)}
             >
-              <HelpCircle className="h-4 w-4 mr-1.5" />
+              <HelpCircle className="size-4 mr-1.5" />
               ¿Cómo funciona?
             </Button>
             <Can perm="company:update">
               <Button size="sm" onClick={() => actions.openCreateDialog(activeTab)}>
-                <Plus className="h-4 w-4 mr-1.5" />
+                <Plus className="size-4 mr-1.5" />
                 Nuevo campo
               </Button>
             </Can>
@@ -202,7 +202,7 @@ export function CustomFieldsDashboardView() {
                 ).length;
                 return (
                   <TabsTrigger key={entity} value={entity} className="gap-2">
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="size-3.5" />
                     {tabMeta.label}
                     <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
                       {count}
@@ -215,7 +215,7 @@ export function CustomFieldsDashboardView() {
             {hasAnyActive && (
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
@@ -306,8 +306,8 @@ function EntityPanel({ entity, query, showArchived, onCreate }: EntityPanelProps
     return (
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center justify-center text-center py-12 space-y-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-            <EntityIcon className="h-6 w-6" />
+          <div className="flex size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <EntityIcon className="size-6" />
           </div>
           <div>
             <h3 className="font-semibold">
@@ -322,7 +322,7 @@ function EntityPanel({ entity, query, showArchived, onCreate }: EntityPanelProps
               const Icon = example.icon;
               return (
                 <Badge key={example.label} variant="secondary" className="text-[11px]">
-                  <Icon className="h-3 w-3 mr-1" />
+                  <Icon className="size-3 mr-1" />
                   {example.label}
                 </Badge>
               );
@@ -330,7 +330,7 @@ function EntityPanel({ entity, query, showArchived, onCreate }: EntityPanelProps
           </div>
           <Can perm="company:update">
             <Button size="sm" onClick={onCreate} className="mt-2">
-              <Plus className="h-4 w-4 mr-1.5" />
+              <Plus className="size-4 mr-1.5" />
               Agregar campo de {meta.label.toLowerCase()}
             </Button>
           </Can>
@@ -350,7 +350,7 @@ function EntityPanel({ entity, query, showArchived, onCreate }: EntityPanelProps
       {showArchived && (
         <section className="space-y-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Archive className="h-3.5 w-3.5" />
+            <Archive className="size-3.5" />
             <span>Archivados ({archived.length})</span>
           </div>
           {archived.length > 0 ? (
@@ -478,7 +478,7 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
               onClick={() => handleMove("up")}
               title="Mover arriba"
             >
-              <ChevronUp className="h-3 w-3" />
+              <ChevronUp className="size-3" />
             </Button>
             <Button
               variant="ghost"
@@ -488,7 +488,7 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
               onClick={() => handleMove("down")}
               title="Mover abajo"
             >
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className="size-3" />
             </Button>
           </div>
         </Can>
@@ -501,7 +501,7 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
       </td>
       <td className="p-3">
         <Badge variant="secondary" className={`text-[11px] gap-1 ${typeColor}`}>
-          <TypeIcon className="h-3 w-3" />
+          <TypeIcon className="size-3" />
           {FIELD_TYPE_LABELS[definition.fieldType]}
         </Badge>
       </td>
@@ -539,22 +539,22 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-primary"
             onClick={() => setShowFlow(true)}
             title="Ver dónde aparece este campo"
           >
-            <Workflow className="h-3.5 w-3.5" />
+            <Workflow className="size-3.5" />
           </Button>
           <Can perm="company:update">
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0"
+              className="size-7 p-0"
               onClick={() => actions.openEditDialog(definition)}
               disabled={isBusy}
               title="Editar"
             >
-              <Pencil className="h-3.5 w-3.5" />
+              <Pencil className="size-3.5" />
             </Button>
 
             {definition.active ? (
@@ -563,14 +563,14 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    className="size-7 p-0 text-muted-foreground hover:text-destructive"
                     disabled={isBusy}
                     title="Archivar"
                   >
                     {isBusy ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="size-3.5 animate-spin" />
                     ) : (
-                      <Archive className="h-3.5 w-3.5" />
+                      <Archive className="size-3.5" />
                     )}
                   </Button>
                 </AlertDialogTrigger>
@@ -595,15 +595,15 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+                className="size-7 p-0 text-muted-foreground hover:text-primary"
                 disabled={isBusy}
                 onClick={() => handleToggle(true)}
                 title="Reactivar"
               >
                 {isBusy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin" />
                 ) : (
-                  <ArchiveRestore className="h-3.5 w-3.5" />
+                  <ArchiveRestore className="size-3.5" />
                 )}
               </Button>
             )}
@@ -635,14 +635,14 @@ function VisibilityIcons({ definition }: { definition: FieldDefinition }) {
         return (
           <span
             key={item.key as string}
-            className={`inline-flex h-6 w-6 items-center justify-center rounded ${
+            className={`inline-flex size-6 items-center justify-center rounded ${
               enabled
                 ? "bg-primary/10 text-primary"
                 : "bg-muted/40 text-muted-foreground/40"
             }`}
             title={`${item.label}: ${enabled ? "sí" : "no"}`}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <Icon className="size-3.5" />
           </span>
         );
       })}

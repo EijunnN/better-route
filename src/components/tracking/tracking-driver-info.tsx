@@ -28,14 +28,14 @@ export function TrackingDriverInfo({
             <img
               src={photo}
               alt={name}
-              className="h-11 w-11 shrink-0 rounded-full border border-border/60 object-cover"
+              className="size-11 shrink-0 rounded-full border border-border/60 object-cover"
             />
           ) : (
             <div
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full"
               style={{ backgroundColor: `${accent}26`, color: accent }}
             >
-              <User className="h-5 w-5" />
+              <User className="size-5" />
             </div>
           )}
           <div className="min-w-0">
@@ -49,14 +49,14 @@ export function TrackingDriverInfo({
           <DriverActionButton
             href={callHref}
             label="Llamar"
-            icon={<Phone className="h-4 w-4" />}
+            icon={<Phone className="size-4" />}
             accent={accent}
             disabled={!callHref}
           />
           <DriverActionButton
             href={smsHref}
             label="Mensaje"
-            icon={<MessageCircle className="h-4 w-4" />}
+            icon={<MessageCircle className="size-4" />}
             accent={accent}
             variant="outline"
             disabled={!smsHref}
@@ -84,8 +84,8 @@ function DriverActionButton({
 }) {
   const className =
     variant === "filled"
-      ? "h-10 w-10 rounded-full flex items-center justify-center transition-opacity hover:opacity-90"
-      : "h-10 w-10 rounded-full flex items-center justify-center border border-border/80 bg-background/40 transition-colors hover:bg-background";
+      ? "size-10 rounded-full flex items-center justify-center transition-opacity hover:opacity-90"
+      : "size-10 rounded-full flex items-center justify-center border border-border/80 bg-background/40 transition-colors hover:bg-background";
   const style =
     variant === "filled"
       ? { backgroundColor: `${accent}26`, color: accent }

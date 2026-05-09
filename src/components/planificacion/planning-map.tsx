@@ -604,7 +604,7 @@ export function PlanningMap({
   return (
     <div
       ref={mapContainer}
-      className="w-full h-full rounded-lg overflow-hidden"
+      className="size-full rounded-lg overflow-hidden"
     />
   );
 }

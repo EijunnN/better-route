@@ -175,11 +175,11 @@ export function TrackingMap({
 
   return (
     <div className="relative h-72 w-full overflow-hidden rounded-2xl border border-border/60 sm:h-96">
-      <div ref={mapContainer} className="h-full w-full" />
+      <div ref={mapContainer} className="size-full" />
 
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       )}
 
@@ -192,7 +192,7 @@ export function TrackingMap({
               Entrega estimada
             </p>
             <div className="mt-1 flex items-center gap-2">
-              <Clock className="h-4 w-4" style={{ color: accent }} />
+              <Clock className="size-4" style={{ color: accent }} />
               <span className="text-lg font-semibold tabular-nums">
                 {formatEta(estimatedArrival)}
               </span>

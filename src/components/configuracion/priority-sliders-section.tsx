@@ -61,7 +61,7 @@ export function PrioritySlidersSection() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Truck className="h-4 w-4" />
+          <Truck className="size-4" />
           Priorización por tipo de pedido
         </CardTitle>
         <CardDescription>

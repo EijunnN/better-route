@@ -374,10 +374,10 @@ export function DriverRouteDetail({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0"
+            className="size-7 shrink-0"
             onClick={onClose}
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="size-4" />
           </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -391,12 +391,12 @@ export function DriverRouteDetail({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 shrink-0"
+              className="size-7 shrink-0"
               onClick={handleRefresh}
               disabled={isRefreshing}
             >
               <RefreshCw
-                className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")}
+                className={cn("size-3.5", isRefreshing && "animate-spin")}
               />
             </Button>
           )}
@@ -433,10 +433,10 @@ export function DriverRouteDetail({
         {locationData && (
           <div className="flex items-center gap-3 text-xs">
             <div className="flex items-center gap-1.5">
-              <Signal className="w-3 h-3 text-muted-foreground" />
+              <Signal className="size-3 text-muted-foreground" />
               <div
                 className={cn(
-                  "w-1.5 h-1.5 rounded-full",
+                  "size-1.5 rounded-full",
                   locationData.isRecent ? "bg-green-500" : "bg-amber-500",
                 )}
               />
@@ -452,7 +452,7 @@ export function DriverRouteDetail({
               <div className="flex items-center gap-1.5">
                 <Battery
                   className={cn(
-                    "w-3 h-3",
+                    "size-3",
                     locationData.batteryLevel > 50
                       ? "text-green-500"
                       : locationData.batteryLevel > 20
@@ -481,7 +481,7 @@ export function DriverRouteDetail({
           <>
             {/* Vehicle + progress row */}
             <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-              <Truck className="w-4 h-4 text-primary shrink-0" />
+              <Truck className="size-4 text-primary shrink-0" />
               <span className="text-sm font-medium">{route.vehicle.plate}</span>
               <span className="text-xs text-muted-foreground">
                 {route.vehicle.brand} {route.vehicle.model}
@@ -547,7 +547,7 @@ export function DriverRouteDetail({
                       variant="destructive"
                       className="text-[10px]"
                     >
-                      <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
+                      <AlertTriangle className="size-2.5 mr-0.5" />
                       {error}
                     </Badge>
                   ))}
@@ -587,7 +587,7 @@ export function DriverRouteDetail({
                     >
                       <div
                         className={cn(
-                          "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
+                          "size-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
                           !hasCustomColor && statusConfig.bgColor,
                           !hasCustomColor && statusConfig.color,
                         )}
@@ -612,7 +612,7 @@ export function DriverRouteDetail({
                           )}
                           <StatusIcon
                             className={cn(
-                              "w-3 h-3 shrink-0",
+                              "size-3 shrink-0",
                               !hasCustomColor && statusConfig.color,
                             )}
                             style={
@@ -698,10 +698,10 @@ export function DriverRouteDetail({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="size-6 opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={() => openStatusDialog(stop)}
                             >
-                              <Edit3 className="w-3 h-3" />
+                              <Edit3 className="size-3" />
                             </Button>
                           </Can>
                         )}

@@ -165,7 +165,7 @@ export function OrderFormLocation() {
 
       {restricted.inRestricted && (
         <div className="mt-3 flex gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
           <p className="text-xs text-destructive leading-snug">
             Esta dirección cae dentro de la zona restringida
             {restricted.zoneName ? ` "${restricted.zoneName}"` : ""}. La

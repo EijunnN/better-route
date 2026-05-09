@@ -102,14 +102,14 @@ export function OrdersListView() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" disabled={state.totalOrders === 0}>
-                  <Trash2 className="w-4 h-4 mr-2" />
+                  <Trash2 className="size-4 mr-2" />
                   Eliminar todos
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle className="flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-destructive" />
+                    <AlertTriangle className="size-5 text-destructive" />
                     ¿Eliminar todos los pedidos?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
@@ -265,7 +265,7 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
         <Can perm="order:read">
           <Button asChild variant="ghost" size="sm" title="Ver detalle">
             <Link href={`/orders/${order.id}`}>
-              <Eye className="h-4 w-4" />
+              <Eye className="size-4" />
             </Link>
           </Button>
           <Button
@@ -275,7 +275,7 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
             disabled={state.isGeneratingLink}
             title="Generar enlace de seguimiento"
           >
-            <Link2 className="h-4 w-4" />
+            <Link2 className="size-4" />
           </Button>
         </Can>
         <Can perm="order:update">
@@ -287,7 +287,7 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={state.deletingId === order.id}>
-                {state.deletingId === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {state.deletingId === order.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -330,7 +330,7 @@ function TrackingLinkDialog() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Link2 className="h-5 w-5" />
+            <Link2 className="size-5" />
             Enlace de Seguimiento
           </DialogTitle>
           <DialogDescription>
@@ -345,7 +345,7 @@ function TrackingLinkDialog() {
               className="flex-1 px-3 py-2 border rounded-md bg-muted text-sm font-mono"
             />
             <Button size="sm" variant="outline" onClick={handleCopy}>
-              {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              {copied ? <Check className="size-4 text-green-600" /> : <Copy className="size-4" />}
             </Button>
           </div>
           <div className="flex gap-2">
@@ -356,14 +356,14 @@ function TrackingLinkDialog() {
                 if (state.trackingLink) window.open(state.trackingLink.url, "_blank");
               }}
             >
-              <ExternalLink className="h-4 w-4 mr-2" />
+              <ExternalLink className="size-4 mr-2" />
               Abrir enlace
             </Button>
             <Button
               className="flex-1"
               onClick={handleCopy}
             >
-              <Copy className="h-4 w-4 mr-2" />
+              <Copy className="size-4 mr-2" />
               {copied ? "Copiado" : "Copiar enlace"}
             </Button>
           </div>

@@ -172,11 +172,11 @@ export function ZoneFormPreview({
   }, [color, hasGeometry]);
 
   return (
-    <div className="relative h-full w-full rounded-lg overflow-hidden border bg-muted/30">
+    <div className="relative size-full rounded-lg overflow-hidden border bg-muted/30">
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/80 z-20">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2" />
+            <div className="animate-spin rounded-full size-6 border-b-2 border-primary mx-auto mb-2" />
             <p className="text-xs text-muted-foreground">Cargando...</p>
           </div>
         </div>
@@ -185,10 +185,10 @@ export function ZoneFormPreview({
       {!isLoading && !parsedGeometry && (
         <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-background/80 backdrop-blur-sm">
           <div
-            className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+            className="size-16 rounded-full flex items-center justify-center mb-4"
             style={{ backgroundColor: `${color}20` }}
           >
-            <Map className="w-8 h-8" style={{ color }} />
+            <Map className="size-8" style={{ color }} />
           </div>
           <p className="text-sm text-muted-foreground mb-4 text-center px-4">
             No hay área definida.
@@ -196,7 +196,7 @@ export function ZoneFormPreview({
             Dibuja el polígono en el mapa.
           </p>
           <Button onClick={onEdit} size="sm">
-            <PenTool className="w-4 h-4 mr-2" />
+            <PenTool className="size-4 mr-2" />
             Dibujar Área
           </Button>
         </div>
@@ -210,13 +210,13 @@ export function ZoneFormPreview({
             size="sm"
             className="w-full bg-background/90 backdrop-blur-sm hover:bg-background"
           >
-            <PenTool className="w-4 h-4 mr-2" />
+            <PenTool className="size-4 mr-2" />
             Editar Área
           </Button>
         </div>
       )}
 
-      <div ref={mapContainer} className="h-full w-full" />
+      <div ref={mapContainer} className="size-full" />
     </div>
   );
 }

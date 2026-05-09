@@ -85,7 +85,7 @@ export function TimePicker({
             className,
           )}
         >
-          <Clock className="mr-2 h-4 w-4" />
+          <Clock className="mr-2 size-4" />
           {value ? formatTime(value) : placeholder}
         </Button>
       </PopoverTrigger>

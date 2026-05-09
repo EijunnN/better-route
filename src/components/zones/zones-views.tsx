@@ -42,7 +42,7 @@ const ZoneMapEditor = dynamicImport(
     ssr: false,
     loading: () => (
       <div className="h-full bg-muted animate-pulse rounded-lg flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     ),
   }
@@ -81,17 +81,17 @@ export function ZonesListView() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <div className="size-2 rounded-full bg-green-500" />
                 <span className="text-muted-foreground">{derived.activeZonesCount} activas</span>
               </div>
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-muted-foreground" />
+                <Layers className="size-4 text-muted-foreground" />
                 <span className="text-muted-foreground">{state.zones.length} total</span>
               </div>
             </div>
             <Can perm="route:create">
               <Button onClick={actions.handleStartNew}>
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="size-4 mr-2" />
                 Nueva Zona
               </Button>
             </Can>
@@ -106,7 +106,7 @@ export function ZonesListView() {
           {/* Search */}
           <div className="p-4 border-b">
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar zona..."
                 value={state.searchQuery}
@@ -120,13 +120,13 @@ export function ZonesListView() {
           <div className="p-4 space-y-2">
             {state.isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin" />
+                <Loader2 className="size-6 animate-spin" />
               </div>
             ) : state.error ? (
               <ErrorState compact title="Error al cargar zonas" error={state.error} onRetry={actions.fetchZones} />
             ) : derived.filteredZones.length === 0 ? (
               <div className="text-center py-12">
-                <MapPin className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <MapPin className="size-12 mx-auto mb-3 text-muted-foreground opacity-50" />
                 <p className="text-muted-foreground">
                   {state.searchQuery ? "Sin resultados" : "No hay zonas configuradas"}
                 </p>
@@ -196,7 +196,7 @@ function ZoneListItem({
       }`}
     >
       <div className="flex items-start gap-3">
-        <div className="w-4 h-4 rounded mt-0.5 shrink-0" style={{ backgroundColor: zone.color }} />
+        <div className="size-4 rounded mt-0.5 shrink-0" style={{ backgroundColor: zone.color }} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">{zone.name}</span>
@@ -227,17 +227,17 @@ function ZoneListItem({
           </p>
           <div className="flex items-center gap-3 mt-2">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Truck className="w-3 h-3" />
+              <Truck className="size-3" />
               <span>{zone.vehicleCount} vehículos</span>
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Calendar className="w-3 h-3" />
+              <Calendar className="size-3" />
               <span>{zone.activeDays?.length || 7} días</span>
             </div>
           </div>
         </div>
         <ChevronRight
-          className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${
+          className={`size-4 text-muted-foreground shrink-0 transition-transform ${
             isSelected ? "rotate-90" : ""
           }`}
         />
@@ -256,10 +256,10 @@ function ZoneDetails() {
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
           <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center"
+            className="size-10 rounded-lg flex items-center justify-center"
             style={{ backgroundColor: `${zone.color}20` }}
           >
-            <MapPin className="w-5 h-5" style={{ color: zone.color }} />
+            <MapPin className="size-5" style={{ color: zone.color }} />
           </div>
           <div>
             <h3 className="font-semibold">{zone.name}</h3>
@@ -278,7 +278,7 @@ function ZoneDetails() {
               onClick={() => actions.handleEdit(zone)}
               disabled={state.deletingId === zone.id}
             >
-              <Edit3 className="w-4 h-4 mr-1" />
+              <Edit3 className="size-4 mr-1" />
               Editar
             </Button>
           </Can>
@@ -293,9 +293,9 @@ function ZoneDetails() {
                     disabled={state.deletingId === zone.id}
                   >
                     {state.deletingId === zone.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="size-4 animate-spin" />
                     ) : (
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="size-4" />
                     )}
                   </Button>
                 </AlertDialogTrigger>
@@ -327,21 +327,21 @@ function ZoneDetails() {
       <div className="grid grid-cols-3 gap-4 mt-4">
         <div className="p-3 rounded-lg bg-muted/50">
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            <Truck className="w-4 h-4" />
+            <Truck className="size-4" />
             <span>Vehículos</span>
           </div>
           <p className="text-xl font-semibold mt-1">{zone.vehicleCount}</p>
         </div>
         <div className="p-3 rounded-lg bg-muted/50">
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            <Calendar className="w-4 h-4" />
+            <Calendar className="size-4" />
             <span>Días activos</span>
           </div>
           <p className="text-xl font-semibold mt-1">{zone.activeDays?.length || 7}</p>
         </div>
         <div className="p-3 rounded-lg bg-muted/50">
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            <Settings2 className="w-4 h-4" />
+            <Settings2 className="size-4" />
             <span>Estado</span>
           </div>
           <p className="text-xl font-semibold mt-1">
@@ -385,10 +385,10 @@ export function ZonesFormView() {
             </Button>
             <div className="flex items-center gap-3">
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                className="size-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: `${derived.currentFormColor}20` }}
               >
-                <MapPin className="w-5 h-5" style={{ color: derived.currentFormColor }} />
+                <MapPin className="size-5" style={{ color: derived.currentFormColor }} />
               </div>
               <div>
                 <h1 className="text-xl font-bold">
@@ -471,14 +471,14 @@ export function ZonesFormView() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                    <Truck className="w-3.5 h-3.5" />
+                    <Truck className="size-3.5" />
                     <span>Vehículos</span>
                   </div>
                   <p className="text-lg font-semibold mt-1">{state.editingZone.vehicleCount}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                    <Calendar className="w-3.5 h-3.5" />
+                    <Calendar className="size-3.5" />
                     <span>Días activos</span>
                   </div>
                   <p className="text-lg font-semibold mt-1">

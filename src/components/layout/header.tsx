@@ -30,7 +30,7 @@ export function Header({ title, user }: HeaderProps) {
           <h1 className="text-xl font-semibold text-foreground">{title}</h1>
         )}
         <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input type="search" placeholder="Buscar..." className="w-64 pl-9" />
         </div>
       </div>
@@ -46,8 +46,8 @@ export function Header({ title, user }: HeaderProps) {
               className="relative"
               aria-label="Notificaciones"
             >
-              <Bell className="h-5 w-5" />
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
+              <Bell className="size-5" />
+              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
                 3
               </span>
             </Button>
@@ -89,8 +89,8 @@ export function Header({ title, user }: HeaderProps) {
               className="rounded-full"
               aria-label="Menú de usuario"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <User className="h-4 w-4" />
+              <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <User className="size-4" />
               </div>
             </Button>
           </DropdownMenuTrigger>

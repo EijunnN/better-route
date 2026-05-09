@@ -57,7 +57,7 @@ export function StepIndicator({ currentStep }: StepIndicatorProps) {
             )}
             <div className="flex flex-col items-center gap-1">
               <div
-                className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+                className={`flex size-9 items-center justify-center rounded-full transition-colors ${
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : isCompleted
@@ -66,9 +66,9 @@ export function StepIndicator({ currentStep }: StepIndicatorProps) {
                 }`}
               >
                 {isCompleted ? (
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2 className="size-4" />
                 ) : (
-                  <Icon className="h-4 w-4" />
+                  <Icon className="size-4" />
                 )}
               </div>
               <span
@@ -135,8 +135,8 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
               key={feature.title}
               className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <Icon className="h-4 w-4 text-primary" />
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <Icon className="size-4 text-primary" />
               </div>
               <div>
                 <p className="text-sm font-medium">{feature.title}</p>
@@ -325,7 +325,7 @@ export function CompanyFormStep({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>
-              <Globe className="inline h-3.5 w-3.5 mr-1" />
+              <Globe className="inline size-3.5 mr-1" />
               Pais
             </Label>
             <Select
@@ -348,7 +348,7 @@ export function CompanyFormStep({
 
           <div className="space-y-1.5">
             <Label>
-              <MapPin className="inline h-3.5 w-3.5 mr-1" />
+              <MapPin className="inline size-3.5 mr-1" />
               Zona Horaria
             </Label>
             <Select
@@ -377,12 +377,12 @@ export function CompanyFormStep({
         >
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 size-4 animate-spin" />
               Creando empresa...
             </>
           ) : (
             <>
-              <Building2 className="mr-2 h-4 w-4" />
+              <Building2 className="mr-2 size-4" />
               Crear Empresa
             </>
           )}
@@ -411,8 +411,8 @@ export function SuccessStep({
 }: SuccessStepProps) {
   return (
     <div className="space-y-6 text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[hsl(var(--chart-2))]/10">
-        <CheckCircle2 className="h-8 w-8 text-[hsl(var(--chart-2))]" />
+      <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-[hsl(var(--chart-2))]/10">
+        <CheckCircle2 className="size-8 text-[hsl(var(--chart-2))]" />
       </div>
 
       <div className="space-y-2">
@@ -427,19 +427,19 @@ export function SuccessStep({
       {/* Summary */}
       <div className="rounded-lg border border-border bg-muted/30 p-4 text-left space-y-3">
         <div className="flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-primary" />
+          <Building2 className="size-4 text-primary" />
           <span className="text-sm">
             Empresa: <strong>{companyName}</strong>
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-primary" />
+          <Users className="size-4 text-primary" />
           <span className="text-sm">
             <strong>{rolesCount}</strong> roles del sistema creados
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-primary" />
+          <CheckCircle2 className="size-4 text-primary" />
           <span className="text-sm">
             <strong>{permissionsCount}</strong> permisos configurados
           </span>

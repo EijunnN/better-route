@@ -20,10 +20,10 @@ export function TrackingHelp({ supportUrl, brandColor }: TrackingHelpProps) {
     >
       <div className="flex items-start gap-3">
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full"
           style={{ backgroundColor: `${accent}26`, color: accent }}
         >
-          <Headphones className="h-5 w-5" />
+          <Headphones className="size-5" />
         </div>
         <div className="space-y-1">
           <p className="font-semibold">¿Necesitás ayuda?</p>
@@ -37,7 +37,7 @@ export function TrackingHelp({ supportUrl, brandColor }: TrackingHelpProps) {
         className="mt-4 flex items-center justify-center gap-1 rounded-full border border-border/80 bg-background/60 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-background"
       >
         Contactar soporte
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        <ChevronRight className="size-4 text-muted-foreground" />
       </a>
     </section>
   );

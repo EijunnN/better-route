@@ -63,7 +63,7 @@ export function PlanificacionMapPanel() {
                 : "bg-background/95 backdrop-blur text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Move className="w-4 h-4" />
+            <Move className="size-4" />
             Mover puntos
           </button>
         )}
@@ -77,7 +77,7 @@ export function PlanificacionMapPanel() {
                 : "bg-background/95 backdrop-blur text-muted-foreground hover:text-foreground"
             }`}
           >
-            {state.showZones ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            {state.showZones ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
             Zonas ({state.zones.length})
           </button>
         )}
@@ -94,18 +94,18 @@ export function PlanificacionMapPanel() {
       <div className="absolute bottom-4 left-4 bg-background/95 backdrop-blur rounded-lg shadow-lg p-3 text-sm">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Truck className="w-4 h-4 text-primary" />
+            <Truck className="size-4 text-primary" />
             <span className="font-medium">{state.selectedVehicleIds.length}</span>
             <span className="text-muted-foreground">vehículos</span>
           </div>
           <div className="flex items-center gap-2">
-            <Package className="w-4 h-4 text-green-600" />
+            <Package className="size-4 text-green-600" />
             <span className="font-medium">{state.selectedOrderIds.length}</span>
             <span className="text-muted-foreground">visitas</span>
           </div>
           {state.zones.length > 0 && (
             <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-blue-600" />
+              <MapPin className="size-4 text-blue-600" />
               <span className="font-medium">{state.zones.length}</span>
               <span className="text-muted-foreground">zonas</span>
             </div>

@@ -51,7 +51,7 @@ export function DriverAssignmentDisplay({
   if (!route.driverId || !route.driverName) {
     return (
       <div className="p-3 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/20 flex items-center gap-3">
-        <User className="h-4 w-4 text-orange-500 dark:text-orange-400" />
+        <User className="size-4 text-orange-500 dark:text-orange-400" />
         <span className="text-sm text-orange-800 dark:text-orange-300">No driver assigned</span>
         {onReassignDriver && (
           <Button
@@ -99,14 +99,14 @@ export function DriverAssignmentDisplay({
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-muted-foreground" />
+          <User className="size-4 text-muted-foreground" />
           <span className="font-medium text-sm">{route.driverName}</span>
           {quality && (
             <Badge
               variant="outline"
               className={`${getScoreColor(quality.score)} border-current`}
             >
-              <Star className="h-3 w-3 mr-1 fill-current" />
+              <Star className="size-3 mr-1 fill-current" />
               {quality.score}/100
             </Badge>
           )}
@@ -114,7 +114,7 @@ export function DriverAssignmentDisplay({
         <div className="flex items-center gap-2">
           {hasErrors && (
             <Badge variant="destructive" className="text-xs">
-              <XCircle className="h-3 w-3 mr-1" />
+              <XCircle className="size-3 mr-1" />
               {quality.errors.length} error
               {quality.errors.length > 1 ? "s" : ""}
             </Badge>
@@ -124,7 +124,7 @@ export function DriverAssignmentDisplay({
               variant="outline"
               className="text-xs border-yellow-300 text-yellow-700"
             >
-              <AlertTriangle className="h-3 w-3 mr-1" />
+              <AlertTriangle className="size-3 mr-1" />
               {quality.warnings.length} warning
               {quality.warnings.length > 1 ? "s" : ""}
             </Badge>
@@ -134,14 +134,14 @@ export function DriverAssignmentDisplay({
               variant="outline"
               className="text-xs border-green-300 text-green-700"
             >
-              <CheckCircle2 className="h-3 w-3 mr-1" />
+              <CheckCircle2 className="size-3 mr-1" />
               Optimal
             </Badge>
           )}
           {isExpanded ? (
-            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            <ChevronUp className="size-4 text-muted-foreground" />
           ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="size-4 text-muted-foreground" />
           )}
         </div>
       </button>
@@ -171,7 +171,7 @@ export function DriverAssignmentDisplay({
                     key={warning}
                     className="text-xs text-yellow-600 flex items-start gap-1"
                   >
-                    <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <AlertTriangle className="size-3 mt-0.5 flex-shrink-0" />
                     <span>{warning}</span>
                   </li>
                 ))}
@@ -189,7 +189,7 @@ export function DriverAssignmentDisplay({
                     key={error}
                     className="text-xs text-red-600 flex items-start gap-1"
                   >
-                    <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <XCircle className="size-3 mt-0.5 flex-shrink-0" />
                     <span>{error}</span>
                   </li>
                 ))}
@@ -200,7 +200,7 @@ export function DriverAssignmentDisplay({
           {/* No Issues Message */}
           {!hasWarnings && !hasErrors && (
             <div className="flex items-center gap-2 text-green-600">
-              <CheckCircle2 className="h-4 w-4" />
+              <CheckCircle2 className="size-4" />
               <span className="text-xs">All requirements met</span>
             </div>
           )}
@@ -256,7 +256,7 @@ export function AssignmentMetricsCard({ metrics }: AssignmentMetricsProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Award className="h-5 w-5" />
+          <Award className="size-5" />
           Driver Assignment Quality
         </CardTitle>
         <CardDescription>
@@ -271,7 +271,7 @@ export function AssignmentMetricsCard({ metrics }: AssignmentMetricsProps) {
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Star className="h-5 w-5" />
+                <Star className="size-5" />
                 <span className="font-medium">Overall Assignment Quality</span>
               </div>
               <Badge
@@ -294,7 +294,7 @@ export function AssignmentMetricsCard({ metrics }: AssignmentMetricsProps) {
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg border bg-red-50/50 border-red-200">
               <div className="flex items-center gap-2 text-red-700">
-                <XCircle className="h-4 w-4" />
+                <XCircle className="size-4" />
                 <span className="text-sm font-medium">Errors</span>
               </div>
               <p className="text-2xl font-bold text-red-700 mt-1">
@@ -306,7 +306,7 @@ export function AssignmentMetricsCard({ metrics }: AssignmentMetricsProps) {
             </div>
             <div className="p-3 rounded-lg border bg-yellow-50/50 border-yellow-200">
               <div className="flex items-center gap-2 text-yellow-700">
-                <AlertTriangle className="h-4 w-4" />
+                <AlertTriangle className="size-4" />
                 <span className="text-sm font-medium">Warnings</span>
               </div>
               <p className="text-2xl font-bold text-yellow-700 mt-1">
@@ -369,7 +369,7 @@ function MetricItem({
 
   return (
     <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-      <Icon className={`h-4 w-4 ${getColor(value)}`} />
+      <Icon className={`size-4 ${getColor(value)}`} />
       <div className="flex-1 min-w-0">
         <p className="text-xs text-muted-foreground truncate">{label}</p>
         <p className={`text-sm font-semibold ${getColor(value)}`}>{value}%</p>

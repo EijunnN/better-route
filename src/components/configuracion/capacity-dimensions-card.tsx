@@ -62,7 +62,7 @@ export function CapacityDimensionsCard() {
       <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
-            <Scale className="h-4 w-4" />
+            <Scale className="size-4" />
             Dimensiones de capacidad
           </CardTitle>
           <CardDescription className="mt-1">
@@ -107,13 +107,13 @@ export function CapacityDimensionsCard() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-md ${
+                    className={`flex size-8 items-center justify-center rounded-md ${
                       enabled
                         ? "bg-primary/10 text-primary"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="size-4" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{d.label}</p>

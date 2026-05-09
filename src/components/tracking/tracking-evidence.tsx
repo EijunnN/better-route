@@ -36,7 +36,7 @@ export function TrackingEvidence({
         aria-expanded={open}
       >
         <div className="flex items-center gap-2">
-          <Camera className="h-4 w-4 text-muted-foreground" />
+          <Camera className="size-4 text-muted-foreground" />
           <h3 className="font-semibold">Evidencia de entrega</h3>
           {evidenceUrls.length > 0 && (
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
@@ -46,7 +46,7 @@ export function TrackingEvidence({
         </div>
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform",
+            "size-4 text-muted-foreground transition-transform",
             open && "rotate-180",
           )}
         />
@@ -73,7 +73,7 @@ export function TrackingEvidence({
                   <img
                     src={url}
                     alt={`Evidencia ${idx + 1}`}
-                    className="h-full w-full object-cover"
+                    className="size-full object-cover"
                     loading="lazy"
                   />
                 </button>
@@ -161,10 +161,10 @@ function EvidenceLightbox({
             />
 
             <DialogPrimitive.Close
-              className="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white/50"
+              className="absolute right-2 top-2 z-10 flex size-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white/50"
               aria-label="Cerrar"
             >
-              <X className="h-4 w-4" />
+              <X className="size-4" />
             </DialogPrimitive.Close>
 
             {hasMultiple && (
@@ -173,17 +173,17 @@ function EvidenceLightbox({
                   type="button"
                   onClick={prev}
                   aria-label="Anterior"
-                  className="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+                  className="absolute left-2 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="size-5" />
                 </button>
                 <button
                   type="button"
                   onClick={next}
                   aria-label="Siguiente"
-                  className="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+                  className="absolute right-2 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="size-5" />
                 </button>
               </>
             )}
@@ -202,7 +202,7 @@ function EvidenceLightbox({
                     onClick={() => setIndex(i)}
                     aria-label={`Ver evidencia ${i + 1}`}
                     className={cn(
-                      "h-12 w-12 overflow-hidden rounded-md border-2 transition-all",
+                      "size-12 overflow-hidden rounded-md border-2 transition-all",
                       i === index
                         ? "border-white opacity-100"
                         : "border-transparent opacity-50 hover:opacity-80",
@@ -211,7 +211,7 @@ function EvidenceLightbox({
                     <img
                       src={url}
                       alt=""
-                      className="h-full w-full object-cover"
+                      className="size-full object-cover"
                     />
                   </button>
                 ))}

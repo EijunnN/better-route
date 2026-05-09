@@ -120,7 +120,7 @@ export function RecentEventsPanel({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+        <div className="animate-spin size-6 border-2 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -131,7 +131,7 @@ export function RecentEventsPanel({
       <div className="p-3 border-b">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Package className="w-4 h-4 text-muted-foreground" />
+            <Package className="size-4 text-muted-foreground" />
             <span className="font-medium text-sm">Eventos Recientes</span>
           </div>
           {failedCount > 0 && (
@@ -204,7 +204,7 @@ export function RecentEventsPanel({
                         config.bgColor,
                       )}
                     >
-                      <Icon className={cn("w-3.5 h-3.5", config.color)} />
+                      <Icon className={cn("size-3.5", config.color)} />
                     </div>
 
                     {/* Content */}
@@ -273,7 +273,7 @@ export function RecentEventsPanel({
                             );
                           }}
                         >
-                          <MapPin className="w-3 h-3 mr-1" />
+                          <MapPin className="size-3 mr-1" />
                           Ver en mapa
                         </Button>
                       )}

@@ -77,14 +77,14 @@ export function KpiCard({
         </div>
         {Icon && (
           <div className={cn("rounded-lg p-2", iconBgColors[status])}>
-            <Icon className="h-5 w-5" />
+            <Icon className="size-5" />
           </div>
         )}
       </div>
 
       {trend !== undefined && TrendIcon && (
         <div className="mt-3 flex items-center gap-1 text-xs">
-          <TrendIcon className={cn("h-3 w-3", trendColor)} />
+          <TrendIcon className={cn("size-3", trendColor)} />
           <span className={cn("font-medium", trendColor)}>
             {trend.value > 0 ? "+" : ""}
             {trend.value}%

@@ -109,7 +109,7 @@ export function VehicleFormGeneral() {
             <div className="space-y-2">
               <Label htmlFor="maxOrders" className="flex items-center gap-1">
                 Capacidad Máx. Pedidos *
-                <Info className="h-3 w-3 text-muted-foreground" />
+                <Info className="size-3 text-muted-foreground" />
               </Label>
               <Input
                 id="maxOrders"
@@ -131,7 +131,7 @@ export function VehicleFormGeneral() {
                   htmlFor="maxValueCapacity"
                   className="flex items-center gap-1"
                 >
-                  <DollarSign className="h-3 w-3 text-amber-500" />
+                  <DollarSign className="size-3 text-amber-500" />
                   Capacidad Máx. Valorizado
                 </Label>
                 <Input
@@ -161,7 +161,7 @@ export function VehicleFormGeneral() {
                   htmlFor="maxUnitsCapacity"
                   className="flex items-center gap-1"
                 >
-                  <Package className="h-3 w-3 text-purple-500" />
+                  <Package className="size-3 text-purple-500" />
                   Capacidad Máx. Unidades
                 </Label>
                 <Input
@@ -191,7 +191,7 @@ export function VehicleFormGeneral() {
                   htmlFor="weightCapacity"
                   className="flex items-center gap-1"
                 >
-                  <Scale className="h-3 w-3 text-blue-500" />
+                  <Scale className="size-3 text-blue-500" />
                   Capacidad Máx. Peso (kg)
                 </Label>
                 <Input
@@ -222,7 +222,7 @@ export function VehicleFormGeneral() {
                   htmlFor="volumeCapacity"
                   className="flex items-center gap-1"
                 >
-                  <Box className="h-3 w-3 text-green-500" />
+                  <Box className="size-3 text-green-500" />
                   Capacidad Máx. Volumen (m³)
                 </Label>
                 <Input

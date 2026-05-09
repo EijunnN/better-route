@@ -520,7 +520,7 @@ export function ZoneMapEditor({
 
       <div
         ref={mapContainer}
-        className="w-full h-full rounded-lg overflow-hidden"
+        className="size-full rounded-lg overflow-hidden"
       />
     </div>
   );
