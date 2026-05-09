@@ -48,7 +48,7 @@ export function ProtectedPage({
   redirectTo = "/dashboard",
   showAccessDenied = true,
 }: ProtectedPageProps) {
-  const router = useRouter();
+  const { replace, push } = useRouter();
   const { user, permissions, isLoading, error } = useAuth();
   const shouldRedirectToLogin = !isLoading && (Boolean(error) || !user);
 
@@ -66,14 +66,14 @@ export function ProtectedPage({
 
   useEffect(() => {
     if (shouldRedirectToLogin) {
-      router.replace("/login");
+      replace("/login");
       return;
     }
 
     if (shouldRedirectNoAccess) {
-      router.replace(redirectTo);
+      replace(redirectTo);
     }
-  }, [redirectTo, router, shouldRedirectNoAccess, shouldRedirectToLogin]);
+  }, [redirectTo, replace, shouldRedirectNoAccess, shouldRedirectToLogin]);
 
   if (isLoading) {
     return (
@@ -131,7 +131,7 @@ export function ProtectedPage({
         </p>
         <button
           type="button"
-          onClick={() => router.push(redirectTo)}
+          onClick={() => push(redirectTo)}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
         >
           Ir al Dashboard

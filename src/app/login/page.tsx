@@ -22,7 +22,7 @@ interface FormErrors {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
+  const { push, refresh } = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -95,8 +95,8 @@ export default function LoginPage() {
           return;
         }
 
-        router.push("/dashboard");
-        router.refresh();
+        push("/dashboard");
+        refresh();
       } catch {
         setErrors({ general: "Error de conexión. Intenta de nuevo." });
       }

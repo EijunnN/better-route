@@ -1,7 +1,7 @@
 import type { LngLat, Midpoint } from "./types";
 
 // Check if two line segments intersect and return intersection point
-export function lineIntersection(
+function lineIntersection(
   p1: LngLat,
   p2: LngLat,
   p3: LngLat,

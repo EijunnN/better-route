@@ -56,7 +56,7 @@ function isoToHHmm(iso: string | null): string | null {
 }
 
 function OrderDetailContent() {
-  const router = useRouter();
+  const { push } = useRouter();
   const params = useParams();
   const orderId = params.id as string;
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
@@ -227,7 +227,7 @@ function OrderDetailContent() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push("/orders")}
+          onClick={() => push("/orders")}
         >
           <ArrowLeft className="mr-2 size-4" /> Volver
         </Button>
@@ -250,7 +250,7 @@ function OrderDetailContent() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push("/orders")}
+          onClick={() => push("/orders")}
         >
           <ArrowLeft className="mr-2 size-4" /> Volver
         </Button>

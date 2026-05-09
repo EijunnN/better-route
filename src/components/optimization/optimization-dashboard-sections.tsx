@@ -68,7 +68,7 @@ function formatTimeWindow(value: string): string {
 }
 
 // KPI Badge Component
-export function KpiBadge({
+function KpiBadge({
   icon: Icon,
   label,
   value,
@@ -101,7 +101,7 @@ export function KpiBadge({
 }
 
 // Compact Route Card
-export function CompactRouteCard({
+function CompactRouteCard({
   route,
   routeNumber,
   routeColor,
@@ -416,7 +416,7 @@ export function CompactRouteCard({
 }
 
 // Unassigned Orders Panel
-export function UnassignedOrdersPanel() {
+function UnassignedOrdersPanel() {
   const { state, actions, meta } = useOptimizationDashboard();
   const { unassignedExpanded } = state;
   const { setUnassignedExpanded, toggleOrderSelection, isOrderSelected } =

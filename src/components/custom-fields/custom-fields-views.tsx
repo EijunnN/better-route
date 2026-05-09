@@ -468,7 +468,7 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
     <>
     <tr className={`border-b last:border-b-0 ${isArchived ? "opacity-60" : "hover:bg-muted/30"}`}>
       <td className="p-3">
-        <Can perm="company:update" fallback={<span className="text-xs text-muted-foreground">—</span>}>
+        <Can perm="company:update" fallback={<span className="text-xs text-muted-foreground">{"—"}</span>}>
           <div className="flex flex-col">
             <Button
               variant="ghost"

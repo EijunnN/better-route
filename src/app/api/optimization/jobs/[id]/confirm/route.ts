@@ -391,6 +391,8 @@ export async function POST(
       status: "PENDING";
     }> = [];
 
+    const assignedOrderIdSet = new Set(assignedOrderIds);
+
     for (const route of result.routes) {
       if (!route.driverId) continue;
 
@@ -412,7 +414,7 @@ export async function POST(
 
         for (const orderId of orderIds) {
           // Skip stops for orders that weren't assigned (missing or non-PENDING)
-          if (!assignedOrderIds.includes(orderId)) continue;
+          if (!assignedOrderIdSet.has(orderId)) continue;
 
           routeStopsToCreate.push({
             companyId: tenantContext.companyId,

@@ -128,7 +128,7 @@ export interface HistorialProviderProps {
 }
 
 export function HistorialProvider({ children }: HistorialProviderProps) {
-  const router = useRouter();
+  const { push } = useRouter();
   const { toast } = useToast();
   const {
     effectiveCompanyId: companyId,
@@ -225,7 +225,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
       setError("No se puede reoptimizar: configuración no encontrada");
       return;
     }
-    router.push(`/planificacion/${job.configurationId}/results?reoptimize=true`);
+    push(`/planificacion/${job.configurationId}/results?reoptimize=true`);
   };
 
   const handleDelete = async (job: OptimizationJob) => {
@@ -257,7 +257,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
   };
 
   const navigateToResults = (job: OptimizationJob) => {
-    router.push(`/planificacion/${job.configurationId}/results?jobId=${job.id}`);
+    push(`/planificacion/${job.configurationId}/results?jobId=${job.id}`);
   };
 
   const setPage = (page: number) => {

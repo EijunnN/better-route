@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
     // Get vehicle fleet IDs
     const vehicleFleetIds =
       vehicle.vehicleFleets?.map((vf) => vf.fleetId) || [];
+    const vehicleFleetIdSet = new Set(vehicleFleetIds);
     const _primaryVehicleFleetId = vehicleFleetIds[0] || null;
 
     // Get available drivers (users with CONDUCTOR role) from same fleet or secondary fleets
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
       let fleetMatch = 25;
       if (
         driver.primaryFleetId &&
-        vehicleFleetIds.includes(driver.primaryFleetId)
+        vehicleFleetIdSet.has(driver.primaryFleetId)
       ) {
         fleetMatch = 100;
       } else {
@@ -237,7 +238,7 @@ export async function POST(request: NextRequest) {
       }
       if (
         !driver.primaryFleetId ||
-        !vehicleFleetIds.includes(driver.primaryFleetId)
+        !vehicleFleetIdSet.has(driver.primaryFleetId)
       ) {
         warnings.push("Driver from secondary fleet");
       }

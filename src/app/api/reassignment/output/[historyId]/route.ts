@@ -126,9 +126,11 @@ export async function GET(
 
         if (!driver) return null;
 
-        const reassignedStopIds = reassignmentsData
-          .filter((r) => r.driverId === driverId)
-          .flatMap((r) => r.stopIds);
+        const reassignedStopIds = new Set(
+          reassignmentsData
+            .filter((r) => r.driverId === driverId)
+            .flatMap((r) => r.stopIds),
+        );
 
         const stops = await db.query.routeStops.findMany({
           where: and(
@@ -142,7 +144,7 @@ export async function GET(
         });
 
         const relevantStops = stops.filter((stop) =>
-          reassignedStopIds.includes(stop.id),
+          reassignedStopIds.has(stop.id),
         );
 
         if (relevantStops.length === 0) {

@@ -634,7 +634,7 @@ export function ConfigStep() {
               <ul className="mt-2 space-y-1 text-xs text-orange-700 dark:text-orange-500 pl-6 max-h-32 overflow-y-auto">
                 {ordersOutsideZones.map((order) => (
                   <li key={order.id} className="list-disc">
-                    {order.trackingId} — {order.address}
+                    {order.trackingId} {"—"} {order.address}
                   </li>
                 ))}
               </ul>

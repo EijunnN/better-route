@@ -22,7 +22,7 @@ interface SetupResult {
 }
 
 export default function OnboardingPage() {
-  const router = useRouter();
+  const { push, replace, refresh } = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const [step, setStep] = useState<Step>("welcome");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,7 +39,7 @@ export default function OnboardingPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.meta?.total > 0) {
-          router.replace("/dashboard");
+          replace("/dashboard");
           return;
         }
       }
@@ -55,19 +55,19 @@ export default function OnboardingPage() {
 
     // Not authenticated
     if (!user) {
-      router.replace("/login");
+      replace("/login");
       return;
     }
 
     // Not admin
     if (user.role !== "ADMIN_SISTEMA") {
-      router.replace("/dashboard");
+      replace("/dashboard");
       return;
     }
 
     // Check if companies already exist
     checkCompanies();
-  }, [user, authLoading, router, checkCompanies]);
+  }, [user, authLoading, replace, checkCompanies]);
 
   const handleCompanySubmit = async (data: CompanyFormData) => {
     setIsSubmitting(true);
@@ -98,8 +98,8 @@ export default function OnboardingPage() {
   };
 
   const handleFinish = () => {
-    router.push("/dashboard");
-    router.refresh();
+    push("/dashboard");
+    refresh();
   };
 
   // Loading states

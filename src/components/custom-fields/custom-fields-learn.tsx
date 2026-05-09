@@ -16,8 +16,6 @@ import {
   Eye,
   Smartphone,
   FileSpreadsheet,
-  CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +58,7 @@ export function CustomFieldsLearn({
         <p className="text-sm text-muted-foreground leading-relaxed">
           <strong className="text-foreground">Sin esta feature</strong>, todo
           lo que no encaja en los campos básicos termina en el campo "notas"
-          como texto libre — imposible de validar, importar masivamente, o
+          como texto libre {"—"} imposible de validar, importar masivamente, o
           mostrar como columna. <strong className="text-foreground">Con campos
           personalizados</strong>, capturás datos estructurados con el tipo
           correcto (número, fecha, opciones), validados, y enchufados al flujo.
@@ -94,7 +92,7 @@ export function CustomFieldsLearn({
 
       {/* Pedidos vs Entregas */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Pedidos vs Entregas — ¿cuál elegir?</h2>
+        <h2 className="text-base font-semibold">Pedidos vs Entregas {"—"} ¿cuál elegir?</h2>
         <p className="text-xs text-muted-foreground">
           Esta es la decisión más importante al crear un campo. Depende de
           quién lo llena y cuándo.
@@ -182,10 +180,10 @@ export function CustomFieldsLearn({
 
       {/* Visibility explained */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Visibilidad — dónde aparece cada campo</h2>
+        <h2 className="text-base font-semibold">Visibilidad {"—"} dónde aparece cada campo</h2>
         <p className="text-xs text-muted-foreground">
           Al crear un campo elegís en qué pantallas del sistema aparece. Estas
-          tres opciones son independientes — podés activar las que tengan sentido.
+          tres opciones son independientes {"—"} podés activar las que tengan sentido.
         </p>
         <div className="space-y-2">
           <VisibilityRow
@@ -208,7 +206,7 @@ export function CustomFieldsLearn({
 
       {/* Required + behavior */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Obligatorio — qué pasa cuando lo activás</h2>
+        <h2 className="text-base font-semibold">Obligatorio {"—"} qué pasa cuando lo activás</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Card>
             <CardContent className="p-4 space-y-2">
@@ -247,7 +245,7 @@ export function CustomFieldsLearn({
             se modifican retroactivamente.
           </li>
           <li>
-            Archivar un campo no borra los datos históricos — solo deja de
+            Archivar un campo no borra los datos históricos {"—"} solo deja de
             mostrar el campo en formularios nuevos. Podés reactivarlo en
             cualquier momento.
           </li>
@@ -433,5 +431,3 @@ function VisibilityRow({ icon: Icon, title, body }: VisibilityRowProps) {
   );
 }
 
-// Re-exported icons used by the flow dialog
-export { CheckCircle2, AlertCircle };

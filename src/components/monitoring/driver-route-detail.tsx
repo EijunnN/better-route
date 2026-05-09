@@ -191,7 +191,6 @@ export function DriverRouteDetail({
   const { effectiveCompanyId: companyId } = useCompanyContext();
   const [selectedStop, setSelectedStop] = useState<StopInfo | null>(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [reopenStop, setReopenStop] = useState<{
     id: string;
@@ -276,7 +275,6 @@ export function DriverRouteDetail({
     customFields?: Record<string, unknown>,
     failureReason?: string,
   ) => {
-    setUpdatingStatus(true);
     try {
       const body: Record<string, unknown> = { status, notes };
       if (workflowStateId) body.workflowStateId = workflowStateId;
@@ -309,8 +307,6 @@ export function DriverRouteDetail({
     } catch (error) {
       console.error("Failed to update stop status:", error);
       throw error;
-    } finally {
-      setUpdatingStatus(false);
     }
   };
 

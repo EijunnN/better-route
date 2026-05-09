@@ -221,12 +221,10 @@ export async function POST(
         const vehicleInfo = vehicleData.find((v) => v.id === route.vehicleId);
         if (!vehicleInfo) continue;
 
-        const routeOrderIds = route.stops.flatMap(
-          (s) => s.groupedOrderIds || [s.orderId],
+        const routeOrderIds = new Set(
+          route.stops.flatMap((s) => s.groupedOrderIds || [s.orderId]),
         );
-        const routeOrders = orderData.filter((o) =>
-          routeOrderIds.includes(o.id),
-        );
+        const routeOrders = orderData.filter((o) => routeOrderIds.has(o.id));
 
         if (routeOrders.length === 0) continue;
 

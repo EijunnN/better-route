@@ -235,8 +235,10 @@ export function UsersProvider({ children }: { children: ReactNode }) {
 
   const assignRolesToUser = async (userId: string, roleIds: string[], currentRoleIds: string[] = []) => {
     if (!effectiveCompanyId) return;
-    const rolesToAdd = roleIds.filter((id) => !currentRoleIds.includes(id));
-    const rolesToRemove = currentRoleIds.filter((id) => !roleIds.includes(id));
+    const currentSet = new Set(currentRoleIds);
+    const desiredSet = new Set(roleIds);
+    const rolesToAdd = roleIds.filter((id) => !currentSet.has(id));
+    const rolesToRemove = currentRoleIds.filter((id) => !desiredSet.has(id));
 
     await Promise.all(
       rolesToAdd.map((roleId, idx) =>

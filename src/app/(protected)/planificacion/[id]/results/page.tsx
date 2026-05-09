@@ -29,7 +29,7 @@ import type { VerifiedPlan } from "@/lib/optimization/solved-plan";
 type OptimizationResult = VerifiedPlan;
 
 function ResultsPageContent() {
-  const router = useRouter();
+  const { push } = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
@@ -194,7 +194,7 @@ function ResultsPageContent() {
     jobStartedRef.current = false;
 
     // Force re-run of the effect by navigating to the same URL without jobId
-    router.push(`/planificacion/${configId}/results?reoptimize=true`);
+    push(`/planificacion/${configId}/results?reoptimize=true`);
   };
 
   const [showPostConfirmDialog, setShowPostConfirmDialog] = useState(false);
@@ -214,13 +214,13 @@ function ResultsPageContent() {
     setShowPostConfirmDialog(false);
     switch (action) {
       case "monitor":
-        router.push("/monitoring");
+        push("/monitoring");
         break;
       case "new":
-        router.push("/planificacion");
+        push("/planificacion");
         break;
       case "history":
-        router.push("/planificacion/historial");
+        push("/planificacion/historial");
         break;
     }
   };
@@ -263,7 +263,7 @@ function ResultsPageContent() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => router.push("/planificacion")}
+                  onClick={() => push("/planificacion")}
                 >
                   <ArrowLeft className="size-4 mr-2" />
                   Volver
@@ -286,7 +286,7 @@ function ResultsPageContent() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push("/planificacion")}
+              onClick={() => push("/planificacion")}
             >
               <ArrowLeft className="size-4 mr-2" />
               Volver
@@ -324,7 +324,7 @@ function ResultsPageContent() {
           jobStatus={jobData?.status}
           onReoptimize={handleReoptimize}
           onConfirm={handleConfirm}
-          onBack={() => router.push("/planificacion")}
+          onBack={() => push("/planificacion")}
           onResultUpdate={handleResultUpdate}
         />
 
