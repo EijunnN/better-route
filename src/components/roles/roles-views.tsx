@@ -26,7 +26,7 @@ export function RolesListView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Gestión de Roles</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Gestión de Roles</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Configure roles y permisos personalizados para su empresa
           </p>
@@ -205,7 +205,7 @@ export function RolesFormView() {
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Nuevo Rol</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Nuevo Rol</h1>
         <p className="mt-1 text-sm text-muted-foreground">Cree un nuevo rol personalizado para su empresa</p>
       </div>
       <div className="rounded-lg border border-border bg-card p-6 shadow-sm">

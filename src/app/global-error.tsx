@@ -11,7 +11,7 @@ export default function GlobalError({
     <html lang="es">
       <body className="flex min-h-screen items-center justify-center bg-background text-foreground">
         <div className="mx-auto max-w-md text-center p-8">
-          <h1 className="text-2xl font-bold mb-4">Algo salio mal</h1>
+          <h1 className="text-2xl font-semibold mb-4">Algo salio mal</h1>
           <p className="text-muted-foreground mb-6">
             Ocurrio un error inesperado. Por favor, intenta nuevamente.
           </p>

@@ -73,7 +73,7 @@ export function ZonesListView() {
       <div className="border-b bg-background px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Zonas de Entrega</h1>
+            <h1 className="text-2xl font-semibold">Zonas de Entrega</h1>
             <p className="text-sm text-muted-foreground">
               Gestiona las áreas geográficas para asignación de vehículos
             </p>
@@ -391,7 +391,7 @@ export function ZonesFormView() {
                 <MapPin className="size-5" style={{ color: derived.currentFormColor }} />
               </div>
               <div>
-                <h1 className="text-xl font-bold">
+                <h1 className="text-xl font-semibold">
                   {state.editingZone ? "Editar Zona" : "Nueva Zona"}
                 </h1>
                 <p className="text-sm text-muted-foreground">
@@ -516,7 +516,7 @@ export function ZonesMapEditorView() {
   return (
     <div className="h-screen flex flex-col">
       <div className="border-b bg-background px-6 py-4 shrink-0">
-        <h1 className="text-xl font-bold">Dibujar Área de Zona</h1>
+        <h1 className="text-xl font-semibold">Dibujar Área de Zona</h1>
         <p className="text-sm text-muted-foreground">
           Haz clic en el mapa para agregar puntos. Cierra el polígono cerca del primer punto.
         </p>

@@ -118,7 +118,7 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-xl font-bold text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">
           Bienvenido a BetterRoute
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -247,7 +247,7 @@ export function CompanyFormStep({
   return (
     <div className="space-y-5">
       <div className="text-center space-y-1">
-        <h2 className="text-xl font-bold text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">
           Datos de la Empresa
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -416,7 +416,7 @@ export function SuccessStep({
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-xl font-bold text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">
           Configuracion Completa
         </h2>
         <p className="text-sm text-muted-foreground">

@@ -28,7 +28,7 @@ export function TimeWindowPresetsListView() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Presets de Ventanas de Tiempo</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Presets de Ventanas de Tiempo</h1>
           <p className="text-muted-foreground mt-1">
             Administre configuraciones reutilizables de ventanas de tiempo para programación de entregas
           </p>

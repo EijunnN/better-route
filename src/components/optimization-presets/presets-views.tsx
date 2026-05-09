@@ -53,7 +53,7 @@ export function PresetsListView() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-semibold flex items-center gap-2">
             <Settings2 className="size-6" />
             Presets de Optimización
           </h1>

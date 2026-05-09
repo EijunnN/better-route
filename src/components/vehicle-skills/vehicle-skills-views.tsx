@@ -32,7 +32,7 @@ export function VehicleSkillsListView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Catálogo de Habilidades de Vehículos</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Catálogo de Habilidades de Vehículos</h1>
           <p className="mt-1 text-sm text-muted-foreground">Gestione las capacidades especiales de los vehículos</p>
         </div>
         <Can perm="vehicle_skill:create">
@@ -218,7 +218,7 @@ export function VehicleSkillsFormView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">{state.editingSkill ? "Editar Habilidad" : "Nueva Habilidad"}</h1>
+        <h1 className="text-2xl font-semibold text-foreground">{state.editingSkill ? "Editar Habilidad" : "Nueva Habilidad"}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {state.editingSkill ? "Actualice la información de la habilidad" : "Complete el formulario para crear una nueva habilidad"}
         </p>

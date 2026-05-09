@@ -51,7 +51,7 @@ export function PlanificacionHeader() {
     <div className="border-b bg-background px-6 py-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Planificación de Rutas</h1>
+          <h1 className="text-2xl font-semibold">Planificación de Rutas</h1>
           <p className="text-sm text-muted-foreground">
             Optimiza las rutas de entrega para tu flota
           </p>

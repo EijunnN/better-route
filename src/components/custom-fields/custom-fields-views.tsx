@@ -142,7 +142,7 @@ export function CustomFieldsDashboardView() {
         <div className="mx-auto max-w-5xl space-y-6">
           <header className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Campos personalizados</h1>
+              <h1 className="text-2xl font-semibold text-foreground">Campos personalizados</h1>
               <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
                 Antes de crear tu primer campo, leé cómo funciona el flujo
                 completo. Al terminar, vas a saber exactamente para qué sirve,
@@ -167,7 +167,7 @@ export function CustomFieldsDashboardView() {
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Campos personalizados</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Campos personalizados</h1>
             <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
               Define información adicional que tu equipo necesita capturar en cada pedido y cada
               entrega. Los cambios se aplican solo a los pedidos creados a partir de ahora.

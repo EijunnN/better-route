@@ -46,7 +46,7 @@ export function CompaniesListView() {
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Gestión de Empresas</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Gestión de Empresas</h1>
             <p className="mt-1 text-sm text-muted-foreground">Administre las empresas inquilinas del sistema</p>
           </div>
           <Can perm="company:create">
@@ -158,7 +158,7 @@ export function CompaniesFormView() {
     <div className="flex-1 bg-background p-8">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">{state.editingCompany ? "Editar Empresa" : "Nueva Empresa"}</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{state.editingCompany ? "Editar Empresa" : "Nueva Empresa"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {state.editingCompany ? "Actualice la información de la empresa" : "Complete el formulario para crear una nueva empresa"}
           </p>

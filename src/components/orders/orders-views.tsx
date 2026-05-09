@@ -94,7 +94,7 @@ export function OrdersListView() {
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Pedidos</h1>
+          <h1 className="text-3xl font-semibold">Pedidos</h1>
           <p className="text-muted-foreground mt-1">Gestiona los pedidos de entrega con restricciones de ventana de tiempo</p>
         </div>
         <div className="flex items-center gap-4">
