@@ -17,13 +17,15 @@ export function useZoneLayers(
   useEffect(() => {
     if (!map.current || isLoading) return;
 
+    const mapInstance = map.current;
+
     // Remove existing zone layers and sources
-    const style = map.current.getStyle();
+    const style = mapInstance.getStyle();
     if (style?.layers) {
       style.layers.forEach((layer) => {
         if (layer.id.startsWith("zone-")) {
-          if (map.current?.getLayer(layer.id)) {
-            map.current.removeLayer(layer.id);
+          if (mapInstance.getLayer(layer.id)) {
+            mapInstance.removeLayer(layer.id);
           }
         }
       });
@@ -31,16 +33,24 @@ export function useZoneLayers(
     if (style?.sources) {
       Object.keys(style.sources).forEach((sourceId) => {
         if (sourceId.startsWith("zone-source-")) {
-          if (map.current?.getSource(sourceId)) {
-            map.current.removeSource(sourceId);
+          if (mapInstance.getSource(sourceId)) {
+            mapInstance.removeSource(sourceId);
           }
         }
       });
     }
 
+    const registeredHandlers: Array<{
+      event: "click" | "mouseenter" | "mouseleave";
+      layerId: string;
+      handler: (e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => void;
+    }> = [];
+    const addedSourceIds: string[] = [];
+    const addedLayerIds: string[] = [];
+
     // Add zone layers
     zones.forEach((zone, index) => {
-      if (!zone.geometry || !map.current) return;
+      if (!zone.geometry) return;
 
       const sourceId = `zone-source-${index}`;
       const fillLayerId = `zone-fill-${index}`;
@@ -48,7 +58,7 @@ export function useZoneLayers(
       const color = zone.color || "#3B82F6";
 
       // Add source
-      map.current.addSource(sourceId, {
+      mapInstance.addSource(sourceId, {
         type: "geojson",
         data: {
           type: "Feature",
@@ -62,9 +72,10 @@ export function useZoneLayers(
           geometry: zone.geometry as GeoJSON.Geometry,
         },
       });
+      addedSourceIds.push(sourceId);
 
       // Add fill layer (semi-transparent)
-      map.current.addLayer({
+      mapInstance.addLayer({
         id: fillLayerId,
         type: "fill",
         source: sourceId,
@@ -73,9 +84,10 @@ export function useZoneLayers(
           "fill-opacity": 0.15,
         },
       });
+      addedLayerIds.push(fillLayerId);
 
       // Add outline layer
-      map.current.addLayer({
+      mapInstance.addLayer({
         id: outlineLayerId,
         type: "line",
         source: sourceId,
@@ -85,9 +97,12 @@ export function useZoneLayers(
           "line-opacity": 0.8,
         },
       });
+      addedLayerIds.push(outlineLayerId);
 
       // Add click handler for zone popup (dynamically import maplibregl for popup)
-      map.current.on("click", fillLayerId, async (e) => {
+      const clickHandler = async (
+        e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] },
+      ) => {
         if (!map.current || !e.features?.[0]) return;
 
         const maplibreglModule = await import("maplibre-gl");
@@ -115,15 +130,37 @@ export function useZoneLayers(
             </div>
           `)
           .addTo(map.current);
-      });
+      };
+      mapInstance.on("click", fillLayerId, clickHandler);
+      registeredHandlers.push({ event: "click", layerId: fillLayerId, handler: clickHandler });
 
       // Change cursor on hover
-      map.current.on("mouseenter", fillLayerId, () => {
+      const enterHandler = () => {
         if (map.current) map.current.getCanvas().style.cursor = "pointer";
-      });
-      map.current.on("mouseleave", fillLayerId, () => {
+      };
+      const leaveHandler = () => {
         if (map.current) map.current.getCanvas().style.cursor = "";
-      });
+      };
+      mapInstance.on("mouseenter", fillLayerId, enterHandler);
+      mapInstance.on("mouseleave", fillLayerId, leaveHandler);
+      registeredHandlers.push({ event: "mouseenter", layerId: fillLayerId, handler: enterHandler });
+      registeredHandlers.push({ event: "mouseleave", layerId: fillLayerId, handler: leaveHandler });
     });
+
+    return () => {
+      try {
+        registeredHandlers.forEach(({ event, layerId, handler }) => {
+          mapInstance.off(event, layerId, handler);
+        });
+        addedLayerIds.forEach((layerId) => {
+          if (mapInstance.getLayer(layerId)) mapInstance.removeLayer(layerId);
+        });
+        addedSourceIds.forEach((sourceId) => {
+          if (mapInstance.getSource(sourceId)) mapInstance.removeSource(sourceId);
+        });
+      } catch {
+        // Map might be already destroyed
+      }
+    };
   }, [zones, isLoading, map]);
 }
