@@ -368,7 +368,7 @@ function SidebarCompanySwitcher() {
 
   if (state.collapsed) {
     return (
-      <div className="border-b border-sidebar-border px-2 py-2">
+      <div className="border-b border-sidebar-border p-2">
         <Popover>
           <PopoverTrigger asChild>
             <button
@@ -405,7 +405,7 @@ function SidebarCompanySwitcher() {
   }
 
   return (
-    <div className="border-b border-sidebar-border px-2 py-2">
+    <div className="border-b border-sidebar-border p-2">
       <Popover>
         <PopoverTrigger asChild>
           <button

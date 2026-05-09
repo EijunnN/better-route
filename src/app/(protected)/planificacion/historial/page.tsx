@@ -10,7 +10,7 @@ import {
 
 function PlanificacionHistorialPageContent() {
   return (
-    <div className="container mx-auto py-4 px-4">
+    <div className="container mx-auto p-4">
       <HistorialHeader />
       <HistorialError />
       <HistorialContent />

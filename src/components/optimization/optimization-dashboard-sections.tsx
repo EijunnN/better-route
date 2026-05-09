@@ -212,7 +212,7 @@ export function CompactRouteCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Intercambiar ruta con...</DropdownMenuLabel>
+                <DropdownMenuLabel>Intercambiar ruta con…</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {otherRoutes.map((other) => (
                   <DropdownMenuItem

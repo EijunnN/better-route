@@ -340,7 +340,7 @@ export function PlanConfirmationDialog({
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <Loader2 className="size-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">Cargando plan...</p>
+              <p className="text-muted-foreground">Cargando plan…</p>
             </div>
           </div>
         ) : error ? (

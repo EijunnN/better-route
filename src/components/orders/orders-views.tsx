@@ -172,7 +172,7 @@ export function OrdersListView() {
       </div>
 
       {state.isLoading ? (
-        <div className="text-center py-12">Cargando...</div>
+        <div className="text-center py-12">Cargando…</div>
       ) : state.filteredOrders.length === 0 ? (
         <div className="text-center py-12 border rounded-lg bg-muted/30">
           <p className="text-muted-foreground">No se encontraron pedidos.</p>

@@ -186,24 +186,24 @@ function UserRow({ user }: { user: User }) {
 
   return (
     <tr className="hover:bg-muted/50 transition-colors">
-      <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-foreground">
+      <td className="whitespace-nowrap p-4 text-sm font-medium text-foreground">
         {user.name}
       </td>
-      <td className="whitespace-nowrap px-4 py-4 text-sm text-muted-foreground">
+      <td className="whitespace-nowrap p-4 text-sm text-muted-foreground">
         @{user.username}
       </td>
-      <td className="px-4 py-4 text-sm text-muted-foreground">
+      <td className="p-4 text-sm text-muted-foreground">
         <div>{user.email}</div>
         {user.phone && <div className="text-xs">{user.phone}</div>}
       </td>
-      <td className="whitespace-nowrap px-4 py-4">
+      <td className="whitespace-nowrap p-4">
         <span className="inline-flex rounded-full bg-muted px-3 py-1 text-xs font-semibold">
           {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
         </span>
       </td>
       {showDriverColumns && (
         <>
-          <td className="px-4 py-4 text-sm text-muted-foreground">
+          <td className="p-4 text-sm text-muted-foreground">
             {user.role === "CONDUCTOR" ? (
               <>
                 <div>{user.licenseNumber || "-"}</div>
@@ -215,7 +215,7 @@ function UserRow({ user }: { user: User }) {
               <span className="text-muted-foreground/50">-</span>
             )}
           </td>
-          <td className="whitespace-nowrap px-4 py-4 text-sm">
+          <td className="whitespace-nowrap p-4 text-sm">
             {user.role === "CONDUCTOR" ? (
               <span className={getLicenseStatusColor(user.licenseExpiry)}>
                 {getLicenseStatusLabel(user.licenseExpiry)}
@@ -224,7 +224,7 @@ function UserRow({ user }: { user: User }) {
               <span className="text-muted-foreground/50">-</span>
             )}
           </td>
-          <td className="whitespace-nowrap px-4 py-4">
+          <td className="whitespace-nowrap p-4">
             {user.role === "CONDUCTOR" && user.driverStatus ? (
               <span
                 className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
@@ -240,7 +240,7 @@ function UserRow({ user }: { user: User }) {
           </td>
         </>
       )}
-      <td className="whitespace-nowrap px-4 py-4 text-sm">
+      <td className="whitespace-nowrap p-4 text-sm">
         {user.active ? (
           <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
             Activo
@@ -251,7 +251,7 @@ function UserRow({ user }: { user: User }) {
           </span>
         )}
       </td>
-      <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
+      <td className="whitespace-nowrap p-4 text-right text-sm">
         <Can perm="user:update">
           <Button
             variant="ghost"

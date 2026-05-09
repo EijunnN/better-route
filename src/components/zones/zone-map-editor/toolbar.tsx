@@ -193,7 +193,7 @@ export function LoadingOverlay() {
     <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20 rounded-lg">
       <div className="text-center">
         <div className="animate-spin rounded-full size-8 border-b-2 border-primary mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">Cargando mapa...</p>
+        <p className="text-sm text-muted-foreground">Cargando mapa…</p>
       </div>
     </div>
   );

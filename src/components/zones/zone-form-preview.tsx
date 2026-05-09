@@ -177,7 +177,7 @@ export function ZoneFormPreview({
         <div className="absolute inset-0 flex items-center justify-center bg-muted/80 z-20">
           <div className="text-center">
             <div className="animate-spin rounded-full size-6 border-b-2 border-primary mx-auto mb-2" />
-            <p className="text-xs text-muted-foreground">Cargando...</p>
+            <p className="text-xs text-muted-foreground">Cargando…</p>
           </div>
         </div>
       )}

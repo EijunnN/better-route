@@ -15,7 +15,7 @@ export function TrackingHeader({
 }: TrackingHeaderProps) {
   return (
     <header className="border-b border-border/60 bg-card/40 backdrop-blur-sm">
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-4 sm:px-6">
+      <div className="mx-auto flex w-full max-w-6xl items-center gap-3 p-4 sm:px-6">
         {logoUrl ? (
           <img
             src={logoUrl}

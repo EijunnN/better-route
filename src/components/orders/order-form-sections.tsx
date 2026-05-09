@@ -218,7 +218,7 @@ export function OrderFormTimeWindow() {
         <div className="mt-3">
           <Label htmlFor="timeWindowPresetId">O usar un preset</Label>
           {isLoadingPresets ? (
-            <p className="text-sm text-muted-foreground">Cargando presets...</p>
+            <p className="text-sm text-muted-foreground">Cargando presets…</p>
           ) : (
             <select
               id="timeWindowPresetId"

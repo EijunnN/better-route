@@ -210,7 +210,7 @@ function JobMetricsExpansion({
 
   if (loading) {
     return (
-      <div className="px-3 py-3 border-t flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="p-3 border-t flex items-center gap-2 text-xs text-muted-foreground">
         <Loader2 className="size-3 animate-spin" />
         Cargando métricas...
       </div>

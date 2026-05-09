@@ -291,7 +291,7 @@ function ResultsPageContent() {
               <ArrowLeft className="size-4 mr-2" />
               Volver
             </Button>
-            <h1 className="text-lg font-semibold">Optimizando rutas...</h1>
+            <h1 className="text-lg font-semibold">Optimizando rutas…</h1>
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center p-6">
