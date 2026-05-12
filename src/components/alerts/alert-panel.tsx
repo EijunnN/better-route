@@ -8,7 +8,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -42,8 +42,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
   >("ACTIVE");
   const { toast } = useToast();
 
-  // Fetch alerts
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(
@@ -64,18 +63,18 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to load alerts",
+        description: "No se pudieron cargar las alertas",
       });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId, statusFilter, toast]);
 
   useEffect(() => {
     if (companyId) {
       fetchAlerts();
     }
-  }, [companyId, statusFilter]);
+  }, [companyId, fetchAlerts]);
 
   // Filter alerts
   useEffect(() => {
@@ -126,18 +125,17 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
       if (!response.ok) throw new Error("Failed to acknowledge alert");
 
       toast({
-        title: "Alert acknowledged",
-        description: "The alert has been acknowledged",
+        title: "Alerta reconocida",
+        description: "La alerta fue marcada como reconocida.",
       });
 
-      // Refresh alerts
       fetchAlerts();
     } catch (error) {
       console.error("Error acknowledging alert:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to acknowledge alert",
+        description: "No se pudo reconocer la alerta",
       });
     }
   };
@@ -157,18 +155,17 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
       if (!response.ok) throw new Error("Failed to dismiss alert");
 
       toast({
-        title: "Alert dismissed",
-        description: "The alert has been dismissed",
+        title: "Alerta descartada",
+        description: "La alerta fue ocultada de la lista activa.",
       });
 
-      // Refresh alerts
       fetchAlerts();
     } catch (error) {
       console.error("Error dismissing alert:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to dismiss alert",
+        description: "No se pudo descartar la alerta",
       });
     }
   };
@@ -180,10 +177,10 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <AlertTriangle className="size-5 text-amber-500" />
-            <h2 className="text-lg font-semibold">Alerts</h2>
+            <h2 className="text-lg font-semibold">Alertas</h2>
             {criticalCount > 0 && (
               <Badge variant="destructive" className="ml-2">
-                {criticalCount} Critical
+                {criticalCount} crítica{criticalCount === 1 ? "" : "s"}
               </Badge>
             )}
           </div>
@@ -204,7 +201,7 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
           <div className="flex-1 relative">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="Search alerts..."
+              placeholder="Buscar alertas..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -226,12 +223,12 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
             }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ACTIVE">Active</SelectItem>
-              <SelectItem value="ACKNOWLEDGED">Acknowledged</SelectItem>
-              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="ACTIVE">Activas</SelectItem>
+              <SelectItem value="ACKNOWLEDGED">Reconocidas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -248,15 +245,15 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
         <div className="px-4 pt-2">
           <TabsList className="w-full">
             <TabsTrigger value="all" className="flex-1">
-              All ({filteredAlerts.length})
+              Todas ({filteredAlerts.length})
             </TabsTrigger>
             <TabsTrigger value="critical" className="flex-1">
               <AlertTriangle className="size-4 mr-1" />
-              Critical ({criticalCount})
+              Crítica ({criticalCount})
             </TabsTrigger>
             <TabsTrigger value="warning" className="flex-1">
               <AlertCircle className="size-4 mr-1" />
-              Warning ({warningCount})
+              Advertencia ({warningCount})
             </TabsTrigger>
             <TabsTrigger value="info" className="flex-1">
               <Info className="size-4 mr-1" />
@@ -274,11 +271,11 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
           ) : filteredAlerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <AlertTriangle className="size-12 mb-4 opacity-50" />
-              <p className="font-medium">No alerts found</p>
+              <p className="font-medium">No hay alertas</p>
               <p className="text-sm">
                 {searchQuery
-                  ? "Try adjusting your search or filters"
-                  : "No active alerts at this time"}
+                  ? "Prueba ajustar la búsqueda o los filtros"
+                  : "No hay alertas activas en este momento"}
               </p>
             </div>
           ) : (

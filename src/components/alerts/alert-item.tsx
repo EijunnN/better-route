@@ -1,5 +1,7 @@
 "use client";
 
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   AlertCircle,
   AlertTriangle,
@@ -28,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 export type AlertSeverity = "CRITICAL" | "WARNING" | "INFO";
 export type AlertStatus = "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED" | "DISMISSED";
@@ -59,31 +62,38 @@ interface AlertItemProps {
 
 const SEVERITY_CONFIG = {
   CRITICAL: {
-    label: "Critical",
-    color: "bg-red-500",
-    badgeVariant: "destructive" as const,
+    label: "Crítica",
+    iconBg: "bg-red-500",
+    borderClass: "border-l-red-500",
     icon: AlertTriangle,
   },
   WARNING: {
-    label: "Warning",
-    color: "bg-amber-500",
-    badgeVariant: "secondary" as const,
+    label: "Advertencia",
+    iconBg: "bg-amber-500",
+    borderClass: "border-l-amber-500",
     icon: AlertCircle,
   },
   INFO: {
     label: "Info",
-    color: "bg-blue-500",
-    badgeVariant: "outline" as const,
+    iconBg: "bg-blue-500",
+    borderClass: "border-l-blue-500",
     icon: Info,
   },
 };
 
 const STATUS_CONFIG = {
-  ACTIVE: { label: "Active", color: "text-red-600 dark:text-red-400" },
-  ACKNOWLEDGED: { label: "Acknowledged", color: "text-amber-600 dark:text-amber-400" },
-  RESOLVED: { label: "Resolved", color: "text-emerald-600 dark:text-emerald-400" },
-  DISMISSED: { label: "Dismissed", color: "text-gray-600 dark:text-gray-400" },
+  ACTIVE: { label: "Activa" },
+  ACKNOWLEDGED: { label: "Reconocida" },
+  RESOLVED: { label: "Resuelta" },
+  DISMISSED: { label: "Descartada" },
 };
+
+interface AlertMetadataShape {
+  trackingId?: string;
+  sequence?: number;
+  driverName?: string;
+  plate?: string;
+}
 
 export function AlertItem({
   alert,
@@ -124,49 +134,41 @@ export function AlertItem({
     }
   };
 
-  const getTimeSince = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  const getTimeSince = (dateString: string) =>
+    formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: es });
 
-    if (seconds < 60) return "just now";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  };
+  const metadata = (alert.metadata as AlertMetadataShape | null) ?? {};
+  const contextLabel =
+    metadata.trackingId ??
+    (metadata.sequence != null ? `Parada #${metadata.sequence}` : null) ??
+    metadata.plate ??
+    metadata.driverName ??
+    null;
 
   return (
     <>
       <Card
-        className={`hover:bg-accent/50 transition-colors ${
-          onClick ? "cursor-pointer" : ""
-        } ${alert.status === "ACTIVE" ? "border-l-4 border-l-red-500" : ""}`}
+        className={cn(
+          "hover:bg-accent/50 transition-colors",
+          onClick && "cursor-pointer",
+          alert.status === "ACTIVE" && "border-l-4",
+          alert.status === "ACTIVE" && severityConfig.borderClass,
+        )}
         onClick={onClick}
       >
         <div className="p-4">
           <div className="flex items-start gap-3">
-            {/* Severity Icon */}
             <div
-              className={`mt-0.5 ${severityConfig.color} rounded-full p-1.5`}
+              className={cn("mt-0.5 rounded-full p-1.5", severityConfig.iconBg)}
             >
               <SeverityIcon className="size-4 text-white" />
             </div>
 
-            {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-medium truncate">{alert.title}</h4>
-                    <Badge
-                      variant={severityConfig.badgeVariant}
-                      className="text-xs"
-                    >
-                      {severityConfig.label}
-                    </Badge>
+                    <h4 className="font-medium line-clamp-2">{alert.title}</h4>
                     {alert.status !== "ACTIVE" && (
                       <Badge variant="outline" className="text-xs">
                         {statusConfig.label}
@@ -185,9 +187,11 @@ export function AlertItem({
                       <Clock className="size-3" />
                       <span>{getTimeSince(alert.createdAt)}</span>
                     </div>
-                    <span className="uppercase">{alert.entityType}</span>
+                    {contextLabel && (
+                      <span className="font-medium">{contextLabel}</span>
+                    )}
                     {alert.acknowledgedBy && (
-                      <span>Acknowledged by {alert.acknowledgedBy.name}</span>
+                      <span>Reconocida por {alert.acknowledgedBy.name}</span>
                     )}
                   </div>
                 </div>
@@ -212,7 +216,7 @@ export function AlertItem({
                           }}
                         >
                           <Check className="size-4 mr-2" />
-                          Acknowledge
+                          Reconocer
                         </DropdownMenuItem>
                       )}
                       {onDismiss && (
@@ -223,7 +227,7 @@ export function AlertItem({
                           }}
                         >
                           <X className="size-4 mr-2" />
-                          Dismiss
+                          Descartar
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -242,13 +246,13 @@ export function AlertItem({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Acknowledge Alert</DialogTitle>
+            <DialogTitle>Reconocer alerta</DialogTitle>
             <DialogDescription>
-              Add an optional note to acknowledge this alert.
+              Agrega una nota opcional para reconocer esta alerta.
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Add a note (optional)..."
+            placeholder="Agregar una nota (opcional)..."
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
@@ -261,27 +265,26 @@ export function AlertItem({
                 setNote("");
               }}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button onClick={handleAcknowledge} disabled={isLoading}>
-              {isLoading ? "Acknowledging..." : "Acknowledge"}
+              {isLoading ? "Reconociendo..." : "Reconocer"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dismiss Dialog */}
       <Dialog open={dismissDialogOpen} onOpenChange={setDismissDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Dismiss Alert</DialogTitle>
+            <DialogTitle>Descartar alerta</DialogTitle>
             <DialogDescription>
-              Dismissing this alert will hide it from the active list. Add an
-              optional note.
+              Al descartarla, la alerta se oculta de la lista activa. Puedes
+              agregar una nota opcional.
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Add a note (optional)..."
+            placeholder="Agregar una nota (opcional)..."
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
@@ -294,14 +297,14 @@ export function AlertItem({
                 setNote("");
               }}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button
               variant="destructive"
               onClick={handleDismiss}
               disabled={isLoading}
             >
-              {isLoading ? "Dismissing..." : "Dismiss"}
+              {isLoading ? "Descartando..." : "Descartar"}
             </Button>
           </DialogFooter>
         </DialogContent>

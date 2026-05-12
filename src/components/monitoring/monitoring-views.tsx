@@ -466,7 +466,16 @@ export function MonitoringDashboardView() {
                 getWorkflowLabel={actions.getWorkflowLabel}
               />
             ) : (
-              <AlertPanel companyId={meta.companyId} />
+              <AlertPanel
+                companyId={meta.companyId}
+                onAlertClick={(alert) => {
+                  if (alert.entityType !== "STOP") return;
+                  const driverId = (
+                    alert.metadata as { userId?: string } | null
+                  )?.userId;
+                  if (driverId) actions.handleDriverClick(driverId);
+                }}
+              />
             )}
           </Card>
         </div>
