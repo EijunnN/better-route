@@ -1,0 +1,17 @@
+{
+  "client": {
+    "token": {
+      "hmac_secret_key": "${CENTRIFUGO_TOKEN_HMAC_SECRET_KEY}"
+    },
+    "allowed_origins": ["${CENTRIFUGO_ALLOWED_ORIGIN}"]
+  },
+  "http_api": {
+    "key": "${CENTRIFUGO_API_KEY}"
+  },
+  "channel": {
+    "namespaces": [
+      { "name": "monitoring" },
+      { "name": "chat", "history_size": 50, "history_ttl": "60s" }
+    ]
+  }
+}

@@ -31,11 +31,15 @@ changes in this slice — it is pure foundation, verifiable in isolation.
 
 - [ ] `docker compose up` brings Centrifugo healthy alongside the app;
       `/connection/websocket` reachable through the reverse proxy.
-- [ ] `computeAllowedChannels`: CONDUCTOR →
+- [ ] `computeAllowedChannels` returns the stable server-side
+      subscription channels per role: CONDUCTOR →
       `[chat:{companyId}:driver:{ownId}, chat:{companyId}:broadcast]`;
       PLANIFICADOR / ADMIN_FLOTA / ADMIN_SISTEMA →
-      `[monitoring:{companyId}, chat:{companyId}:broadcast,
-      chat:{companyId}:driver:*]`; other roles → `[]`.
+      `[monitoring:{companyId}, chat:{companyId}:broadcast]`; MONITOR →
+      `[monitoring:{companyId}]`; other roles → `[]`. A dispatcher's
+      per-driver chat channel is **not** in the connection token (a
+      wildcard cannot be a server-side subscription) — it is opened
+      ad-hoc with a subscription token in issue 010.
 - [ ] `GET /api/realtime/token` returns 401 without a valid session;
       with a valid session returns `{ token }` decodable by Centrifugo
       (HMAC verified).

@@ -15,6 +15,12 @@ conversations and a thread view, realtime over Centrifugo.
 - Realtime: subscribe to `chat:{companyId}:driver:{driverId}` for the
   open thread; subscribe to a per-tenant signal so inbox unread badges
   update live without opening each thread.
+- A per-driver chat channel is not in the connection token (see issue
+  007). Add a subscription-token endpoint —
+  `GET /api/realtime/subscription-token?channel=...` — that validates
+  the dispatcher may chat with that driver (tenant + role) and returns a
+  Centrifugo subscription JWT. The client requests it on opening a
+  thread.
 - Opening a thread calls the `read` endpoint and clears the unread
   badge.
 - Wire it to the alert-panel click-through where it makes sense (a STOP
