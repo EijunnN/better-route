@@ -14,6 +14,7 @@ import {
   chatMessages,
   users,
 } from "@/db/schema";
+import { sendChatPush } from "@/lib/notifications/onesignal";
 import { centrifugoChannels, centrifugoPublish } from "@/lib/realtime";
 
 /** Conversation previews are capped — the full body lives in the message. */
@@ -83,6 +84,18 @@ export async function sendChatMessage(
     centrifugoChannels.driverChat(input.companyId, input.driverId),
     { kind: "chat.message", message },
   );
+
+  // Push only dispatcher→driver messages: a driver's own reply needs no
+  // push, and dispatchers are on the web (no push surface). Always-push
+  // — the mobile app suppresses the banner if the chat is foregrounded.
+  if (input.direction === CHAT_DIRECTION.TO_DRIVER) {
+    await sendChatPush({
+      driverIds: [input.driverId],
+      title: "Mensaje del despacho",
+      body: preview,
+      data: { type: "chat", driverId: input.driverId, messageId: message.id },
+    });
+  }
 
   return message;
 }
@@ -178,6 +191,13 @@ export async function broadcastChatMessage(input: {
     kind: "chat.broadcast",
     body: input.body,
     sentAt: sentAt.toISOString(),
+  });
+
+  await sendChatPush({
+    driverIds: drivers.map((d) => d.id),
+    title: "Mensaje urgente del despacho",
+    body: preview,
+    data: { type: "broadcast" },
   });
 
   return drivers.length;
