@@ -9,54 +9,61 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { companies } from "./companies";
-import { fleets } from "./fleets";
-
 // User roles — single source of truth in the browser-safe permissions module.
 // Re-exported here so existing schema consumers (drizzle queries, seeds) keep
 // importing from "@/db/schema" without breaking.
 import { USER_ROLES, type UserRole } from "@/lib/auth/permissions";
+import { companies } from "./companies";
+import { fleets } from "./fleets";
 export { USER_ROLES, type UserRole };
 
-export const users = pgTable("users", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  // companyId is nullable for ADMIN_SISTEMA who can manage all companies
-  companyId: uuid("company_id").references(() => companies.id, {
-    onDelete: "restrict",
-  }),
-  // Basic user fields
-  name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  username: varchar("username", { length: 100 }).notNull().unique(),
-  password: varchar("password", { length: 255 }).notNull(),
-  role: varchar("role", { length: 50 })
-    .notNull()
-    .$type<keyof typeof USER_ROLES>(),
-  phone: varchar("phone", { length: 50 }),
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // companyId is nullable for ADMIN_SISTEMA who can manage all companies
+    companyId: uuid("company_id").references(() => companies.id, {
+      onDelete: "restrict",
+    }),
+    // Basic user fields
+    name: varchar("name", { length: 255 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull().unique(),
+    username: varchar("username", { length: 100 }).notNull().unique(),
+    password: varchar("password", { length: 255 }).notNull(),
+    role: varchar("role", { length: 50 })
+      .notNull()
+      .$type<keyof typeof USER_ROLES>(),
+    phone: varchar("phone", { length: 50 }),
 
-  // Driver-specific fields (nullable - only required if role=CONDUCTOR)
-  identification: varchar("identification", { length: 50 }),
-  birthDate: timestamp("birth_date"),
-  photo: text("photo"),
-  licenseNumber: varchar("license_number", { length: 100 }),
-  licenseExpiry: timestamp("license_expiry"),
-  licenseCategories: varchar("license_categories", { length: 255 }),
-  certifications: text("certifications"),
-  driverStatus: varchar("driver_status", { length: 50 }).$type<
-    keyof typeof DRIVER_STATUS
-  >(),
-  primaryFleetId: uuid("primary_fleet_id").references(() => fleets.id, {
-    onDelete: "set null",
-  }),
+    // Driver-specific fields (nullable - only required if role=CONDUCTOR)
+    identification: varchar("identification", { length: 50 }),
+    birthDate: timestamp("birth_date"),
+    photo: text("photo"),
+    licenseNumber: varchar("license_number", { length: 100 }),
+    licenseExpiry: timestamp("license_expiry"),
+    licenseCategories: varchar("license_categories", { length: 255 }),
+    certifications: text("certifications"),
+    driverStatus: varchar("driver_status", { length: 50 }).$type<
+      keyof typeof DRIVER_STATUS
+    >(),
+    primaryFleetId: uuid("primary_fleet_id").references(() => fleets.id, {
+      onDelete: "set null",
+    }),
+    // Mobile app presence — true on login, false on logout (CONDUCTOR only).
+    // null for users predating the feature or who never used the app.
+    // Distinct from driverStatus, which is a route-execution state machine.
+    appOnline: boolean("app_online"),
 
-  // Metadata
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("users_company_id_idx").on(table.companyId),
-  index("users_company_role_idx").on(table.companyId, table.role),
-]);
+    // Metadata
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("users_company_id_idx").on(table.companyId),
+    index("users_company_role_idx").on(table.companyId, table.role),
+  ],
+);
 
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),

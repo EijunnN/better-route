@@ -120,6 +120,13 @@
       "when": 1779165637576,
       "tag": "0016_jazzy_squirrel_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1779170309512,
+      "tag": "0017_lucky_ricochet",
+      "breakpoints": true
     }
   ]
 }
