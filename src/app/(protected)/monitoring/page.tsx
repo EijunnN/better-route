@@ -1,13 +1,19 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { MonitoringProvider, MonitoringDashboardView } from "@/components/monitoring";
+import { ChatProvider } from "@/components/chat";
+import {
+  MonitoringDashboardView,
+  MonitoringProvider,
+} from "@/components/monitoring";
 
 export default function MonitoringPage() {
   return (
     <ProtectedPage requiredPermission="vehicle:read">
       <MonitoringProvider>
-        <MonitoringDashboardView />
+        <ChatProvider>
+          <MonitoringDashboardView />
+        </ChatProvider>
       </MonitoringProvider>
     </ProtectedPage>
   );

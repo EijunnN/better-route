@@ -6,6 +6,8 @@
  *
  * Channel layout (see ADR-0007):
  *   monitoring:{companyId}              — location, stop transitions, alerts
+ *   chat:{companyId}:inbox              — dispatcher inbox bumps (any
+ *                                          conversation activity)
  *   chat:{companyId}:driver:{driverId}  — 1:1 dispatcher↔driver thread
  *   chat:{companyId}:broadcast          — dispatcher emergency broadcast
  *
@@ -18,6 +20,7 @@ import { USER_ROLES } from "@/lib/auth/permissions";
 
 export const centrifugoChannels = {
   monitoring: (companyId: string) => `monitoring:${companyId}`,
+  chatInbox: (companyId: string) => `chat:${companyId}:inbox`,
   driverChat: (companyId: string, driverId: string) =>
     `chat:${companyId}:driver:${driverId}`,
   broadcast: (companyId: string) => `chat:${companyId}:broadcast`,
@@ -57,6 +60,7 @@ export function computeAllowedChannels(subject: ChannelSubject): string[] {
     case USER_ROLES.ADMIN_SISTEMA:
       return [
         centrifugoChannels.monitoring(companyId),
+        centrifugoChannels.chatInbox(companyId),
         centrifugoChannels.broadcast(companyId),
       ];
 

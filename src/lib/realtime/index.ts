@@ -1,5 +1,9 @@
 // Centrifugo realtime layer (ADR-0007).
-export { centrifugoPublish, issueCentrifugoToken } from "./centrifugo";
+export {
+  centrifugoPublish,
+  issueCentrifugoSubscriptionToken,
+  issueCentrifugoToken,
+} from "./centrifugo";
 export type { ChannelSubject } from "./channels";
 export { centrifugoChannels, computeAllowedChannels } from "./channels";
 export type {

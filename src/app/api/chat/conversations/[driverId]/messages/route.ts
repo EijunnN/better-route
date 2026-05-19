@@ -36,14 +36,18 @@ async function isTenantDriver(
 }
 
 /**
- * GET /api/chat/conversations/:driverId/messages?after=&limit=
+ * GET /api/chat/conversations/:driverId/messages?after=&before=&limit=
  *
- * Thread history. Without `after`, the most recent `limit` messages
- * (ascending). With `after` (the id of the last message the client
- * holds), everything strictly newer — a keyset cursor for reconciling
- * after a reconnect. Id-based, not timestamp-based: the client only
- * sees millisecond-precision timestamps, so a timestamp cursor would
- * re-deliver the boundary message every time.
+ * Thread history. Three modes, mutually exclusive:
+ *   - no cursor:  the most recent `limit` messages (ascending render).
+ *   - `after=id`: everything strictly newer than the cursor — reconnect
+ *                 reconciliation, no count limit beyond LIMIT_MAX.
+ *   - `before=id`: the `limit` messages strictly older than the cursor,
+ *                 oldest-first — scroll-back pagination.
+ *
+ * Cursors are message ids, not timestamps: the client only sees
+ * millisecond-precision dates, so a timestamp cursor would re-deliver
+ * the boundary message every time.
  *
  * A dispatcher may read any thread of the tenant; a driver only theirs.
  */
@@ -78,18 +82,30 @@ export async function GET(
 
   const { searchParams } = new URL(request.url);
   const after = searchParams.get("after");
+  const before = searchParams.get("before");
   const limit = Math.min(
     parseInt(searchParams.get("limit") || String(LIMIT_DEFAULT), 10) ||
       LIMIT_DEFAULT,
     LIMIT_MAX,
   );
 
+  if (after && before) {
+    return NextResponse.json(
+      {
+        error: "Usa 'after' o 'before', no ambos",
+        code: "BAD_REQUEST",
+      },
+      { status: 400 },
+    );
+  }
+
   const scope = and(
     eq(chatMessages.companyId, tenantCtx.companyId),
     eq(chatMessages.driverId, driverId),
   );
 
-  if (after) {
+  if (after || before) {
+    const cursorId = (after ?? before) as string;
     // Resolve the cursor row. `created_at` is read as text so its
     // microsecond precision survives — a JS Date would truncate to
     // milliseconds and the boundary message would leak back in.
@@ -99,28 +115,48 @@ export async function GET(
         id: chatMessages.id,
       })
       .from(chatMessages)
-      .where(and(scope, eq(chatMessages.id, after)))
+      .where(and(scope, eq(chatMessages.id, cursorId)))
       .limit(1);
     if (!cursor) {
       return NextResponse.json(
-        { error: "Cursor 'after' inválido", code: "BAD_REQUEST" },
+        {
+          error: `Cursor '${after ? "after" : "before"}' inválido`,
+          code: "BAD_REQUEST",
+        },
         { status: 400 },
       );
     }
     // Keyset comparison runs entirely in Postgres (no JS round-trip),
     // so the (created_at, id) tuple is compared at full precision.
+    if (after) {
+      const rows = await db
+        .select()
+        .from(chatMessages)
+        .where(
+          and(
+            scope,
+            sql`(${chatMessages.createdAt}, ${chatMessages.id}) > (${cursor.createdAt}::timestamp, ${cursor.id}::uuid)`,
+          ),
+        )
+        .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id))
+        .limit(LIMIT_MAX);
+      return NextResponse.json({ data: rows });
+    }
+    // before: fetch the `limit` older messages, newest-first from the DB
+    // (so the LIMIT cuts off the oldest, not the newest), then reverse
+    // so the client appends them oldest-first above the existing window.
     const rows = await db
       .select()
       .from(chatMessages)
       .where(
         and(
           scope,
-          sql`(${chatMessages.createdAt}, ${chatMessages.id}) > (${cursor.createdAt}::timestamp, ${cursor.id}::uuid)`,
+          sql`(${chatMessages.createdAt}, ${chatMessages.id}) < (${cursor.createdAt}::timestamp, ${cursor.id}::uuid)`,
         ),
       )
-      .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id))
-      .limit(LIMIT_MAX);
-    return NextResponse.json({ data: rows });
+      .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
+      .limit(limit);
+    return NextResponse.json({ data: rows.reverse() });
   }
 
   const recent = await db

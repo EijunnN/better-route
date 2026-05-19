@@ -85,6 +85,14 @@ export async function sendChatMessage(
     { kind: "chat.message", message },
   );
 
+  // Bump the dispatcher inbox — every dispatcher session of this tenant
+  // is subscribed to the inbox channel server-side, so the conversation
+  // list and unread badge update without needing a per-driver subscription.
+  await centrifugoPublish(centrifugoChannels.chatInbox(input.companyId), {
+    kind: "chat.inbox",
+    driverId: input.driverId,
+  });
+
   // Push only dispatcher→driver messages: a driver's own reply needs no
   // push, and dispatchers are on the web (no push surface). Always-push
   // — the mobile app suppresses the banner if the chat is foregrounded.
@@ -129,6 +137,14 @@ export async function markConversationRead(
           eq(chatConversations.driverId, driverId),
         ),
       );
+  });
+
+  // Propagate the cleared badge to every dispatcher session — a peer
+  // dispatcher who already had the inbox open should not keep showing
+  // an unread count that has been resolved on another tab.
+  await centrifugoPublish(centrifugoChannels.chatInbox(companyId), {
+    kind: "chat.inbox",
+    driverId,
   });
 }
 

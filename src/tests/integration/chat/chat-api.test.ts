@@ -217,6 +217,40 @@ describe("Chat API (issue 009)", () => {
     expect(res.status).toBe(400);
   });
 
+  test("the 'before' cursor returns only strictly older messages", async () => {
+    const driver = await createDriver(company.id);
+
+    await send(plannerToken, company.id, driver.id, { body: "uno" });
+    await new Promise((r) => setTimeout(r, 5));
+    await send(plannerToken, company.id, driver.id, { body: "dos" });
+    await new Promise((r) => setTimeout(r, 5));
+    const thirdRes = await send(plannerToken, company.id, driver.id, {
+      body: "tres",
+    });
+    const third = (await thirdRes.json()) as { data: { id: string } };
+
+    const res = await thread(plannerToken, company.id, driver.id, {
+      before: third.data.id,
+    });
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { data: { body: string }[] };
+    // Strictly older, oldest-first, and excludes the cursor message.
+    expect(json.data.map((m) => m.body)).toEqual(["uno", "dos"]);
+  });
+
+  test("passing both 'after' and 'before' is rejected with 400", async () => {
+    const driver = await createDriver(company.id);
+    const sendRes = await send(plannerToken, company.id, driver.id, {
+      body: "marker",
+    });
+    const sent = (await sendRes.json()) as { data: { id: string } };
+    const res = await thread(plannerToken, company.id, driver.id, {
+      after: sent.data.id,
+      before: sent.data.id,
+    });
+    expect(res.status).toBe(400);
+  });
+
   // --- read -----------------------------------------------------------------
 
   test("marking a conversation read clears unread and stamps readAt", async () => {

@@ -1,6 +1,9 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { jwtVerify } from "jose";
-import { issueCentrifugoToken } from "@/lib/realtime/centrifugo";
+import {
+  issueCentrifugoSubscriptionToken,
+  issueCentrifugoToken,
+} from "@/lib/realtime/centrifugo";
 
 const SECRET = "test-centrifugo-hmac-secret";
 
@@ -26,7 +29,11 @@ describe("issueCentrifugoToken", () => {
     );
     expect(payload.sub).toBe("u-1");
     expect(payload.info).toEqual({ role: "PLANIFICADOR", companyId: "c-1" });
-    expect(payload.channels).toEqual(["monitoring:c-1", "chat:c-1:broadcast"]);
+    expect(payload.channels).toEqual([
+      "monitoring:c-1",
+      "chat:c-1:inbox",
+      "chat:c-1:broadcast",
+    ]);
   });
 
   test("token expires 15 minutes after issuance", async () => {
@@ -85,5 +92,38 @@ describe("issueCentrifugoToken", () => {
     } finally {
       process.env.CENTRIFUGO_TOKEN_HMAC_SECRET_KEY = saved;
     }
+  });
+});
+
+/**
+ * Subscription tokens authorize one channel each, for a shorter window
+ * than the connection token. The `sub` must match the connection's
+ * userId — Centrifugo rejects a token minted for a different user.
+ */
+describe("issueCentrifugoSubscriptionToken", () => {
+  test("carries the single channel claim and matches `sub` to the user", async () => {
+    const token = await issueCentrifugoSubscriptionToken({
+      userId: "u-1",
+      channel: "chat:c-1:driver:d-1",
+    });
+    const { payload } = await jwtVerify(
+      token,
+      new TextEncoder().encode(SECRET),
+    );
+    expect(payload.sub).toBe("u-1");
+    expect(payload.channel).toBe("chat:c-1:driver:d-1");
+    expect(payload.channels).toBeUndefined();
+  });
+
+  test("expires after 5 minutes — narrow blast radius for a leak", async () => {
+    const token = await issueCentrifugoSubscriptionToken({
+      userId: "u-1",
+      channel: "chat:c-1:driver:d-1",
+    });
+    const { payload } = await jwtVerify(
+      token,
+      new TextEncoder().encode(SECRET),
+    );
+    expect(Number(payload.exp) - Number(payload.iat)).toBe(5 * 60);
   });
 });

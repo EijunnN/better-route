@@ -14,6 +14,14 @@ import { type ChannelSubject, computeAllowedChannels } from "./channels";
 const TOKEN_TTL = "15m";
 
 /**
+ * Subscription token lifetime. Shorter than the connection token — a
+ * subscription token only authorizes one channel, so a leak is narrow,
+ * and a short window makes the lift of revoking access on a role change
+ * negligible. The client re-asks per channel open.
+ */
+const SUBSCRIPTION_TOKEN_TTL = "5m";
+
+/**
  * Publish an event to a Centrifugo channel.
  *
  * Best-effort: a publish failure is logged but never thrown. For
@@ -87,5 +95,32 @@ export async function issueCentrifugoToken(
     .setSubject(subject.userId)
     .setIssuedAt()
     .setExpirationTime(TOKEN_TTL)
+    .sign(new TextEncoder().encode(secret));
+}
+
+/**
+ * Issue a Centrifugo subscription JWT for a single channel.
+ *
+ * Used by dispatchers to subscribe ad-hoc to per-driver chat channels
+ * that are NOT in their connection token — opening one conversation
+ * should not bloat the token with one entry per driver of the tenant.
+ *
+ * The `sub` must match the connection's userId so Centrifugo rejects
+ * a token minted for a different user.
+ */
+export async function issueCentrifugoSubscriptionToken(input: {
+  userId: string;
+  channel: string;
+}): Promise<string> {
+  const secret = process.env.CENTRIFUGO_TOKEN_HMAC_SECRET_KEY;
+  if (!secret) {
+    throw new Error("CENTRIFUGO_TOKEN_HMAC_SECRET_KEY is not set");
+  }
+
+  return new SignJWT({ channel: input.channel })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(input.userId)
+    .setIssuedAt()
+    .setExpirationTime(SUBSCRIPTION_TOKEN_TTL)
     .sign(new TextEncoder().encode(secret));
 }

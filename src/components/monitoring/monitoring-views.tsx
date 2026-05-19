@@ -9,6 +9,7 @@ import {
   History,
   Loader2,
   MapPin,
+  MessageSquare,
   RefreshCw,
   Search,
   Users,
@@ -17,6 +18,8 @@ import {
 import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 import { AlertPanel } from "@/components/alerts/alert-panel";
+import { Can } from "@/components/auth/can";
+import { ChatPanel, useChat } from "@/components/chat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,10 +50,12 @@ const MonitoringMap = dynamic(
 
 export function MonitoringDashboardView() {
   const { state, actions, meta } = useMonitoring();
+  const { meta: chatMeta, actions: chatActions } = useChat();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [showEvents, setShowEvents] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const mapRef = useRef<MapRef | null>(null);
 
@@ -217,7 +222,10 @@ export function MonitoringDashboardView() {
               size="sm"
               onClick={() => {
                 setShowEvents(!showEvents);
-                if (!showEvents) actions.setShowAlerts(false);
+                if (!showEvents) {
+                  actions.setShowAlerts(false);
+                  setShowChat(false);
+                }
               }}
               className="h-8"
             >
@@ -230,7 +238,10 @@ export function MonitoringDashboardView() {
               size="sm"
               onClick={() => {
                 actions.setShowAlerts(!state.showAlerts);
-                if (!state.showAlerts) setShowEvents(false);
+                if (!state.showAlerts) {
+                  setShowEvents(false);
+                  setShowChat(false);
+                }
               }}
               className="h-8"
             >
@@ -244,6 +255,40 @@ export function MonitoringDashboardView() {
                 </Badge>
               )}
             </Button>
+
+            {/* Chat toggle */}
+            <Can perm="chat:read">
+              <Button
+                variant={
+                  chatMeta.totalUnread > 0
+                    ? "destructive"
+                    : showChat
+                      ? "default"
+                      : "ghost"
+                }
+                size="sm"
+                onClick={() => {
+                  setShowChat(!showChat);
+                  if (!showChat) {
+                    setShowEvents(false);
+                    actions.setShowAlerts(false);
+                  } else {
+                    chatActions.closeConversation();
+                  }
+                }}
+                className="h-8"
+              >
+                <MessageSquare className="size-4" />
+                {chatMeta.totalUnread > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 px-1.5 min-w-[18px] h-5 text-xs"
+                  >
+                    {chatMeta.totalUnread}
+                  </Badge>
+                )}
+              </Button>
+            </Can>
           </div>
         </div>
       </div>
@@ -456,10 +501,17 @@ export function MonitoringDashboardView() {
             )}
           </Card>
         </div>
-      ) : (showEvents || state.showAlerts) && meta.companyId ? (
+      ) : (showEvents || state.showAlerts || showChat) && meta.companyId ? (
         <div className="absolute top-20 bottom-4 right-4 w-80 z-10">
-          <Card className="h-full bg-background/95 backdrop-blur-sm shadow-lg overflow-hidden">
-            {showEvents ? (
+          <Card className="h-full bg-background/95 backdrop-blur-sm shadow-lg overflow-hidden flex flex-col">
+            {showChat ? (
+              <ChatPanel
+                onClose={() => {
+                  setShowChat(false);
+                  chatActions.closeConversation();
+                }}
+              />
+            ) : showEvents ? (
               <RecentEventsPanel
                 companyId={meta.companyId}
                 onLocateOnMap={handleLocateOnMap}

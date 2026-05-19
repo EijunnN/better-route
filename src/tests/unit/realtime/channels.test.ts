@@ -34,10 +34,11 @@ describe("computeAllowedChannels", () => {
   });
 
   test.each(["PLANIFICADOR", "ADMIN_FLOTA", "ADMIN_SISTEMA"])(
-    "%s gets monitoring + broadcast",
+    "%s gets monitoring + chat inbox + broadcast",
     (role) => {
       expect(computeAllowedChannels({ role, userId, companyId })).toEqual([
         centrifugoChannels.monitoring(companyId),
+        centrifugoChannels.chatInbox(companyId),
         centrifugoChannels.broadcast(companyId),
       ]);
     },
