@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
@@ -39,8 +39,11 @@ async function isTenantDriver(
  * GET /api/chat/conversations/:driverId/messages?after=&limit=
  *
  * Thread history. Without `after`, the most recent `limit` messages
- * (ascending). With `after` (an ISO timestamp), everything newer — the
- * cursor a client uses to reconcile after a reconnect.
+ * (ascending). With `after` (the id of the last message the client
+ * holds), everything strictly newer — a keyset cursor for reconciling
+ * after a reconnect. Id-based, not timestamp-based: the client only
+ * sees millisecond-precision timestamps, so a timestamp cursor would
+ * re-deliver the boundary message every time.
  *
  * A dispatcher may read any thread of the tenant; a driver only theirs.
  */
@@ -87,18 +90,35 @@ export async function GET(
   );
 
   if (after) {
-    const afterDate = new Date(after);
-    if (Number.isNaN(afterDate.getTime())) {
+    // Resolve the cursor row. `created_at` is read as text so its
+    // microsecond precision survives — a JS Date would truncate to
+    // milliseconds and the boundary message would leak back in.
+    const [cursor] = await db
+      .select({
+        createdAt: sql<string>`${chatMessages.createdAt}::text`,
+        id: chatMessages.id,
+      })
+      .from(chatMessages)
+      .where(and(scope, eq(chatMessages.id, after)))
+      .limit(1);
+    if (!cursor) {
       return NextResponse.json(
         { error: "Cursor 'after' inválido", code: "BAD_REQUEST" },
         { status: 400 },
       );
     }
+    // Keyset comparison runs entirely in Postgres (no JS round-trip),
+    // so the (created_at, id) tuple is compared at full precision.
     const rows = await db
       .select()
       .from(chatMessages)
-      .where(and(scope, gt(chatMessages.createdAt, afterDate)))
-      .orderBy(asc(chatMessages.createdAt))
+      .where(
+        and(
+          scope,
+          sql`(${chatMessages.createdAt}, ${chatMessages.id}) > (${cursor.createdAt}::timestamp, ${cursor.id}::uuid)`,
+        ),
+      )
+      .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id))
       .limit(LIMIT_MAX);
     return NextResponse.json({ data: rows });
   }
@@ -107,7 +127,7 @@ export async function GET(
     .select()
     .from(chatMessages)
     .where(scope)
-    .orderBy(desc(chatMessages.createdAt))
+    .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
     .limit(limit);
 
   // Newest-first from the DB, returned oldest-first for top-to-bottom render.

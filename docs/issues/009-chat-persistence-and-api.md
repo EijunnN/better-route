@@ -42,8 +42,10 @@ RBAC. No UI in this slice — verifiable via API.
       `lastMessageAt` / preview updated, `unreadForDispatch` incremented
       when `direction = TO_DISPATCH`.
 - [ ] Centrifugo receives the published message on the right channel.
-- [ ] Cursor pagination: `?after={createdAt}` returns only newer
-      messages.
+- [ ] Cursor pagination: `?after={messageId}` returns only messages
+      strictly newer than that message (id-based keyset — a
+      timestamp cursor would re-deliver the boundary message because
+      clients only see millisecond-precision timestamps).
 - [ ] Tenant isolation: a dispatcher cannot read/post in another
       company's conversation (403).
 - [ ] A CONDUCTOR posting to a `driverId` other than their own → 403.
