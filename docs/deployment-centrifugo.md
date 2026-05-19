@@ -58,13 +58,20 @@ The app and Centrifugo share these (see `.env.example`):
 | `CENTRIFUGO_API_KEY` | app + Centrifugo | authenticates the app's publish calls |
 | `CENTRIFUGO_ALLOWED_ORIGIN` | Centrifugo | the public app origin allowed to open WebSockets |
 
-`docker/centrifugo/config.json` reads the last three via `${VAR}`
-extrapolation; the container receives them through the `environment:`
-block in `docker-compose.yml`.
+`docker/centrifugo/config.json` holds only non-secret config (the
+channel namespaces). The three secrets reach Centrifugo through its
+native `CENTRIFUGO_<CONFIG_PATH>` env vars — the `environment:` block in
+`docker-compose.yml` maps the app's var names onto Centrifugo's
+(`CENTRIFUGO_TOKEN_HMAC_SECRET_KEY` → `CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY`,
+`CENTRIFUGO_API_KEY` → `CENTRIFUGO_HTTP_API_KEY`, `CENTRIFUGO_ALLOWED_ORIGIN`
+→ `CENTRIFUGO_CLIENT_ALLOWED_ORIGINS`).
 
 ## Smoke test
 
 ```bash
 docker compose up -d centrifugo
-curl http://localhost:8000/health        # {"status":"ok"} once --health is enabled
+curl http://localhost:8000/health          # {} when healthy
+
+# Full round-trip: sign a token, connect over WebSocket, publish, receive.
+bun run scripts/smoke-centrifugo.ts
 ```
