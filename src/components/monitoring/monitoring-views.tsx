@@ -490,6 +490,9 @@ export function MonitoringDashboardView() {
           selectedDriverId={state.selectedDriverId}
           selectedVehicleIds={state.selectedVehicleIds}
           onDriverSelect={actions.handleDriverClick}
+          refreshKey={
+            state.lastUpdate instanceof Date ? state.lastUpdate.getTime() : 0
+          }
         />
       </div>
     </div>

@@ -1,27 +1,32 @@
 "use client";
 
+import { Centrifuge } from "centrifuge";
 import { useEffect, useRef } from "react";
 import type { MonitoringEventKind } from "@/lib/realtime";
 
-const KNOWN_EVENTS: MonitoringEventKind[] = [
-  "stop.started",
-  "stop.completed",
-  "stop.failed",
-  "stop.skipped",
-  "stop.transitioned",
-  "driver.location",
-];
+/**
+ * Resolve the Centrifugo WebSocket URL. In production the reverse proxy
+ * exposes it same-origin at `/connection/websocket`; in dev the app and
+ * Centrifugo run on different ports, so `NEXT_PUBLIC_CENTRIFUGO_WS_URL`
+ * gives an explicit override.
+ */
+function resolveWsUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_CENTRIFUGO_WS_URL;
+  if (explicit) return explicit;
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${proto}://${window.location.host}/connection/websocket`;
+}
 
 /**
- * Subscribes the monitoring page to the SSE channel scoped to the
- * effective company. Each push triggers `onEvent` so the caller can
- * revalidate the SWR caches it owns — we don't fetch payloads here
- * because the events are intentionally small (a hint, not the data).
+ * Subscribes the monitoring page to its company's realtime channel over
+ * Centrifugo (ADR-0007). Each event triggers `onEvent` so the caller can
+ * revalidate the SWR caches it owns — payloads are small hints, not data.
  *
- * Auto-reconnects with exponential backoff up to 30s. Pauses while the
- * tab is hidden to avoid burning sockets on background tabs; on
- * `visibilitychange` it forces an immediate revalidate plus a fresh
- * connection so we never miss transitions that happened while away.
+ * Uses server-side subscriptions: the `channels` claim in the token
+ * (issued by `/api/realtime/token`) subscribes the connection to
+ * `monitoring:{companyId}`, so publications arrive on the client-level
+ * `publication` event. The SDK reconnects with backoff on its own and
+ * refreshes the token transparently via the `getToken` callback.
  */
 export function useMonitoringStream(
   companyId: string | null,
@@ -33,55 +38,28 @@ export function useMonitoringStream(
   useEffect(() => {
     if (!companyId) return;
 
-    let source: EventSource | null = null;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
-    let backoff = 1000;
-    let cancelled = false;
-
-    const connect = () => {
-      if (cancelled) return;
-      // The browser EventSource sends cookies (httpOnly auth JWT) and
-      // honours the company hint via search param — middleware can read
-      // it the same as `x-company-id` for non-fetch contexts.
-      const url = `/api/monitoring/stream?companyId=${encodeURIComponent(companyId)}`;
-      source = new EventSource(url, { withCredentials: true });
-
-      source.addEventListener("ready", () => {
-        backoff = 1000;
-      });
-
-      for (const kind of KNOWN_EVENTS) {
-        source.addEventListener(kind, () => {
-          onEventRef.current(kind);
+    const centrifuge = new Centrifuge(resolveWsUrl(), {
+      getToken: async () => {
+        const res = await fetch("/api/realtime/token", {
+          headers: { "x-company-id": companyId },
         });
-      }
+        if (!res.ok) throw new Error("Failed to fetch realtime token");
+        const { token } = (await res.json()) as { token: string };
+        return token;
+      },
+    });
 
-      source.onerror = () => {
-        source?.close();
-        source = null;
-        if (cancelled) return;
-        const next = Math.min(backoff, 30_000);
-        backoff = Math.min(backoff * 2, 30_000);
-        retryTimer = setTimeout(connect, next);
-      };
-    };
+    // Server-side subscriptions deliver publications on the client object.
+    centrifuge.on("publication", (ctx) => {
+      const kind = (ctx.data as { kind?: MonitoringEventKind } | undefined)
+        ?.kind;
+      if (kind) onEventRef.current(kind);
+    });
 
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible" && !source) {
-        backoff = 1000;
-        connect();
-      }
-    };
-
-    connect();
-    document.addEventListener("visibilitychange", handleVisibility);
+    centrifuge.connect();
 
     return () => {
-      cancelled = true;
-      if (retryTimer) clearTimeout(retryTimer);
-      document.removeEventListener("visibilitychange", handleVisibility);
-      source?.close();
-      source = null;
+      centrifuge.disconnect();
     };
   }, [companyId]);
 }

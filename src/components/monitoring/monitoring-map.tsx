@@ -18,13 +18,16 @@ interface MonitoringMapProps {
   selectedDriverId: string | null;
   selectedVehicleIds?: string[];
   onDriverSelect?: (driverId: string) => void;
+  /**
+   * Bumps whenever monitoring data should be reloaded — driven by
+   * Centrifugo events and the SWR safety poll. See ADR-0007.
+   */
+  refreshKey: number;
 }
 
 export interface MonitoringMapRef {
   flyTo: (lat: number, lng: number, zoom?: number) => void;
 }
-
-const REFRESH_INTERVAL = 15000; // 15 seconds
 
 export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
   function MonitoringMap(
@@ -34,6 +37,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
       selectedDriverId,
       selectedVehicleIds = [],
       onDriverSelect,
+      refreshKey,
     },
     ref,
   ) {
@@ -44,7 +48,6 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
     const map = useRef<maplibregl.Map | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const refreshInterval = useRef<NodeJS.Timeout | null>(null);
     const mapThemeRef = useRef<boolean | null>(null);
     const popupRef = useRef<maplibregl.Popup | null>(null);
 
@@ -509,9 +512,6 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
       initMap();
 
       return () => {
-        if (refreshInterval.current) {
-          clearInterval(refreshInterval.current);
-        }
         popupRef.current?.remove();
         popupRef.current = null;
         map.current?.remove();
@@ -520,27 +520,20 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Auto-refresh data
+    // Realtime refresh — driven by monitoring events (Centrifugo) and the
+    // SWR safety poll, both surfaced through `refreshKey`. See ADR-0007.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional re-run trigger, not read in the body.
     useEffect(() => {
       if (!map.current || isLoading) return;
+      loadMapDataRef.current(false);
+    }, [refreshKey, isLoading]);
 
-      refreshInterval.current = setInterval(() => {
-        loadMapDataRef.current(false);
-      }, REFRESH_INTERVAL);
-
-      return () => {
-        if (refreshInterval.current) {
-          clearInterval(refreshInterval.current);
-        }
-      };
-    }, [isLoading]);
-
-    // Update data when selectedDriverId, jobId, or vehicleIds change
+    // Update data when selectedDriverId, jobId, or vehicleIds change.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: the deps are intentional re-run triggers; loadMapData closes over them.
     useEffect(() => {
       if (map.current && !isLoading) {
         loadMapData(true);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedDriverId, jobId, selectedVehicleIds.join(","), isLoading]);
 
     // React to theme changes

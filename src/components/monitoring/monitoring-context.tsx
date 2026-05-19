@@ -12,7 +12,9 @@ import type { FieldDefinition } from "@/components/custom-fields/custom-fields-c
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useMonitoringStream } from "./use-monitoring-stream";
 
-const POLLING_INTERVAL = 10000;
+// Safety-net poll. Centrifugo (ADR-0007) delivers transitions in
+// realtime; this only covers a dead WebSocket, so it can be slow.
+const POLLING_INTERVAL = 30000;
 
 const fetcher = async (url: string, companyId: string) => {
   const response = await fetch(url, { headers: { "x-company-id": companyId } });
