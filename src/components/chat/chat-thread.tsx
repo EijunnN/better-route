@@ -157,10 +157,30 @@ export function ChatThread() {
         </div>
         <span
           role="img"
-          aria-label="Hilo activo"
+          aria-label={
+            state.threadSubState === "subscribed"
+              ? "Hilo en vivo"
+              : state.threadSubState === "error"
+                ? "Hilo sin tiempo real"
+                : "Conectando hilo"
+          }
           className="cockpit-led shrink-0"
+          data-status={
+            state.threadSubState === "subscribed"
+              ? undefined
+              : state.threadSubState === "error"
+                ? "danger"
+                : "warn"
+          }
         />
       </div>
+
+      {state.threadSubState === "error" && (
+        <div className="cockpit-mono text-[10px] text-amber-300 bg-amber-500/10 border-b border-amber-500/30 px-3 py-1.5">
+          Sin tiempo real — los mensajes nuevos llegarán al recargar la
+          conversación.
+        </div>
+      )}
 
       <div
         ref={scrollRef}

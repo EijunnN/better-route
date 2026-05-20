@@ -89,6 +89,7 @@ interface ChatState {
   hasMoreOlder: boolean;
   isSending: boolean;
   sendError: string | null;
+  threadSubState: "idle" | "connecting" | "subscribed" | "error";
   // Surface visibility — the right-panel slot is shared with alerts and
   // events, so chat's "is the panel open?" lives in chat state itself.
   // That lets the sidebar chat icon and the driver-detail "Chatear"
@@ -156,6 +157,32 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const latestMessageIdRef = useRef<string | null>(null);
   const subscribedOnceRef = useRef(false);
   const centrifugeRef = useRef<Centrifuge | null>(null);
+  // Ref mirror of selectedDriverId so the connection-level publication
+  // handler (set up ONCE per companyId) can read the current open
+  // thread without going stale. Used as a defensive fallback: chat
+  // publications on the per-driver channel normally arrive on the
+  // Subscription handler, but if the SDK ever routes them up to the
+  // connection handler we still want to append.
+  const selectedDriverIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedDriverIdRef.current = selectedDriverId;
+  }, [selectedDriverId]);
+  const appendMessageIfActive = useCallback((msg: ChatMessage) => {
+    if (msg.driverId !== selectedDriverIdRef.current) return;
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === msg.id)) return prev;
+      return [...prev, msg];
+    });
+    latestMessageIdRef.current = msg.id;
+  }, []);
+
+  // Visible subscription health for the thread. "error" surfaces a
+  // small banner above the composer so the dispatcher knows live
+  // delivery is broken (otherwise they'd think the driver hasn't
+  // replied yet).
+  const [threadSubState, setThreadSubState] = useState<
+    "idle" | "connecting" | "subscribed" | "error"
+  >("idle");
 
   const {
     data: conversations = [],
@@ -190,10 +217,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     });
 
     centrifuge.on("publication", (ctx) => {
-      // Only inbox events matter at the connection level; per-thread
-      // events arrive on their own Subscription handler.
-      const data = ctx.data as InboxPublication | undefined;
+      // Inbox bumps — server-side subscription via the connection JWT.
+      const data = ctx.data as
+        | (InboxPublication & { message?: ChatMessage })
+        | undefined;
       if (data?.kind === "chat.inbox") {
+        mutateConversations();
+        return;
+      }
+      // Defensive: a chat.message can land here if the SDK routes a
+      // per-driver publication up to the connection handler (it
+      // shouldn't normally, but the cost of handling both paths is
+      // a no-op dedup in appendMessageIfActive).
+      if (data?.kind === "chat.message" && data.message) {
+        appendMessageIfActive(data.message);
+        // Also bump the inbox for moved-to-top ordering.
         mutateConversations();
       }
     });
@@ -205,7 +243,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       centrifuge.disconnect();
       centrifugeRef.current = null;
     };
-  }, [companyId, mutateConversations]);
+  }, [companyId, mutateConversations, appendMessageIfActive]);
 
   // Whenever the selected thread changes: tear down the previous
   // subscription, load the initial page, mint a subscription token for
@@ -257,74 +295,112 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const setupSubscription = async () => {
-      try {
-        const tokenRes = await fetch(
-          `/api/realtime/subscription-token?channel=${encodeURIComponent(channel)}`,
-          { headers: { "x-company-id": companyId } },
-        );
-        if (!tokenRes.ok) throw new Error("subscription-token failed");
-        const { token } = (await tokenRes.json()) as { token: string };
-
-        if (cancelled) return null;
-
-        const sub =
-          centrifuge.getSubscription(channel) ??
-          centrifuge.newSubscription(channel, { token });
-
-        sub.on("publication", (ctx: PublicationContext) => {
-          const data = ctx.data as ThreadPublication | undefined;
-          if (data?.kind !== "chat.message" || !data.message) return;
-          if (data.message.driverId !== driverId) return;
-
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === data.message?.id)) return prev;
-            return [...prev, data.message as ChatMessage];
-          });
-          latestMessageIdRef.current = data.message.id;
-        });
-
-        sub.on("subscribed", async () => {
-          // First fire is the initial subscribe — the initial fetch
-          // covers the load. Later fires are reconnects, where we need
-          // to pull any messages that landed while the WS was offline.
-          if (!subscribedOnceRef.current) {
-            subscribedOnceRef.current = true;
-            return;
-          }
-          const lastId = latestMessageIdRef.current;
-          if (!lastId) return;
-          try {
-            const gap = await fetch(
-              `/api/chat/conversations/${driverId}/messages?after=${lastId}`,
-              { headers: { "x-company-id": companyId } },
-            );
-            if (!gap.ok || cancelled) return;
-            const gapJson = (await gap.json()) as { data: ChatMessage[] };
-            if (gapJson.data.length === 0 || cancelled) return;
-            setMessages((prev) => {
-              const seen = new Set(prev.map((m) => m.id));
-              const fresh = gapJson.data.filter((m) => !seen.has(m.id));
-              if (fresh.length === 0) return prev;
-              const next = [...prev, ...fresh];
-              latestMessageIdRef.current = next[next.length - 1].id;
-              return next;
-            });
-          } catch {
-            // Stay silent — the next inbox bump will eventually trigger
-            // a manual reopen or another reconnect.
-          }
-        });
-
-        sub.subscribe();
-        return sub;
-      } catch (err) {
-        console.error("[chat] subscription setup failed:", err);
-        return null;
+    const setupSubscription = () => {
+      // Defensive teardown — if a leftover sub exists for this channel
+      // (StrictMode double-mount, fast switch between threads) start
+      // from a clean slate instead of attaching a second set of
+      // listeners on top of the same instance.
+      const existing = centrifuge.getSubscription(channel);
+      if (existing) {
+        existing.removeAllListeners();
+        existing.unsubscribe();
+        centrifuge.removeSubscription(existing);
       }
+
+      // Per-sub getToken is the recommended pattern: the SDK calls it
+      // on initial subscribe AND on every renewal, so a 5-min token
+      // expiry doesn't kill long chat sessions. Plus we never read a
+      // stale token from a closure.
+      const sub = centrifuge.newSubscription(channel, {
+        getToken: async (ctx) => {
+          const res = await fetch(
+            `/api/realtime/subscription-token?channel=${encodeURIComponent(ctx.channel)}`,
+            { headers: { "x-company-id": companyId } },
+          );
+          if (!res.ok) {
+            console.error(
+              `[chat] subscription-token ${res.status} for ${ctx.channel}`,
+            );
+            throw new Error(`subscription-token ${res.status}`);
+          }
+          const { token } = (await res.json()) as { token: string };
+          return token;
+        },
+      });
+
+      sub.on("publication", (ctx: PublicationContext) => {
+        const data = ctx.data as ThreadPublication | undefined;
+        console.debug("[chat] thread publication", channel, data);
+        if (data?.kind !== "chat.message" || !data.message) return;
+        if (data.message.driverId !== driverId) return;
+
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === data.message?.id)) return prev;
+          return [...prev, data.message as ChatMessage];
+        });
+        latestMessageIdRef.current = data.message.id;
+      });
+
+      sub.on("subscribed", async () => {
+        console.debug("[chat] subscribed", channel);
+        setThreadSubState("subscribed");
+        // First fire is the initial subscribe — the initial fetch
+        // covers the load. Later fires are reconnects, where we need
+        // to pull any messages that landed while the WS was offline.
+        if (!subscribedOnceRef.current) {
+          subscribedOnceRef.current = true;
+          return;
+        }
+        const lastId = latestMessageIdRef.current;
+        if (!lastId) return;
+        try {
+          const gap = await fetch(
+            `/api/chat/conversations/${driverId}/messages?after=${lastId}`,
+            { headers: { "x-company-id": companyId } },
+          );
+          if (!gap.ok || cancelled) return;
+          const gapJson = (await gap.json()) as { data: ChatMessage[] };
+          if (gapJson.data.length === 0 || cancelled) return;
+          setMessages((prev) => {
+            const seen = new Set(prev.map((m) => m.id));
+            const fresh = gapJson.data.filter((m) => !seen.has(m.id));
+            if (fresh.length === 0) return prev;
+            const next = [...prev, ...fresh];
+            latestMessageIdRef.current = next[next.length - 1].id;
+            return next;
+          });
+        } catch {
+          // Stay silent — the next inbox bump will eventually trigger
+          // a manual reopen or another reconnect.
+        }
+      });
+
+      sub.on("subscribing", () => {
+        console.debug("[chat] subscribing", channel);
+        setThreadSubState("connecting");
+      });
+
+      sub.on("unsubscribed", (ctx) => {
+        console.debug("[chat] unsubscribed", channel, ctx);
+        setThreadSubState("idle");
+      });
+
+      sub.on("error", (ctx) => {
+        // Subscription token rejected, server-side rule denied, etc.
+        // Surface so the dispatcher doesn't keep typing into a dead
+        // channel and wonder why the driver isn't replying.
+        console.error("[chat] subscription error", channel, ctx);
+        setThreadSubState("error");
+      });
+
+      setThreadSubState("connecting");
+      sub.subscribe();
+      return sub;
     };
 
-    Promise.all([loadInitial(), setupSubscription()]).then(() => {
+    const sub = setupSubscription();
+
+    loadInitial().then(() => {
       if (!cancelled) {
         setIsLoadingMessages(false);
         markRead();
@@ -333,12 +409,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
-      const sub = centrifuge.getSubscription(channel);
-      if (sub) {
-        sub.removeAllListeners();
-        sub.unsubscribe();
-        centrifuge.removeSubscription(sub);
-      }
+      sub.removeAllListeners();
+      sub.unsubscribe();
+      centrifuge.removeSubscription(sub);
+      setThreadSubState("idle");
     };
   }, [companyId, selectedDriverId, mutateConversations]);
 
@@ -490,6 +564,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     hasMoreOlder,
     isSending,
     sendError,
+    threadSubState,
     isPanelOpen,
     isPickerOpen,
     isBroadcastOpen,
