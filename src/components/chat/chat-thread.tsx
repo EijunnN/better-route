@@ -12,7 +12,7 @@ import {
 import { useCan } from "@/components/auth/can";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { quickReplyLabel } from "@/lib/chat";
+import { quickReplyLabel } from "@/lib/chat/quick-replies";
 import { cn } from "@/lib/utils";
 import { type ChatMessage, useChat } from "./chat-context";
 
