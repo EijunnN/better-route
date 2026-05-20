@@ -139,7 +139,7 @@ export function ChatThread() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-3 py-2 border-b shrink-0">
+      <div className="flex items-center gap-2 px-3 py-2.5 shrink-0 border-b border-border/60">
         <Button
           variant="ghost"
           size="icon"
@@ -149,23 +149,30 @@ export function ChatThread() {
         >
           <ArrowLeft className="size-4" />
         </Button>
-        <div className="min-w-0">
-          <p className="font-medium text-sm truncate">{driverName}</p>
-          <p className="text-[10px] text-muted-foreground">Conductor</p>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-sm truncate tracking-tight">
+            {driverName}
+          </p>
+          <span className="cockpit-label">Conductor</span>
         </div>
+        <span
+          role="img"
+          aria-label="Hilo activo"
+          className="cockpit-led shrink-0"
+        />
       </div>
 
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-3 space-y-2"
+        className="flex-1 overflow-y-auto cockpit-scroll p-3 space-y-2.5"
       >
         {state.hasMoreOlder && (
-          <div className="flex justify-center py-1 text-[11px] text-muted-foreground">
+          <div className="flex justify-center py-1">
             {state.isLoadingOlder ? (
-              <Loader2 className="size-3 animate-spin" />
+              <Loader2 className="size-3 animate-spin text-muted-foreground" />
             ) : (
-              <span>Desplazate hacia arriba para ver más</span>
+              <span className="cockpit-label">Subí para ver más</span>
             )}
           </div>
         )}
@@ -174,34 +181,45 @@ export function ChatThread() {
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : state.messages.length === 0 ? (
-          <div className="text-center text-xs text-muted-foreground py-12">
-            Sin mensajes — escribe el primero abajo.
+          <div className="text-center py-12 px-4">
+            <p className="text-xs font-medium text-foreground">Hilo nuevo</p>
+            <p className="cockpit-label mt-2">
+              Escribí el primer mensaje abajo
+            </p>
           </div>
         ) : (
           state.messages.map((message) => {
             const outbound = message.direction === "TO_DRIVER";
+            const isBroadcast = message.kind === "BROADCAST";
             return (
               <div
                 key={message.id}
                 className={cn(
-                  "flex flex-col max-w-[80%]",
+                  "cockpit-enter flex flex-col max-w-[82%]",
                   outbound ? "self-end items-end ml-auto" : "items-start",
                 )}
               >
                 <div
                   className={cn(
-                    "rounded-2xl px-3 py-1.5 text-sm whitespace-pre-wrap break-words",
+                    "px-3 py-2 text-sm whitespace-pre-wrap break-words rounded-md border",
                     outbound
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-muted text-foreground rounded-bl-sm",
+                      ? "bg-[var(--cockpit-live)]/10 border-[var(--cockpit-live)]/30 text-foreground"
+                      : "bg-[oklch(0.22_0_0)] border-border/60 text-foreground",
+                    isBroadcast && "bg-amber-500/10 border-amber-500/30",
                   )}
                 >
                   {messageLabel(message)}
                 </div>
-                <span className="text-[10px] text-muted-foreground mt-0.5 px-1">
-                  {messageTime(message.createdAt)}
-                  {message.kind === "BROADCAST" && " · Difusión"}
-                </span>
+                <div className="flex items-center gap-1.5 mt-1 px-1">
+                  {isBroadcast && (
+                    <span className="cockpit-mono text-[9px] uppercase tracking-wider text-amber-400 px-1.5 py-0.5 border border-amber-500/30 rounded-sm">
+                      Difusión
+                    </span>
+                  )}
+                  <span className="cockpit-mono text-[10px] text-muted-foreground">
+                    {messageTime(message.createdAt)}
+                  </span>
+                </div>
               </div>
             );
           })
@@ -210,7 +228,7 @@ export function ChatThread() {
 
       <form
         onSubmit={handleSubmit}
-        className="border-t p-2 flex items-end gap-2 shrink-0"
+        className="border-t border-border/60 p-2 flex items-end gap-2 shrink-0"
       >
         <Textarea
           value={draft}
@@ -223,7 +241,7 @@ export function ChatThread() {
               : "No tienes permiso para enviar mensajes"
           }
           disabled={!canSend || state.isSending}
-          className="min-h-[36px] max-h-32 text-sm resize-none"
+          className="min-h-[36px] max-h-32 text-sm resize-none bg-background/60 border-border/60"
         />
         <Button
           type="submit"

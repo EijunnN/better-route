@@ -1,62 +1,94 @@
 "use client";
 
-import { MessageSquare, X } from "lucide-react";
+import { Megaphone, MessageSquarePlus, Radio, X } from "lucide-react";
 import { Can } from "@/components/auth/can";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ChatBroadcastDialog } from "./chat-broadcast-dialog";
 import { useChat } from "./chat-context";
+import { ChatDriverPicker } from "./chat-driver-picker";
 import { ChatInbox } from "./chat-inbox";
 import { ChatThread } from "./chat-thread";
 
-interface ChatPanelProps {
-  onClose: () => void;
-}
-
 /**
- * Right-side panel of the monitoring page. Either the inbox or the
- * open thread renders; closing the thread returns to the inbox.
+ * Right-side panel of the monitoring page — inbox by default, thread
+ * once a conversation is selected. Wraps Picker + Broadcast modals so
+ * they always live inside the cockpit tree regardless of where the
+ * trigger fires (panel header, sidebar item, driver detail CTA).
  *
- * Gated by `chat:read`: a viewer without it never sees the panel.
- * Inside, the composer is further gated by `chat:create`.
+ * `chat:read` gates the panel; `chat:create` gates composer + dialogs.
  */
-export function ChatPanel({ onClose }: ChatPanelProps) {
+export function ChatPanel() {
   return (
     <Can perm="chat:read">
-      <ChatPanelInner onClose={onClose} />
+      <ChatPanelInner />
     </Can>
   );
 }
 
-function ChatPanelInner({ onClose }: ChatPanelProps) {
-  const { state, meta } = useChat();
+function ChatPanelInner() {
+  const { state, actions, meta } = useChat();
   const isThread = state.selectedDriverId !== null;
 
   return (
-    <div className="flex flex-col h-full">
-      {!isThread && (
-        <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="size-4 text-muted-foreground" />
-            <span className="font-medium text-sm">Mensajes</span>
-            {meta.totalUnread > 0 && (
-              <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
-                {meta.totalUnread}
-              </Badge>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            onClick={onClose}
-            aria-label="Cerrar"
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
-      )}
+    <>
+      <div className="flex flex-col h-full">
+        {!isThread && (
+          <div className="px-3 pt-3 pb-2 shrink-0 border-b border-border/60">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <Radio className="size-3.5 text-[var(--cockpit-live)]" />
+                <span className="cockpit-label">Bandeja</span>
+                {meta.totalUnread > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="cockpit-mono h-4 min-w-[16px] px-1 text-[10px] font-medium"
+                  >
+                    {meta.totalUnread}
+                  </Badge>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={actions.closePanel}
+                aria-label="Cerrar"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
 
-      {isThread ? <ChatThread /> : <ChatInbox />}
-    </div>
+            <Can perm="chat:create">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 justify-start gap-2 text-xs font-medium border border-border/60 hover:bg-[oklch(0.22_0_0)]"
+                  onClick={actions.openPicker}
+                >
+                  <MessageSquarePlus className="size-3.5 text-[var(--cockpit-live)]" />
+                  Nuevo mensaje
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 justify-start gap-2 text-xs font-medium border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 text-amber-100"
+                  onClick={actions.openBroadcast}
+                >
+                  <Megaphone className="size-3.5 text-amber-400" />
+                  Difusión
+                </Button>
+              </div>
+            </Can>
+          </div>
+        )}
+
+        {isThread ? <ChatThread /> : <ChatInbox />}
+      </div>
+
+      <ChatDriverPicker />
+      <ChatBroadcastDialog />
+    </>
   );
 }

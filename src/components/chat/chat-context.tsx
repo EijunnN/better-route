@@ -89,12 +89,32 @@ interface ChatState {
   hasMoreOlder: boolean;
   isSending: boolean;
   sendError: string | null;
+  // Surface visibility — the right-panel slot is shared with alerts and
+  // events, so chat's "is the panel open?" lives in chat state itself.
+  // That lets the sidebar chat icon and the driver-detail "Chatear"
+  // button open the panel without prop-drilling through monitoring.
+  isPanelOpen: boolean;
+  isPickerOpen: boolean;
+  isBroadcastOpen: boolean;
+  isBroadcasting: boolean;
+  broadcastError: string | null;
+  lastBroadcastReached: number | null;
 }
 
 interface ChatActions {
   openConversation: (driverId: string) => void;
   closeConversation: () => void;
+  /** Open the chat panel AND jump straight into a thread — used by
+   *  the driver-list chat icon and the driver-detail "Chatear" button. */
+  openConversationWithPanel: (driverId: string) => void;
+  openPanel: () => void;
+  closePanel: () => void;
+  openPicker: () => void;
+  closePicker: () => void;
+  openBroadcast: () => void;
+  closeBroadcast: () => void;
   sendMessage: (body: string, templateCode?: string) => Promise<void>;
+  sendBroadcast: (body: string) => Promise<number | null>;
   loadOlder: () => Promise<void>;
   refreshConversations: () => Promise<void>;
 }
@@ -122,6 +142,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastError, setBroadcastError] = useState<string | null>(null);
+  const [lastBroadcastReached, setLastBroadcastReached] = useState<
+    number | null
+  >(null);
 
   // Latest message id — used to gap-fetch on subscription reconnect so we
   // never silently drop publications dispatched while the WS was down.
@@ -322,6 +350,63 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setSelectedDriverId(null);
   }, []);
 
+  const openPanel = useCallback(() => setIsPanelOpen(true), []);
+  const closePanel = useCallback(() => {
+    setIsPanelOpen(false);
+    setSelectedDriverId(null);
+  }, []);
+
+  const openPicker = useCallback(() => setIsPickerOpen(true), []);
+  const closePicker = useCallback(() => setIsPickerOpen(false), []);
+
+  const openBroadcast = useCallback(() => {
+    setBroadcastError(null);
+    setIsBroadcastOpen(true);
+  }, []);
+  const closeBroadcast = useCallback(() => setIsBroadcastOpen(false), []);
+
+  const openConversationWithPanel = useCallback((driverId: string) => {
+    setIsPanelOpen(true);
+    setSelectedDriverId(driverId);
+  }, []);
+
+  const sendBroadcast = useCallback(
+    async (body: string): Promise<number | null> => {
+      if (!companyId) return null;
+      const text = body.trim();
+      if (!text) return null;
+      setIsBroadcasting(true);
+      setBroadcastError(null);
+      try {
+        const res = await fetch("/api/chat/broadcast", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": companyId,
+          },
+          body: JSON.stringify({ body: text }),
+        });
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(err.error ?? "No se pudo enviar la difusión");
+        }
+        const json = (await res.json()) as { reached: number };
+        setLastBroadcastReached(json.reached);
+        return json.reached;
+      } catch (err) {
+        setBroadcastError(
+          err instanceof Error ? err.message : "Error desconocido",
+        );
+        return null;
+      } finally {
+        setIsBroadcasting(false);
+      }
+    },
+    [companyId],
+  );
+
   const sendMessage = useCallback(
     async (body: string, templateCode?: string) => {
       if (!companyId || !selectedDriverId) return;
@@ -405,12 +490,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     hasMoreOlder,
     isSending,
     sendError,
+    isPanelOpen,
+    isPickerOpen,
+    isBroadcastOpen,
+    isBroadcasting,
+    broadcastError,
+    lastBroadcastReached,
   };
 
   const actions: ChatActions = {
     openConversation,
     closeConversation,
+    openConversationWithPanel,
+    openPanel,
+    closePanel,
+    openPicker,
+    closePicker,
+    openBroadcast,
+    closeBroadcast,
     sendMessage,
+    sendBroadcast,
     loadOlder,
     refreshConversations,
   };

@@ -9,6 +9,7 @@ import {
   Edit3,
   Loader2,
   MapPin,
+  MessageSquare,
   RefreshCw,
   Signal,
   Truck,
@@ -22,15 +23,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { DELIVERY_FAILURE_LABELS } from "@/db/schema";
-import { useCompanyContext } from "@/hooks/use-company-context";
-import { cn } from "@/lib/utils";
 import {
   AttemptBadge,
   ProgramarProximaEntregaDialog,
   type ReschedulePayload,
   type ReschedulePrefill,
 } from "@/components/visits";
+import { DELIVERY_FAILURE_LABELS } from "@/db/schema";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { cn } from "@/lib/utils";
 import type { WorkflowState } from "./monitoring-context";
 import {
   type StopInfo,
@@ -134,6 +135,7 @@ interface DriverRouteDetailProps {
   route: RouteData | null;
   onClose: () => void;
   onRefresh?: () => void;
+  onChat?: () => void;
   locationData?: LocationData | null;
   workflowStates?: WorkflowState[];
   fieldDefinitionLabels?: FieldDefinitionMap;
@@ -183,6 +185,7 @@ export function DriverRouteDetail({
   route,
   onClose,
   onRefresh,
+  onChat,
   locationData,
   workflowStates = [],
   fieldDefinitionLabels = {},
@@ -218,17 +221,14 @@ export function DriverRouteDetail({
 
   const handleReopenSubmit = async (payload: ReschedulePayload) => {
     if (!reopenStop || !companyId) return;
-    const res = await fetch(
-      `/api/route-stops/${reopenStop.id}/reopen`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(payload),
+    const res = await fetch(`/api/route-stops/${reopenStop.id}/reopen`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": companyId,
       },
-    );
+      body: JSON.stringify(payload),
+    });
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(err.error || "No se pudo reabrir la parada");
@@ -383,6 +383,18 @@ export function DriverRouteDetail({
               </Badge>
             </div>
           </div>
+          {onChat && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 px-2 text-xs"
+              onClick={onChat}
+              aria-label="Chatear con el conductor"
+            >
+              <MessageSquare className="size-3.5 text-[var(--cockpit-live)]" />
+              Chatear
+            </Button>
+          )}
           {onRefresh && (
             <Button
               variant="ghost"
