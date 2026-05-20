@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import dagre from "@dagrejs/dagre";
 import {
   Background,
@@ -13,7 +12,6 @@ import {
   type EdgeProps,
   getBezierPath,
   Handle,
-  MarkerType,
   type Node,
   type NodeChange,
   type NodeProps,
@@ -24,26 +22,27 @@ import {
   useNodesInitialized,
   useReactFlow,
 } from "@xyflow/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "@xyflow/react/dist/style.css";
 import {
   Camera,
   CheckCircle2,
-  Circle,
+  type Circle,
   Clock,
   FileSignature,
   MessageCircle,
+  NotepadText,
   Pause,
   Play,
   Plus,
-  NotepadText,
   Trash2,
   XCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Can, useCan } from "@/components/auth/can";
-import { WorkflowStateDialog } from "./workflow-state-dialog";
+import { Button } from "@/components/ui/button";
 import type { SystemState, WorkflowState } from "./workflow-context";
 import { useWorkflow } from "./workflow-context";
+import { WorkflowStateDialog } from "./workflow-state-dialog";
 
 /**
  * Fully interactive canvas inspired by n8n's editor:
@@ -158,7 +157,7 @@ function FlowCanvas({
     if (nodesInitialized) {
       fitView({ padding: 0.15, duration: 300 });
     }
-  }, [nodesInitialized, fitView, nodes.length, edges.length]);
+  }, [nodesInitialized, fitView]);
 
   const onConnect = useCallback(
     async (connection: Connection) => {
@@ -209,9 +208,7 @@ function FlowCanvas({
         if (change.type === "remove") {
           const s = state.states.find((x) => x.id === change.id);
           if (!s) continue;
-          if (
-            confirm(`¿Eliminar el estado "${s.label}" y sus transiciones?`)
-          ) {
+          if (confirm(`¿Eliminar el estado "${s.label}" y sus transiciones?`)) {
             void actions.deleteState(change.id);
           }
         }
@@ -282,7 +279,10 @@ function FlowCanvas({
 function buildGraph(
   states: WorkflowState[],
   transitions: Array<{ id: string; fromStateId: string; toStateId: string }>,
-  { canEdit, onDeleteTransition }: {
+  {
+    canEdit,
+    onDeleteTransition,
+  }: {
     canEdit: boolean;
     onDeleteTransition: (id: string) => void;
   },
@@ -355,10 +355,7 @@ const edgeTypes = {
   workflow: WorkflowEdge,
 };
 
-function WorkflowStateNode({
-  data,
-  selected,
-}: NodeProps<Node<FlowNodeData>>) {
+function WorkflowStateNode({ data, selected }: NodeProps<Node<FlowNodeData>>) {
   const { state: s, canEdit } = data;
   const Icon = SYSTEM_STATE_ICONS[s.systemState];
   const activeReqs = REQUIREMENT_ICONS.filter((r) => s[r.key]);
@@ -604,7 +601,10 @@ const edgeHoverCSS = `
     opacity: 1;
   }
 `;
-if (typeof document !== "undefined" && !document.getElementById("workflow-edge-hover")) {
+if (
+  typeof document !== "undefined" &&
+  !document.getElementById("workflow-edge-hover")
+) {
   const style = document.createElement("style");
   style.id = "workflow-edge-hover";
   style.innerHTML = edgeHoverCSS;

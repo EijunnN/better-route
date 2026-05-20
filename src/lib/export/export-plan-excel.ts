@@ -22,7 +22,7 @@ function formatTime(dateStr?: string): string {
   }
   try {
     const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "-";
+    if (Number.isNaN(d.getTime())) return "-";
     return d.toLocaleTimeString("es-PE", {
       hour: "2-digit",
       minute: "2-digit",
@@ -204,7 +204,10 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
     ];
 
     // Sheet name: "Ruta N - Placa" (max 31 chars for Excel)
-    const sheetName = `Ruta ${index + 1} - ${route.vehicleIdentifier}`.slice(0, 31);
+    const sheetName = `Ruta ${index + 1} - ${route.vehicleIdentifier}`.slice(
+      0,
+      31,
+    );
     XLSX.utils.book_append_sheet(workbook, driverSheet, sheetName);
   });
 
@@ -224,7 +227,15 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
     ["Duración total", formatDuration(data.metrics.totalDuration)],
     [],
     ["DETALLE POR RUTA"],
-    ["Vehículo", "Conductor", "Paradas", "Distancia", "Duración", "Peso (kg)", "Volumen (L)"],
+    [
+      "Vehículo",
+      "Conductor",
+      "Paradas",
+      "Distancia",
+      "Duración",
+      "Peso (kg)",
+      "Volumen (L)",
+    ],
     ...data.routes.map((route) => [
       route.vehicleIdentifier,
       route.driverName || "Sin asignar",

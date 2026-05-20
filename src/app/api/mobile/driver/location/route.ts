@@ -7,7 +7,6 @@ import {
   optimizationJobs,
   routeStops,
   USER_ROLES,
-  users,
   vehicles,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
@@ -139,7 +138,7 @@ export async function POST(request: NextRequest) {
     let recordedAtDate: Date;
     if (recordedAt) {
       recordedAtDate = new Date(recordedAt);
-      if (isNaN(recordedAtDate.getTime())) {
+      if (Number.isNaN(recordedAtDate.getTime())) {
         return NextResponse.json(
           { error: "recordedAt debe ser un timestamp ISO8601 válido" },
           { status: 400 },

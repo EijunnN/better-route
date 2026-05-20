@@ -9,13 +9,36 @@ interface TrackingHeroProps {
   brandColor?: string | null;
 }
 
-const HERO_COPY: Record<string, { title: string; pill: string; tone: "info" | "live" | "danger" | "muted" }> = {
-  PENDING: { title: "Tu pedido está confirmado", pill: "Pendiente", tone: "muted" },
+const HERO_COPY: Record<
+  string,
+  { title: string; pill: string; tone: "info" | "live" | "danger" | "muted" }
+> = {
+  PENDING: {
+    title: "Tu pedido está confirmado",
+    pill: "Pendiente",
+    tone: "muted",
+  },
   ASSIGNED: { title: "Tu pedido fue asignado", pill: "Asignado", tone: "info" },
-  IN_PROGRESS: { title: "Tu pedido está en camino", pill: "En camino", tone: "live" },
-  COMPLETED: { title: "Tu pedido fue entregado", pill: "Entregado", tone: "live" },
-  FAILED: { title: "Hubo un problema con tu entrega", pill: "Fallido", tone: "danger" },
-  CANCELLED: { title: "Tu pedido fue cancelado", pill: "Cancelado", tone: "muted" },
+  IN_PROGRESS: {
+    title: "Tu pedido está en camino",
+    pill: "En camino",
+    tone: "live",
+  },
+  COMPLETED: {
+    title: "Tu pedido fue entregado",
+    pill: "Entregado",
+    tone: "live",
+  },
+  FAILED: {
+    title: "Hubo un problema con tu entrega",
+    pill: "Fallido",
+    tone: "danger",
+  },
+  CANCELLED: {
+    title: "Tu pedido fue cancelado",
+    pill: "Cancelado",
+    tone: "muted",
+  },
 };
 
 function formatRelative(iso: string): string {
@@ -93,10 +116,8 @@ export function TrackingHero({
           <span
             className={cn(
               "rounded-full px-3 py-1 text-xs font-semibold",
-              copy.tone === "danger" &&
-                "bg-destructive/15 text-destructive",
-              copy.tone === "muted" &&
-                "bg-muted text-muted-foreground",
+              copy.tone === "danger" && "bg-destructive/15 text-destructive",
+              copy.tone === "muted" && "bg-muted text-muted-foreground",
               copy.tone === "info" && "bg-blue-500/15 text-blue-400",
             )}
             style={

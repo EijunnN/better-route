@@ -258,7 +258,9 @@ export function parseVerifiedPlan(input: unknown): VerifiedPlan {
  * unchanged on success; throws ZodError on shape mismatch. Catches drift
  * before bad data lands in the DB.
  */
-export function assertPersistableVerifiedPlan(plan: VerifiedPlan): VerifiedPlan {
+export function assertPersistableVerifiedPlan(
+  plan: VerifiedPlan,
+): VerifiedPlan {
   return verifiedPlanSchema.parse(plan);
 }
 

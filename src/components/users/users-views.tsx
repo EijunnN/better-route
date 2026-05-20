@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Trash2, Upload } from "lucide-react";
+import { Can } from "@/components/auth/can";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,13 +14,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Can } from "@/components/auth/can";
 import { ErrorState } from "@/components/ui/error-state";
 import { Pagination } from "@/components/ui/pagination";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useClientPagination } from "@/hooks/use-client-pagination";
 import { UserForm } from "@/components/users/user-form";
 import { UserImportDialog } from "@/components/users/user-import-dialog";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import type { CreateUserInput } from "@/lib/validations/user";
 import {
   DRIVER_STATUS_LABELS,
@@ -27,7 +27,12 @@ import {
   isExpiringSoon,
   ROLE_LABELS,
 } from "@/lib/validations/user";
-import { useUsers, ROLE_TABS, STATUS_COLOR_CLASSES, type User } from "./users-context";
+import {
+  ROLE_TABS,
+  STATUS_COLOR_CLASSES,
+  type User,
+  useUsers,
+} from "./users-context";
 
 // Helper functions
 const getLicenseStatusColor = (expiryDate: string | null | undefined) => {
@@ -51,7 +56,9 @@ export function UsersListView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Gestión de Usuarios</h1>
+          <h1 className="text-2xl font-semibold text-foreground">
+            Gestión de Usuarios
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Administre los usuarios del sistema
           </p>
@@ -94,7 +101,11 @@ export function UsersListView() {
           <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
         </div>
       ) : state.error ? (
-        <ErrorState title="Error al cargar usuarios" error={state.error} onRetry={actions.fetchUsers} />
+        <ErrorState
+          title="Error al cargar usuarios"
+          error={state.error}
+          onRetry={actions.fetchUsers}
+        />
       ) : derived.filteredUsers.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-12 text-center shadow-sm">
           <p className="text-muted-foreground">
@@ -118,8 +129,12 @@ export function UsersListView() {
 
 function UsersTable() {
   const { state, actions, derived } = useUsers();
-  const { paginatedItems: paginatedUsers, currentPage, setCurrentPage, totalPages } =
-    useClientPagination(derived.filteredUsers);
+  const {
+    paginatedItems: paginatedUsers,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+  } = useClientPagination(derived.filteredUsers);
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
@@ -139,7 +154,8 @@ function UsersTable() {
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Rol
               </th>
-              {(state.activeTab === "all" || state.activeTab === "CONDUCTOR") && (
+              {(state.activeTab === "all" ||
+                state.activeTab === "CONDUCTOR") && (
                 <>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Licencia
@@ -182,7 +198,8 @@ function UsersTable() {
 
 function UserRow({ user }: { user: User }) {
   const { state, actions } = useUsers();
-  const showDriverColumns = state.activeTab === "all" || state.activeTab === "CONDUCTOR";
+  const showDriverColumns =
+    state.activeTab === "all" || state.activeTab === "CONDUCTOR";
 
   return (
     <tr className="hover:bg-muted/50 transition-colors">
@@ -228,11 +245,13 @@ function UserRow({ user }: { user: User }) {
             {user.role === "CONDUCTOR" && user.driverStatus ? (
               <span
                 className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                  STATUS_COLOR_CLASSES[user.driverStatus] || "bg-gray-100 text-gray-800"
+                  STATUS_COLOR_CLASSES[user.driverStatus] ||
+                  "bg-gray-100 text-gray-800"
                 }`}
               >
-                {DRIVER_STATUS_LABELS[user.driverStatus as keyof typeof DRIVER_STATUS_LABELS] ||
-                  user.driverStatus}
+                {DRIVER_STATUS_LABELS[
+                  user.driverStatus as keyof typeof DRIVER_STATUS_LABELS
+                ] || user.driverStatus}
               </span>
             ) : (
               <span className="text-muted-foreground/50">-</span>
@@ -283,8 +302,8 @@ function UserRow({ user }: { user: User }) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>¿Desactivar usuario?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta acción desactivará al usuario <strong>{user.name}</strong>. No podrá
-                    acceder al sistema.
+                    Esta acción desactivará al usuario{" "}
+                    <strong>{user.name}</strong>. No podrá acceder al sistema.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -321,7 +340,9 @@ export function UsersFormView() {
         </p>
       </div>
       <UserForm
-        onSubmit={state.editingUser ? actions.handleUpdate : actions.handleCreate}
+        onSubmit={
+          state.editingUser ? actions.handleUpdate : actions.handleCreate
+        }
         onCancel={actions.cancelForm}
         initialData={
           state.editingUser
@@ -338,7 +359,8 @@ export function UsersFormView() {
                 licenseExpiry: state.editingUser.licenseExpiry,
                 licenseCategories: state.editingUser.licenseCategories,
                 certifications: state.editingUser.certifications,
-                driverStatus: state.editingUser.driverStatus as CreateUserInput["driverStatus"],
+                driverStatus: state.editingUser
+                  .driverStatus as CreateUserInput["driverStatus"],
                 primaryFleetId: state.editingUser.primaryFleetId,
                 active: state.editingUser.active,
               }

@@ -7,9 +7,9 @@ import {
   routeStops,
   SYSTEM_STATES,
 } from "@/db/schema";
-import { handleError, notFoundResponse } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/permissions";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/permissions";
+import { handleError, notFoundResponse } from "@/lib/routing/route-helpers";
 
 function assertSameTenant(
   user: { role: string; companyId: string | null },
@@ -117,7 +117,9 @@ export async function PATCH(
       .set({
         ...(body.code !== undefined && { code: body.code }),
         ...(body.label !== undefined && { label: body.label }),
-        ...(body.systemState !== undefined && { systemState: body.systemState }),
+        ...(body.systemState !== undefined && {
+          systemState: body.systemState,
+        }),
         ...(body.color !== undefined && { color: body.color }),
         ...(body.icon !== undefined && { icon: body.icon }),
         ...(body.position !== undefined && { position: body.position }),

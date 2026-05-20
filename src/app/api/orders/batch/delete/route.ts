@@ -2,9 +2,9 @@ import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, routeStops, trackingTokens } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
 import {
   extractTenantContextAuthed,
   handleError,
@@ -13,7 +13,11 @@ import {
 // DELETE - Delete all orders for a company (soft delete by setting active=false)
 export async function DELETE(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.BULK_DELETE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.BULK_DELETE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -39,8 +43,12 @@ export async function DELETE(request: NextRequest) {
       const result = await db.transaction(async (tx) => {
         // Delete FK-dependent records in parallel (they don't depend on each other)
         await Promise.all([
-          tx.delete(trackingTokens).where(eq(trackingTokens.companyId, context.companyId)),
-          tx.delete(routeStops).where(eq(routeStops.companyId, context.companyId)),
+          tx
+            .delete(trackingTokens)
+            .where(eq(trackingTokens.companyId, context.companyId)),
+          tx
+            .delete(routeStops)
+            .where(eq(routeStops.companyId, context.companyId)),
         ]);
         // Then delete orders
         return tx

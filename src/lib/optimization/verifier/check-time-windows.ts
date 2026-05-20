@@ -26,7 +26,12 @@ const FLEX_TOLERANCE_SEC = 30 * 60;
  * Also checks vehicle workday windows (HARD): every stop arrival must be inside the
  * vehicle's [timeWindowStart, timeWindowEnd] if those are set.
  */
-export const checkTimeWindows: VerifierFn = ({ orders, vehicles, config, plan }) => {
+export const checkTimeWindows: VerifierFn = ({
+  orders,
+  vehicles,
+  config,
+  plan,
+}) => {
   const violations: Violation[] = [];
   const orderMap = orderById(orders);
   const vehicleMap = vehicleById(vehicles);
@@ -39,7 +44,9 @@ export const checkTimeWindows: VerifierFn = ({ orders, vehicles, config, plan })
 
     for (const stop of route.stops) {
       const order = orderMap.get(stop.orderId);
-      const arrival = normalizeArrivalSeconds(stopArrivalSeconds(stop) ?? undefined);
+      const arrival = normalizeArrivalSeconds(
+        stopArrivalSeconds(stop) ?? undefined,
+      );
 
       if (arrival === null) {
         // Solver did not emit arrival time. Only report if the order had

@@ -24,7 +24,7 @@ export function useClientPagination<T>(
   // Reset to page 1 when the source array identity changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [items]);
+  }, []);
 
   return {
     paginatedItems,

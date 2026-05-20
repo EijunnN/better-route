@@ -1,21 +1,24 @@
-import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, type SQL, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { fleets, vehicleFleets, vehicles } from "@/db/schema";
 import { TenantAccessDeniedError, withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/infra/tenant";
-import { vehicleQuerySchema } from "@/lib/validations/vehicle";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { vehicleQuerySchema } from "@/lib/validations/vehicle";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.FLEET, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.FLEET,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -95,7 +98,10 @@ export async function GET(
         .orderBy(desc(vehicles.createdAt))
         .limit(query.limit)
         .offset(query.offset),
-      db.select({ count: sql<number>`count(*)::int` }).from(vehicles).where(whereClause),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(vehicles)
+        .where(whereClause),
     ]);
 
     return NextResponse.json({

@@ -9,16 +9,15 @@ import {
   Upload,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -196,14 +195,16 @@ export function PlanConfirmationDialog({
           setPlanName(data.configurationName);
         } else {
           const date = new Date(data.result.summary.optimizedAt);
-          setPlanName(date.toLocaleString("es-PE", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }));
+          setPlanName(
+            date.toLocaleString("es-PE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            }),
+          );
         }
         setStartDate(dateStr);
         setEndDate(dateStr);
@@ -234,7 +235,7 @@ export function PlanConfirmationDialog({
       fetchDrivers();
       validatePlan();
     }
-  }, [open, jobId, companyId]);
+  }, [open, fetchDrivers, validatePlan]);
 
   const handleDriverChange = (vehicleId: string, driverId: string) => {
     setDriverAssignments((prev) => ({
@@ -285,7 +286,7 @@ export function PlanConfirmationDialog({
       onConfirmed?.();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Error al confirmar el plan"
+        err instanceof Error ? err.message : "Error al confirmar el plan",
       );
       await validatePlan();
     } finally {
@@ -312,7 +313,7 @@ export function PlanConfirmationDialog({
           objective: "DISTANCE",
         },
       },
-      `plan-${planName || "export"}.xlsx`
+      `plan-${planName || "export"}.xlsx`,
     );
   };
 
@@ -321,9 +322,9 @@ export function PlanConfirmationDialog({
   const hasWarnings = (validationResult?.summary?.warningCount || 0) > 0;
 
   // Calculate totals
-  const totalVisits = routes.reduce((acc, r) => acc + r.stops.length, 0);
-  const totalKms = routes.reduce((acc, r) => acc + (r.totalDistance || 0), 0);
-  const totalTime = routes.reduce((acc, r) => acc + r.totalDuration, 0);
+  const _totalVisits = routes.reduce((acc, r) => acc + r.stops.length, 0);
+  const _totalKms = routes.reduce((acc, r) => acc + (r.totalDistance || 0), 0);
+  const _totalTime = routes.reduce((acc, r) => acc + r.totalDuration, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -389,9 +390,7 @@ export function PlanConfirmationDialog({
               {/* Date Fields */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label
-                    className="text-xs text-muted-foreground uppercase"
-                  >
+                  <Label className="text-xs text-muted-foreground uppercase">
                     Fecha de inicio
                   </Label>
                   <div className="mt-1">
@@ -403,9 +402,7 @@ export function PlanConfirmationDialog({
                   </div>
                 </div>
                 <div>
-                  <Label
-                    className="text-xs text-muted-foreground uppercase"
-                  >
+                  <Label className="text-xs text-muted-foreground uppercase">
                     Fecha de término
                   </Label>
                   <div className="mt-1">
@@ -427,8 +424,8 @@ export function PlanConfirmationDialog({
                     <AlertTriangle className="size-4 text-orange-600 flex-shrink-0" />
                     <div className="flex-1 flex items-center justify-between">
                       <p className="text-sm text-orange-800 dark:text-orange-400">
-                        {validationResult.summary.unassignedOrders} pedido(s) sin
-                        asignar
+                        {validationResult.summary.unassignedOrders} pedido(s)
+                        sin asignar
                       </p>
                       <div className="flex items-center gap-2">
                         <Checkbox
@@ -474,23 +471,30 @@ export function PlanConfirmationDialog({
                       </div>
                     </div>
                     {/* Mostrar detalles de advertencias */}
-                    {validationResult.issues && validationResult.issues.length > 0 && (
-                      <ul className="mt-2 space-y-1 text-xs text-yellow-700 dark:text-yellow-500 pl-7">
-                        {validationResult.issues
-                          .filter((issue) => issue.severity === "WARNING")
-                          .slice(0, 5)
-                          .map((issue, idx) => (
-                            <li key={idx} className="list-disc">
-                              {issue.message}
+                    {validationResult.issues &&
+                      validationResult.issues.length > 0 && (
+                        <ul className="mt-2 space-y-1 text-xs text-yellow-700 dark:text-yellow-500 pl-7">
+                          {validationResult.issues
+                            .filter((issue) => issue.severity === "WARNING")
+                            .slice(0, 5)
+                            .map((issue, idx) => (
+                              <li key={idx} className="list-disc">
+                                {issue.message}
+                              </li>
+                            ))}
+                          {validationResult.issues.filter(
+                            (i) => i.severity === "WARNING",
+                          ).length > 5 && (
+                            <li className="text-yellow-600 italic">
+                              ... y{" "}
+                              {validationResult.issues.filter(
+                                (i) => i.severity === "WARNING",
+                              ).length - 5}{" "}
+                              más
                             </li>
-                          ))}
-                        {validationResult.issues.filter((i) => i.severity === "WARNING").length > 5 && (
-                          <li className="text-yellow-600 italic">
-                            ... y {validationResult.issues.filter((i) => i.severity === "WARNING").length - 5} más
-                          </li>
-                        )}
-                      </ul>
-                    )}
+                          )}
+                        </ul>
+                      )}
                   </div>
                 )}
               </div>
@@ -523,7 +527,7 @@ export function PlanConfirmationDialog({
                       const currentDriverId =
                         driverAssignments[route.vehicleId] || route.driverId;
                       const currentDriver = drivers.find(
-                        (d) => d.id === currentDriverId
+                        (d) => d.id === currentDriverId,
                       );
 
                       return (
@@ -537,7 +541,7 @@ export function PlanConfirmationDialog({
                               onValueChange={(value) =>
                                 handleDriverChange(
                                   route.vehicleId,
-                                  value === "none" ? "" : value
+                                  value === "none" ? "" : value,
                                 )
                               }
                             >
@@ -563,7 +567,9 @@ export function PlanConfirmationDialog({
                                   <SelectItem key={driver.id} value={driver.id}>
                                     <span className="flex items-center gap-1">
                                       {driver.id === currentDriverId && (
-                                        <span className="text-green-600">✓</span>
+                                        <span className="text-green-600">
+                                          ✓
+                                        </span>
                                       )}
                                       {driver.name}
                                     </span>
@@ -604,7 +610,12 @@ export function PlanConfirmationDialog({
                   <Download className="size-4 mr-2" />
                   Descargar
                 </Button>
-                <Button variant="default" size="sm" disabled className="bg-primary">
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled
+                  className="bg-primary"
+                >
                   <Upload className="size-4 mr-2" />
                   Subir
                 </Button>

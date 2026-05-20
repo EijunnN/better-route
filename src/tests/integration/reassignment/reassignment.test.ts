@@ -1,21 +1,20 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
+import { POST } from "@/app/api/optimization/jobs/[id]/reassign/route";
+import { optimizationJobs } from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
+  buildOptimizationResult,
   createAdmin,
-  createPlanner,
+  createCompany,
   createDriver,
-  createVehicle,
-  createOrder,
   createOptimizationConfig,
   createOptimizationJob,
-  buildOptimizationResult,
+  createOrder,
+  createVehicle,
 } from "../setup/test-data";
-import { optimizationJobs } from "@/db/schema";
-import { POST } from "@/app/api/optimization/jobs/[id]/reassign/route";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("POST /api/optimization/jobs/[id]/reassign", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -170,8 +169,8 @@ describe("POST /api/optimization/jobs/[id]/reassign", () => {
       where: eq(optimizationJobs.id, job.id),
     });
     expect(dbJob).toBeDefined();
-    expect(dbJob!.result).toBeDefined();
-    const dbResult = dbJob!.result as any;
+    expect(dbJob?.result).toBeDefined();
+    const dbResult = dbJob?.result as any;
     const dbTargetRoute = dbResult.routes.find(
       (r: any) => r.vehicleId === vehicleB.id,
     );

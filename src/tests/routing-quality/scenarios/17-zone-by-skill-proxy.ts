@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * Zone-restricted vehicles modeled via skills. At the adapter level we

@@ -3,11 +3,11 @@
 import { Loader2 } from "lucide-react";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import {
-  ZonesProvider,
   useZones,
-  ZonesListView,
   ZonesFormView,
+  ZonesListView,
   ZonesMapEditorView,
+  ZonesProvider,
 } from "@/components/zones";
 
 function ZonesContent() {

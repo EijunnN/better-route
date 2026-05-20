@@ -2,14 +2,12 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs, vehicles } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
 import { safeParseJson } from "@/lib/utils/safe-json";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 /**
  * DELETE - Remove driver assignment from a route
  * This endpoint allows removing a driver assignment for reassignment
@@ -19,7 +17,11 @@ export async function DELETE(
   { params }: { params: Promise<{ routeId: string; vehicleId: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.ASSIGN);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.ASSIGN,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -66,7 +68,17 @@ export async function DELETE(
     let updatedResult = null;
     if (job.result) {
       try {
-        const result = safeParseJson<{ routes?: Array<{ vehicleId?: string; driverId?: string | null; driverName?: string | null; isManualOverride?: boolean; manualAssignmentReason?: string | null; assignmentValidation?: unknown; stops?: Array<{ orderId?: string }> }> }>(job.result);
+        const result = safeParseJson<{
+          routes?: Array<{
+            vehicleId?: string;
+            driverId?: string | null;
+            driverName?: string | null;
+            isManualOverride?: boolean;
+            manualAssignmentReason?: string | null;
+            assignmentValidation?: unknown;
+            stops?: Array<{ orderId?: string }>;
+          }>;
+        }>(job.result);
         // Find the route for this vehicle and remove driver assignment
         if (result.routes) {
           for (const route of result.routes) {
@@ -178,7 +190,16 @@ export async function GET(
 
     if (job.result) {
       try {
-        const result = safeParseJson<{ routes?: Array<{ vehicleId?: string; driverId?: string | null; driverName?: string | null; isManualOverride?: boolean; manualAssignmentReason?: string | null; stops?: Array<{ orderId?: string }> }> }>(job.result);
+        const result = safeParseJson<{
+          routes?: Array<{
+            vehicleId?: string;
+            driverId?: string | null;
+            driverName?: string | null;
+            isManualOverride?: boolean;
+            manualAssignmentReason?: string | null;
+            stops?: Array<{ orderId?: string }>;
+          }>;
+        }>(job.result);
         if (result.routes) {
           for (const route of result.routes) {
             if (route.vehicleId === vehicleId) {

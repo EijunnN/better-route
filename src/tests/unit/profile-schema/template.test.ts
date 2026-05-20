@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { generateCsvTemplate } from "@/lib/orders/profile-schema";
 import { baseSchema } from "./fixtures";
 
@@ -15,7 +15,10 @@ describe("generateCsvTemplate", () => {
 
   test("emits English headers with commas when locale=en", () => {
     const schema = baseSchema({
-      fields: baseSchema().fields.map((f) => ({ ...f, labelEn: f.label.toUpperCase() })),
+      fields: baseSchema().fields.map((f) => ({
+        ...f,
+        labelEn: f.label.toUpperCase(),
+      })),
     });
     const out = generateCsvTemplate(schema, { locale: "en" });
     const firstLine = out.slice(1).split("\n")[0];

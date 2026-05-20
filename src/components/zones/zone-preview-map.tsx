@@ -4,12 +4,12 @@ import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Crosshair, Layers, ZoomIn, ZoomOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/layout/theme-context";
+import { Button } from "@/components/ui/button";
 import {
-  getMapStyle,
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
+  getMapStyle,
 } from "@/lib/map-styles";
 
 interface Zone {
@@ -51,85 +51,85 @@ export function ZonePreviewMap({
 
   // Helper to add all zone sources and layers to the map
   const addZoneLayers = (mapInstance: MapLibreMap) => {
-      const bounds = new maplibregl.LngLatBounds();
-      let hasValidZone = false;
+    const bounds = new maplibregl.LngLatBounds();
+    let hasValidZone = false;
 
-      zones.forEach((zone) => {
-        let geometry = zone.parsedGeometry;
-        if (!geometry && zone.geometry) {
-          try {
-            geometry = JSON.parse(zone.geometry);
-          } catch {
-            return;
-          }
+    zones.forEach((zone) => {
+      let geometry = zone.parsedGeometry;
+      if (!geometry && zone.geometry) {
+        try {
+          geometry = JSON.parse(zone.geometry);
+        } catch {
+          return;
         }
-        if (!geometry?.coordinates?.[0]) return;
+      }
+      if (!geometry?.coordinates?.[0]) return;
 
-        const isSelected = zone.id === selectedZoneId;
-        hasValidZone = true;
+      const isSelected = zone.id === selectedZoneId;
+      hasValidZone = true;
 
-        geometry.coordinates[0].forEach((coord: number[]) => {
-          bounds.extend([coord[0], coord[1]]);
-        });
-
-        mapInstance.addSource(`zone-${zone.id}`, {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: { id: zone.id, name: zone.name },
-            geometry: geometry,
-          },
-        });
-
-        const isRestricted = zone.type === "RESTRICTED";
-        const renderColor = isRestricted ? RESTRICTED_COLOR : zone.color;
-
-        mapInstance.addLayer({
-          id: `zone-fill-${zone.id}`,
-          type: "fill",
-          source: `zone-${zone.id}`,
-          paint: {
-            "fill-color": renderColor,
-            "fill-opacity": isSelected
-              ? isRestricted
-                ? 0.5
-                : 0.4
-              : zone.active
-                ? isRestricted
-                  ? 0.35
-                  : 0.2
-                : 0.1,
-          },
-        });
-
-        mapInstance.addLayer({
-          id: `zone-outline-${zone.id}`,
-          type: "line",
-          source: `zone-${zone.id}`,
-          paint: {
-            "line-color": renderColor,
-            "line-width": isSelected ? 3 : isRestricted ? 2 : 1.5,
-            "line-opacity": isSelected ? 1 : zone.active ? 0.8 : 0.4,
-            "line-dasharray": isRestricted ? [2, 2] : [1, 0],
-          },
-        });
-
-        mapInstance.on("click", `zone-fill-${zone.id}`, () => {
-          onZoneSelect(zone.id);
-        });
-
-        mapInstance.on("mouseenter", `zone-fill-${zone.id}`, () => {
-          mapInstance.getCanvas().style.cursor = "pointer";
-        });
-
-        mapInstance.on("mouseleave", `zone-fill-${zone.id}`, () => {
-          mapInstance.getCanvas().style.cursor = "";
-        });
+      geometry.coordinates[0].forEach((coord: number[]) => {
+        bounds.extend([coord[0], coord[1]]);
       });
 
-      if (hasValidZone && !bounds.isEmpty()) {
-        mapInstance.fitBounds(bounds, { padding: 50, maxZoom: 14 });
-      }
+      mapInstance.addSource(`zone-${zone.id}`, {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: { id: zone.id, name: zone.name },
+          geometry: geometry,
+        },
+      });
+
+      const isRestricted = zone.type === "RESTRICTED";
+      const renderColor = isRestricted ? RESTRICTED_COLOR : zone.color;
+
+      mapInstance.addLayer({
+        id: `zone-fill-${zone.id}`,
+        type: "fill",
+        source: `zone-${zone.id}`,
+        paint: {
+          "fill-color": renderColor,
+          "fill-opacity": isSelected
+            ? isRestricted
+              ? 0.5
+              : 0.4
+            : zone.active
+              ? isRestricted
+                ? 0.35
+                : 0.2
+              : 0.1,
+        },
+      });
+
+      mapInstance.addLayer({
+        id: `zone-outline-${zone.id}`,
+        type: "line",
+        source: `zone-${zone.id}`,
+        paint: {
+          "line-color": renderColor,
+          "line-width": isSelected ? 3 : isRestricted ? 2 : 1.5,
+          "line-opacity": isSelected ? 1 : zone.active ? 0.8 : 0.4,
+          "line-dasharray": isRestricted ? [2, 2] : [1, 0],
+        },
+      });
+
+      mapInstance.on("click", `zone-fill-${zone.id}`, () => {
+        onZoneSelect(zone.id);
+      });
+
+      mapInstance.on("mouseenter", `zone-fill-${zone.id}`, () => {
+        mapInstance.getCanvas().style.cursor = "pointer";
+      });
+
+      mapInstance.on("mouseleave", `zone-fill-${zone.id}`, () => {
+        mapInstance.getCanvas().style.cursor = "";
+      });
+    });
+
+    if (hasValidZone && !bounds.isEmpty()) {
+      mapInstance.fitBounds(bounds, { padding: 50, maxZoom: 14 });
+    }
   };
   addZoneLayersRef.current = addZoneLayers;
 
@@ -166,7 +166,7 @@ export function ZonePreviewMap({
       console.error("Failed to initialize map:", error);
       setIsLoading(false);
     }
-  }, []);
+  }, [isDark]);
 
   // Add/update zone layers when zones or selection changes
   useEffect(() => {
@@ -188,7 +188,7 @@ export function ZonePreviewMap({
     });
 
     addZoneLayers(mapInstance);
-  }, [zones, selectedZoneId, mapReady]);
+  }, [zones, mapReady, addZoneLayers]);
 
   // Handle runtime theme changes (skip first run - layers added in "load")
   // In MapLibre v5 diff mode, style.load fires synchronously during setStyle(),

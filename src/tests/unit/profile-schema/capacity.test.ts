@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
   buildOrderCapacityVector,
   buildVehicleCapacityVector,
@@ -50,12 +50,8 @@ describe("buildVehicleCapacityVector", () => {
 describe("resolveOrderPriority", () => {
   test("uses priorityMapping when order type is enabled", () => {
     const schema = baseSchema({ requireOrderType: true });
-    expect(
-      resolveOrderPriority({ orderType: "URGENT" }, schema),
-    ).toBe(100);
-    expect(
-      resolveOrderPriority({ orderType: "NEW" }, schema),
-    ).toBe(50);
+    expect(resolveOrderPriority({ orderType: "URGENT" }, schema)).toBe(100);
+    expect(resolveOrderPriority({ orderType: "NEW" }, schema)).toBe(50);
   });
 
   test("falls back to order.priority when orderType not required", () => {

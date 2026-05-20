@@ -1,20 +1,20 @@
-import { and, eq, inArray } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
 import { cacheGet, cacheSet } from "@/lib/infra/cache";
 import {
+  type ProfileSchema,
   resolveProfileSchema,
   validateCsvHeaders,
   validateCsvRow,
-  type ProfileSchema,
 } from "@/lib/orders/profile-schema";
 import { calculateErrorSummary, createValidationError } from "./errors";
 import { decodeCsvBase64, detectCSVDelimiter, parseCSV } from "./parse";
 import {
-  ERROR_TYPES,
   type CSVValidationError,
   type CsvImportRequest,
+  ERROR_TYPES,
 } from "./types";
 
 /**
@@ -70,7 +70,11 @@ export interface CsvImportPreview {
  */
 export interface StoredPreview {
   companyId: string;
-  newRows: Array<{ row: number; trackingId: string; data: Record<string, unknown> }>;
+  newRows: Array<{
+    row: number;
+    trackingId: string;
+    data: Record<string, unknown>;
+  }>;
   reactivableRows: Array<{
     row: number;
     trackingId: string;
@@ -231,7 +235,9 @@ export async function previewCsvImport(
           ),
         )
     : [];
-  const existingByTracking = new Map(existingOrders.map((o) => [o.trackingId, o]));
+  const existingByTracking = new Map(
+    existingOrders.map((o) => [o.trackingId, o]),
+  );
 
   const newBucket: PreviewBucketRow[] = [];
   const reactivable: PreviewReactivableRow[] = [];

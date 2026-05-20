@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * 8 orders with narrow morning windows, 8 with narrow afternoon windows.

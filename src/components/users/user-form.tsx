@@ -1,19 +1,14 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CreateUserInput } from "@/lib/validations/user";
 import { UserFormActions } from "./user-form-actions";
 import { UserFormBasic } from "./user-form-basic";
 import {
+  type CustomRole,
   UserFormProvider,
   useUserForm,
-  type CustomRole,
 } from "./user-form-context";
 import { UserFormDriver } from "./user-form-driver";
 import { UserFormRoles } from "./user-form-roles";
@@ -22,10 +17,7 @@ import { UserFormRoles } from "./user-form-roles";
 export type { CustomRole };
 
 interface UserFormProps {
-  onSubmit: (
-    data: CreateUserInput,
-    selectedRoleIds: string[],
-  ) => Promise<void>;
+  onSubmit: (data: CreateUserInput, selectedRoleIds: string[]) => Promise<void>;
   onCancel?: () => void;
   initialData?: Partial<CreateUserInput>;
   fleets: Array<{ id: string; name: string }>;

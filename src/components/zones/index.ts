@@ -1,12 +1,16 @@
 export { ZoneForm } from "./zone-form";
-export { ZonesProvider, useZones, DAY_LABELS } from "./zones-context";
 export type {
-  Zone,
   VehicleOption,
   ViewMode,
-  ZonesState,
+  Zone,
   ZonesActions,
-  ZonesMeta,
   ZonesDerived,
+  ZonesMeta,
+  ZonesState,
 } from "./zones-context";
-export { ZonesListView, ZonesFormView, ZonesMapEditorView } from "./zones-views";
+export { DAY_LABELS, useZones, ZonesProvider } from "./zones-context";
+export {
+  ZonesFormView,
+  ZonesListView,
+  ZonesMapEditorView,
+} from "./zones-views";

@@ -1,9 +1,18 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationConfigurations, optimizationJobs, orders, planMetrics, routeStops } from "@/db/schema";
+import {
+  optimizationConfigurations,
+  optimizationJobs,
+  orders,
+  planMetrics,
+  routeStops,
+} from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { createAuditLog } from "@/lib/infra/audit";
 import { releaseCompanyLock } from "@/lib/infra/job-queue";
+import { setTenantContext } from "@/lib/infra/tenant";
 import type { VerifiedPlan } from "@/lib/optimization/optimization-runner";
 import {
   calculateComparisonMetrics,
@@ -13,17 +22,12 @@ import {
   canConfirmPlan,
   validatePlanForConfirmation,
 } from "@/lib/optimization/plan-validation";
-import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { safeParseJson } from "@/lib/utils/safe-json";
 import {
   type PlanConfirmationSchema,
   planConfirmationSchema,
 } from "@/lib/validations/plan-confirmation";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
-
-import { safeParseJson } from "@/lib/utils/safe-json";
 
 /**
  * Safely converts a date-like value to ISO string or returns a fallback
@@ -40,7 +44,7 @@ function safeToISOString(value: unknown): string | null {
 
   // If it's a Date object
   if (value instanceof Date) {
-    if (isNaN(value.getTime())) {
+    if (Number.isNaN(value.getTime())) {
       return null; // Invalid date
     }
     return value.toISOString();
@@ -61,7 +65,6 @@ function safeToISOString(value: unknown): string | null {
   return String(value);
 }
 
-
 /**
  * POST /api/optimization/jobs/[id]/confirm
  *
@@ -73,7 +76,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.PLAN, Action.CONFIRM);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.PLAN,
+      Action.CONFIRM,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantContext = extractTenantContextAuthed(request, authResult);
     if (tenantContext instanceof NextResponse) return tenantContext;
@@ -159,7 +166,10 @@ export async function POST(
       );
     }
 
-    if (job.configuration.status !== "DRAFT" && job.configuration.status !== "CONFIGURED") {
+    if (
+      job.configuration.status !== "DRAFT" &&
+      job.configuration.status !== "CONFIGURED"
+    ) {
       return NextResponse.json(
         {
           error: `Plan cannot be confirmed from status "${job.configuration.status}". Only DRAFT or CONFIGURED plans can be confirmed.`,
@@ -172,9 +182,7 @@ export async function POST(
     // Parse optimization result
     let result: VerifiedPlan | null = null;
     try {
-      result = job.result
-        ? (safeParseJson(job.result) as VerifiedPlan)
-        : null;
+      result = job.result ? (safeParseJson(job.result) as VerifiedPlan) : null;
     } catch (_error) {
       return NextResponse.json(
         { error: "Failed to parse optimization result" },
@@ -248,7 +256,10 @@ export async function POST(
     // Validate routes exist before confirming
     if (!result.routes || result.routes.length === 0) {
       return NextResponse.json(
-        { error: "Cannot confirm plan with no routes. Optimization produced no valid routes." },
+        {
+          error:
+            "Cannot confirm plan with no routes. Optimization produced no valid routes.",
+        },
         { status: 400 },
       );
     }
@@ -301,33 +312,45 @@ export async function POST(
     }
 
     // Pre-validate: check which orders still exist and are PENDING
-    const existingOrders = assignedOrderIds.length > 0
-      ? await db
-          .select({ id: orders.id, status: orders.status })
-          .from(orders)
-          .where(
-            and(
-              inArray(orders.id, assignedOrderIds),
-              eq(orders.companyId, tenantContext.companyId),
-            ),
-          )
-      : [];
+    const existingOrders =
+      assignedOrderIds.length > 0
+        ? await db
+            .select({ id: orders.id, status: orders.status })
+            .from(orders)
+            .where(
+              and(
+                inArray(orders.id, assignedOrderIds),
+                eq(orders.companyId, tenantContext.companyId),
+              ),
+            )
+        : [];
 
-    const existingOrderMap = new Map(existingOrders.map((o) => [o.id, o.status]));
-    const missingOrderIds = assignedOrderIds.filter((id) => !existingOrderMap.has(id));
+    const existingOrderMap = new Map(
+      existingOrders.map((o) => [o.id, o.status]),
+    );
+    const missingOrderIds = assignedOrderIds.filter(
+      (id) => !existingOrderMap.has(id),
+    );
     const nonPendingOrderIds = assignedOrderIds.filter((id) => {
       const status = existingOrderMap.get(id);
       return status != null && status !== "PENDING";
     });
-    const skippedOrderIds = [...new Set([...missingOrderIds, ...nonPendingOrderIds])];
+    const skippedOrderIds = [
+      ...new Set([...missingOrderIds, ...nonPendingOrderIds]),
+    ];
 
     // Missing or non-pending orders are filtered out and skipped
 
     if (skippedOrderIds.length > 0) {
-      const validOrderIds = assignedOrderIds.filter((id) => !skippedOrderIds.includes(id));
+      const validOrderIds = assignedOrderIds.filter(
+        (id) => !skippedOrderIds.includes(id),
+      );
       if (validOrderIds.length === 0) {
         return NextResponse.json(
-          { error: "All orders from this plan no longer exist or are no longer PENDING." },
+          {
+            error:
+              "All orders from this plan no longer exist or are no longer PENDING.",
+          },
           { status: 400 },
         );
       }
@@ -344,7 +367,7 @@ export async function POST(
     if (data.startDate) {
       // Extract just the date part (YYYY-MM-DD) from the startDate
       const parsed = new Date(data.startDate);
-      if (!isNaN(parsed.getTime())) {
+      if (!Number.isNaN(parsed.getTime())) {
         planDate = parsed.toISOString().split("T")[0];
       }
     }
@@ -365,11 +388,11 @@ export async function POST(
       if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(timeStr)) {
         const fullTime = timeStr.length <= 5 ? `${timeStr}:00` : timeStr;
         const d = new Date(`${planDate}T${fullTime}Z`);
-        return isNaN(d.getTime()) ? null : d;
+        return Number.isNaN(d.getTime()) ? null : d;
       }
       // Try as full ISO string
       const d = new Date(timeStr);
-      return isNaN(d.getTime()) ? null : d;
+      return Number.isNaN(d.getTime()) ? null : d;
     }
 
     const routeStopsToCreate: Array<{
@@ -477,7 +500,9 @@ export async function POST(
         .returning();
 
       if (!updatedConfiguration) {
-        throw new Error("CONFLICT:Plan was confirmed by another request. Please refresh.");
+        throw new Error(
+          "CONFLICT:Plan was confirmed by another request. Please refresh.",
+        );
       }
 
       // 2. Update orders status to ASSIGNED with race condition guard
@@ -582,7 +607,12 @@ export async function POST(
       };
     });
 
-    const { updatedConfiguration, ordersUpdatedCount, routeStopsCreatedCount, metricsId } = txResult;
+    const {
+      updatedConfiguration,
+      ordersUpdatedCount,
+      routeStopsCreatedCount,
+      metricsId,
+    } = txResult;
 
     // Create audit log with safe serialization
     // Note: All values here should be primitives or simple objects
@@ -599,9 +629,12 @@ export async function POST(
       comparisonMetrics: comparisonMetrics
         ? {
             comparedToJobId: comparisonMetrics.comparedToJobId ?? null,
-            distanceChangePercent: comparisonMetrics.distanceChangePercent ?? null,
-            durationChangePercent: comparisonMetrics.durationChangePercent ?? null,
-            complianceChangePercent: comparisonMetrics.complianceChangePercent ?? null,
+            distanceChangePercent:
+              comparisonMetrics.distanceChangePercent ?? null,
+            durationChangePercent:
+              comparisonMetrics.durationChangePercent ?? null,
+            complianceChangePercent:
+              comparisonMetrics.complianceChangePercent ?? null,
           }
         : null,
     };
@@ -650,20 +683,22 @@ export async function POST(
     // Build response object with all primitives to avoid serialization issues
     const responseData = {
       success: true,
-      message: skippedOrderIds.length > 0
-        ? `Plan confirmed with ${skippedOrderIds.length} order(s) skipped (missing or no longer PENDING)`
-        : "Plan confirmed successfully",
+      message:
+        skippedOrderIds.length > 0
+          ? `Plan confirmed with ${skippedOrderIds.length} order(s) skipped (missing or no longer PENDING)`
+          : "Plan confirmed successfully",
       ordersAssigned: ordersUpdatedCount,
       routeStopsCreated: routeStopsCreatedCount,
-      skippedOrders: skippedOrderIds.length > 0
-        ? {
-            count: skippedOrderIds.length,
-            missingCount: missingOrderIds.length,
-            nonPendingCount: nonPendingOrderIds.length,
-            missingOrderIds,
-            nonPendingOrderIds,
-          }
-        : undefined,
+      skippedOrders:
+        skippedOrderIds.length > 0
+          ? {
+              count: skippedOrderIds.length,
+              missingCount: missingOrderIds.length,
+              nonPendingCount: nonPendingOrderIds.length,
+              missingOrderIds,
+              nonPendingOrderIds,
+            }
+          : undefined,
       configuration: safeConfiguration,
       validationResult: {
         isValid: validationResult.isValid,
@@ -698,9 +733,12 @@ export async function POST(
         comparison: comparisonMetrics
           ? {
               comparedToJobId: comparisonMetrics.comparedToJobId ?? null,
-              distanceChangePercent: comparisonMetrics.distanceChangePercent ?? null,
-              durationChangePercent: comparisonMetrics.durationChangePercent ?? null,
-              complianceChangePercent: comparisonMetrics.complianceChangePercent ?? null,
+              distanceChangePercent:
+                comparisonMetrics.distanceChangePercent ?? null,
+              durationChangePercent:
+                comparisonMetrics.durationChangePercent ?? null,
+              complianceChangePercent:
+                comparisonMetrics.complianceChangePercent ?? null,
             }
           : null,
       },

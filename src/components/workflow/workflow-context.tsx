@@ -1,12 +1,17 @@
 "use client";
 
-import { createContext, use, type ReactNode } from "react";
-import { useCompanyContext } from "@/hooks/use-company-context";
+import { createContext, type ReactNode, use } from "react";
 import { useApiData } from "@/hooks/use-api";
+import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
 // Types matching the DB schema
-export type SystemState = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED" | "CANCELLED";
+export type SystemState =
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "FAILED"
+  | "CANCELLED";
 
 export interface WorkflowState {
   id: string;
@@ -79,33 +84,141 @@ export const WORKFLOW_TEMPLATES: Record<TemplateType, TemplateConfig> = {
     name: "Delivery de ultima milla",
     description: "Entregas directas al cliente final",
     states: [
-      { code: "PENDING", label: "Pendiente", systemState: "PENDING", color: "#6B7280", position: 0, isDefault: true },
-      { code: "EN_CAMINO", label: "En camino", systemState: "IN_PROGRESS", color: "#3B82F6", position: 1 },
-      { code: "ENTREGADO", label: "Entregado", systemState: "COMPLETED", color: "#16A34A", position: 2, isTerminal: true, requiresPhoto: true },
-      { code: "NO_ENTREGADO", label: "No entregado", systemState: "FAILED", color: "#DC4840", position: 3, isTerminal: true, requiresReason: true, requiresPhoto: true, reasonOptions: ["Cliente ausente", "Direccion incorrecta", "Paquete danado", "Cliente rechazo", "Zona insegura", "Reprogramado", "Otro"] },
-      { code: "OMITIDO", label: "Omitido", systemState: "CANCELLED", color: "#9CA3AF", position: 4, isTerminal: true },
+      {
+        code: "PENDING",
+        label: "Pendiente",
+        systemState: "PENDING",
+        color: "#6B7280",
+        position: 0,
+        isDefault: true,
+      },
+      {
+        code: "EN_CAMINO",
+        label: "En camino",
+        systemState: "IN_PROGRESS",
+        color: "#3B82F6",
+        position: 1,
+      },
+      {
+        code: "ENTREGADO",
+        label: "Entregado",
+        systemState: "COMPLETED",
+        color: "#16A34A",
+        position: 2,
+        isTerminal: true,
+        requiresPhoto: true,
+      },
+      {
+        code: "NO_ENTREGADO",
+        label: "No entregado",
+        systemState: "FAILED",
+        color: "#DC4840",
+        position: 3,
+        isTerminal: true,
+        requiresReason: true,
+        requiresPhoto: true,
+        reasonOptions: [
+          "Cliente ausente",
+          "Direccion incorrecta",
+          "Paquete danado",
+          "Cliente rechazo",
+          "Zona insegura",
+          "Reprogramado",
+          "Otro",
+        ],
+      },
+      {
+        code: "OMITIDO",
+        label: "Omitido",
+        systemState: "CANCELLED",
+        color: "#9CA3AF",
+        position: 4,
+        isTerminal: true,
+      },
     ],
     transitions: [
-      ["PENDING", "EN_CAMINO"], ["PENDING", "NO_ENTREGADO"], ["PENDING", "OMITIDO"],
-      ["EN_CAMINO", "ENTREGADO"], ["EN_CAMINO", "NO_ENTREGADO"], ["EN_CAMINO", "OMITIDO"], ["EN_CAMINO", "PENDING"],
-      ["NO_ENTREGADO", "PENDING"], ["NO_ENTREGADO", "OMITIDO"],
+      ["PENDING", "EN_CAMINO"],
+      ["PENDING", "NO_ENTREGADO"],
+      ["PENDING", "OMITIDO"],
+      ["EN_CAMINO", "ENTREGADO"],
+      ["EN_CAMINO", "NO_ENTREGADO"],
+      ["EN_CAMINO", "OMITIDO"],
+      ["EN_CAMINO", "PENDING"],
+      ["NO_ENTREGADO", "PENDING"],
+      ["NO_ENTREGADO", "OMITIDO"],
     ],
   },
   paqueteria: {
     name: "Paqueteria",
     description: "Envios y paquetes con seguimiento",
     states: [
-      { code: "PENDING", label: "Pendiente", systemState: "PENDING", color: "#6B7280", position: 0, isDefault: true },
-      { code: "EN_TRANSITO", label: "En transito", systemState: "IN_PROGRESS", color: "#3B82F6", position: 1 },
-      { code: "ENTREGA_PARCIAL", label: "Entrega parcial", systemState: "IN_PROGRESS", color: "#F59E0B", position: 2, requiresNotes: true },
-      { code: "ENTREGADO", label: "Entregado", systemState: "COMPLETED", color: "#16A34A", position: 3, isTerminal: true, requiresPhoto: true, requiresSignature: true },
-      { code: "DEVUELTO", label: "Devuelto", systemState: "FAILED", color: "#DC4840", position: 4, isTerminal: true, requiresReason: true, reasonOptions: ["Cliente ausente", "Direccion incorrecta", "Rechazado", "Danado", "Otro"] },
-      { code: "CANCELADO", label: "Cancelado", systemState: "CANCELLED", color: "#9CA3AF", position: 5, isTerminal: true },
+      {
+        code: "PENDING",
+        label: "Pendiente",
+        systemState: "PENDING",
+        color: "#6B7280",
+        position: 0,
+        isDefault: true,
+      },
+      {
+        code: "EN_TRANSITO",
+        label: "En transito",
+        systemState: "IN_PROGRESS",
+        color: "#3B82F6",
+        position: 1,
+      },
+      {
+        code: "ENTREGA_PARCIAL",
+        label: "Entrega parcial",
+        systemState: "IN_PROGRESS",
+        color: "#F59E0B",
+        position: 2,
+        requiresNotes: true,
+      },
+      {
+        code: "ENTREGADO",
+        label: "Entregado",
+        systemState: "COMPLETED",
+        color: "#16A34A",
+        position: 3,
+        isTerminal: true,
+        requiresPhoto: true,
+        requiresSignature: true,
+      },
+      {
+        code: "DEVUELTO",
+        label: "Devuelto",
+        systemState: "FAILED",
+        color: "#DC4840",
+        position: 4,
+        isTerminal: true,
+        requiresReason: true,
+        reasonOptions: [
+          "Cliente ausente",
+          "Direccion incorrecta",
+          "Rechazado",
+          "Danado",
+          "Otro",
+        ],
+      },
+      {
+        code: "CANCELADO",
+        label: "Cancelado",
+        systemState: "CANCELLED",
+        color: "#9CA3AF",
+        position: 5,
+        isTerminal: true,
+      },
     ],
     transitions: [
-      ["PENDING", "EN_TRANSITO"], ["PENDING", "CANCELADO"],
-      ["EN_TRANSITO", "ENTREGADO"], ["EN_TRANSITO", "ENTREGA_PARCIAL"], ["EN_TRANSITO", "DEVUELTO"], ["EN_TRANSITO", "PENDING"],
-      ["ENTREGA_PARCIAL", "ENTREGADO"], ["ENTREGA_PARCIAL", "DEVUELTO"],
+      ["PENDING", "EN_TRANSITO"],
+      ["PENDING", "CANCELADO"],
+      ["EN_TRANSITO", "ENTREGADO"],
+      ["EN_TRANSITO", "ENTREGA_PARCIAL"],
+      ["EN_TRANSITO", "DEVUELTO"],
+      ["EN_TRANSITO", "PENDING"],
+      ["ENTREGA_PARCIAL", "ENTREGADO"],
+      ["ENTREGA_PARCIAL", "DEVUELTO"],
       ["DEVUELTO", "PENDING"],
     ],
   },
@@ -113,15 +226,69 @@ export const WORKFLOW_TEMPLATES: Record<TemplateType, TemplateConfig> = {
     name: "Distribucion B2B",
     description: "Entregas a negocios y empresas",
     states: [
-      { code: "PENDING", label: "Pendiente", systemState: "PENDING", color: "#6B7280", position: 0, isDefault: true },
-      { code: "DESCARGANDO", label: "Descargando", systemState: "IN_PROGRESS", color: "#3B82F6", position: 1 },
-      { code: "FACTURA_FIRMADA", label: "Factura firmada", systemState: "COMPLETED", color: "#16A34A", position: 2, isTerminal: true, requiresPhoto: true },
-      { code: "RECHAZO", label: "Rechazo", systemState: "FAILED", color: "#DC4840", position: 3, isTerminal: true, requiresReason: true, requiresNotes: true, reasonOptions: ["Producto incorrecto", "Cantidad incorrecta", "Danado", "Sin orden de compra", "Otro"] },
-      { code: "SIN_ACCESO", label: "Sin acceso", systemState: "FAILED", color: "#F97316", position: 4, isTerminal: true, requiresReason: true, reasonOptions: ["Local cerrado", "Direccion incorrecta", "Zona restringida", "Otro"] },
+      {
+        code: "PENDING",
+        label: "Pendiente",
+        systemState: "PENDING",
+        color: "#6B7280",
+        position: 0,
+        isDefault: true,
+      },
+      {
+        code: "DESCARGANDO",
+        label: "Descargando",
+        systemState: "IN_PROGRESS",
+        color: "#3B82F6",
+        position: 1,
+      },
+      {
+        code: "FACTURA_FIRMADA",
+        label: "Factura firmada",
+        systemState: "COMPLETED",
+        color: "#16A34A",
+        position: 2,
+        isTerminal: true,
+        requiresPhoto: true,
+      },
+      {
+        code: "RECHAZO",
+        label: "Rechazo",
+        systemState: "FAILED",
+        color: "#DC4840",
+        position: 3,
+        isTerminal: true,
+        requiresReason: true,
+        requiresNotes: true,
+        reasonOptions: [
+          "Producto incorrecto",
+          "Cantidad incorrecta",
+          "Danado",
+          "Sin orden de compra",
+          "Otro",
+        ],
+      },
+      {
+        code: "SIN_ACCESO",
+        label: "Sin acceso",
+        systemState: "FAILED",
+        color: "#F97316",
+        position: 4,
+        isTerminal: true,
+        requiresReason: true,
+        reasonOptions: [
+          "Local cerrado",
+          "Direccion incorrecta",
+          "Zona restringida",
+          "Otro",
+        ],
+      },
     ],
     transitions: [
-      ["PENDING", "DESCARGANDO"], ["PENDING", "SIN_ACCESO"],
-      ["DESCARGANDO", "FACTURA_FIRMADA"], ["DESCARGANDO", "RECHAZO"], ["DESCARGANDO", "PENDING"],
+      ["PENDING", "DESCARGANDO"],
+      ["PENDING", "SIN_ACCESO"],
+      ["DESCARGANDO", "FACTURA_FIRMADA"],
+      ["DESCARGANDO", "RECHAZO"],
+      ["DESCARGANDO", "PENDING"],
       ["SIN_ACCESO", "PENDING"],
     ],
   },
@@ -157,14 +324,20 @@ interface WorkflowContextValue {
   meta: WorkflowMeta;
 }
 
-const WorkflowContext = createContext<WorkflowContextValue | undefined>(undefined);
+const WorkflowContext = createContext<WorkflowContextValue | undefined>(
+  undefined,
+);
 
 export function WorkflowProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
   const { toast } = useToast();
 
-  const statesUrl = companyId ? `/api/companies/${companyId}/workflow-states` : null;
-  const transitionsUrl = companyId ? `/api/companies/${companyId}/workflow-transitions` : null;
+  const statesUrl = companyId
+    ? `/api/companies/${companyId}/workflow-states`
+    : null;
+  const transitionsUrl = companyId
+    ? `/api/companies/${companyId}/workflow-transitions`
+    : null;
 
   const {
     data: states = [],
@@ -181,57 +354,95 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
 
   const createState = async (data: WorkflowStateInput) => {
     if (!companyId) return;
-    const response = await fetch(`/api/companies/${companyId}/workflow-states`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-company-id": companyId },
-      body: JSON.stringify(data),
-    });
+    const response = await fetch(
+      `/api/companies/${companyId}/workflow-states`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify(data),
+      },
+    );
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Error al crear estado" }));
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Error al crear estado" }));
       throw new Error(error.error || "Error al crear estado");
     }
     await mutateStates();
-    toast({ title: "Estado creado", description: `El estado "${data.label}" ha sido creado.` });
+    toast({
+      title: "Estado creado",
+      description: `El estado "${data.label}" ha sido creado.`,
+    });
   };
 
   const updateState = async (id: string, data: WorkflowStateInput) => {
     if (!companyId) return;
-    const response = await fetch(`/api/companies/${companyId}/workflow-states/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-company-id": companyId },
-      body: JSON.stringify(data),
-    });
+    const response = await fetch(
+      `/api/companies/${companyId}/workflow-states/${id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify(data),
+      },
+    );
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Error al actualizar estado" }));
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Error al actualizar estado" }));
       throw new Error(error.error || "Error al actualizar estado");
     }
     await mutateStates();
-    toast({ title: "Estado actualizado", description: `El estado "${data.label}" ha sido actualizado.` });
+    toast({
+      title: "Estado actualizado",
+      description: `El estado "${data.label}" ha sido actualizado.`,
+    });
   };
 
   const deleteState = async (id: string) => {
     if (!companyId) return;
-    const response = await fetch(`/api/companies/${companyId}/workflow-states/${id}`, {
-      method: "DELETE",
-      headers: { "x-company-id": companyId },
-    });
+    const response = await fetch(
+      `/api/companies/${companyId}/workflow-states/${id}`,
+      {
+        method: "DELETE",
+        headers: { "x-company-id": companyId },
+      },
+    );
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Error al eliminar estado" }));
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Error al eliminar estado" }));
       throw new Error(error.error || "Error al eliminar estado");
     }
     await Promise.all([mutateStates(), mutateTransitions()]);
-    toast({ title: "Estado eliminado", description: "El estado ha sido eliminado." });
+    toast({
+      title: "Estado eliminado",
+      description: "El estado ha sido eliminado.",
+    });
   };
 
   const createTransition = async (fromStateId: string, toStateId: string) => {
     if (!companyId) return;
-    const response = await fetch(`/api/companies/${companyId}/workflow-transitions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-company-id": companyId },
-      body: JSON.stringify({ fromStateId, toStateId }),
-    });
+    const response = await fetch(
+      `/api/companies/${companyId}/workflow-transitions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify({ fromStateId, toStateId }),
+      },
+    );
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Error al crear transicion" }));
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Error al crear transicion" }));
       throw new Error(error.error || "Error al crear transicion");
     }
     await mutateTransitions();
@@ -239,12 +450,17 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
 
   const deleteTransition = async (id: string) => {
     if (!companyId) return;
-    const response = await fetch(`/api/companies/${companyId}/workflow-transitions/${id}`, {
-      method: "DELETE",
-      headers: { "x-company-id": companyId },
-    });
+    const response = await fetch(
+      `/api/companies/${companyId}/workflow-transitions/${id}`,
+      {
+        method: "DELETE",
+        headers: { "x-company-id": companyId },
+      },
+    );
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Error al eliminar transicion" }));
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Error al eliminar transicion" }));
       throw new Error(error.error || "Error al eliminar transicion");
     }
     await mutateTransitions();
@@ -321,7 +537,10 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     );
 
     await Promise.all([mutateStates(), mutateTransitions()]);
-    toast({ title: "Plantilla aplicada", description: `Se configuro el flujo "${template.name}" con ${template.states.length} estados.` });
+    toast({
+      title: "Plantilla aplicada",
+      description: `Se configuro el flujo "${template.name}" con ${template.states.length} estados.`,
+    });
   };
 
   const refreshStates = () => {
@@ -333,11 +552,17 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   };
 
   const contextState: WorkflowContextState = {
-    states: Array.isArray(states) ? [...states].sort((a, b) => a.position - b.position) : [],
+    states: Array.isArray(states)
+      ? [...states].sort((a, b) => a.position - b.position)
+      : [],
     transitions: Array.isArray(transitions) ? transitions : [],
     isLoadingStates,
     isLoadingTransitions,
-    error: statesError ? (statesError instanceof Error ? statesError.message : "Error al cargar flujo de entregas") : null,
+    error: statesError
+      ? statesError instanceof Error
+        ? statesError.message
+        : "Error al cargar flujo de entregas"
+      : null,
   };
 
   const contextActions: WorkflowActions = {
@@ -354,7 +579,13 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   const contextMeta: WorkflowMeta = { companyId, isReady };
 
   return (
-    <WorkflowContext value={{ state: contextState, actions: contextActions, meta: contextMeta }}>
+    <WorkflowContext
+      value={{
+        state: contextState,
+        actions: contextActions,
+        meta: contextMeta,
+      }}
+    >
       {children}
     </WorkflowContext>
   );

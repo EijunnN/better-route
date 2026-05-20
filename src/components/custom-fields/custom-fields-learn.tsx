@@ -1,26 +1,26 @@
 "use client";
 
 import {
-  Plus,
   ArrowRight,
-  Package,
-  MapPin,
-  Type,
-  Hash,
-  List,
   Calendar,
   DollarSign,
-  Phone,
-  Mail,
-  ToggleLeft,
   Eye,
-  Smartphone,
   FileSpreadsheet,
+  Hash,
+  List,
+  Mail,
+  MapPin,
+  Package,
+  Phone,
+  Plus,
+  Smartphone,
+  ToggleLeft,
+  Type,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Can } from "@/components/auth/can";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 /**
  * Educational view for the custom-fields module.
@@ -47,27 +47,32 @@ export function CustomFieldsLearn({
     <div className="space-y-8">
       {/* What & Why */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">¿Qué son los campos personalizados?</h2>
+        <h2 className="text-base font-semibold">
+          ¿Qué son los campos personalizados?
+        </h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Información extra que tu negocio necesita capturar en cada pedido o
-          en cada entrega, más allá de los datos básicos del sistema (dirección,
-          cliente, peso). Los definís una sola vez acá y aparecen automáticamente
-          en los lugares donde elijas: el formulario de pedido, la app del
-          conductor, los CSV de importación.
+          Información extra que tu negocio necesita capturar en cada pedido o en
+          cada entrega, más allá de los datos básicos del sistema (dirección,
+          cliente, peso). Los definís una sola vez acá y aparecen
+          automáticamente en los lugares donde elijas: el formulario de pedido,
+          la app del conductor, los CSV de importación.
         </p>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">Sin esta feature</strong>, todo
-          lo que no encaja en los campos básicos termina en el campo "notas"
-          como texto libre {"—"} imposible de validar, importar masivamente, o
-          mostrar como columna. <strong className="text-foreground">Con campos
-          personalizados</strong>, capturás datos estructurados con el tipo
-          correcto (número, fecha, opciones), validados, y enchufados al flujo.
+          <strong className="text-foreground">Sin esta feature</strong>, todo lo
+          que no encaja en los campos básicos termina en el campo "notas" como
+          texto libre {"—"} imposible de validar, importar masivamente, o
+          mostrar como columna.{" "}
+          <strong className="text-foreground">Con campos personalizados</strong>
+          , capturás datos estructurados con el tipo correcto (número, fecha,
+          opciones), validados, y enchufados al flujo.
         </p>
       </section>
 
       {/* End-to-end flow diagram */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Cómo funciona el flujo completo</h2>
+        <h2 className="text-base font-semibold">
+          Cómo funciona el flujo completo
+        </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <FlowStep
             number={1}
@@ -92,10 +97,12 @@ export function CustomFieldsLearn({
 
       {/* Pedidos vs Entregas */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Pedidos vs Entregas {"—"} ¿cuál elegir?</h2>
+        <h2 className="text-base font-semibold">
+          Pedidos vs Entregas {"—"} ¿cuál elegir?
+        </h2>
         <p className="text-xs text-muted-foreground">
-          Esta es la decisión más importante al crear un campo. Depende de
-          quién lo llena y cuándo.
+          Esta es la decisión más importante al crear un campo. Depende de quién
+          lo llena y cuándo.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <ComparisonCard
@@ -135,29 +142,46 @@ export function CustomFieldsLearn({
             title="Cobranza contra entrega"
             problem="Necesito que el conductor cobre $X al entregar y confirme que cobró."
             solution={[
-              { label: "Campo Pedido", value: 'Tipo: Moneda — "Monto a cobrar"' },
-              { label: "Campo Entrega", value: 'Tipo: Sí/No — "Cobrado", obligatorio' },
+              {
+                label: "Campo Pedido",
+                value: 'Tipo: Moneda — "Monto a cobrar"',
+              },
+              {
+                label: "Campo Entrega",
+                value: 'Tipo: Sí/No — "Cobrado", obligatorio',
+              },
             ]}
           />
           <UseCase
             title="Trazabilidad por cliente"
             problem="Cada cliente me da su propio número de orden de compra y necesito mantenerlo."
             solution={[
-              { label: "Campo Pedido", value: 'Tipo: Texto — "OC del cliente", visible en tabla y CSV' },
+              {
+                label: "Campo Pedido",
+                value: 'Tipo: Texto — "OC del cliente", visible en tabla y CSV',
+              },
             ]}
           />
           <UseCase
             title="Confirmación firmada"
             problem="Necesito prueba de que el cliente recibió el paquete."
             solution={[
-              { label: "Campo Entrega", value: 'Tipo: Texto — "Quién recibió" (DNI / nombre), obligatorio' },
+              {
+                label: "Campo Entrega",
+                value:
+                  'Tipo: Texto — "Quién recibió" (DNI / nombre), obligatorio',
+              },
             ]}
           />
           <UseCase
             title="Programación por franja"
             problem="Algunos clientes piden ventana específica más allá del time window estándar."
             solution={[
-              { label: "Campo Pedido", value: 'Tipo: Selección — "Franja preferida" (mañana/tarde/noche)' },
+              {
+                label: "Campo Pedido",
+                value:
+                  'Tipo: Selección — "Franja preferida" (mañana/tarde/noche)',
+              },
             ]}
           />
         </div>
@@ -167,23 +191,58 @@ export function CustomFieldsLearn({
       <section className="space-y-3">
         <h2 className="text-base font-semibold">Tipos de campo disponibles</h2>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <TypeCard icon={Type} label="Texto" description="Referencias, nombres, notas cortas" />
-          <TypeCard icon={Hash} label="Número" description="Cantidades, conteos" />
-          <TypeCard icon={List} label="Selección" description="Lista cerrada de opciones" />
-          <TypeCard icon={Calendar} label="Fecha" description="Vencimientos, programación" />
-          <TypeCard icon={DollarSign} label="Moneda" description="Montos a cobrar" />
-          <TypeCard icon={Phone} label="Teléfono" description="Contactos secundarios" />
-          <TypeCard icon={Mail} label="Email" description="Avisos a destinatarios" />
-          <TypeCard icon={ToggleLeft} label="Sí/No" description="Confirmaciones" />
+          <TypeCard
+            icon={Type}
+            label="Texto"
+            description="Referencias, nombres, notas cortas"
+          />
+          <TypeCard
+            icon={Hash}
+            label="Número"
+            description="Cantidades, conteos"
+          />
+          <TypeCard
+            icon={List}
+            label="Selección"
+            description="Lista cerrada de opciones"
+          />
+          <TypeCard
+            icon={Calendar}
+            label="Fecha"
+            description="Vencimientos, programación"
+          />
+          <TypeCard
+            icon={DollarSign}
+            label="Moneda"
+            description="Montos a cobrar"
+          />
+          <TypeCard
+            icon={Phone}
+            label="Teléfono"
+            description="Contactos secundarios"
+          />
+          <TypeCard
+            icon={Mail}
+            label="Email"
+            description="Avisos a destinatarios"
+          />
+          <TypeCard
+            icon={ToggleLeft}
+            label="Sí/No"
+            description="Confirmaciones"
+          />
         </div>
       </section>
 
       {/* Visibility explained */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Visibilidad {"—"} dónde aparece cada campo</h2>
+        <h2 className="text-base font-semibold">
+          Visibilidad {"—"} dónde aparece cada campo
+        </h2>
         <p className="text-xs text-muted-foreground">
           Al crear un campo elegís en qué pantallas del sistema aparece. Estas
-          tres opciones son independientes {"—"} podés activar las que tengan sentido.
+          tres opciones son independientes {"—"} podés activar las que tengan
+          sentido.
         </p>
         <div className="space-y-2">
           <VisibilityRow
@@ -206,13 +265,17 @@ export function CustomFieldsLearn({
 
       {/* Required + behavior */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Obligatorio {"—"} qué pasa cuando lo activás</h2>
+        <h2 className="text-base font-semibold">
+          Obligatorio {"—"} qué pasa cuando lo activás
+        </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Card>
             <CardContent className="p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <Package className="size-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Si es campo de Pedido</span>
+                <span className="text-sm font-medium">
+                  Si es campo de Pedido
+                </span>
               </div>
               <p className="text-xs text-muted-foreground">
                 El sistema bloquea el guardado del pedido hasta que se complete.
@@ -224,7 +287,9 @@ export function CustomFieldsLearn({
             <CardContent className="p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <MapPin className="size-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Si es campo de Entrega</span>
+                <span className="text-sm font-medium">
+                  Si es campo de Entrega
+                </span>
               </div>
               <p className="text-xs text-muted-foreground">
                 El conductor no puede marcar la parada como completada en la app
@@ -240,9 +305,11 @@ export function CustomFieldsLearn({
         <h2 className="text-base font-semibold">Notas importantes</h2>
         <ul className="space-y-1.5 text-sm text-muted-foreground list-disc pl-5">
           <li>
-            Los cambios se aplican <strong className="text-foreground">solo a
-            pedidos creados a partir del cambio</strong>. Los pedidos viejos no
-            se modifican retroactivamente.
+            Los cambios se aplican{" "}
+            <strong className="text-foreground">
+              solo a pedidos creados a partir del cambio
+            </strong>
+            . Los pedidos viejos no se modifican retroactivamente.
           </li>
           <li>
             Archivar un campo no borra los datos históricos {"—"} solo deja de
@@ -251,8 +318,11 @@ export function CustomFieldsLearn({
           </li>
           <li>
             El <strong className="text-foreground">código</strong> del campo
-            (ej: <code className="text-[11px] bg-muted px-1 rounded">monto_cobrar</code>)
-            es el identificador estable que se usa internamente y en CSV.
+            (ej:{" "}
+            <code className="text-[11px] bg-muted px-1 rounded">
+              monto_cobrar
+            </code>
+            ) es el identificador estable que se usa internamente y en CSV.
             Cambiar la etiqueta visible no cambia el código.
           </li>
         </ul>
@@ -291,8 +361,10 @@ interface FlowStepProps {
 function FlowStep({ number, title, body, tone }: FlowStepProps) {
   const toneClass = {
     primary: "bg-primary/10 text-primary border-primary/30",
-    secondary: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
-    success: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+    secondary:
+      "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
+    success:
+      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
   }[tone];
 
   return (
@@ -318,7 +390,14 @@ interface ComparisonCardProps {
   tone: "orders" | "route_stops";
 }
 
-function ComparisonCard({ icon: Icon, title, who, when, examples, tone }: ComparisonCardProps) {
+function ComparisonCard({
+  icon: Icon,
+  title,
+  who,
+  when,
+  examples,
+  tone,
+}: ComparisonCardProps) {
   const toneClass =
     tone === "orders"
       ? "border-blue-500/30 bg-blue-500/5"
@@ -341,7 +420,9 @@ function ComparisonCard({ icon: Icon, title, who, when, examples, tone }: Compar
           </div>
         </div>
         <div className="space-y-1">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Ejemplos</p>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Ejemplos
+          </p>
           <ul className="space-y-0.5 text-xs">
             {examples.map((ex) => (
               <li key={ex} className="flex items-start gap-1.5">
@@ -406,7 +487,9 @@ function TypeCard({ icon: Icon, label, description }: TypeCardProps) {
         <Icon className="size-3.5 text-muted-foreground" />
         <span className="text-xs font-medium">{label}</span>
       </div>
-      <p className="text-[11px] text-muted-foreground leading-tight">{description}</p>
+      <p className="text-[11px] text-muted-foreground leading-tight">
+        {description}
+      </p>
     </div>
   );
 }
@@ -425,9 +508,10 @@ function VisibilityRow({ icon: Icon, title, body }: VisibilityRowProps) {
       </div>
       <div className="min-w-0">
         <p className="text-sm font-medium">{title}</p>
-        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{body}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+          {body}
+        </p>
       </div>
     </div>
   );
 }
-

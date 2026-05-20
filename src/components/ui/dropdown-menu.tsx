@@ -20,9 +20,7 @@ interface DropdownMenuSubTriggerProps
     typeof DropdownMenuPrimitive.SubTrigger
   > {
   inset?: boolean;
-  ref?: React.Ref<
-    React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>
-  >;
+  ref?: React.Ref<React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>>;
 }
 
 function DropdownMenuSubTrigger({
@@ -51,9 +49,7 @@ interface DropdownMenuSubContentProps
   extends React.ComponentPropsWithoutRef<
     typeof DropdownMenuPrimitive.SubContent
   > {
-  ref?: React.Ref<
-    React.ElementRef<typeof DropdownMenuPrimitive.SubContent>
-  >;
+  ref?: React.Ref<React.ElementRef<typeof DropdownMenuPrimitive.SubContent>>;
 }
 
 function DropdownMenuSubContent({
@@ -129,9 +125,7 @@ interface DropdownMenuCheckboxItemProps
   extends React.ComponentPropsWithoutRef<
     typeof DropdownMenuPrimitive.CheckboxItem
   > {
-  ref?: React.Ref<
-    React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>
-  >;
+  ref?: React.Ref<React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>>;
 }
 
 function DropdownMenuCheckboxItem({

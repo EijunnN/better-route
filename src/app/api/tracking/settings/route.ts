@@ -2,10 +2,10 @@ import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companyTrackingSettings } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * GET /api/tracking/settings
@@ -13,7 +13,11 @@ import { EntityType, Action } from "@/lib/auth/authorization";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.COMPANY, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.COMPANY,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -76,7 +80,11 @@ export async function GET(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.COMPANY, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.COMPANY,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -132,19 +140,19 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       data: {
-        trackingEnabled: updated!.trackingEnabled,
-        showMap: updated!.showMap,
-        showDriverLocation: updated!.showDriverLocation,
-        showDriverName: updated!.showDriverName,
-        showDriverPhoto: updated!.showDriverPhoto,
-        showEvidence: updated!.showEvidence,
-        showEta: updated!.showEta,
-        showTimeline: updated!.showTimeline,
-        brandColor: updated!.brandColor,
-        logoUrl: updated!.logoUrl,
-        customMessage: updated!.customMessage,
-        tokenExpiryHours: updated!.tokenExpiryHours,
-        autoGenerateTokens: updated!.autoGenerateTokens,
+        trackingEnabled: updated?.trackingEnabled,
+        showMap: updated?.showMap,
+        showDriverLocation: updated?.showDriverLocation,
+        showDriverName: updated?.showDriverName,
+        showDriverPhoto: updated?.showDriverPhoto,
+        showEvidence: updated?.showEvidence,
+        showEta: updated?.showEta,
+        showTimeline: updated?.showTimeline,
+        brandColor: updated?.brandColor,
+        logoUrl: updated?.logoUrl,
+        customMessage: updated?.customMessage,
+        tokenExpiryHours: updated?.tokenExpiryHours,
+        autoGenerateTokens: updated?.autoGenerateTokens,
       },
     });
   } catch (error) {

@@ -1,10 +1,13 @@
 "use client";
 
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
+import type {
+  ORDER_STATUS,
+  TIME_WINDOW_STRICTNESS,
+} from "@/lib/validations/order";
 import type { OrderFormData } from "./order-form";
-import type { ORDER_STATUS, TIME_WINDOW_STRICTNESS } from "@/lib/validations/order";
 
 const PAGE_SIZE = 20;
 
@@ -93,8 +96,15 @@ interface OrdersContextValue {
 const OrdersContext = createContext<OrdersContextValue | undefined>(undefined);
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-  const { effectiveCompanyId: companyId, isReady, isSystemAdmin, companies, selectedCompanyId, setSelectedCompanyId, authCompanyId } =
-    useCompanyContext();
+  const {
+    effectiveCompanyId: companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  } = useCompanyContext();
   const { toast } = useToast();
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -107,7 +117,10 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
-  const [trackingLink, setTrackingLink] = useState<{ trackingId: string; url: string } | null>(null);
+  const [trackingLink, setTrackingLink] = useState<{
+    trackingId: string;
+    url: string;
+  } | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
   const fetchOrders = async () => {
@@ -120,7 +133,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       params.append("limit", String(PAGE_SIZE));
       params.append("offset", String((currentPage - 1) * PAGE_SIZE));
 
-      const response = await fetch(`/api/orders?${params}`, { headers: { "x-company-id": companyId } });
+      const response = await fetch(`/api/orders?${params}`, {
+        headers: { "x-company-id": companyId },
+      });
       const result = await response.json();
       setOrders(result.data || []);
       setTotalOrders(result.meta?.total || result.data?.length || 0);
@@ -133,18 +148,21 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchOrders();
-  }, [companyId, filterStatus, searchQuery, currentPage]);
+  }, [fetchOrders]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus, searchQuery]);
+  }, []);
 
   const handleCreate = async (data: OrderFormData) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -153,11 +171,15 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       }
       await fetchOrders();
       setShowForm(false);
-      toast({ title: "Pedido creado", description: `El pedido "${data.trackingId}" ha sido creado exitosamente.` });
+      toast({
+        title: "Pedido creado",
+        description: `El pedido "${data.trackingId}" ha sido creado exitosamente.`,
+      });
     } catch (err) {
       toast({
         title: "Error al crear pedido",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -169,7 +191,10 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`/api/orders/${editingOrder.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -179,11 +204,15 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       await fetchOrders();
       setEditingOrder(null);
       setShowForm(false);
-      toast({ title: "Pedido actualizado", description: `El pedido "${data.trackingId}" ha sido actualizado exitosamente.` });
+      toast({
+        title: "Pedido actualizado",
+        description: `El pedido "${data.trackingId}" ha sido actualizado exitosamente.`,
+      });
     } catch (err) {
       toast({
         title: "Error al actualizar pedido",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -211,12 +240,15 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       await fetchOrders();
       toast({
         title: "Pedido eliminado",
-        description: order ? `El pedido "${order.trackingId}" ha sido eliminado.` : "El pedido ha sido eliminado.",
+        description: order
+          ? `El pedido "${order.trackingId}" ha sido eliminado.`
+          : "El pedido ha sido eliminado.",
       });
     } catch (err) {
       toast({
         title: "Error al eliminar pedido",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -233,14 +265,19 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         headers: { "x-company-id": companyId },
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Error al eliminar pedidos");
+      if (!response.ok)
+        throw new Error(result.error || "Error al eliminar pedidos");
       setCurrentPage(1);
       await fetchOrders();
-      toast({ title: "Pedidos eliminados", description: `${result.deleted} pedidos han sido eliminados.` });
+      toast({
+        title: "Pedidos eliminados",
+        description: `${result.deleted} pedidos han sido eliminados.`,
+      });
     } catch (err) {
       toast({
         title: "Error al eliminar pedidos",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -259,7 +296,10 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/tracking/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify({ orderIds: [orderId] }),
       });
       if (!response.ok) {
@@ -275,7 +315,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       toast({
         title: "Error al generar enlace",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -298,7 +339,6 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     };
     return colors[status] || "bg-gray-500/10 text-gray-600";
   };
-
 
   // Server already filters active=true, no client-side filter needed
   const filteredOrders = orders;
@@ -337,9 +377,19 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     clearTrackingLink,
   };
 
-  const meta: OrdersMeta = { companyId, isReady, isSystemAdmin, companies, selectedCompanyId, setSelectedCompanyId, authCompanyId };
+  const meta: OrdersMeta = {
+    companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  };
 
-  return <OrdersContext value={{ state, actions, meta }}>{children}</OrdersContext>;
+  return (
+    <OrdersContext value={{ state, actions, meta }}>{children}</OrdersContext>
+  );
 }
 
 export function useOrders(): OrdersContextValue {

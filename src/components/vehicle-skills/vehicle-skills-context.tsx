@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { VehicleSkillInput } from "@/lib/validations/vehicle-skill";
@@ -18,9 +18,12 @@ export interface VehicleSkill {
 
 export const CATEGORY_BADGE_COLORS: Record<string, string> = {
   EQUIPMENT: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  TEMPERATURE: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400",
-  CERTIFICATIONS: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-  SPECIAL: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+  TEMPERATURE:
+    "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400",
+  CERTIFICATIONS:
+    "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+  SPECIAL:
+    "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
 };
 
 export interface VehicleSkillsState {
@@ -60,7 +63,9 @@ interface VehicleSkillsContextValue {
   meta: VehicleSkillsMeta;
 }
 
-const VehicleSkillsContext = createContext<VehicleSkillsContextValue | undefined>(undefined);
+const VehicleSkillsContext = createContext<
+  VehicleSkillsContextValue | undefined
+>(undefined);
 
 export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
@@ -81,8 +86,10 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filterCategory && filterCategory !== "__all__") params.append("category", filterCategory);
-      if (filterActive && filterActive !== "__all__") params.append("active", filterActive);
+      if (filterCategory && filterCategory !== "__all__")
+        params.append("category", filterCategory);
+      if (filterActive && filterActive !== "__all__")
+        params.append("active", filterActive);
       if (searchTerm) params.append("search", searchTerm);
 
       const response = await fetch(`/api/vehicle-skills?${params.toString()}`, {
@@ -92,7 +99,11 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
       setSkills(data.data || []);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudieron cargar las habilidades");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudieron cargar las habilidades",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -100,14 +111,17 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchSkills();
-  }, [companyId, filterCategory, filterActive, searchTerm]);
+  }, [fetchSkills]);
 
   const handleCreate = async (data: VehicleSkillInput) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/vehicle-skills", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -116,11 +130,15 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
       }
       await fetchSkills();
       setShowForm(false);
-      toast({ title: "Habilidad creada", description: `La habilidad "${data.name}" ha sido creada exitosamente.` });
+      toast({
+        title: "Habilidad creada",
+        description: `La habilidad "${data.name}" ha sido creada exitosamente.`,
+      });
     } catch (err) {
       toast({
         title: "Error al crear habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -132,7 +150,10 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`/api/vehicle-skills/${editingSkill.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -141,11 +162,15 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
       }
       await fetchSkills();
       setEditingSkill(null);
-      toast({ title: "Habilidad actualizada", description: `La habilidad "${data.name}" ha sido actualizada exitosamente.` });
+      toast({
+        title: "Habilidad actualizada",
+        description: `La habilidad "${data.name}" ha sido actualizada exitosamente.`,
+      });
     } catch (err) {
       toast({
         title: "Error al actualizar habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -163,17 +188,22 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al eliminar la habilidad");
+        throw new Error(
+          error.error || error.details || "Error al eliminar la habilidad",
+        );
       }
       await fetchSkills();
       toast({
         title: "Habilidad eliminada",
-        description: skill ? `La habilidad "${skill.name}" ha sido eliminada.` : "La habilidad ha sido eliminada.",
+        description: skill
+          ? `La habilidad "${skill.name}" ha sido eliminada.`
+          : "La habilidad ha sido eliminada.",
       });
     } catch (err) {
       toast({
         title: "Error al eliminar habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -186,7 +216,10 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`/api/vehicle-skills/${skill.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify({ active: !skill.active }),
       });
       if (!response.ok) {
@@ -201,7 +234,8 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       toast({
         title: "Error al actualizar estado",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     }
@@ -240,13 +274,19 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
 
   const meta: VehicleSkillsMeta = { companyId, isReady };
 
-  return <VehicleSkillsContext value={{ state, actions, meta }}>{children}</VehicleSkillsContext>;
+  return (
+    <VehicleSkillsContext value={{ state, actions, meta }}>
+      {children}
+    </VehicleSkillsContext>
+  );
 }
 
 export function useVehicleSkills(): VehicleSkillsContextValue {
   const context = use(VehicleSkillsContext);
   if (context === undefined) {
-    throw new Error("useVehicleSkills must be used within a VehicleSkillsProvider");
+    throw new Error(
+      "useVehicleSkills must be used within a VehicleSkillsProvider",
+    );
   }
   return context;
 }

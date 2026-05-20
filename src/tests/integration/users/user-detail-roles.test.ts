@@ -1,35 +1,35 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
 import { and, eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
-  createAdmin,
-  createUser,
-  createRole,
-  createUserRole,
-} from "../setup/test-data";
-import { users, userRoles, roles } from "@/db/schema";
-import {
-  GET as GET_USER,
-  PUT as PUT_USER,
-  DELETE as DELETE_USER,
-} from "@/app/api/users/[id]/route";
-import {
+  DELETE as DELETE_ROLE,
   GET as GET_ROLES,
   POST as POST_ROLE,
-  DELETE as DELETE_ROLE,
 } from "@/app/api/users/[id]/roles/route";
+import {
+  DELETE as DELETE_USER,
+  GET as GET_USER,
+  PUT as PUT_USER,
+} from "@/app/api/users/[id]/route";
 import { GET as GET_SESSIONS } from "@/app/api/users/[id]/sessions/route";
 import { POST as POST_IMPORT } from "@/app/api/users/import/route";
+import { roles, userRoles, users } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createRole,
+  createUser,
+  createUserRole,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -492,16 +492,13 @@ describe("User Detail, Roles & Sessions", () => {
         active: true,
       });
 
-      const request = await createTestRequest(
-        `/api/users/${user.id}/roles`,
-        {
-          method: "GET",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-        },
-      );
+      const request = await createTestRequest(`/api/users/${user.id}/roles`, {
+        method: "GET",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+      });
 
       const response = await GET_ROLES(request, idParams(user.id));
       expect(response.status).toBe(200);
@@ -522,16 +519,13 @@ describe("User Detail, Roles & Sessions", () => {
         username: "no_roles",
       });
 
-      const request = await createTestRequest(
-        `/api/users/${user.id}/roles`,
-        {
-          method: "GET",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-        },
-      );
+      const request = await createTestRequest(`/api/users/${user.id}/roles`, {
+        method: "GET",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+      });
 
       const response = await GET_ROLES(request, idParams(user.id));
       expect(response.status).toBe(200);
@@ -541,26 +535,22 @@ describe("User Detail, Roles & Sessions", () => {
     });
 
     test("returns 404 for non-existent user", async () => {
-      const request = await createTestRequest(
-        `/api/users/${FAKE_UUID}/roles`,
-        {
-          method: "GET",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-        },
-      );
+      const request = await createTestRequest(`/api/users/${FAKE_UUID}/roles`, {
+        method: "GET",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+      });
 
       const response = await GET_ROLES(request, idParams(FAKE_UUID));
       expect(response.status).toBe(404);
     });
 
     test("returns 401 without authentication", async () => {
-      const request = await createTestRequest(
-        `/api/users/${FAKE_UUID}/roles`,
-        { method: "GET" },
-      );
+      const request = await createTestRequest(`/api/users/${FAKE_UUID}/roles`, {
+        method: "GET",
+      });
 
       const response = await GET_ROLES(request, idParams(FAKE_UUID));
       expect(response.status).toBe(401);
@@ -573,16 +563,13 @@ describe("User Detail, Roles & Sessions", () => {
         username: "tenant_roles",
       });
 
-      const request = await createTestRequest(
-        `/api/users/${userA.id}/roles`,
-        {
-          method: "GET",
-          token: tokenB,
-          companyId: companyB.id,
-          userId: adminB.id,
-          headers: authHeadersB,
-        },
-      );
+      const request = await createTestRequest(`/api/users/${userA.id}/roles`, {
+        method: "GET",
+        token: tokenB,
+        companyId: companyB.id,
+        userId: adminB.id,
+        headers: authHeadersB,
+      });
 
       const response = await GET_ROLES(request, idParams(userA.id));
       expect(response.status).toBe(404);
@@ -607,17 +594,14 @@ describe("User Detail, Roles & Sessions", () => {
         code: "DISPATCHER",
       });
 
-      const request = await createTestRequest(
-        `/api/users/${user.id}/roles`,
-        {
-          method: "POST",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-          body: { roleId: role.id, isPrimary: false },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${user.id}/roles`, {
+        method: "POST",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+        body: { roleId: role.id, isPrimary: false },
+      });
 
       const response = await POST_ROLE(request, idParams(user.id));
       expect(response.status).toBe(200);
@@ -632,10 +616,7 @@ describe("User Detail, Roles & Sessions", () => {
         .select()
         .from(userRoles)
         .where(
-          and(
-            eq(userRoles.userId, user.id),
-            eq(userRoles.roleId, role.id),
-          ),
+          and(eq(userRoles.userId, user.id), eq(userRoles.roleId, role.id)),
         );
       expect(dbRecord).toBeDefined();
       expect(dbRecord.active).toBe(true);
@@ -654,17 +635,14 @@ describe("User Detail, Roles & Sessions", () => {
         code: "PRIMARY_ROLE",
       });
 
-      const request = await createTestRequest(
-        `/api/users/${user.id}/roles`,
-        {
-          method: "POST",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-          body: { roleId: role.id, isPrimary: true },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${user.id}/roles`, {
+        method: "POST",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+        body: { roleId: role.id, isPrimary: true },
+      });
 
       const response = await POST_ROLE(request, idParams(user.id));
       expect(response.status).toBe(200);
@@ -674,10 +652,7 @@ describe("User Detail, Roles & Sessions", () => {
         .select()
         .from(userRoles)
         .where(
-          and(
-            eq(userRoles.userId, user.id),
-            eq(userRoles.roleId, role.id),
-          ),
+          and(eq(userRoles.userId, user.id), eq(userRoles.roleId, role.id)),
         );
       expect(dbRecord.isPrimary).toBe(true);
     });
@@ -704,17 +679,14 @@ describe("User Detail, Roles & Sessions", () => {
       });
 
       // Second assignment of same role
-      const request = await createTestRequest(
-        `/api/users/${user.id}/roles`,
-        {
-          method: "POST",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-          body: { roleId: role.id },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${user.id}/roles`, {
+        method: "POST",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+        body: { roleId: role.id },
+      });
 
       const response = await POST_ROLE(request, idParams(user.id));
       expect(response.status).toBe(400);
@@ -745,17 +717,14 @@ describe("User Detail, Roles & Sessions", () => {
       });
 
       // Reassign the same role (should reactivate)
-      const request = await createTestRequest(
-        `/api/users/${user.id}/roles`,
-        {
-          method: "POST",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-          body: { roleId: role.id, isPrimary: true },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${user.id}/roles`, {
+        method: "POST",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+        body: { roleId: role.id, isPrimary: true },
+      });
 
       const response = await POST_ROLE(request, idParams(user.id));
       expect(response.status).toBe(200);
@@ -765,10 +734,7 @@ describe("User Detail, Roles & Sessions", () => {
         .select()
         .from(userRoles)
         .where(
-          and(
-            eq(userRoles.userId, user.id),
-            eq(userRoles.roleId, role.id),
-          ),
+          and(eq(userRoles.userId, user.id), eq(userRoles.roleId, role.id)),
         );
       expect(dbRecord.active).toBe(true);
       expect(dbRecord.isPrimary).toBe(true);
@@ -781,17 +747,14 @@ describe("User Detail, Roles & Sessions", () => {
         username: "missing_roleid",
       });
 
-      const request = await createTestRequest(
-        `/api/users/${user.id}/roles`,
-        {
-          method: "POST",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-          body: {},
-        },
-      );
+      const request = await createTestRequest(`/api/users/${user.id}/roles`, {
+        method: "POST",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+        body: {},
+      });
 
       const response = await POST_ROLE(request, idParams(user.id));
       expect(response.status).toBe(400);
@@ -807,17 +770,14 @@ describe("User Detail, Roles & Sessions", () => {
         username: "ghost_role",
       });
 
-      const request = await createTestRequest(
-        `/api/users/${user.id}/roles`,
-        {
-          method: "POST",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-          body: { roleId: FAKE_UUID },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${user.id}/roles`, {
+        method: "POST",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+        body: { roleId: FAKE_UUID },
+      });
 
       const response = await POST_ROLE(request, idParams(user.id));
       expect(response.status).toBe(404);
@@ -830,30 +790,24 @@ describe("User Detail, Roles & Sessions", () => {
         code: "ORPHAN_ROLE",
       });
 
-      const request = await createTestRequest(
-        `/api/users/${FAKE_UUID}/roles`,
-        {
-          method: "POST",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-          body: { roleId: role.id },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${FAKE_UUID}/roles`, {
+        method: "POST",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+        body: { roleId: role.id },
+      });
 
       const response = await POST_ROLE(request, idParams(FAKE_UUID));
       expect(response.status).toBe(404);
     });
 
     test("returns 401 without authentication", async () => {
-      const request = await createTestRequest(
-        `/api/users/${FAKE_UUID}/roles`,
-        {
-          method: "POST",
-          body: { roleId: FAKE_UUID },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${FAKE_UUID}/roles`, {
+        method: "POST",
+        body: { roleId: FAKE_UUID },
+      });
 
       const response = await POST_ROLE(request, idParams(FAKE_UUID));
       expect(response.status).toBe(401);
@@ -885,17 +839,14 @@ describe("User Detail, Roles & Sessions", () => {
         active: true,
       });
 
-      const request = await createTestRequest(
-        `/api/users/${user.id}/roles`,
-        {
-          method: "DELETE",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-          searchParams: { roleId: role.id },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${user.id}/roles`, {
+        method: "DELETE",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+        searchParams: { roleId: role.id },
+      });
 
       const response = await DELETE_ROLE(request, idParams(user.id));
       expect(response.status).toBe(200);
@@ -908,10 +859,7 @@ describe("User Detail, Roles & Sessions", () => {
         .select()
         .from(userRoles)
         .where(
-          and(
-            eq(userRoles.userId, user.id),
-            eq(userRoles.roleId, role.id),
-          ),
+          and(eq(userRoles.userId, user.id), eq(userRoles.roleId, role.id)),
         );
       expect(dbRecord.active).toBe(false);
     });
@@ -923,17 +871,14 @@ describe("User Detail, Roles & Sessions", () => {
         username: "no_roleid_param",
       });
 
-      const request = await createTestRequest(
-        `/api/users/${user.id}/roles`,
-        {
-          method: "DELETE",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-          // No searchParams — roleId is missing
-        },
-      );
+      const request = await createTestRequest(`/api/users/${user.id}/roles`, {
+        method: "DELETE",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+        // No searchParams — roleId is missing
+      });
 
       const response = await DELETE_ROLE(request, idParams(user.id));
       expect(response.status).toBe(400);
@@ -943,30 +888,24 @@ describe("User Detail, Roles & Sessions", () => {
     });
 
     test("returns 404 for non-existent user", async () => {
-      const request = await createTestRequest(
-        `/api/users/${FAKE_UUID}/roles`,
-        {
-          method: "DELETE",
-          token: tokenA,
-          companyId: companyA.id,
-          userId: admin.id,
-          headers: authHeadersA,
-          searchParams: { roleId: FAKE_UUID },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${FAKE_UUID}/roles`, {
+        method: "DELETE",
+        token: tokenA,
+        companyId: companyA.id,
+        userId: admin.id,
+        headers: authHeadersA,
+        searchParams: { roleId: FAKE_UUID },
+      });
 
       const response = await DELETE_ROLE(request, idParams(FAKE_UUID));
       expect(response.status).toBe(404);
     });
 
     test("returns 401 without authentication", async () => {
-      const request = await createTestRequest(
-        `/api/users/${FAKE_UUID}/roles`,
-        {
-          method: "DELETE",
-          searchParams: { roleId: FAKE_UUID },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${FAKE_UUID}/roles`, {
+        method: "DELETE",
+        searchParams: { roleId: FAKE_UUID },
+      });
 
       const response = await DELETE_ROLE(request, idParams(FAKE_UUID));
       expect(response.status).toBe(401);
@@ -993,17 +932,14 @@ describe("User Detail, Roles & Sessions", () => {
       });
 
       // Company B admin tries to remove role from Company A user
-      const request = await createTestRequest(
-        `/api/users/${userA.id}/roles`,
-        {
-          method: "DELETE",
-          token: tokenB,
-          companyId: companyB.id,
-          userId: adminB.id,
-          headers: authHeadersB,
-          searchParams: { roleId: role.id },
-        },
-      );
+      const request = await createTestRequest(`/api/users/${userA.id}/roles`, {
+        method: "DELETE",
+        token: tokenB,
+        companyId: companyB.id,
+        userId: adminB.id,
+        headers: authHeadersB,
+        searchParams: { roleId: role.id },
+      });
 
       const response = await DELETE_ROLE(request, idParams(userA.id));
       expect(response.status).toBe(404);
@@ -1255,7 +1191,9 @@ describe("User Detail, Roles & Sessions", () => {
       expect(response.status).toBe(400);
 
       const data = await response.json();
-      expect(data.errors.some((d: { field: string }) => d.field === "email")).toBe(true);
+      expect(
+        data.errors.some((d: { field: string }) => d.field === "email"),
+      ).toBe(true);
     });
 
     test("returns 400 for duplicate usernames within CSV", async () => {
@@ -1299,7 +1237,9 @@ describe("User Detail, Roles & Sessions", () => {
 
       const data = await response.json();
       expect(
-        data.errors.some((d: { field: string }) => d.field === "identification"),
+        data.errors.some(
+          (d: { field: string }) => d.field === "identification",
+        ),
       ).toBe(true);
       expect(
         data.errors.some((d: { field: string }) => d.field === "licenseNumber"),
@@ -1312,7 +1252,7 @@ describe("User Detail, Roles & Sessions", () => {
     test("returns 400 for invalid license categories", async () => {
       const csv = [
         "name,email,username,password,role,identification,licenseNumber,licenseExpiry,licenseCategories",
-        "Driver Invalid Categories,driver-cats@import.com,driver_cats,Password123!,CONDUCTOR,DNI-222,LIC-222,2027-12-31,\"A,Z\"",
+        'Driver Invalid Categories,driver-cats@import.com,driver_cats,Password123!,CONDUCTOR,DNI-222,LIC-222,2027-12-31,"A,Z"',
       ].join("\n");
 
       const formData = buildCsvFormData(csv);
@@ -1327,7 +1267,9 @@ describe("User Detail, Roles & Sessions", () => {
 
       const data = await response.json();
       expect(
-        data.errors.some((d: { field: string }) => d.field === "licenseCategories"),
+        data.errors.some(
+          (d: { field: string }) => d.field === "licenseCategories",
+        ),
       ).toBe(true);
     });
 
@@ -1350,7 +1292,9 @@ describe("User Detail, Roles & Sessions", () => {
 
       const data = await response.json();
       expect(
-        data.errors.some((d: { field: string }) => d.field === "identification"),
+        data.errors.some(
+          (d: { field: string }) => d.field === "identification",
+        ),
       ).toBe(true);
     });
 
@@ -1415,12 +1359,15 @@ describe("User Detail, Roles & Sessions", () => {
       const data = await response.json();
       expect(data.created).toBe(1);
       expect(
-        data.errors.some((d: { field: string }) => d.field === "identification"),
+        data.errors.some(
+          (d: { field: string }) => d.field === "identification",
+        ),
       ).toBe(true);
     });
 
     test("returns 401 without authentication", async () => {
-      const csv = "name,email,username,password,role\nA,a@b.com,abc,pass1234,PLANIFICADOR";
+      const csv =
+        "name,email,username,password,role\nA,a@b.com,abc,pass1234,PLANIFICADOR";
       const formData = buildCsvFormData(csv);
       const url = new URL("/api/users/import", "http://localhost:3000");
       const request = new Request(url, {

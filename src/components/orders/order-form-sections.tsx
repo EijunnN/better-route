@@ -1,11 +1,11 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
+import { DynamicFieldRenderer } from "@/components/custom-fields";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DynamicFieldRenderer } from "@/components/custom-fields";
 import { useRestrictedZones } from "@/hooks/use-restricted-zones";
 import { useOrderForm } from "./order-form-context";
 
@@ -168,9 +168,9 @@ export function OrderFormLocation() {
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
           <p className="text-xs text-destructive leading-snug">
             Esta dirección cae dentro de la zona restringida
-            {restricted.zoneName ? ` "${restricted.zoneName}"` : ""}. La
-            orden se podrá guardar pero será excluida automáticamente
-            del ruteo en el próximo plan.
+            {restricted.zoneName ? ` "${restricted.zoneName}"` : ""}. La orden
+            se podrá guardar pero será excluida automáticamente del ruteo en el
+            próximo plan.
           </p>
         </div>
       )}

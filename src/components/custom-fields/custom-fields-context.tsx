@@ -1,11 +1,19 @@
 "use client";
 
-import { createContext, use, useState, type ReactNode } from "react";
-import { useCompanyContext } from "@/hooks/use-company-context";
+import { createContext, type ReactNode, use, useState } from "react";
 import { useApiData } from "@/hooks/use-api";
+import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
-export type FieldType = "text" | "number" | "select" | "date" | "currency" | "phone" | "email" | "boolean";
+export type FieldType =
+  | "text"
+  | "number"
+  | "select"
+  | "date"
+  | "currency"
+  | "phone"
+  | "email"
+  | "boolean";
 export type FieldEntity = "orders" | "route_stops";
 
 export interface FieldDefinition {
@@ -77,7 +85,10 @@ interface CustomFieldsActions {
   updateDefinition: (id: string, data: FieldDefinitionInput) => Promise<void>;
   deleteDefinition: (id: string) => Promise<void>;
   toggleActive: (definition: FieldDefinition, active: boolean) => Promise<void>;
-  reorder: (definition: FieldDefinition, direction: "up" | "down") => Promise<void>;
+  reorder: (
+    definition: FieldDefinition,
+    direction: "up" | "down",
+  ) => Promise<void>;
   openCreateDialog: (defaultEntity?: FieldEntity) => void;
   openEditDialog: (definition: FieldDefinition) => void;
   closeDialog: () => void;
@@ -95,19 +106,24 @@ interface CustomFieldsContextValue {
   meta: CustomFieldsMeta;
 }
 
-const CustomFieldsContext = createContext<CustomFieldsContextValue | undefined>(undefined);
+const CustomFieldsContext = createContext<CustomFieldsContextValue | undefined>(
+  undefined,
+);
 
 export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
   const { toast } = useToast();
 
-  const [selectedDefinition, setSelectedDefinition] = useState<FieldDefinition | null>(null);
+  const [selectedDefinition, setSelectedDefinition] =
+    useState<FieldDefinition | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [defaultEntity, setDefaultEntity] = useState<FieldEntity>("orders");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const definitionsUrl = companyId ? `/api/companies/${companyId}/field-definitions` : null;
+  const definitionsUrl = companyId
+    ? `/api/companies/${companyId}/field-definitions`
+    : null;
 
   const {
     data: definitions = [],
@@ -120,17 +136,28 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
     if (!companyId || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/companies/${companyId}/field-definitions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
-        body: JSON.stringify(data),
-      });
+      const response = await fetch(
+        `/api/companies/${companyId}/field-definitions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": companyId,
+          },
+          body: JSON.stringify(data),
+        },
+      );
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Error al crear campo" }));
+        const error = await response
+          .json()
+          .catch(() => ({ error: "Error al crear campo" }));
         throw new Error(error.error || "Error al crear campo");
       }
       await mutateDefinitions();
-      toast({ title: "Campo creado", description: `El campo "${data.label}" ha sido creado.` });
+      toast({
+        title: "Campo creado",
+        description: `El campo "${data.label}" ha sido creado.`,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -140,17 +167,28 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
     if (!companyId || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/companies/${companyId}/field-definitions/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
-        body: JSON.stringify(data),
-      });
+      const response = await fetch(
+        `/api/companies/${companyId}/field-definitions/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": companyId,
+          },
+          body: JSON.stringify(data),
+        },
+      );
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Error al actualizar campo" }));
+        const error = await response
+          .json()
+          .catch(() => ({ error: "Error al actualizar campo" }));
         throw new Error(error.error || "Error al actualizar campo");
       }
       await mutateDefinitions();
-      toast({ title: "Campo actualizado", description: `El campo "${data.label}" ha sido actualizado.` });
+      toast({
+        title: "Campo actualizado",
+        description: `El campo "${data.label}" ha sido actualizado.`,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -160,16 +198,24 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
     if (!companyId || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/companies/${companyId}/field-definitions/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
+      const response = await fetch(
+        `/api/companies/${companyId}/field-definitions/${id}`,
+        {
+          method: "DELETE",
+          headers: { "x-company-id": companyId },
+        },
+      );
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Error al archivar campo" }));
+        const error = await response
+          .json()
+          .catch(() => ({ error: "Error al archivar campo" }));
         throw new Error(error.error || "Error al archivar campo");
       }
       await mutateDefinitions();
-      toast({ title: "Campo archivado", description: "El campo ya no se usará en nuevos pedidos." });
+      toast({
+        title: "Campo archivado",
+        description: "El campo ya no se usará en nuevos pedidos.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -177,13 +223,21 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
 
   const toggleActive = async (definition: FieldDefinition, active: boolean) => {
     if (!companyId) return;
-    const response = await fetch(`/api/companies/${companyId}/field-definitions/${definition.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-company-id": companyId },
-      body: JSON.stringify({ active }),
-    });
+    const response = await fetch(
+      `/api/companies/${companyId}/field-definitions/${definition.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify({ active }),
+      },
+    );
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Error al cambiar estado" }));
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Error al cambiar estado" }));
       throw new Error(error.error || "Error al cambiar estado");
     }
     await mutateDefinitions();
@@ -198,11 +252,16 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   // Reorder swaps `position` with the previous/next sibling in the same entity.
   // Two PATCH calls because we don't have a batch endpoint — good enough for
   // a list of <50 fields and avoids adding a new API surface.
-  const reorder = async (definition: FieldDefinition, direction: "up" | "down") => {
+  const reorder = async (
+    definition: FieldDefinition,
+    direction: "up" | "down",
+  ) => {
     if (!companyId) return;
     const list = Array.isArray(definitions) ? definitions : [];
     const siblings = list
-      .filter((d) => d.entity === definition.entity && d.active === definition.active)
+      .filter(
+        (d) => d.entity === definition.entity && d.active === definition.active,
+      )
       .sort((a, b) => a.position - b.position);
     const idx = siblings.findIndex((d) => d.id === definition.id);
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
@@ -212,7 +271,10 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
     const patch = async (id: string, position: number) =>
       fetch(`/api/companies/${companyId}/field-definitions/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify({ position }),
       });
 
@@ -249,9 +311,15 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   };
 
   const contextState: CustomFieldsState = {
-    definitions: Array.isArray(definitions) ? [...definitions].sort((a, b) => a.position - b.position) : [],
+    definitions: Array.isArray(definitions)
+      ? [...definitions].sort((a, b) => a.position - b.position)
+      : [],
     isLoading,
-    error: definitionsError ? (definitionsError instanceof Error ? definitionsError.message : "Error al cargar campos personalizados") : null,
+    error: definitionsError
+      ? definitionsError instanceof Error
+        ? definitionsError.message
+        : "Error al cargar campos personalizados"
+      : null,
     isSubmitting,
     selectedDefinition,
     showDialog,
@@ -274,7 +342,13 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   const contextMeta: CustomFieldsMeta = { companyId, isReady };
 
   return (
-    <CustomFieldsContext value={{ state: contextState, actions: contextActions, meta: contextMeta }}>
+    <CustomFieldsContext
+      value={{
+        state: contextState,
+        actions: contextActions,
+        meta: contextMeta,
+      }}
+    >
       {children}
     </CustomFieldsContext>
   );
@@ -283,7 +357,9 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
 export function useCustomFields(): CustomFieldsContextValue {
   const context = use(CustomFieldsContext);
   if (context === undefined) {
-    throw new Error("useCustomFields must be used within a CustomFieldsProvider");
+    throw new Error(
+      "useCustomFields must be used within a CustomFieldsProvider",
+    );
   }
   return context;
 }

@@ -81,7 +81,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Validate index if provided
-    if (index !== undefined && (isNaN(index) || index < 1 || index > 99)) {
+    if (
+      index !== undefined &&
+      (Number.isNaN(index) || index < 1 || index > 99)
+    ) {
       return NextResponse.json(
         { error: "index must be a number between 1 and 99" },
         { status: 400 },

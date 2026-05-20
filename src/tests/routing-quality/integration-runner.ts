@@ -4,16 +4,16 @@
  * configuration is available in the DB.
  */
 
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  optimizationConfigurations,
   companies,
-  vehicles,
+  optimizationConfigurations,
   orders,
+  vehicles,
 } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
-import { runOptimization } from "@/lib/optimization/optimization-runner";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { runOptimization } from "@/lib/optimization/optimization-runner";
 
 async function main() {
   const [company] = await db.select().from(companies).limit(1);
@@ -38,12 +38,7 @@ async function main() {
   const availableVehicles = await db
     .select()
     .from(vehicles)
-    .where(
-      and(
-        eq(vehicles.companyId, company.id),
-        eq(vehicles.active, true),
-      ),
-    );
+    .where(and(eq(vehicles.companyId, company.id), eq(vehicles.active, true)));
   if (availableVehicles.length === 0) {
     console.log("No vehicles — skipping.");
     process.exit(0);
@@ -85,7 +80,9 @@ async function main() {
   console.log(`engine: ${result.summary.engineUsed}`);
 
   if (!result.verification) {
-    console.error("\n❌ result.verification is MISSING. Verifier integration failed.");
+    console.error(
+      "\n❌ result.verification is MISSING. Verifier integration failed.",
+    );
     process.exit(1);
   }
 
@@ -95,7 +92,9 @@ async function main() {
     `violations: HARD=${result.verification.summary.hard}, SOFT=${result.verification.summary.soft}, INFO=${result.verification.summary.info}`,
   );
   console.log("by code:");
-  for (const [code, count] of Object.entries(result.verification.summary.byCode)) {
+  for (const [code, count] of Object.entries(
+    result.verification.summary.byCode,
+  )) {
     console.log(`  ${code}: ${count}`);
   }
   if (result.verification.violations.length > 0) {

@@ -2,9 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companyWorkflowTransitions } from "@/db/schema";
-import { handleError } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/permissions";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/permissions";
+import { handleError } from "@/lib/routing/route-helpers";
 
 function assertSameTenant(
   user: { role: string; companyId: string | null },

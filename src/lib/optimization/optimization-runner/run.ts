@@ -1,39 +1,30 @@
-import { updateJobProgress } from "../optimization-job";
-import {
-  type DepotConfig,
-  type OrderForOptimization,
-  type VehicleForOptimization,
-  type OptimizationConfig as VroomOptConfig,
-  optimizeRoutes as vroomOptimizeRoutes,
-} from "../vroom-optimizer";
-import {
-  createZoneBatches,
-  getDayOfWeek,
-  type DayOfWeek,
-} from "../../geo/zone-utils";
 import { resolveProfileSchema } from "@/lib/orders/profile-schema";
-import type { OptimizationInput } from "./types";
+import { type DayOfWeek, getDayOfWeek } from "../../geo/zone-utils";
+import { updateJobProgress } from "../optimization-job";
 import type {
   AggregatedPlan,
-  AssignedSolvedRoute,
   RawSolvedRoute,
-  SolvedStop,
   UnassignedOrderRecord,
   VerifiedPlan,
 } from "../solved-plan";
 import { verifyPlan } from "../verifier";
-import { groupOrdersByLocation, type OrderGroupMap } from "./prepare";
-import { formatArrivalTime, parseHHmmToSeconds } from "./postprocess";
-import { sleep } from "./utils";
-import { loadVehicleSkillsMap, parseRequiredSkills } from "./load-skills";
+import type {
+  DepotConfig,
+  OptimizationConfig as VroomOptConfig,
+} from "../vroom-optimizer";
+import { loadVehicleSkillsMap } from "./load-skills";
 import {
   loadTimeWindowPresetsMap,
   resolveTimeWindow,
 } from "./load-time-windows";
-import { loadInputs } from "./stages/load-inputs";
+import { parseHHmmToSeconds } from "./postprocess";
+import type { OrderGroupMap } from "./prepare";
 import { aggregatePlan } from "./stages/aggregate-plan";
 import { assignDrivers } from "./stages/assign-drivers";
+import { loadInputs } from "./stages/load-inputs";
 import { solveBatches } from "./stages/solve-batches";
+import type { OptimizationInput } from "./types";
+import { sleep } from "./utils";
 
 /**
  * Run optimization with mock algorithm (placeholder for actual VRP solver)
@@ -183,7 +174,7 @@ export async function runOptimization(
   for (const order of pendingOrders) {
     const lat = parseFloat(String(order.latitude));
     const lng = parseFloat(String(order.longitude));
-    if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+    if (Number.isNaN(lat) || Number.isNaN(lng) || lat === 0 || lng === 0) {
       ordersWithInvalidCoords.push(order);
       continue;
     }
@@ -198,7 +189,11 @@ export async function runOptimization(
       volumeRequired: order.volumeRequired || 0,
       orderValue: order.orderValue || 0,
       unitsRequired: order.unitsRequired || 1, // Default 1 unit per order
-      orderType: order.orderType as "NEW" | "RESCHEDULED" | "URGENT" | undefined,
+      orderType: order.orderType as
+        | "NEW"
+        | "RESCHEDULED"
+        | "URGENT"
+        | undefined,
       priority: order.priority ?? undefined,
       promisedDate: order.promisedDate,
       serviceTime: serviceTimeSeconds,
@@ -235,7 +230,9 @@ export async function runOptimization(
   );
 
   // Helper: build timeWindow object from order's HH:mm strings
-  function buildTimeWindow(orderId: string): { start: string; end: string } | undefined {
+  function buildTimeWindow(
+    orderId: string,
+  ): { start: string; end: string } | undefined {
     const details = orderDetailsMap.get(orderId);
     if (!details?.timeWindowStart || !details?.timeWindowEnd) return undefined;
     return {
@@ -317,7 +314,11 @@ export async function runOptimization(
 
   const depotLat = parseFloat(config.depotLatitude);
   const depotLng = parseFloat(config.depotLongitude);
-  const hasValidDepot = !isNaN(depotLat) && !isNaN(depotLng) && depotLat !== 0 && depotLng !== 0;
+  const hasValidDepot =
+    !Number.isNaN(depotLat) &&
+    !Number.isNaN(depotLng) &&
+    depotLat !== 0 &&
+    depotLng !== 0;
 
   // Validate vehicles have origin coordinates (use depot as fallback)
   for (const vehicle of selectedVehicles) {
@@ -337,7 +338,7 @@ export async function runOptimization(
   const groupSameLocation = preset?.groupSameLocation ?? true;
 
   // Global map to track grouped orders for ungrouping later
-  const globalGroupMap: OrderGroupMap = new Map();
+  const _globalGroupMap: OrderGroupMap = new Map();
 
   // Load company optimization profile for dynamic capacity mapping
   // Resolve the unified ProfileSchema for this company (capacity dimensions,
@@ -380,7 +381,9 @@ export async function runOptimization(
   checkAbort();
 
   // Helper: parse a string|number lat/lng into a number, undefined on bad input.
-  const numCoord = (v: string | number | null | undefined): number | undefined => {
+  const numCoord = (
+    v: string | number | null | undefined,
+  ): number | undefined => {
     if (v === null || v === undefined) return undefined;
     const n = typeof v === "string" ? parseFloat(v) : v;
     return Number.isFinite(n) ? n : undefined;

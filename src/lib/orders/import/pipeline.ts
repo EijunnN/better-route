@@ -6,20 +6,20 @@ import {
   updateTableStatistics,
 } from "@/lib/orders/batch-operations";
 import {
+  type ProfileSchema,
   resolveProfileSchema,
+  type TimeWindowPresetRef,
   validateCsvHeaders,
   validateCsvRow,
-  type ProfileSchema,
-  type TimeWindowPresetRef,
 } from "@/lib/orders/profile-schema";
 import { safeParseJson } from "@/lib/utils/safe-json";
 import { calculateErrorSummary, createValidationError } from "./errors";
 import { decodeCsvBase64, detectCSVDelimiter, parseCSV } from "./parse";
 import {
-  ERROR_TYPES,
   type CSVRecordValidationResult,
   type CSVValidationError,
   type CsvImportRequest,
+  ERROR_TYPES,
 } from "./types";
 
 export interface ProcessCsvImportContext {
@@ -285,9 +285,7 @@ export async function processCsvImport(
           ),
         )
     : [];
-  const existingTrackingIds = new Set(
-    existingOrders.map((o) => o.trackingId),
-  );
+  const existingTrackingIds = new Set(existingOrders.map((o) => o.trackingId));
 
   for (const { rowIndex, normalized, rowErrors } of tentativeByRow) {
     const trackingId = String(normalized.trackingId ?? "");
@@ -412,7 +410,8 @@ export async function processCsvImport(
         timeWindowEnd: str(data.timeWindowEnd),
         requiredSkills: str(data.requiredSkills),
         notes: str(data.notes),
-        customFields: Object.keys(customFields).length > 0 ? customFields : null,
+        customFields:
+          Object.keys(customFields).length > 0 ? customFields : null,
       };
     });
 

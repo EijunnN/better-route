@@ -1,7 +1,7 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
-  checkDriverAssignments,
   type AssignmentRouteInput,
+  checkDriverAssignments,
 } from "@/lib/optimization/verifier";
 
 function route(

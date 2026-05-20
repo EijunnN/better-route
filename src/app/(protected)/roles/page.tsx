@@ -1,7 +1,12 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { RolesProvider, useRoles, RolesListView, RolesFormView } from "@/components/roles";
+import {
+  RolesFormView,
+  RolesListView,
+  RolesProvider,
+  useRoles,
+} from "@/components/roles";
 
 function RolesPageContent() {
   const { state, meta } = useRoles();

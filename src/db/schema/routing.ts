@@ -9,10 +9,10 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { companies } from "./companies";
+import { optimizationJobs } from "./optimization";
+import { orders } from "./orders";
 import { users } from "./users";
 import { vehicles } from "./vehicles";
-import { orders } from "./orders";
-import { optimizationJobs } from "./optimization";
 import { companyWorkflowStates } from "./workflow";
 import { zones } from "./zones";
 
@@ -63,78 +63,87 @@ export const DELIVERY_FAILURE_LABELS: Record<
 };
 
 // Route stops - individual stops within optimized routes
-export const routeStops = pgTable("route_stops", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "restrict" }),
-  jobId: uuid("job_id")
-    .notNull()
-    .references(() => optimizationJobs.id, { onDelete: "cascade" }),
-  routeId: varchar("route_id", { length: 100 }).notNull(), // Route identifier from optimization result
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "restrict" }),
-  vehicleId: uuid("vehicle_id")
-    .notNull()
-    .references(() => vehicles.id, { onDelete: "restrict" }),
-  orderId: uuid("order_id")
-    .notNull()
-    .references(() => orders.id, { onDelete: "restrict" }),
-  sequence: integer("sequence").notNull(), // Order in the route (1, 2, 3, ...)
-  /**
-   * Which physical attempt of this Order this RouteStop represents.
-   * 1 = first attempt; 2+ = revisita. Computed as
-   * `COUNT(delivery_visits WHERE order_id) + 1` at insert time.
-   * See ADR-0005.
-   */
-  attemptNumber: integer("attempt_number").notNull().default(1),
-  // Stop details
-  address: text("address").notNull(),
-  latitude: varchar("latitude", { length: 20 }).notNull(),
-  longitude: varchar("longitude", { length: 20 }).notNull(),
-  // Time information
-  estimatedArrival: timestamp("estimated_arrival"),
-  estimatedServiceTime: integer("estimated_service_time"), // seconds
-  timeWindowStart: timestamp("time_window_start"),
-  timeWindowEnd: timestamp("time_window_end"),
-  // Status tracking
-  status: varchar("status", { length: 20 })
-    .notNull()
-    .$type<keyof typeof STOP_STATUS>()
-    .default("PENDING"),
-  startedAt: timestamp("started_at"),
-  completedAt: timestamp("completed_at"),
-  // Optional notes for status changes
-  notes: text("notes"),
-  // Failure tracking (required when status = FAILED)
-  failureReason: varchar("failure_reason", { length: 50 }).$type<
-    keyof typeof DELIVERY_FAILURE_REASONS
-  >(),
-  // Evidence URLs for failed deliveries (photos from driver app)
-  evidenceUrls: jsonb("evidence_urls").$type<string[]>(),
-  // Custom workflow state reference
-  workflowStateId: uuid("workflow_state_id").references(() => companyWorkflowStates.id, { onDelete: "set null" }),
-  // Zone this stop was routed through at plan-time. Captured once at
-  // confirm and preserved even if the zone is later deleted/renamed —
-  // historical plans should keep showing the zone they were run under.
-  // ON DELETE SET NULL so zone deletion doesn't cascade into old plans.
-  zoneId: uuid("zone_id").references(() => zones.id, { onDelete: "set null" }),
-  // Metadata
-  metadata: jsonb("metadata"), // Flexible data for stop-specific info
-  // Values for company-defined custom fields with entity="route_stops".
-  // Shape: { [fieldDefinitionCode]: value } — validated against
-  // companyFieldDefinitions at write time, not enforced by DB.
-  customFields: jsonb("custom_fields").$type<Record<string, unknown>>(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("route_stops_company_id_idx").on(table.companyId),
-  index("route_stops_job_id_idx").on(table.jobId),
-  index("route_stops_user_id_idx").on(table.userId),
-  index("route_stops_order_id_idx").on(table.orderId),
-  index("route_stops_status_idx").on(table.status),
-]);
+export const routeStops = pgTable(
+  "route_stops",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "restrict" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => optimizationJobs.id, { onDelete: "cascade" }),
+    routeId: varchar("route_id", { length: 100 }).notNull(), // Route identifier from optimization result
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    vehicleId: uuid("vehicle_id")
+      .notNull()
+      .references(() => vehicles.id, { onDelete: "restrict" }),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "restrict" }),
+    sequence: integer("sequence").notNull(), // Order in the route (1, 2, 3, ...)
+    /**
+     * Which physical attempt of this Order this RouteStop represents.
+     * 1 = first attempt; 2+ = revisita. Computed as
+     * `COUNT(delivery_visits WHERE order_id) + 1` at insert time.
+     * See ADR-0005.
+     */
+    attemptNumber: integer("attempt_number").notNull().default(1),
+    // Stop details
+    address: text("address").notNull(),
+    latitude: varchar("latitude", { length: 20 }).notNull(),
+    longitude: varchar("longitude", { length: 20 }).notNull(),
+    // Time information
+    estimatedArrival: timestamp("estimated_arrival"),
+    estimatedServiceTime: integer("estimated_service_time"), // seconds
+    timeWindowStart: timestamp("time_window_start"),
+    timeWindowEnd: timestamp("time_window_end"),
+    // Status tracking
+    status: varchar("status", { length: 20 })
+      .notNull()
+      .$type<keyof typeof STOP_STATUS>()
+      .default("PENDING"),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    // Optional notes for status changes
+    notes: text("notes"),
+    // Failure tracking (required when status = FAILED)
+    failureReason: varchar("failure_reason", { length: 50 }).$type<
+      keyof typeof DELIVERY_FAILURE_REASONS
+    >(),
+    // Evidence URLs for failed deliveries (photos from driver app)
+    evidenceUrls: jsonb("evidence_urls").$type<string[]>(),
+    // Custom workflow state reference
+    workflowStateId: uuid("workflow_state_id").references(
+      () => companyWorkflowStates.id,
+      { onDelete: "set null" },
+    ),
+    // Zone this stop was routed through at plan-time. Captured once at
+    // confirm and preserved even if the zone is later deleted/renamed —
+    // historical plans should keep showing the zone they were run under.
+    // ON DELETE SET NULL so zone deletion doesn't cascade into old plans.
+    zoneId: uuid("zone_id").references(() => zones.id, {
+      onDelete: "set null",
+    }),
+    // Metadata
+    metadata: jsonb("metadata"), // Flexible data for stop-specific info
+    // Values for company-defined custom fields with entity="route_stops".
+    // Shape: { [fieldDefinitionCode]: value } — validated against
+    // companyFieldDefinitions at write time, not enforced by DB.
+    customFields: jsonb("custom_fields").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("route_stops_company_id_idx").on(table.companyId),
+    index("route_stops_job_id_idx").on(table.jobId),
+    index("route_stops_user_id_idx").on(table.userId),
+    index("route_stops_order_id_idx").on(table.orderId),
+    index("route_stops_status_idx").on(table.status),
+  ],
+);
 
 // Route stop history - audit trail for stop status changes
 export const routeStopHistory = pgTable("route_stop_history", {

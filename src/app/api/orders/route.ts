@@ -3,22 +3,25 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { logCreate } from "@/lib/infra/audit";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import {
   resolveProfileSchema,
   validateCustomFieldValues,
 } from "@/lib/orders/profile-schema";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { logCreate } from "@/lib/infra/audit";
-import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { orderQuerySchema, orderSchema } from "@/lib/validations/order";
-import { EntityType, Action } from "@/lib/auth/authorization";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { orderQuerySchema, orderSchema } from "@/lib/validations/order";
 
 // GET - List with filtering and pagination
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -136,7 +139,11 @@ export async function GET(request: NextRequest) {
 // POST - Create
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -167,7 +174,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate custom fields against schema if provided
-    if (validatedData.customFields && Object.keys(validatedData.customFields).length > 0) {
+    if (
+      validatedData.customFields &&
+      Object.keys(validatedData.customFields).length > 0
+    ) {
       const schema = await resolveProfileSchema(context.companyId);
       const errors = validateCustomFieldValues(
         validatedData.customFields,

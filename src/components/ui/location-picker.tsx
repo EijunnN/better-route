@@ -1,16 +1,13 @@
 "use client";
 
-import maplibregl, {
-  type Map as MapLibreMap,
-  type Marker,
-} from "maplibre-gl";
 import { MapPin, Search } from "lucide-react";
+import maplibregl, { type Map as MapLibreMap, type Marker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useTheme } from "@/components/layout/theme-context";
+import { getMapStyle } from "@/lib/map-styles";
 import { Button } from "./button";
 import { Input } from "./input";
-import { getMapStyle } from "@/lib/map-styles";
 
 // Default center: Lima, Peru
 const DEFAULT_CENTER: [number, number] = [-77.0428, -12.0464];
@@ -68,7 +65,7 @@ export function LocationPicker({
       if (value?.lng && value?.lat) {
         const lng = parseFloat(value.lng);
         const lat = parseFloat(value.lat);
-        if (!isNaN(lng) && !isNaN(lat)) {
+        if (!Number.isNaN(lng) && !Number.isNaN(lat)) {
           addMarker(lng, lat);
         }
       }
@@ -97,7 +94,11 @@ export function LocationPicker({
         map.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // biome-ignore lint/correctness/useExhaustiveDependencies: init-once
+    // map setup — re-running on every prop change would tear down and
+    // rebuild the MapLibre instance, which is what we explicitly do not
+    // want. The "Update marker when value changes" effect below
+    // handles prop reactivity.
   }, []);
 
   // Update marker when value changes externally
@@ -107,11 +108,14 @@ export function LocationPicker({
     if (value?.lng && value?.lat) {
       const lng = parseFloat(value.lng);
       const lat = parseFloat(value.lat);
-      if (!isNaN(lng) && !isNaN(lat)) {
+      if (!Number.isNaN(lng) && !Number.isNaN(lat)) {
         addMarker(lng, lat);
         map.current.flyTo({ center: [lng, lat], zoom: 15 });
       }
     }
+    // biome-ignore lint/correctness/useExhaustiveDependencies: addMarker
+    // is a stable local closure over refs only; including it in deps
+    // creates a use-before-declaration loop.
   }, [value?.lat, value?.lng, isLoading]);
 
   const addMarker = (lng: number, lat: number) => {

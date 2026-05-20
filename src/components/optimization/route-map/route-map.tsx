@@ -9,10 +9,10 @@ import { getMapStyle } from "@/lib/map-styles";
 import { ROUTE_COLORS, UNASSIGNED_COLOR } from "./constants";
 import { decodePolyline } from "./decode-polyline";
 import type { RouteMapProps } from "./types";
-import { useRouteSelectionVisibility } from "./use-route-layers";
-import { useMarkerHighlight } from "./use-markers";
 import { useMapThemeSync } from "./use-map-init";
 import { useZoneLayers } from "./use-map-interactions";
+import { useMarkerHighlight } from "./use-markers";
+import { useRouteSelectionVisibility } from "./use-route-layers";
 
 export function RouteMap({
   routes,
@@ -61,11 +61,9 @@ export function RouteMap({
         } else if (routes.length > 0 && routes[0]?.stops?.length > 0) {
           const allStops = routes.flatMap((r) => r.stops);
           const avgLat =
-            allStops.reduce((sum, s) => sum + s.latitude, 0) /
-            allStops.length;
+            allStops.reduce((sum, s) => sum + s.latitude, 0) / allStops.length;
           const avgLng =
-            allStops.reduce((sum, s) => sum + s.longitude, 0) /
-            allStops.length;
+            allStops.reduce((sum, s) => sum + s.longitude, 0) / allStops.length;
           centerLat = avgLat;
           centerLng = avgLng;
         }
@@ -208,10 +206,7 @@ export function RouteMap({
               route.stops
                 .toSorted((a, b) => a.sequence - b.sequence)
                 .forEach((stop) => {
-                  coordinates.push([
-                    stop.longitude,
-                    stop.latitude,
-                  ]);
+                  coordinates.push([stop.longitude, stop.latitude]);
                 });
               if (routeOrigin) {
                 coordinates.push([routeOrigin.longitude, routeOrigin.latitude]);
@@ -293,7 +288,7 @@ export function RouteMap({
                     padding: 2px 5px;
                     border-radius: 10px;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-                  ">${stop.groupedTrackingIds!.length}</span>`
+                  ">${stop.groupedTrackingIds?.length}</span>`
                 : "";
               markerEl.innerHTML = `
                 <div class="pin-marker" style="
@@ -337,7 +332,7 @@ export function RouteMap({
               const isGrouped =
                 stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1;
               const orderCount = isGrouped
-                ? stop.groupedTrackingIds!.length
+                ? stop.groupedTrackingIds?.length
                 : 1;
 
               const popupContent = isGrouped
@@ -348,8 +343,8 @@ export function RouteMap({
                       <span style="color: #888; font-size: 11px;">${orderCount} pedidos</span>
                     </div>
                     <div style="margin-bottom: 8px;">
-                      ${stop
-                        .groupedTrackingIds!.map(
+                      ${stop.groupedTrackingIds
+                        ?.map(
                           (tid, idx) => `
                         <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
                           <span style="background: ${color}33; color: ${color}; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">R${routeIndex + 1}-${stop.sequence}.${idx + 1}</span>
@@ -388,10 +383,7 @@ export function RouteMap({
                   element: markerEl,
                   anchor: "bottom",
                 })
-                  .setLngLat([
-                    stop.longitude,
-                    stop.latitude,
-                  ])
+                  .setLngLat([stop.longitude, stop.latitude])
                   .setPopup(popup)
                   .addTo(map.current);
 
@@ -478,10 +470,7 @@ export function RouteMap({
               element: markerEl,
               anchor: "bottom",
             })
-              .setLngLat([
-                order.longitude,
-                order.latitude,
-              ])
+              .setLngLat([order.longitude, order.latitude])
               .setPopup(popup)
               .addTo(map.current);
 
@@ -568,10 +557,7 @@ export function RouteMap({
             `);
 
             const marker = new maplibregl.Marker({ element: vehicleEl })
-              .setLngLat([
-                vehicle.originLongitude,
-                vehicle.originLatitude,
-              ])
+              .setLngLat([vehicle.originLongitude, vehicle.originLatitude])
               .setPopup(popup)
               .addTo(map.current);
 
@@ -599,20 +585,14 @@ export function RouteMap({
               }
 
               route.stops.forEach((stop) => {
-                allCoords.push([
-                  stop.longitude,
-                  stop.latitude,
-                ]);
+                allCoords.push([stop.longitude, stop.latitude]);
               });
             });
 
             // Include unassigned orders in bounds
             unassignedOrders.forEach((order) => {
               if (order.latitude && order.longitude) {
-                allCoords.push([
-                  order.longitude,
-                  order.latitude,
-                ]);
+                allCoords.push([order.longitude, order.latitude]);
               }
             });
 
@@ -671,7 +651,17 @@ export function RouteMap({
       map.current?.remove();
       map.current = null;
     };
-  }, [routes, depot, showDepot, unassignedOrders, vehiclesWithoutRoutes]);
+  }, [
+    routes,
+    depot,
+    showDepot,
+    unassignedOrders,
+    vehiclesWithoutRoutes,
+    isDark,
+    onMapReady,
+    onRouteSelect,
+    selectedRouteId,
+  ]);
 
   // React to theme changes
   useMapThemeSync(map, mapThemeRef, isDark, isLoading);

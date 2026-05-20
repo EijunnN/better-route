@@ -14,7 +14,15 @@ import { companyFieldDefinitions } from "@/db/schema";
 
 export type StopFieldDefinition = {
   code: string;
-  fieldType: "text" | "number" | "select" | "date" | "currency" | "phone" | "email" | "boolean";
+  fieldType:
+    | "text"
+    | "number"
+    | "select"
+    | "date"
+    | "currency"
+    | "phone"
+    | "email"
+    | "boolean";
   required: boolean;
   options: string[] | null;
 };
@@ -72,7 +80,8 @@ function coerce(
     case "number":
     case "currency": {
       const n = typeof value === "number" ? value : Number(value);
-      if (!Number.isFinite(n)) return { ok: false, message: "debe ser un número" };
+      if (!Number.isFinite(n))
+        return { ok: false, message: "debe ser un número" };
       return { ok: true, value: n };
     }
     case "boolean": {
@@ -92,10 +101,6 @@ function coerce(
       }
       return { ok: true, value: s };
     }
-    case "date":
-    case "email":
-    case "phone":
-    case "text":
     default:
       return { ok: true, value: String(value) };
   }
@@ -143,7 +148,10 @@ export function validateStopCustomFields(
 
   if (enforceRequired) {
     for (const def of definitions) {
-      if (def.required && (normalized[def.code] === undefined || normalized[def.code] === null)) {
+      if (
+        def.required &&
+        (normalized[def.code] === undefined || normalized[def.code] === null)
+      ) {
         errors.push({
           code: def.code,
           message: `el campo "${def.code}" es obligatorio`,

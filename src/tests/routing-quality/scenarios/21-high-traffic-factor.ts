@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * Lima rush-hour traffic. trafficFactor=90 multiplies duration
@@ -9,7 +9,9 @@ import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
 export const scenario: Scenario = {
   name: "21-high-traffic-factor",
   description: "trafficFactor=90 (rush hour) shrinks effective throughput",
-  orders: Array.from({ length: 20 }, (_, i) => makeOrder(i, { serviceTime: 480 })),
+  orders: Array.from({ length: 20 }, (_, i) =>
+    makeOrder(i, { serviceTime: 480 }),
+  ),
   vehicles: [
     makeVehicle(1, {
       timeWindowStart: "09:00",

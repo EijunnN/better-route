@@ -18,15 +18,13 @@
  * `bun test src/tests/unit/rbac`. The test tells you exactly what to fix.
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { Permission } from "@/lib/auth/permissions";
 
-type PageContract =
-  | ClientPageContract
-  | ServerPageContract;
+type PageContract = ClientPageContract | ServerPageContract;
 
 interface BasePageContract {
   /** Path segment under `src/app/(protected)/` — omit page.tsx. */
@@ -255,7 +253,8 @@ describe("RBAC coherence — no protected page without a contract", () => {
     // Walk the filesystem once. Any new page without a matching contract
     // fails this test — forces the author to document the permission
     // choice here before merging.
-    const { readdirSync, statSync } = require("node:fs") as typeof import("node:fs");
+    const { readdirSync, statSync } =
+      require("node:fs") as typeof import("node:fs");
     const baseDir = join(process.cwd(), "src/app/(protected)");
     const found: string[] = [];
 
@@ -276,7 +275,10 @@ describe("RBAC coherence — no protected page without a contract", () => {
 
     if (uncontracted.length > 0) {
       const hint = uncontracted
-        .map((r) => `  - /${r}: add an entry to PAGE_CONTRACTS with the required permission`)
+        .map(
+          (r) =>
+            `  - /${r}: add an entry to PAGE_CONTRACTS with the required permission`,
+        )
         .join("\n");
       throw new Error(
         `Found ${uncontracted.length} protected page(s) without a permission contract:\n${hint}`,

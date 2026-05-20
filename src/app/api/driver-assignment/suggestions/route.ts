@@ -9,20 +9,23 @@ import {
   users,
   vehicles,
 } from "@/db/schema";
-import { DEFAULT_ASSIGNMENT_CONFIG } from "@/lib/routing/driver-assignment";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { DEFAULT_ASSIGNMENT_CONFIG } from "@/lib/routing/driver-assignment";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
   type AssignmentSuggestionsSchema,
   assignmentSuggestionsSchema,
 } from "@/lib/validations/driver-assignment";
 
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
-
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.ASSIGN);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.ASSIGN,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

@@ -17,15 +17,25 @@ function buildHeaderIndex(
   const idx = new Map<string, { key: string; confidence: "exact" | "alias" }>();
   for (const field of schema.fields) {
     // Canonical label wins (exact match).
-    idx.set(normalizeHeader(field.label), { key: field.key, confidence: "exact" });
-    idx.set(normalizeHeader(field.key), { key: field.key, confidence: "exact" });
+    idx.set(normalizeHeader(field.label), {
+      key: field.key,
+      confidence: "exact",
+    });
+    idx.set(normalizeHeader(field.key), {
+      key: field.key,
+      confidence: "exact",
+    });
     if (field.labelEn) {
-      idx.set(normalizeHeader(field.labelEn), { key: field.key, confidence: "exact" });
+      idx.set(normalizeHeader(field.labelEn), {
+        key: field.key,
+        confidence: "exact",
+      });
     }
     for (const alias of field.aliases ?? []) {
       const norm = normalizeHeader(alias);
       // Don't overwrite an exact match with an alias.
-      if (!idx.has(norm)) idx.set(norm, { key: field.key, confidence: "alias" });
+      if (!idx.has(norm))
+        idx.set(norm, { key: field.key, confidence: "alias" });
     }
   }
   return idx;
@@ -52,7 +62,11 @@ export function validateCsvHeaders(
       mapping[header] = direct.key;
       mappedKeys.add(direct.key);
       if (direct.confidence === "alias") {
-        ambiguous.push({ header, resolvedKey: direct.key, confidence: "alias" });
+        ambiguous.push({
+          header,
+          resolvedKey: direct.key,
+          confidence: "alias",
+        });
       }
       continue;
     }
@@ -68,7 +82,11 @@ export function validateCsvHeaders(
     if (partial) {
       mapping[header] = partial.key;
       mappedKeys.add(partial.key);
-      ambiguous.push({ header, resolvedKey: partial.key, confidence: "partial" });
+      ambiguous.push({
+        header,
+        resolvedKey: partial.key,
+        confidence: "partial",
+      });
     } else {
       extra.push(header);
     }
@@ -82,16 +100,22 @@ export function validateCsvHeaders(
 }
 
 function isEmpty(v: unknown): boolean {
-  return v === undefined || v === null || (typeof v === "string" && v.trim() === "");
+  return (
+    v === undefined || v === null || (typeof v === "string" && v.trim() === "")
+  );
 }
 
-function coerce(value: string, field: ProfileField): { value: unknown; error: string | null } {
+function coerce(
+  value: string,
+  field: ProfileField,
+): { value: unknown; error: string | null } {
   const raw = value.trim();
   switch (field.kind) {
     case "number":
     case "currency": {
       const n = Number(raw);
-      if (!Number.isFinite(n)) return { value: null, error: `${field.label} debe ser un número` };
+      if (!Number.isFinite(n))
+        return { value: null, error: `${field.label} debe ser un número` };
       return { value: n, error: null };
     }
     case "boolean": {
@@ -101,12 +125,19 @@ function coerce(value: string, field: ProfileField): { value: unknown; error: st
     }
     case "date": {
       const ts = Date.parse(raw);
-      if (Number.isNaN(ts)) return { value: null, error: `${field.label} debe ser una fecha válida` };
+      if (Number.isNaN(ts))
+        return {
+          value: null,
+          error: `${field.label} debe ser una fecha válida`,
+        };
       return { value: new Date(ts).toISOString(), error: null };
     }
     case "time": {
       if (field.rules?.pattern && !new RegExp(field.rules.pattern).test(raw)) {
-        return { value: null, error: `${field.label} debe tener formato HH:MM` };
+        return {
+          value: null,
+          error: `${field.label} debe tener formato HH:MM`,
+        };
       }
       return { value: raw, error: null };
     }
@@ -127,21 +158,19 @@ function coerce(value: string, field: ProfileField): { value: unknown; error: st
     }
     case "email": {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
-        return { value: null, error: `${field.label} debe ser un email válido` };
+        return {
+          value: null,
+          error: `${field.label} debe ser un email válido`,
+        };
       }
       return { value: raw, error: null };
     }
-    case "phone":
-    case "string":
     default:
       return { value: raw, error: null };
   }
 }
 
-function applyRules(
-  value: unknown,
-  field: ProfileField,
-): string | null {
+function applyRules(value: unknown, field: ProfileField): string | null {
   const rules = field.rules;
   if (!rules) return null;
 
@@ -201,7 +230,11 @@ export function validateCustomFieldValues(
     }
     const ruleError = applyRules(value, field);
     if (ruleError) {
-      errors.push({ fieldKey: field.key, label: field.label, message: ruleError });
+      errors.push({
+        fieldKey: field.key,
+        label: field.label,
+        message: ruleError,
+      });
     }
   }
   return errors;
@@ -264,7 +297,11 @@ export function validateCsvRow(
 
     const ruleError = applyRules(value, field);
     if (ruleError) {
-      errors.push({ fieldKey: field.key, label: field.label, message: ruleError });
+      errors.push({
+        fieldKey: field.key,
+        label: field.label,
+        message: ruleError,
+      });
       continue;
     }
 

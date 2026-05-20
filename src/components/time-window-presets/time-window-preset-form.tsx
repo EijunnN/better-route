@@ -136,11 +136,14 @@ export function TimeWindowPresetForm({
     const validationErrors: Record<string, string> = {};
     if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
     if (formData.type === "SHIFT" || formData.type === "RANGE") {
-      if (!formData.startTime) validationErrors.startTime = "Hora de inicio es requerida";
-      if (!formData.endTime) validationErrors.endTime = "Hora de fin es requerida";
+      if (!formData.startTime)
+        validationErrors.startTime = "Hora de inicio es requerida";
+      if (!formData.endTime)
+        validationErrors.endTime = "Hora de fin es requerida";
     }
     if (formData.type === "EXACT") {
-      if (!formData.exactTime) validationErrors.exactTime = "Hora exacta es requerida";
+      if (!formData.exactTime)
+        validationErrors.exactTime = "Hora exacta es requerida";
     }
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -158,7 +161,9 @@ export function TimeWindowPresetForm({
         ...(formData.startTime ? { startTime: formData.startTime } : {}),
         ...(formData.endTime ? { endTime: formData.endTime } : {}),
         ...(formData.exactTime ? { exactTime: formData.exactTime } : {}),
-        ...(formData.toleranceMinutes !== undefined ? { toleranceMinutes: formData.toleranceMinutes } : {}),
+        ...(formData.toleranceMinutes !== undefined
+          ? { toleranceMinutes: formData.toleranceMinutes }
+          : {}),
         ...(formData.active !== undefined ? { active: formData.active } : {}),
       };
       await onSubmit(cleanedData);

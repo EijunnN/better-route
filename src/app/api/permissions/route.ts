@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = permissionQuerySchema.parse(Object.fromEntries(searchParams));
 
-    let queryBuilder = db
+    const queryBuilder = db
       .select()
       .from(permissions)
       .where(eq(permissions.active, true))

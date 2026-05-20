@@ -2,23 +2,26 @@ import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, USER_ROLES, users, vehicles } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type AssignmentValidationResult,
   validateDriverAssignment,
 } from "@/lib/routing/driver-assignment";
-import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
   type ValidateDriverAssignmentSchema,
   validateDriverAssignmentSchema,
 } from "@/lib/validations/driver-assignment";
 
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
-
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.VALIDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.VALIDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

@@ -2,13 +2,17 @@
 
 import {
   createContext,
+  type ReactNode,
   use,
   useEffect,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
-import { isExpired, isExpiringSoon, type CreateUserInput } from "@/lib/validations/user";
+import {
+  type CreateUserInput,
+  isExpired,
+  isExpiringSoon,
+} from "@/lib/validations/user";
 
 interface RolePermission {
   id: string;
@@ -96,10 +100,7 @@ const UserFormContext = createContext<UserFormContextValue | undefined>(
 
 export interface UserFormProviderProps {
   children: ReactNode;
-  onSubmit: (
-    data: CreateUserInput,
-    selectedRoleIds: string[],
-  ) => Promise<void>;
+  onSubmit: (data: CreateUserInput, selectedRoleIds: string[]) => Promise<void>;
   onCancel?: () => void;
   initialData?: Partial<CreateUserInput>;
   fleets: Array<{ id: string; name: string }>;
@@ -109,7 +110,6 @@ export interface UserFormProviderProps {
   isEditing?: boolean;
   companyId?: string;
 }
-
 
 export function UserFormProvider({
   children,
@@ -166,7 +166,10 @@ export function UserFormProvider({
 
   useEffect(() => {
     if (!companyId || roles.length === 0) return;
-    const roleIds = roles.map((r) => r.id).sort().join(",");
+    const roleIds = roles
+      .map((r) => r.id)
+      .sort()
+      .join(",");
     if (roleIds === prevRoleIdsRef.current) return;
     prevRoleIdsRef.current = roleIds;
 
@@ -283,15 +286,11 @@ export function UserFormProvider({
           ? selectedLicenseCategories.join(", ")
           : null
         : null,
-      identification: isConductor
-        ? emptyToNull(formData.identification)
-        : null,
+      identification: isConductor ? emptyToNull(formData.identification) : null,
       licenseNumber: isConductor ? emptyToNull(formData.licenseNumber) : null,
       licenseExpiry: isConductor ? emptyToNull(formData.licenseExpiry) : null,
       driverStatus: isConductor ? formData.driverStatus : null,
-      primaryFleetId: isConductor
-        ? emptyToNull(formData.primaryFleetId)
-        : null,
+      primaryFleetId: isConductor ? emptyToNull(formData.primaryFleetId) : null,
     };
 
     try {

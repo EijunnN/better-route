@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { isVroomAvailable } from "@/lib/optimization/vroom-client";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { isVroomAvailable } from "@/lib/optimization/vroom-client";
 import { handleError } from "@/lib/routing/route-helpers";
 
 // GET - List available optimization engines.

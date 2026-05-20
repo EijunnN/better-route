@@ -8,10 +8,23 @@
  */
 
 import {
+  buildOrderCapacityVector,
+  buildVehicleCapacityVector,
+  defaultProfileSchema,
+  type ProfileSchema,
+  resolveOrderPriority,
+} from "@/lib/orders/profile-schema";
+import {
   type Coordinates,
   calculateDistance,
   calculateRouteDistance,
 } from "../geo/geospatial";
+import {
+  type BalanceableRoute,
+  calculateBalancedMaxOrders,
+  getBalanceScore,
+  redistributeOrders,
+} from "./balance-utils";
 import {
   createVroomJob,
   createVroomVehicle,
@@ -20,20 +33,6 @@ import {
   type VroomRequest,
   type VroomResponse,
 } from "./vroom-client";
-import {
-  calculateBalancedMaxOrders,
-  getBalanceScore,
-  redistributeOrders,
-  type BalanceableRoute,
-  type BalanceableStop,
-} from "./balance-utils";
-import {
-  buildOrderCapacityVector,
-  buildVehicleCapacityVector,
-  defaultProfileSchema,
-  resolveOrderPriority,
-  type ProfileSchema,
-} from "@/lib/orders/profile-schema";
 
 // Our domain types
 export interface OrderForOptimization {
@@ -336,12 +335,17 @@ async function optimizeWithVroom(
     const totalVolume = orders.reduce((s, o) => s + o.volumeRequired, 0);
     const totalOrders = orders.length;
 
-    const avgMaxWeight = vehicles.reduce((s, v) => s + v.maxWeight, 0) / vehicles.length;
-    const avgMaxVolume = vehicles.reduce((s, v) => s + v.maxVolume, 0) / vehicles.length;
-    const avgMaxOrders = vehicles.reduce((s, v) => s + (v.maxOrders ?? 50), 0) / vehicles.length;
+    const avgMaxWeight =
+      vehicles.reduce((s, v) => s + v.maxWeight, 0) / vehicles.length;
+    const avgMaxVolume =
+      vehicles.reduce((s, v) => s + v.maxVolume, 0) / vehicles.length;
+    const avgMaxOrders =
+      vehicles.reduce((s, v) => s + (v.maxOrders ?? 50), 0) / vehicles.length;
 
-    const minByWeight = avgMaxWeight > 0 ? Math.ceil(totalWeight / avgMaxWeight) : 1;
-    const minByVolume = avgMaxVolume > 0 ? Math.ceil(totalVolume / avgMaxVolume) : 1;
+    const minByWeight =
+      avgMaxWeight > 0 ? Math.ceil(totalWeight / avgMaxWeight) : 1;
+    const minByVolume =
+      avgMaxVolume > 0 ? Math.ceil(totalVolume / avgMaxVolume) : 1;
     const minByOrders = Math.ceil(totalOrders / avgMaxOrders);
 
     // Take the most restrictive constraint + 1 safety margin for skills/time windows
@@ -410,7 +414,8 @@ async function optimizeWithVroom(
         description: vehicle.plate,
         capacity: vehicleCapacityVector.values,
         skills,
-        timeWindowStart: vehicle.timeWindowStart || config.depot.timeWindowStart,
+        timeWindowStart:
+          vehicle.timeWindowStart || config.depot.timeWindowStart,
         timeWindowEnd: vehicle.timeWindowEnd || config.depot.timeWindowEnd,
         speedFactor: effectiveSpeedFactor,
         maxTasks: effectiveMaxOrders,
@@ -437,7 +442,6 @@ async function optimizeWithVroom(
         return [{ type: "min-cost" as const, weight: 1 }];
       case "TIME":
         return [{ type: "min-duration" as const, weight: 1 }];
-      case "BALANCED":
       default:
         // Equal weight for both cost and duration
         return [
@@ -459,8 +463,14 @@ async function optimizeWithVroom(
 
   // Validate jobs have valid coordinates
   for (const job of jobs) {
-    if (!job.location || isNaN(job.location[0]) || isNaN(job.location[1])) {
-      throw new Error(`Job ${job.id} has invalid coordinates: ${JSON.stringify(job.location)}`);
+    if (
+      !job.location ||
+      Number.isNaN(job.location[0]) ||
+      Number.isNaN(job.location[1])
+    ) {
+      throw new Error(
+        `Job ${job.id} has invalid coordinates: ${JSON.stringify(job.location)}`,
+      );
     }
   }
 
@@ -469,7 +479,9 @@ async function optimizeWithVroom(
     const jobDeliveryLength = jobs[0].delivery?.length || 0;
     const vehicleCapacityLength = vroomVehicles[0].capacity?.length || 0;
     if (jobDeliveryLength !== vehicleCapacityLength) {
-      throw new Error(`Capacity dimension mismatch: jobs=${jobDeliveryLength}, vehicles=${vehicleCapacityLength}`);
+      throw new Error(
+        `Capacity dimension mismatch: jobs=${jobDeliveryLength}, vehicles=${vehicleCapacityLength}`,
+      );
     }
   }
 
@@ -563,14 +575,17 @@ async function optimizeWithVroom(
       if (route.totalDistance > maxDistanceMeters) {
         // Remove stops from the end until route distance is within limit
         // Estimate distance per stop as totalDistance / (stops + 1 return leg)
-        while (route.stops.length > 1 && route.totalDistance > maxDistanceMeters) {
+        while (
+          route.stops.length > 1 &&
+          route.totalDistance > maxDistanceMeters
+        ) {
           const removed = route.stops.pop()!;
           const order = ordersByIdForTrim.get(removed.orderId);
           // Approximate: reduce distance proportionally
           const avgLegDist = route.totalDistance / (route.stops.length + 2); // +2 for start+end legs
           route.totalDistance -= avgLegDist;
           route.totalTravelTime -= avgLegDist / 8.33; // ~30 km/h
-          route.totalServiceTime -= (removed.serviceTime || 300);
+          route.totalServiceTime -= removed.serviceTime || 300;
           route.totalDuration = route.totalTravelTime + route.totalServiceTime;
           route.totalWeight -= order?.weightRequired || 0;
           route.totalVolume -= order?.volumeRequired || 0;
@@ -582,12 +597,23 @@ async function optimizeWithVroom(
         }
 
         // Reindex remaining stops
-        route.stops.forEach((s, i) => { s.sequence = i + 1; });
+        route.stops.forEach((s, i) => {
+          s.sequence = i + 1;
+        });
 
         // Update metrics
-        result.metrics.totalStops = result.routes.reduce((s, r) => s + r.stops.length, 0);
-        result.metrics.totalDistance = result.routes.reduce((s, r) => s + r.totalDistance, 0);
-        result.metrics.totalDuration = result.routes.reduce((s, r) => s + r.totalDuration, 0);
+        result.metrics.totalStops = result.routes.reduce(
+          (s, r) => s + r.stops.length,
+          0,
+        );
+        result.metrics.totalDistance = result.routes.reduce(
+          (s, r) => s + r.totalDistance,
+          0,
+        );
+        result.metrics.totalDuration = result.routes.reduce(
+          (s, r) => s + r.totalDuration,
+          0,
+        );
       }
     }
   }

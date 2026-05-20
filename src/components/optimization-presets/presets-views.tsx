@@ -1,11 +1,16 @@
 "use client";
 
 import { Edit, Plus, Settings2, Star, Trash2 } from "lucide-react";
+import { Can } from "@/components/auth/can";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Can } from "@/components/auth/can";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ErrorState } from "@/components/ui/error-state";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -14,19 +19,48 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { usePresets, ROUTE_END_MODES, type OptimizationPreset } from "./presets-context";
+import {
+  type OptimizationPreset,
+  ROUTE_END_MODES,
+  usePresets,
+} from "./presets-context";
 
 const OPTIMIZATION_OPTIONS = [
-  { key: "balanceVisits", label: "Balancear visitas", desc: "Distribuir paradas equitativamente entre vehículos" },
-  { key: "minimizeVehicles", label: "Minimizar vehículos", desc: "Usar la menor cantidad de vehículos posible" },
-  { key: "flexibleTimeWindows", label: "Ventanas de tiempo flexibles", desc: "Permitir cierta tolerancia en horarios" },
-  { key: "openStart", label: "Inicio abierto", desc: "Vehículos pueden iniciar desde cualquier lugar" },
-  { key: "oneRoutePerVehicle", label: "Una ruta por vehículo", desc: "Cada vehículo solo tiene una ruta asignada" },
-  { key: "groupSameLocation", label: "Agrupar mismas coordenadas", desc: "Múltiples pedidos en la misma ubicación cuentan como una sola parada" },
+  {
+    key: "balanceVisits",
+    label: "Balancear visitas",
+    desc: "Distribuir paradas equitativamente entre vehículos",
+  },
+  {
+    key: "minimizeVehicles",
+    label: "Minimizar vehículos",
+    desc: "Usar la menor cantidad de vehículos posible",
+  },
+  {
+    key: "flexibleTimeWindows",
+    label: "Ventanas de tiempo flexibles",
+    desc: "Permitir cierta tolerancia en horarios",
+  },
+  {
+    key: "openStart",
+    label: "Inicio abierto",
+    desc: "Vehículos pueden iniciar desde cualquier lugar",
+  },
+  {
+    key: "oneRoutePerVehicle",
+    label: "Una ruta por vehículo",
+    desc: "Cada vehículo solo tiene una ruta asignada",
+  },
+  {
+    key: "groupSameLocation",
+    label: "Agrupar mismas coordenadas",
+    desc: "Múltiples pedidos en la misma ubicación cuentan como una sola parada",
+  },
 ] as const;
 
 export function PresetsListView() {
@@ -58,7 +92,8 @@ export function PresetsListView() {
             Presets de Optimización
           </h1>
           <p className="text-muted-foreground mt-1">
-            Configura los parámetros predeterminados para la optimización de rutas
+            Configura los parámetros predeterminados para la optimización de
+            rutas
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -74,9 +109,10 @@ export function PresetsListView() {
       <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 mb-6">
         <CardContent className="py-3 px-4">
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            <span className="font-medium">¿Cómo funcionan los presets?</span> El preset marcado como{" "}
-            <span className="font-semibold">"Activo"</span> se aplicará automáticamente cuando ejecutes
-            una optimización de rutas.
+            <span className="font-medium">¿Cómo funcionan los presets?</span> El
+            preset marcado como <span className="font-semibold">"Activo"</span>{" "}
+            se aplicará automáticamente cuando ejecutes una optimización de
+            rutas.
           </p>
         </CardContent>
       </Card>
@@ -93,7 +129,11 @@ export function PresetsListView() {
           ))}
         </div>
       ) : state.error ? (
-        <ErrorState title="Error al cargar presets de optimización" error={state.error} onRetry={actions.fetchPresets} />
+        <ErrorState
+          title="Error al cargar presets de optimización"
+          error={state.error}
+          onRetry={actions.fetchPresets}
+        />
       ) : state.presets.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -140,35 +180,50 @@ function PresetCard({ preset }: { preset: OptimizationPreset }) {
                 </Badge>
               )}
             </CardTitle>
-            <CardDescription className="mt-1">{preset.description || "Sin descripción"}</CardDescription>
+            <CardDescription className="mt-1">
+              {preset.description || "Sin descripción"}
+            </CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Opciones activas</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Opciones activas
+          </p>
           <div className="grid grid-cols-1 gap-2">
-            {["balanceVisits", "minimizeVehicles", "flexibleTimeWindows"].map((key) => (
-              <div key={key} className="flex items-center justify-between py-1">
-                <span className="text-sm">
-                  {key === "balanceVisits" ? "Balancear visitas" : key === "minimizeVehicles" ? "Minimizar vehículos" : "Ventanas flexibles"}
-                </span>
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded ${
-                    preset[key as keyof OptimizationPreset]
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500"
-                  }`}
+            {["balanceVisits", "minimizeVehicles", "flexibleTimeWindows"].map(
+              (key) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between py-1"
                 >
-                  {preset[key as keyof OptimizationPreset] ? "ON" : "OFF"}
-                </span>
-              </div>
-            ))}
+                  <span className="text-sm">
+                    {key === "balanceVisits"
+                      ? "Balancear visitas"
+                      : key === "minimizeVehicles"
+                        ? "Minimizar vehículos"
+                        : "Ventanas flexibles"}
+                  </span>
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded ${
+                      preset[key as keyof OptimizationPreset]
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500"
+                    }`}
+                  >
+                    {preset[key as keyof OptimizationPreset] ? "ON" : "OFF"}
+                  </span>
+                </div>
+              ),
+            )}
           </div>
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Parámetros</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Parámetros
+          </p>
           <div className="grid grid-cols-2 gap-2 text-center">
             <div className="bg-muted/50 rounded-lg p-2">
               <p className="text-lg font-semibold">{preset.maxDistanceKm}</p>
@@ -193,14 +248,24 @@ function PresetCard({ preset }: { preset: OptimizationPreset }) {
 
         <div className="flex items-center gap-2 pt-2 border-t">
           <Can perm="optimization_preset:update">
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => actions.handleEdit(preset)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => actions.handleEdit(preset)}
+            >
               <Edit className="size-4 mr-1" />
               Editar
             </Button>
           </Can>
           {!preset.isDefault && (
             <Can perm="optimization_preset:update">
-              <Button variant="outline" size="sm" onClick={() => actions.handleSetDefault(preset)} title="Usar como predeterminado">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => actions.handleSetDefault(preset)}
+                title="Usar como predeterminado"
+              >
                 <Star className="size-4" />
               </Button>
             </Can>
@@ -230,8 +295,12 @@ function PresetDialog() {
     <Dialog open={state.dialogOpen} onOpenChange={actions.setDialogOpen}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{state.editingPreset.id ? "Editar Preset" : "Nuevo Preset"}</DialogTitle>
-          <DialogDescription>Configura los parámetros de optimización de rutas</DialogDescription>
+          <DialogTitle>
+            {state.editingPreset.id ? "Editar Preset" : "Nuevo Preset"}
+          </DialogTitle>
+          <DialogDescription>
+            Configura los parámetros de optimización de rutas
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -241,7 +310,9 @@ function PresetDialog() {
               <Input
                 id="name"
                 value={state.editingPreset.name || ""}
-                onChange={(e) => actions.updateEditingPreset({ name: e.target.value })}
+                onChange={(e) =>
+                  actions.updateEditingPreset({ name: e.target.value })
+                }
                 placeholder="Ej: Optimización estándar"
               />
             </div>
@@ -250,7 +321,9 @@ function PresetDialog() {
               <Textarea
                 id="description"
                 value={state.editingPreset.description || ""}
-                onChange={(e) => actions.updateEditingPreset({ description: e.target.value })}
+                onChange={(e) =>
+                  actions.updateEditingPreset({ description: e.target.value })
+                }
                 placeholder="Describe el propósito de este preset..."
               />
             </div>
@@ -260,12 +333,16 @@ function PresetDialog() {
             <h4 className="font-medium mb-3">Opciones de Optimización</h4>
             <div className="grid grid-cols-1 gap-2">
               {OPTIMIZATION_OPTIONS.map((option) => {
-                const isChecked = state.editingPreset?.[option.key as keyof typeof state.editingPreset] as boolean;
+                const isChecked = state.editingPreset?.[
+                  option.key as keyof typeof state.editingPreset
+                ] as boolean;
                 return (
                   <button
                     key={option.key}
                     type="button"
-                    onClick={() => actions.updateEditingPreset({ [option.key]: !isChecked })}
+                    onClick={() =>
+                      actions.updateEditingPreset({ [option.key]: !isChecked })
+                    }
                     className="flex items-center justify-between p-3 rounded-lg border-2 transition-colors"
                     style={{
                       backgroundColor: isChecked ? "#22c55e20" : "#71717a15",
@@ -273,14 +350,22 @@ function PresetDialog() {
                     }}
                   >
                     <div className="text-left">
-                      <p className="font-medium text-sm" style={{ color: isChecked ? "#22c55e" : "inherit" }}>
+                      <p
+                        className="font-medium text-sm"
+                        style={{ color: isChecked ? "#22c55e" : "inherit" }}
+                      >
                         {option.label}
                       </p>
-                      <p className="text-xs text-muted-foreground">{option.desc}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {option.desc}
+                      </p>
                     </div>
                     <div
                       className="px-3 py-1 rounded-full text-xs font-bold"
-                      style={{ backgroundColor: isChecked ? "#22c55e" : "#71717a", color: "white" }}
+                      style={{
+                        backgroundColor: isChecked ? "#22c55e" : "#71717a",
+                        color: "white",
+                      }}
                     >
                       {isChecked ? "ON" : "OFF"}
                     </div>
@@ -296,11 +381,15 @@ function PresetDialog() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label>Distancia máxima por ruta</Label>
-                  <span className="text-sm text-muted-foreground">{state.editingPreset.maxDistanceKm} km</span>
+                  <span className="text-sm text-muted-foreground">
+                    {state.editingPreset.maxDistanceKm} km
+                  </span>
                 </div>
                 <Slider
                   value={[state.editingPreset.maxDistanceKm || 200]}
-                  onValueChange={([value]) => actions.updateEditingPreset({ maxDistanceKm: value })}
+                  onValueChange={([value]) =>
+                    actions.updateEditingPreset({ maxDistanceKm: value })
+                  }
                   min={50}
                   max={500}
                   step={10}
@@ -309,11 +398,15 @@ function PresetDialog() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label>Factor de tráfico</Label>
-                  <span className="text-sm text-muted-foreground">{state.editingPreset.trafficFactor}%</span>
+                  <span className="text-sm text-muted-foreground">
+                    {state.editingPreset.trafficFactor}%
+                  </span>
                 </div>
                 <Slider
                   value={[state.editingPreset.trafficFactor || 50]}
-                  onValueChange={([value]) => actions.updateEditingPreset({ trafficFactor: value })}
+                  onValueChange={([value]) =>
+                    actions.updateEditingPreset({ trafficFactor: value })
+                  }
                   min={0}
                   max={100}
                   step={5}
@@ -329,7 +422,9 @@ function PresetDialog() {
                 <button
                   key={mode.value}
                   type="button"
-                  onClick={() => actions.updateEditingPreset({ routeEndMode: mode.value })}
+                  onClick={() =>
+                    actions.updateEditingPreset({ routeEndMode: mode.value })
+                  }
                   className={`w-full p-3 rounded-lg border text-left transition-colors ${
                     state.editingPreset?.routeEndMode === mode.value
                       ? "border-primary bg-primary/5"
@@ -337,41 +432,72 @@ function PresetDialog() {
                   }`}
                 >
                   <p className="font-medium text-sm">{mode.label}</p>
-                  <p className="text-xs text-muted-foreground">{mode.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {mode.description}
+                  </p>
                 </button>
               ))}
             </div>
 
             {state.editingPreset.routeEndMode === "SPECIFIC_DEPOT" && (
               <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-3">
-                <Label className="text-sm font-medium">Coordenadas del depot final</Label>
+                <Label className="text-sm font-medium">
+                  Coordenadas del depot final
+                </Label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="endLat" className="text-xs text-muted-foreground">Latitud</Label>
+                    <Label
+                      htmlFor="endLat"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Latitud
+                    </Label>
                     <Input
                       id="endLat"
                       placeholder="-12.0464"
                       value={state.editingPreset.endDepotLatitude || ""}
-                      onChange={(e) => actions.updateEditingPreset({ endDepotLatitude: e.target.value })}
+                      onChange={(e) =>
+                        actions.updateEditingPreset({
+                          endDepotLatitude: e.target.value,
+                        })
+                      }
                     />
                   </div>
                   <div>
-                    <Label htmlFor="endLng" className="text-xs text-muted-foreground">Longitud</Label>
+                    <Label
+                      htmlFor="endLng"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Longitud
+                    </Label>
                     <Input
                       id="endLng"
                       placeholder="-77.0428"
                       value={state.editingPreset.endDepotLongitude || ""}
-                      onChange={(e) => actions.updateEditingPreset({ endDepotLongitude: e.target.value })}
+                      onChange={(e) =>
+                        actions.updateEditingPreset({
+                          endDepotLongitude: e.target.value,
+                        })
+                      }
                     />
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="endAddress" className="text-xs text-muted-foreground">Dirección (opcional)</Label>
+                  <Label
+                    htmlFor="endAddress"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Dirección (opcional)
+                  </Label>
                   <Input
                     id="endAddress"
                     placeholder="Av. Principal 123, Lima"
                     value={state.editingPreset.endDepotAddress || ""}
-                    onChange={(e) => actions.updateEditingPreset({ endDepotAddress: e.target.value })}
+                    onChange={(e) =>
+                      actions.updateEditingPreset({
+                        endDepotAddress: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -380,7 +506,11 @@ function PresetDialog() {
 
           <button
             type="button"
-            onClick={() => actions.updateEditingPreset({ isDefault: !state.editingPreset?.isDefault })}
+            onClick={() =>
+              actions.updateEditingPreset({
+                isDefault: !state.editingPreset?.isDefault,
+              })
+            }
             className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-colors ${
               state.editingPreset?.isDefault
                 ? "bg-primary/10 border-primary"
@@ -388,10 +518,14 @@ function PresetDialog() {
             }`}
           >
             <div className="text-left">
-              <p className={`font-medium ${state.editingPreset?.isDefault ? "text-primary" : ""}`}>
+              <p
+                className={`font-medium ${state.editingPreset?.isDefault ? "text-primary" : ""}`}
+              >
                 Establecer como predeterminado
               </p>
-              <p className="text-xs text-muted-foreground">Se usará automáticamente en nuevas optimizaciones</p>
+              <p className="text-xs text-muted-foreground">
+                Se usará automáticamente en nuevas optimizaciones
+              </p>
             </div>
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${
@@ -400,17 +534,25 @@ function PresetDialog() {
                   : "bg-gray-300 text-gray-600 dark:bg-gray-600 dark:text-gray-300"
               }`}
             >
-              <Star className={`size-4 ${state.editingPreset?.isDefault ? "fill-current" : ""}`} />
+              <Star
+                className={`size-4 ${state.editingPreset?.isDefault ? "fill-current" : ""}`}
+              />
               {state.editingPreset?.isDefault ? "ACTIVO" : "INACTIVO"}
             </div>
           </button>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => actions.setDialogOpen(false)}>
+          <Button
+            variant="outline"
+            onClick={() => actions.setDialogOpen(false)}
+          >
             Cancelar
           </Button>
-          <Button onClick={actions.handleSave} disabled={state.isSaving || !state.editingPreset?.name}>
+          <Button
+            onClick={actions.handleSave}
+            disabled={state.isSaving || !state.editingPreset?.name}
+          >
             {state.isSaving ? "Guardando..." : "Guardar"}
           </Button>
         </DialogFooter>

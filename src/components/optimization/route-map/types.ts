@@ -2,13 +2,13 @@
 // are numbers; the renderer calls String(...) at the few HTML/CSS injection
 // sites where strings are required.
 
+import type maplibregl from "maplibre-gl";
 import type {
   AssignedSolvedRoute,
   SolvedStop,
   UnassignedOrderRecord,
   VehicleWithoutRoute,
 } from "@/lib/optimization/solved-plan";
-import type maplibregl from "maplibre-gl";
 
 export type RouteStop = SolvedStop;
 export type Route = AssignedSolvedRoute;

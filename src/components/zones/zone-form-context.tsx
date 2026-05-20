@@ -2,16 +2,13 @@
 
 import {
   createContext,
+  type ReactNode,
   use,
   useEffect,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
-import {
-  DAYS_OF_WEEK,
-  type ZoneInput,
-} from "@/lib/validations/zone";
+import { DAYS_OF_WEEK, type ZoneInput } from "@/lib/validations/zone";
 
 export interface VehicleOption {
   id: string;
@@ -29,7 +26,10 @@ export interface ZoneFormState {
 }
 
 export interface ZoneFormActions {
-  updateField: (field: keyof ZoneInput, value: ZoneInput[keyof ZoneInput]) => void;
+  updateField: (
+    field: keyof ZoneInput,
+    value: ZoneInput[keyof ZoneInput],
+  ) => void;
   toggleDay: (day: string) => void;
   selectAllDays: () => void;
   selectWeekdays: () => void;
@@ -44,7 +44,10 @@ export interface ZoneFormActions {
 export interface ZoneFormMeta {
   vehicles: VehicleOption[];
   submitLabel: string;
-  onGeometryEdit?: (snapshot: { formData: ZoneInput; vehicleIds: string[] }) => void;
+  onGeometryEdit?: (snapshot: {
+    formData: ZoneInput;
+    vehicleIds: string[];
+  }) => void;
 }
 
 export interface ZoneFormDerived {
@@ -75,7 +78,10 @@ export interface ZoneFormProviderProps {
   vehicles: VehicleOption[];
   initialVehicleIds?: string[];
   submitLabel?: string;
-  onGeometryEdit?: (snapshot: { formData: ZoneInput; vehicleIds: string[] }) => void;
+  onGeometryEdit?: (snapshot: {
+    formData: ZoneInput;
+    vehicleIds: string[];
+  }) => void;
   onFormDataChange?: (data: ZoneInput) => void;
 }
 
@@ -110,7 +116,10 @@ export function ZoneFormProvider({
     useState<string[]>(initialVehicleIds);
   const [vehicleSearch, setVehicleSearch] = useState("");
 
-  const updateField = (field: keyof ZoneInput, value: ZoneInput[keyof ZoneInput]) => {
+  const updateField = (
+    field: keyof ZoneInput,
+    value: ZoneInput[keyof ZoneInput],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => {
       if (prev[field]) {
@@ -162,7 +171,8 @@ export function ZoneFormProvider({
 
     const validationErrors: Record<string, string> = {};
     if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
-    if (!formData.geometry) validationErrors.geometry = "Geometría es requerida";
+    if (!formData.geometry)
+      validationErrors.geometry = "Geometría es requerida";
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;

@@ -1,14 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // POST - Trigger alert evaluation (typically called by background job)
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ALERT, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ALERT,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

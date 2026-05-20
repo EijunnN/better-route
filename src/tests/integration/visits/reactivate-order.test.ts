@@ -1,21 +1,21 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
+import { POST as REACTIVATE } from "@/app/api/orders/[id]/reactivate/route";
+import { PATCH } from "@/app/api/route-stops/[id]/route";
+import { deliveryVisits, orders } from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
   createAdmin,
+  createCompany,
   createDriver,
-  createVehicle,
-  createOrder,
   createOptimizationConfig,
   createOptimizationJob,
+  createOrder,
   createRouteStop,
+  createVehicle,
 } from "../setup/test-data";
-import { orders, deliveryVisits } from "@/db/schema";
-import { PATCH } from "@/app/api/route-stops/[id]/route";
-import { POST as REACTIVATE } from "@/app/api/orders/[id]/reactivate/route";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 /**
  * Issue 004 — cross-day Order reactivation.
@@ -82,10 +82,12 @@ describe("POST /api/orders/:id/reactivate (issue 004)", () => {
   }
 
   async function reactivate(orderId: string, body: Record<string, unknown>) {
-    const req = await createTestRequest(
-      `/api/orders/${orderId}/reactivate`,
-      { method: "POST", body, token, companyId: company.id },
-    );
+    const req = await createTestRequest(`/api/orders/${orderId}/reactivate`, {
+      method: "POST",
+      body,
+      token,
+      companyId: company.id,
+    });
     return await REACTIVATE(req, { params: Promise.resolve({ id: orderId }) });
   }
 

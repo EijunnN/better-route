@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  use,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 
 interface LayoutContextType {
   hideHeader: boolean;
@@ -22,7 +16,9 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
   const [fullWidth, setFullWidth] = useState(false);
 
   return (
-    <LayoutContext value={{ hideHeader, setHideHeader, fullWidth, setFullWidth }}>
+    <LayoutContext
+      value={{ hideHeader, setHideHeader, fullWidth, setFullWidth }}
+    >
       {children}
     </LayoutContext>
   );

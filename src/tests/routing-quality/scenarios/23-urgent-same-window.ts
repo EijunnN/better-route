@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * Contention on a narrow window: 13 orders all with 14:00-16:00 window,

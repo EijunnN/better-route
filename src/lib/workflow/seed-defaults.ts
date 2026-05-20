@@ -1,8 +1,5 @@
 import { db } from "@/db";
-import {
-  companyWorkflowStates,
-  companyWorkflowTransitions,
-} from "@/db/schema";
+import { companyWorkflowStates, companyWorkflowTransitions } from "@/db/schema";
 
 export async function seedDefaultWorkflowStates(companyId: string) {
   // Insert 5 default states

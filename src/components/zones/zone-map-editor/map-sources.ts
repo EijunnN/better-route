@@ -1,16 +1,14 @@
 import maplibregl, {
-  type Map as MapLibreMap,
   type GeoJSONSource,
+  type Map as MapLibreMap,
 } from "maplibre-gl";
-import { calculateMidpoints } from "./geometry";
-import type { LngLat } from "./types";
 import {
   FILL_OPACITY,
-  FIT_BOUNDS_PADDING,
   FIRST_VERTEX_COLOR,
   FIRST_VERTEX_OPACITY,
   FIRST_VERTEX_RADIUS,
   FIRST_VERTEX_STROKE_WIDTH,
+  FIT_BOUNDS_PADDING,
   FREEHAND_COLOR,
   FREEHAND_OPACITY,
   FREEHAND_WIDTH,
@@ -38,6 +36,8 @@ import {
   VERTEX_RADIUS,
   VERTEX_STROKE_WIDTH,
 } from "./constants";
+import { calculateMidpoints } from "./geometry";
+import type { LngLat } from "./types";
 
 // Add all sources + layers used by the zone editor. No-op if already added.
 export function addEditorLayers(

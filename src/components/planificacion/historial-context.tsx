@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  use,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
 import { useRouter } from "next/navigation";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -66,7 +60,13 @@ export interface OptimizationResult {
   isPartial?: boolean;
 }
 
-export type JobStatus = "all" | "COMPLETED" | "CANCELLED" | "FAILED" | "RUNNING" | "PENDING";
+export type JobStatus =
+  | "all"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "FAILED"
+  | "RUNNING"
+  | "PENDING";
 
 // State
 export interface HistorialState {
@@ -121,7 +121,9 @@ interface HistorialContextValue {
   derived: HistorialDerived;
 }
 
-const HistorialContext = createContext<HistorialContextValue | undefined>(undefined);
+const HistorialContext = createContext<HistorialContextValue | undefined>(
+  undefined,
+);
 
 export interface HistorialProviderProps {
   children: ReactNode;
@@ -175,22 +177,30 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
 
       // Deduplicate: keep only the latest job per configurationId
       const seenConfigs = new Set<string>();
-      const uniqueJobs = (data.data || []).filter((job: { configurationId: string }) => {
-        if (!job.configurationId) return true;
-        if (seenConfigs.has(job.configurationId)) return false;
-        seenConfigs.add(job.configurationId);
-        return true;
-      });
+      const uniqueJobs = (data.data || []).filter(
+        (job: { configurationId: string }) => {
+          if (!job.configurationId) return true;
+          if (seenConfigs.has(job.configurationId)) return false;
+          seenConfigs.add(job.configurationId);
+          return true;
+        },
+      );
 
       const jobsWithDetails = uniqueJobs.map(
-        (job: OptimizationJob & { result?: string; configurationName?: string }) => {
+        (
+          job: OptimizationJob & {
+            result?: string;
+            configurationName?: string;
+          },
+        ) => {
           // Parse result JSON string from API
-          let parsedResult = undefined;
+          let parsedResult;
           if (job.result) {
             try {
-              parsedResult = typeof job.result === "string"
-                ? safeParseJson(job.result)
-                : job.result;
+              parsedResult =
+                typeof job.result === "string"
+                  ? safeParseJson(job.result)
+                  : job.result;
             } catch {
               // Ignore parse errors
             }
@@ -202,7 +212,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
             : undefined;
 
           return { ...job, result: parsedResult, configuration };
-        }
+        },
       );
 
       setJobs(jobsWithDetails);
@@ -218,7 +228,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     if (companyId) {
       loadJobs();
     }
-  }, [companyId, statusFilter, searchTerm, currentPage, pageSize]);
+  }, [companyId, loadJobs]);
 
   const handleReoptimize = (job: OptimizationJob) => {
     if (!job.configurationId) {
@@ -236,7 +246,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
         {
           method: "DELETE",
           headers: { "x-company-id": companyId },
-        }
+        },
       );
       if (!response.ok) {
         const data = await response.json();
@@ -250,7 +260,8 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     } catch (err) {
       toast({
         title: "Error al eliminar",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     }

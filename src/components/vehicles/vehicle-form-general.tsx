@@ -58,7 +58,10 @@ export function VehicleFormGeneral() {
                 }
                 disabled={isSubmitting}
               />
-              <Label htmlFor="useNameAsPlate" className="text-sm cursor-pointer">
+              <Label
+                htmlFor="useNameAsPlate"
+                className="text-sm cursor-pointer"
+              >
                 El nombre es la placa patente
               </Label>
             </div>

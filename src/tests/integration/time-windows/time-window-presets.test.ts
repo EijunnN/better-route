@@ -1,21 +1,17 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
+import { DELETE, PATCH } from "@/app/api/time-window-presets/[id]/route";
+import { GET, POST } from "@/app/api/time-window-presets/route";
+import { timeWindowPresets } from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
   createAdmin,
+  createCompany,
   createPlanner,
   createTimeWindowPreset,
 } from "../setup/test-data";
-import { timeWindowPresets } from "@/db/schema";
-import { GET, POST } from "@/app/api/time-window-presets/route";
-import {
-  GET as GET_ONE,
-  PATCH,
-  DELETE,
-} from "@/app/api/time-window-presets/[id]/route";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Time Window Presets", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;

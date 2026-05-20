@@ -82,9 +82,7 @@ export const WILDCARD_PERMISSION = "*" as const;
  * error at every call site. This is the contract that keeps server and client
  * in sync.
  */
-export type Permission =
-  | `${EntityType}:${Action}`
-  | typeof WILDCARD_PERMISSION;
+export type Permission = `${EntityType}:${Action}` | typeof WILDCARD_PERMISSION;
 
 /** Build a permission string in a way TypeScript can verify. */
 export function permission<E extends EntityType, A extends Action>(

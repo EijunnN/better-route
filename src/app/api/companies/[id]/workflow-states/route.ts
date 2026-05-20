@@ -6,10 +6,10 @@ import {
   companyWorkflowTransitions,
   SYSTEM_STATES,
 } from "@/db/schema";
-import { handleError } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
-import { EntityType, Action } from "@/lib/auth/permissions";
+import { Action, EntityType } from "@/lib/auth/permissions";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { handleError } from "@/lib/routing/route-helpers";
 
 function assertSameTenant(
   user: { role: string; companyId: string | null },

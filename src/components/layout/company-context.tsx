@@ -26,9 +26,15 @@ const CompanyContext = createContext<CompanyContextValue | null>(null);
 const STORAGE_KEY = "betterroute-selected-company";
 
 export function CompanyProvider({ children }: { children: React.ReactNode }) {
-  const { user, companyId: authCompanyId, isLoading: isAuthLoading } = useAuth();
+  const {
+    user,
+    companyId: authCompanyId,
+    isLoading: isAuthLoading,
+  } = useAuth();
 
-  const [selectedCompanyId, setSelectedCompanyIdState] = useState<string | null>(() => {
+  const [selectedCompanyId, setSelectedCompanyIdState] = useState<
+    string | null
+  >(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem(STORAGE_KEY);
   });
@@ -77,7 +83,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     if (isSystemAdmin && !isAuthLoading) {
       fetchCompanies();
     }
-  }, [isSystemAdmin, isAuthLoading]);
+  }, [isSystemAdmin, isAuthLoading, fetchCompanies]);
 
   // Auto-select: use localStorage value if valid, otherwise first company
   useEffect(() => {

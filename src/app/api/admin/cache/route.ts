@@ -9,9 +9,9 @@
  */
 
 import { NextResponse } from "next/server";
+import { Action, EntityType, isAdmin } from "@/lib/auth/authorization";
 import type { AuthenticatedRequest } from "@/lib/infra/api-middleware";
 import { withAuthAndAudit } from "@/lib/infra/api-middleware";
-import { Action, EntityType, isAdmin } from "@/lib/auth/authorization";
 import { getCacheStats, invalidateAllCache } from "@/lib/infra/cache";
 
 /**
@@ -60,4 +60,3 @@ export const DELETE = withAuthAndAudit(
     });
   },
 );
-

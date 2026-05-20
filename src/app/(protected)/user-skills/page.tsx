@@ -1,7 +1,12 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { UserSkillsProvider, useUserSkills, UserSkillsListView, UserSkillsFormView } from "@/components/user-skills";
+import {
+  UserSkillsFormView,
+  UserSkillsListView,
+  UserSkillsProvider,
+  useUserSkills,
+} from "@/components/user-skills";
 
 function UserSkillsPageContent() {
   const { state, meta } = useUserSkills();

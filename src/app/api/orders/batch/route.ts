@@ -3,14 +3,14 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import {
   applyCustomFieldDefaults,
   resolveProfileSchema,
   validateCustomFieldValues,
 } from "@/lib/orders/profile-schema";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
@@ -36,8 +36,14 @@ const batchOrderSchema = z.object({
         orderType: z.enum(["NEW", "RESCHEDULED", "URGENT"]).optional(),
         priority: z.number().int().min(0).max(100).optional(),
         // Time windows (format: HH:mm)
-        timeWindowStart: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
-        timeWindowEnd: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+        timeWindowStart: z
+          .string()
+          .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+          .optional(),
+        timeWindowEnd: z
+          .string()
+          .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+          .optional(),
         // Custom fields
         customFields: z.record(z.string(), z.unknown()).optional(),
       }),
@@ -49,7 +55,11 @@ const batchOrderSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.IMPORT);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.IMPORT,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -127,7 +137,10 @@ export async function POST(request: NextRequest) {
       const schema = await resolveProfileSchema(context.companyId);
       const hasCustomDefs = schema.fields.some((f) => f.origin === "custom");
       if (hasCustomDefs) {
-        const customFieldErrors: Array<{ trackingId: string; errors: string[] }> = [];
+        const customFieldErrors: Array<{
+          trackingId: string;
+          errors: string[];
+        }> = [];
         for (const order of validOrders) {
           if (order.customFields) {
             order.customFields = applyCustomFieldDefaults(

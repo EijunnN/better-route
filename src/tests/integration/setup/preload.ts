@@ -123,7 +123,12 @@ mock.module("@/lib/infra/job-queue", () => ({
 // and tests don't depend on a real VROOM server being up.
 mock.module("@/lib/optimization/vroom-client", () => ({
   isVroomAvailable: async () => true,
-  solveVRP: async () => ({ code: 0, summary: { cost: 0, distance: 0, duration: 0 }, routes: [], unassigned: [] }),
+  solveVRP: async () => ({
+    code: 0,
+    summary: { cost: 0, distance: 0, duration: 0 },
+    routes: [],
+    unassigned: [],
+  }),
   createVroomJob: () => ({}),
   createVroomVehicle: () => ({}),
 }));
@@ -353,7 +358,13 @@ mock.module("@/lib/storage/r2", () => ({
   MAX_FILE_SIZE: 10 * 1024 * 1024,
   PRESIGNED_URL_EXPIRATION: 300,
   isAllowedContentType: (ct: string) =>
-    ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(ct),
+    [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/heic",
+      "image/heif",
+    ].includes(ct),
   generatePresignedUploadUrl: async (key: string) =>
     `https://fake-r2.test/upload/${key}?signed=true`,
   getFilePublicUrl: (key: string) => `https://fake-r2.test/public/${key}`,
@@ -361,7 +372,11 @@ mock.module("@/lib/storage/r2", () => ({
     `evidence/${companyId}/${new Date().toISOString().split("T")[0]}/${filename}`,
   generateUniqueFilename: (name: string, _contentType: string) =>
     `${crypto.randomUUID()}-${name}`,
-  generateTrackingFilename: (trackingId: string, contentType: string, index?: number) => {
+  generateTrackingFilename: (
+    trackingId: string,
+    contentType: string,
+    index?: number,
+  ) => {
     const ext = contentType.split("/")[1] || "jpg";
     const ts = Date.now().toString(36);
     return index && index > 1

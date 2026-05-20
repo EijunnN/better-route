@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useTheme } from "@/components/layout/theme-context";
 import {
-  getMapStyle,
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
+  getMapStyle,
 } from "@/lib/map-styles";
 import {
   CLOSE_POLYGON_DISTANCE,
@@ -137,7 +137,9 @@ export function ZoneMapEditor({
       console.error("Failed to initialize map:", error);
       setIsLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // biome-ignore lint/correctness/useExhaustiveDependencies: init-once
+    // MapLibre setup; re-running on every prop change would tear down
+    // the canvas. Theme changes are handled by the separate effect below.
   }, []);
 
   // React to theme changes at runtime (skip first run - layers added in "load")
@@ -241,7 +243,7 @@ export function ZoneMapEditor({
             const zoom = mapInstance.getZoom();
             const tolerance =
               FREEHAND_TOLERANCE_BASE *
-              Math.pow(2, FREEHAND_TOLERANCE_ZOOM_REF - zoom);
+              2 ** (FREEHAND_TOLERANCE_ZOOM_REF - zoom);
             const simplified = simplifyPath(closedPolygon, tolerance);
 
             if (simplified.length >= 3) {
@@ -446,7 +448,7 @@ export function ZoneMapEditor({
     } else {
       canvas.style.cursor = "";
     }
-  }, [drawMode, isDrawingFreehand]);
+  }, [drawMode]);
 
   const handleUndo = () => {
     if (points.length > 0) {

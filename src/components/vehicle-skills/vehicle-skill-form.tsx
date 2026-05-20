@@ -55,7 +55,8 @@ export function VehicleSkillForm({
     const validationErrors: Record<string, string> = {};
     if (!formData.code.trim()) validationErrors.code = "Código es requerido";
     if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
-    if (!formData.category.trim()) validationErrors.category = "Categoría es requerida";
+    if (!formData.category.trim())
+      validationErrors.category = "Categoría es requerida";
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;

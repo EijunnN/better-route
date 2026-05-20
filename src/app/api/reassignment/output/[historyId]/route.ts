@@ -8,13 +8,12 @@ import {
   users,
   vehicles,
 } from "@/db/schema";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
-import { safeParseJson } from "@/lib/utils/safe-json";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { safeParseJson } from "@/lib/utils/safe-json";
+
 /**
  * Reassignment data structure from parsed JSON
  */
@@ -77,7 +76,11 @@ export async function GET(
   { params }: { params: Promise<{ historyId: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.REASSIGNMENT, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.REASSIGNMENT,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

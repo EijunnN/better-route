@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * 20 orders, 3 vehicles each limited to 7 orders. Weight is abundant.

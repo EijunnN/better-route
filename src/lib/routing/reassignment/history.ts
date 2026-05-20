@@ -31,7 +31,9 @@ export async function getReassignmentHistory(
 
   return historyRecords.map((record) => {
     const routeIds = safeParseJson<string[]>(record.routeIds);
-    const reassignments = safeParseJson<Array<{ userId: string; userName: string; stopCount: number }>>(record.reassignments);
+    const reassignments = safeParseJson<
+      Array<{ userId: string; userName: string; stopCount: number }>
+    >(record.reassignments);
 
     return {
       id: record.id,

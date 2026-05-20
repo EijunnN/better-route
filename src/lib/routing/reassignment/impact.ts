@@ -9,11 +9,10 @@ import {
   vehicleSkills,
   vehicles,
 } from "@/db/schema";
-import { calculateRouteDistance } from "../../geo/geospatial";
-
 import { safeParseJson } from "@/lib/utils/safe-json";
-import type { ReassignmentImpact } from "./types";
+import { calculateRouteDistance } from "../../geo/geospatial";
 import { getAffectedRoutesForAbsentDriver } from "./affected-routes";
+import type { ReassignmentImpact } from "./types";
 
 /**
  * Calculate reassignment impact for a specific replacement driver

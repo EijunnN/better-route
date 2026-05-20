@@ -3,22 +3,24 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicles, zones, zoneVehicles } from "@/db/schema";
 import { TenantAccessDeniedError, withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate, logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { bulkZoneVehicleSchema } from "@/lib/validations/zone";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
 import { safeParseJson } from "@/lib/utils/safe-json";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { bulkZoneVehicleSchema } from "@/lib/validations/zone";
 // GET - Get all vehicles assigned to this zone
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -96,7 +98,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -261,7 +267,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

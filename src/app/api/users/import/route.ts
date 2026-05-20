@@ -3,17 +3,16 @@ import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
+  type CreateUserInput,
   createUserSchema,
   isExpired,
-  type CreateUserInput,
 } from "@/lib/validations/user";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 interface CSVRow {
   name: string;
@@ -165,24 +164,32 @@ function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
 
   // Try DD/MM/YYYY or DD-MM-YYYY
-  const ddmmyyyy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  const ddmmyyyy = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (ddmmyyyy) {
     const [, day, month, year] = ddmmyyyy;
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    if (!isNaN(date.getTime())) return date;
+    const date = new Date(
+      parseInt(year, 10),
+      parseInt(month, 10) - 1,
+      parseInt(day, 10),
+    );
+    if (!Number.isNaN(date.getTime())) return date;
   }
 
   // Try YYYY-MM-DD or YYYY/MM/DD
-  const yyyymmdd = dateStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  const yyyymmdd = dateStr.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
   if (yyyymmdd) {
     const [, year, month, day] = yyyymmdd;
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    if (!isNaN(date.getTime())) return date;
+    const date = new Date(
+      parseInt(year, 10),
+      parseInt(month, 10) - 1,
+      parseInt(day, 10),
+    );
+    if (!Number.isNaN(date.getTime())) return date;
   }
 
   // Try native Date parsing as fallback
   const date = new Date(dateStr);
-  if (!isNaN(date.getTime())) return date;
+  if (!Number.isNaN(date.getTime())) return date;
 
   return null;
 }
@@ -235,7 +242,10 @@ function validateRow(
   }
 
   if (row.role === "CONDUCTOR") {
-    if (row.driverStatus && !VALID_DRIVER_STATUS.includes(row.driverStatus as ImportDriverStatus)) {
+    if (
+      row.driverStatus &&
+      !VALID_DRIVER_STATUS.includes(row.driverStatus as ImportDriverStatus)
+    ) {
       errors.push({
         row: rowNumber,
         field: "driverStatus",
@@ -266,7 +276,8 @@ function validateRow(
     certifications: null,
     driverStatus:
       row.role === "CONDUCTOR"
-        ? ((normalizeOptional(row.driverStatus) ?? "AVAILABLE") as CreateUserInput["driverStatus"])
+        ? ((normalizeOptional(row.driverStatus) ??
+            "AVAILABLE") as CreateUserInput["driverStatus"])
         : null,
     primaryFleetId:
       row.role === "CONDUCTOR" ? normalizeOptional(row.primaryFleetId) : null,
@@ -281,8 +292,7 @@ function validateRow(
         ...errors,
         ...validation.error.issues.map((issue) => ({
           row: rowNumber,
-          field:
-            typeof issue.path[0] === "string" ? issue.path[0] : "general",
+          field: typeof issue.path[0] === "string" ? issue.path[0] : "general",
           message: issue.message,
         })),
       ],
@@ -294,7 +304,11 @@ function validateRow(
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.USER, Action.IMPORT);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.USER,
+      Action.IMPORT,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -562,8 +576,7 @@ export async function POST(request: NextRequest) {
                     ? error.code
                     : undefined,
                 constraint:
-                  "constraint" in error &&
-                  typeof error.constraint === "string"
+                  "constraint" in error && typeof error.constraint === "string"
                     ? error.constraint
                     : undefined,
                 message: error.message,

@@ -1,22 +1,32 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { driverLocations, optimizationJobs, orders, routeStops, userSecondaryFleets, users, vehicleFleets } from "@/db/schema";
+import {
+  driverLocations,
+  optimizationJobs,
+  orders,
+  routeStops,
+  userSecondaryFleets,
+  users,
+  vehicleFleets,
+} from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
-import { safeParseJson } from "@/lib/utils/safe-json";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - Get detailed driver information with route and stops
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.DRIVER, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.DRIVER,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -95,11 +105,21 @@ export async function GET(
 
     // Build combined fleets array
     const primaryFleet = driver.primaryFleet
-      ? { id: driver.primaryFleet.id, name: driver.primaryFleet.name, type: driver.primaryFleet.type, isPrimary: true as const }
+      ? {
+          id: driver.primaryFleet.id,
+          name: driver.primaryFleet.name,
+          type: driver.primaryFleet.type,
+          isPrimary: true as const,
+        }
       : null;
     const secFleets = secondaryFleetsData
       .filter((sf) => sf.fleet)
-      .map((sf) => ({ id: sf.fleet.id, name: sf.fleet.name, type: sf.fleet.type, isPrimary: false as const }));
+      .map((sf) => ({
+        id: sf.fleet.id,
+        name: sf.fleet.name,
+        type: sf.fleet.type,
+        isPrimary: false as const,
+      }));
     const allFleets = primaryFleet ? [primaryFleet, ...secFleets] : secFleets;
 
     // Get the most recent confirmed optimization job
@@ -192,28 +212,39 @@ export async function GET(
     const vehicle = stops[0].vehicle;
 
     // Get the vehicle's fleet (plan context fleet)
-    const vehicleFleetData = vehicle ? await db.query.vehicleFleets.findFirst({
-      where: and(
-        eq(vehicleFleets.companyId, tenantCtx.companyId),
-        eq(vehicleFleets.active, true),
-        eq(vehicleFleets.vehicleId, vehicle.id),
-      ),
-      with: {
-        fleet: { columns: { id: true, name: true, type: true } },
-      },
-    }) : null;
+    const vehicleFleetData = vehicle
+      ? await db.query.vehicleFleets.findFirst({
+          where: and(
+            eq(vehicleFleets.companyId, tenantCtx.companyId),
+            eq(vehicleFleets.active, true),
+            eq(vehicleFleets.vehicleId, vehicle.id),
+          ),
+          with: {
+            fleet: { columns: { id: true, name: true, type: true } },
+          },
+        })
+      : null;
 
     // If we have a plan fleet from the vehicle, use it as the primary fleet
     const planFleet = vehicleFleetData?.fleet
-      ? { id: vehicleFleetData.fleet.id, name: vehicleFleetData.fleet.name, type: vehicleFleetData.fleet.type, isPrimary: true as const }
+      ? {
+          id: vehicleFleetData.fleet.id,
+          name: vehicleFleetData.fleet.name,
+          type: vehicleFleetData.fleet.type,
+          isPrimary: true as const,
+        }
       : null;
 
     const effectiveFleets = planFleet
-      ? [planFleet, ...allFleets.filter(f => f.id !== planFleet.id)]
+      ? [planFleet, ...allFleets.filter((f) => f.id !== planFleet.id)]
       : allFleets;
 
     // Update driver response with plan-derived fleet
-    driverResponse.fleet = effectiveFleets[0] || { id: "", name: "Sin flota", type: "LIGHT_LOAD" };
+    driverResponse.fleet = effectiveFleets[0] || {
+      id: "",
+      name: "Sin flota",
+      type: "LIGHT_LOAD",
+    };
     driverResponse.fleets = effectiveFleets;
 
     // Calculate route metrics
@@ -225,20 +256,21 @@ export async function GET(
 
     // Get additional order info for weight/volume (only for orders in stops)
     const stopOrderIds = stops.map((s) => s.orderId);
-    const ordersData = stopOrderIds.length > 0
-      ? await db.query.orders.findMany({
-          where: and(
-            withTenantFilter(orders, [], tenantCtx.companyId),
-            sql`${orders.id} IN ${stopOrderIds}`,
-          ),
-          columns: {
-            id: true,
-            weightRequired: true,
-            volumeRequired: true,
-          },
-          limit: 500,
-        })
-      : [];
+    const ordersData =
+      stopOrderIds.length > 0
+        ? await db.query.orders.findMany({
+            where: and(
+              withTenantFilter(orders, [], tenantCtx.companyId),
+              sql`${orders.id} IN ${stopOrderIds}`,
+            ),
+            columns: {
+              id: true,
+              weightRequired: true,
+              volumeRequired: true,
+            },
+            limit: 500,
+          })
+        : [];
     const orderMap = new Map(ordersData.map((o) => [o.id, o]));
 
     stops.forEach((stop) => {
@@ -265,7 +297,13 @@ export async function GET(
     // Parse result from job for distance/duration metrics
     if (confirmedJob.result) {
       try {
-        const parsedResult = safeParseJson<{ routes?: Array<{ driverId?: string; totalDistance?: number; totalDuration?: number }> }>(confirmedJob.result);
+        const parsedResult = safeParseJson<{
+          routes?: Array<{
+            driverId?: string;
+            totalDistance?: number;
+            totalDuration?: number;
+          }>;
+        }>(confirmedJob.result);
         const driverRoute = parsedResult.routes?.find(
           (r: { driverId?: string }) => r.driverId === driverId,
         );
@@ -303,18 +341,22 @@ export async function GET(
       failureReason: stop.failureReason,
       timeWindowStart: stop.timeWindowStart?.toISOString() || null,
       timeWindowEnd: stop.timeWindowEnd?.toISOString() || null,
-      workflowState: stop.workflowState ? {
-        id: stop.workflowState.id,
-        label: stop.workflowState.label,
-        color: stop.workflowState.color,
-        code: stop.workflowState.code,
-        systemState: stop.workflowState.systemState,
-      } : null,
-      zone: stop.zone ? {
-        id: stop.zone.id,
-        name: stop.zone.name,
-        color: stop.zone.color,
-      } : null,
+      workflowState: stop.workflowState
+        ? {
+            id: stop.workflowState.id,
+            label: stop.workflowState.label,
+            color: stop.workflowState.color,
+            code: stop.workflowState.code,
+            systemState: stop.workflowState.systemState,
+          }
+        : null,
+      zone: stop.zone
+        ? {
+            id: stop.zone.id,
+            name: stop.zone.name,
+            color: stop.zone.color,
+          }
+        : null,
     }));
 
     const routeId = stops[0].routeId;

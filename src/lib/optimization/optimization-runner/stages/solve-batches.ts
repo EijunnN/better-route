@@ -10,12 +10,6 @@
  */
 
 import {
-  type OrderForOptimization,
-  type VehicleForOptimization,
-  type OptimizationConfig as VroomOptConfig,
-  optimizeRoutes as vroomOptimizeRoutes,
-} from "../../vroom-optimizer";
-import {
   createZoneBatches,
   type DayOfWeek,
   type ZoneData,
@@ -25,9 +19,15 @@ import type {
   SolvedStop,
   UnassignedOrderRecord,
 } from "../../solved-plan";
-import { groupOrdersByLocation, type OrderGroupMap } from "../prepare";
-import { formatArrivalTime } from "../postprocess";
+import {
+  type OrderForOptimization,
+  type VehicleForOptimization,
+  type OptimizationConfig as VroomOptConfig,
+  optimizeRoutes as vroomOptimizeRoutes,
+} from "../../vroom-optimizer";
 import { parseRequiredSkills } from "../load-skills";
+import { formatArrivalTime } from "../postprocess";
+import { groupOrdersByLocation, type OrderGroupMap } from "../prepare";
 
 /**
  * Subset of pendingOrder data the solver needs after time-window resolution.
@@ -99,7 +99,9 @@ export interface SolveBatchesArgs {
   groupSameLocation: boolean;
   oneRoutePerVehicle: boolean;
   orderDetailsMap: Map<string, OrderDetails>;
-  buildTimeWindow: (orderId: string) => { start: string; end: string } | undefined;
+  buildTimeWindow: (
+    orderId: string,
+  ) => { start: string; end: string } | undefined;
   calculateWaitingSeconds: (
     arrivalSeconds: number,
     orderId: string,
@@ -132,9 +134,7 @@ function toVroomOrder(
   const timeWindowEnd = order.timeWindowEnd
     ? String(order.timeWindowEnd)
     : order.promisedDate
-      ? new Date(
-          new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000,
-        )
+      ? new Date(new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000)
           .toTimeString()
           .slice(0, 5)
       : undefined;
@@ -233,7 +233,10 @@ function buildSolvedStops(
             ? formatArrivalTime(stop.arrivalTime)
             : undefined,
           waitingTimeSeconds: stop.arrivalTime
-            ? helpers.calculateWaitingSeconds(stop.arrivalTime, grouped.orderIds[0])
+            ? helpers.calculateWaitingSeconds(
+                stop.arrivalTime,
+                grouped.orderIds[0],
+              )
             : undefined,
           timeWindow: helpers.buildTimeWindow(grouped.orderIds[0]),
           groupedOrderIds: grouped.orderIds,
@@ -360,9 +363,7 @@ export async function solveBatches(
   const warnings: string[] = [];
   const globalGroupMap: OrderGroupMap = new Map();
   const vehiclesWithRoutes = new Set<string>();
-  const selectedVehiclesById = new Map(
-    selectedVehicles.map((v) => [v.id, v]),
-  );
+  const selectedVehiclesById = new Map(selectedVehicles.map((v) => [v.id, v]));
   const helpers: BuildStopHelpers = {
     globalGroupMap,
     groupSameLocation,
@@ -517,14 +518,17 @@ export async function solveBatches(
     // No zones configured — single global optimization.
     let ordersToProcess = ordersWithLocation;
     if (groupSameLocation) {
-      const { groupedOrders, groupMap } = groupOrdersByLocation(ordersWithLocation);
+      const { groupedOrders, groupMap } =
+        groupOrdersByLocation(ordersWithLocation);
       for (const [key, value] of groupMap) {
         globalGroupMap.set(key, value);
       }
       ordersToProcess = groupedOrders as OrderForSolve[];
     }
 
-    const ordersForVroom = ordersToProcess.map((o) => toVroomOrder(o, undefined));
+    const ordersForVroom = ordersToProcess.map((o) =>
+      toVroomOrder(o, undefined),
+    );
     const vehiclesForVroom = vehiclesWithZones.map((v) =>
       toVroomVehicle(v, vehicleSkillsMap),
     );

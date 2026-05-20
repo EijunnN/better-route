@@ -1,6 +1,5 @@
 import { and, eq, inArray, or } from "drizzle-orm";
-import { after } from "next/server";
-import { type NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   fleets,
@@ -8,13 +7,12 @@ import {
   vehicleFleets,
   vehicles,
 } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
-import { updateVehicleSchema } from "@/lib/validations/vehicle";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { updateVehicleSchema } from "@/lib/validations/vehicle";
 
 async function getVehicle(id: string, companyId: string) {
   const [vehicle] = await db
@@ -31,7 +29,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.VEHICLE, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.VEHICLE,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -59,7 +61,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.VEHICLE, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.VEHICLE,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -283,7 +289,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.VEHICLE, Action.DELETE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.VEHICLE,
+      Action.DELETE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

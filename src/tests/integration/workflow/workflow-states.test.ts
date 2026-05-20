@@ -1,47 +1,39 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
+import { GET as GET_STATE } from "@/app/api/companies/[id]/workflow-states/[stateId]/route";
+// Workflow state handlers
 import {
-  createCompany,
-  createAdmin,
-  createDriver,
-  createVehicle,
-  createOrder,
-  createOptimizationConfig,
-  createOptimizationJob,
-  createRouteStop,
-  createWorkflowState,
-  createWorkflowTransition,
-} from "../setup/test-data";
+  POST as CREATE_STATE,
+  GET as LIST_STATES,
+} from "@/app/api/companies/[id]/workflow-states/route";
+// Workflow transition handlers
+import {
+  POST as CREATE_TRANSITION,
+  DELETE as DELETE_TRANSITION,
+  GET as LIST_TRANSITIONS,
+} from "@/app/api/companies/[id]/workflow-transitions/route";
+// Route stop handler
+import { PATCH as PATCH_STOP } from "@/app/api/route-stops/[id]/route";
 import {
   companyWorkflowStates,
   companyWorkflowTransitions,
-  routeStops,
   orders,
 } from "@/db/schema";
-
-// Workflow state handlers
+import { createTestToken } from "../setup/test-auth";
 import {
-  GET as LIST_STATES,
-  POST as CREATE_STATE,
-} from "@/app/api/companies/[id]/workflow-states/route";
-import {
-  GET as GET_STATE,
-  PATCH as PATCH_STATE,
-  DELETE as DELETE_STATE,
-} from "@/app/api/companies/[id]/workflow-states/[stateId]/route";
-
-// Workflow transition handlers
-import {
-  GET as LIST_TRANSITIONS,
-  POST as CREATE_TRANSITION,
-  DELETE as DELETE_TRANSITION,
-} from "@/app/api/companies/[id]/workflow-transitions/route";
-
-// Route stop handler
-import { PATCH as PATCH_STOP } from "@/app/api/route-stops/[id]/route";
+  createAdmin,
+  createCompany,
+  createDriver,
+  createOptimizationConfig,
+  createOptimizationJob,
+  createOrder,
+  createRouteStop,
+  createVehicle,
+  createWorkflowState,
+  createWorkflowTransition,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Workflow States & Transitions", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -706,7 +698,12 @@ describe("Workflow States & Transitions", () => {
     // Company B lists its own states — should be empty (company A's states are not visible)
     const listReq = await createTestRequest(
       `/api/companies/${companyB.id}/workflow-states`,
-      { method: "GET", token: tokenB, companyId: companyB.id, userId: adminB.id },
+      {
+        method: "GET",
+        token: tokenB,
+        companyId: companyB.id,
+        userId: adminB.id,
+      },
     );
 
     const listRes = await LIST_STATES(listReq, {

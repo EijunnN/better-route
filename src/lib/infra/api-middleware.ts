@@ -6,7 +6,6 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
-import { logCreate, logDelete, logUpdate } from "./audit";
 import { type AuthenticatedUser, getAuthenticatedUser } from "../auth/auth-api";
 import {
   Action,
@@ -18,6 +17,7 @@ import {
   type PermissionCheckResult,
   requirePermission,
 } from "../auth/authorization";
+import { logCreate, logDelete, logUpdate } from "./audit";
 
 /**
  * Check permission against the legacy ROLE_PERMISSIONS matrix first (sync,

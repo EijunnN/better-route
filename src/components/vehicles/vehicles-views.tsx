@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Trash2 } from "lucide-react";
+import { Can } from "@/components/auth/can";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,33 +13,53 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Can } from "@/components/auth/can";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import { Pagination } from "@/components/ui/pagination";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useClientPagination } from "@/hooks/use-client-pagination";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { VehicleForm } from "@/components/vehicles/vehicle-form";
 import { VehicleStatusModal } from "@/components/vehicles/vehicle-status-modal";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import type { VehicleInput } from "@/lib/validations/vehicle";
-import { useVehicles, VEHICLE_STATUS_LABELS, type Vehicle } from "./vehicles-context";
+import {
+  useVehicles,
+  VEHICLE_STATUS_LABELS,
+  type Vehicle,
+} from "./vehicles-context";
 
 export function VehiclesListView() {
   const { state, actions } = useVehicles();
-  const { paginatedItems: paginatedVehicles, currentPage, setCurrentPage, totalPages } =
-    useClientPagination(state.vehicles);
+  const {
+    paginatedItems: paginatedVehicles,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+  } = useClientPagination(state.vehicles);
 
   return (
     <div className="space-y-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Gestión de Vehículos</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Administre los vehículos de la flota</p>
+          <h1 className="text-2xl font-semibold text-foreground">
+            Gestión de Vehículos
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Administre los vehículos de la flota
+          </p>
         </div>
         <Can perm="vehicle:create">
-          <Button onClick={() => actions.setShowForm(true)}>Nuevo Vehículo</Button>
+          <Button onClick={() => actions.setShowForm(true)}>
+            Nuevo Vehículo
+          </Button>
         </Can>
       </div>
 
@@ -49,11 +70,17 @@ export function VehiclesListView() {
           </CardContent>
         </Card>
       ) : state.error ? (
-        <ErrorState title="Error al cargar vehículos" error={state.error} onRetry={actions.fetchVehicles} />
+        <ErrorState
+          title="Error al cargar vehículos"
+          error={state.error}
+          onRetry={actions.fetchVehicles}
+        />
       ) : state.vehicles.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">No hay vehículos registrados. Cree el primer vehículo.</p>
+            <p className="text-muted-foreground">
+              No hay vehículos registrados. Cree el primer vehículo.
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -94,7 +121,9 @@ export function VehiclesListView() {
           onOpenChange={(open) => !open && actions.setStatusModalVehicle(null)}
           vehicleId={state.statusModalVehicle.id}
           currentStatus={state.statusModalVehicle.status}
-          vehiclePlate={state.statusModalVehicle.plate || state.statusModalVehicle.name}
+          vehiclePlate={
+            state.statusModalVehicle.plate || state.statusModalVehicle.name
+          }
           onStatusChange={actions.handleStatusChange}
         />
       )}
@@ -115,10 +144,18 @@ function VehicleRow({ vehicle }: { vehicle: Vehicle }) {
   return (
     <TableRow className={state.deletingId === vehicle.id ? "opacity-50" : ""}>
       <TableCell className="font-medium">{vehicle.name}</TableCell>
-      <TableCell className="text-muted-foreground">{vehicle.plate || "-"}</TableCell>
-      <TableCell className="text-muted-foreground">{vehicle.assignedDriver?.name || "-"}</TableCell>
-      <TableCell className="text-muted-foreground">{vehicle.maxOrders}</TableCell>
-      <TableCell className="text-muted-foreground max-w-[200px] truncate">{getFleetNames()}</TableCell>
+      <TableCell className="text-muted-foreground">
+        {vehicle.plate || "-"}
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {vehicle.assignedDriver?.name || "-"}
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {vehicle.maxOrders}
+      </TableCell>
+      <TableCell className="text-muted-foreground max-w-[200px] truncate">
+        {getFleetNames()}
+      </TableCell>
       <TableCell>
         <Badge
           variant={
@@ -185,7 +222,9 @@ function VehicleRow({ vehicle }: { vehicle: Vehicle }) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>¿Desactivar vehículo?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta acción desactivará el vehículo <strong>{vehicle.name}</strong>. No podrá ser asignado a rutas.
+                    Esta acción desactivará el vehículo{" "}
+                    <strong>{vehicle.name}</strong>. No podrá ser asignado a
+                    rutas.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -224,7 +263,9 @@ export function VehiclesFormView() {
       <Card>
         <CardContent className="pt-6">
           <VehicleForm
-            onSubmit={state.editingVehicle ? actions.handleUpdate : actions.handleCreate}
+            onSubmit={
+              state.editingVehicle ? actions.handleUpdate : actions.handleCreate
+            }
             initialData={
               state.editingVehicle
                 ? {
@@ -242,7 +283,8 @@ export function VehiclesFormView() {
                     originLatitude: state.editingVehicle.originLatitude || "",
                     originLongitude: state.editingVehicle.originLongitude || "",
                     assignedDriverId: state.editingVehicle.assignedDriverId,
-                    licenseRequired: state.editingVehicle.licenseRequired as VehicleInput["licenseRequired"],
+                    licenseRequired: state.editingVehicle
+                      .licenseRequired as VehicleInput["licenseRequired"],
                     workdayStart: state.editingVehicle.workdayStart || "",
                     workdayEnd: state.editingVehicle.workdayEnd || "",
                     hasBreakTime: state.editingVehicle.hasBreakTime,
@@ -250,9 +292,11 @@ export function VehiclesFormView() {
                     breakTimeStart: state.editingVehicle.breakTimeStart || "",
                     breakTimeEnd: state.editingVehicle.breakTimeEnd || "",
                     insuranceExpiry: state.editingVehicle.insuranceExpiry || "",
-                    inspectionExpiry: state.editingVehicle.inspectionExpiry || "",
+                    inspectionExpiry:
+                      state.editingVehicle.inspectionExpiry || "",
                     fleetIds: state.editingVehicle.fleetIds || [],
-                    status: state.editingVehicle.status as VehicleInput["status"],
+                    status: state.editingVehicle
+                      .status as VehicleInput["status"],
                     active: state.editingVehicle.active,
                   }
                 : undefined
@@ -260,7 +304,9 @@ export function VehiclesFormView() {
             fleets={state.fleets}
             drivers={state.drivers}
             availableSkills={state.availableSkills}
-            initialSkillIds={state.editingVehicle ? state.editingVehicleSkillIds : []}
+            initialSkillIds={
+              state.editingVehicle ? state.editingVehicleSkillIds : []
+            }
             companyProfile={state.companyProfile ?? undefined}
             submitLabel={state.editingVehicle ? "Actualizar" : "Crear"}
             onCancel={actions.cancelForm}

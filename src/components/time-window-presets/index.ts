@@ -1,13 +1,13 @@
-export {
-  TimeWindowPresetsProvider,
-  useTimeWindowPresets,
-  TYPE_LABELS,
-  STRICTNESS_LABELS,
-} from "./time-window-presets-context";
 export type {
   TimeWindowPreset,
-  TimeWindowPresetsState,
   TimeWindowPresetsActions,
   TimeWindowPresetsMeta,
+  TimeWindowPresetsState,
+} from "./time-window-presets-context";
+export {
+  STRICTNESS_LABELS,
+  TimeWindowPresetsProvider,
+  TYPE_LABELS,
+  useTimeWindowPresets,
 } from "./time-window-presets-context";
 export { TimeWindowPresetsListView } from "./time-window-presets-views";

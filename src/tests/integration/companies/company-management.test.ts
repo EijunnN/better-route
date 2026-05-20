@@ -1,34 +1,29 @@
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-} from "bun:test";
-import { cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createCompanyProfile,
-} from "../setup/test-data";
-
-// Route handlers
-import { GET as healthGET } from "@/app/api/health/route";
-import { GET as companiesGET, POST as companiesPOST } from "@/app/api/companies/route";
-import {
+  DELETE as companyDELETE,
   GET as companyGET,
   PATCH as companyPATCH,
-  DELETE as companyDELETE,
 } from "@/app/api/companies/[id]/route";
 import {
+  GET as companiesGET,
+  POST as companiesPOST,
+} from "@/app/api/companies/route";
+import {
+  DELETE as profileDELETE,
   GET as profileGET,
   POST as profilePOST,
-  DELETE as profileDELETE,
 } from "@/app/api/company-profiles/route";
+// Route handlers
+import { GET as healthGET } from "@/app/api/health/route";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createCompanyProfile,
+  createPlanner,
+} from "../setup/test-data";
+import { cleanDatabase } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Company Management", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -40,8 +35,14 @@ describe("Company Management", () => {
 
   beforeAll(async () => {
     await cleanDatabase();
-    company = await createCompany({ legalName: "Empresa Principal", commercialName: "EP" });
-    company2 = await createCompany({ legalName: "Empresa Secundaria", commercialName: "ES" });
+    company = await createCompany({
+      legalName: "Empresa Principal",
+      commercialName: "EP",
+    });
+    company2 = await createCompany({
+      legalName: "Empresa Secundaria",
+      commercialName: "ES",
+    });
     admin = await createAdmin(null); // ADMIN_SISTEMA with null companyId
     planner = await createPlanner(company.id);
 
@@ -67,7 +68,7 @@ describe("Company Management", () => {
   // 1. Health check
   // -------------------------------------------------------------------------
   test("GET /api/health returns 200 with database status", async () => {
-    const request = await createTestRequest("/api/health");
+    const _request = await createTestRequest("/api/health");
     const response = await healthGET();
 
     expect(response.status).toBe(200);

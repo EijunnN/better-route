@@ -1,54 +1,53 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
-import { eq, and } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createOrder,
-  createZone,
-  createZoneVehicle,
-  createVehicle,
-} from "../setup/test-data";
-import {
-  orders,
-  trackingTokens,
-  companyTrackingSettings,
-  zones,
-  zoneVehicles,
-} from "@/db/schema";
-
+import { and, eq } from "drizzle-orm";
 // Route handlers
 import {
+  DELETE as DELETE_ORDER,
   GET as GET_ORDER,
   PATCH as PATCH_ORDER,
-  DELETE as DELETE_ORDER,
 } from "@/app/api/orders/[id]/route";
+import { GET as GET_PUBLIC_TRACKING } from "@/app/api/public/tracking/[token]/route";
 import { POST as POST_TRACKING_GENERATE } from "@/app/api/tracking/generate/route";
 import {
   GET as GET_TRACKING_SETTINGS,
   PUT as PUT_TRACKING_SETTINGS,
 } from "@/app/api/tracking/settings/route";
-import { GET as GET_PUBLIC_TRACKING } from "@/app/api/public/tracking/[token]/route";
 import {
+  DELETE as DELETE_ZONE,
   GET as GET_ZONE,
   PATCH as PATCH_ZONE,
-  DELETE as DELETE_ZONE,
 } from "@/app/api/zones/[id]/route";
 import {
+  DELETE as DELETE_ZONE_VEHICLES,
   GET as GET_ZONE_VEHICLES,
   POST as POST_ZONE_VEHICLES,
-  DELETE as DELETE_ZONE_VEHICLES,
 } from "@/app/api/zones/[id]/vehicles/route";
+import {
+  companyTrackingSettings,
+  orders,
+  trackingTokens,
+  zones,
+  zoneVehicles,
+} from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createOrder,
+  createPlanner,
+  createVehicle,
+  createZone,
+  createZoneVehicle,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // ==========================================================================
 // Shared test state
@@ -229,7 +228,7 @@ describe("Order Update - PATCH /api/orders/[id]", () => {
   });
 
   test("returns 409 when updating to duplicate trackingId", async () => {
-    const order1 = await createOrder({
+    const _order1 = await createOrder({
       companyId: companyA.id,
       trackingId: "TRK-EXISTING",
     });
@@ -412,7 +411,9 @@ describe("Tracking Generate - POST /api/tracking/generate", () => {
 
     const json = await response.json();
     expect(json.data).toHaveLength(2);
-    const trackingIds = json.data.map((d: { trackingId: string }) => d.trackingId);
+    const trackingIds = json.data.map(
+      (d: { trackingId: string }) => d.trackingId,
+    );
     expect(trackingIds).toContain("TRK-MULTI-1");
     expect(trackingIds).toContain("TRK-MULTI-2");
   });
@@ -655,7 +656,7 @@ describe("Public Tracking - GET /api/public/tracking/[token]", () => {
     });
 
     // Insert a tracking token directly
-    const tokenValue = "test-token-" + Date.now();
+    const tokenValue = `test-token-${Date.now()}`;
     await testDb.insert(trackingTokens).values({
       companyId: companyA.id,
       orderId: order.id,
@@ -706,7 +707,7 @@ describe("Public Tracking - GET /api/public/tracking/[token]", () => {
       trackingId: "TRK-INACTIVE",
     });
 
-    const tokenValue = "inactive-token-" + Date.now();
+    const tokenValue = `inactive-token-${Date.now()}`;
     await testDb.insert(trackingTokens).values({
       companyId: companyA.id,
       orderId: order.id,
@@ -733,7 +734,7 @@ describe("Public Tracking - GET /api/public/tracking/[token]", () => {
       trackingId: "TRK-EXPIRED",
     });
 
-    const tokenValue = "expired-token-" + Date.now();
+    const tokenValue = `expired-token-${Date.now()}`;
     await testDb.insert(trackingTokens).values({
       companyId: companyA.id,
       orderId: order.id,
@@ -784,7 +785,7 @@ describe("Public Tracking - GET /api/public/tracking/[token]", () => {
       customMessage: "Thanks for ordering!",
     });
 
-    const tokenValue = "settings-token-" + Date.now();
+    const tokenValue = `settings-token-${Date.now()}`;
     await testDb.insert(trackingTokens).values({
       companyId: companyA.id,
       orderId: order.id,
@@ -818,7 +819,7 @@ describe("Public Tracking - GET /api/public/tracking/[token]", () => {
       trackingId: "TRK-TIMELINE",
     });
 
-    const tokenValue = "timeline-token-" + Date.now();
+    const tokenValue = `timeline-token-${Date.now()}`;
     await testDb.insert(trackingTokens).values({
       companyId: companyA.id,
       orderId: order.id,
@@ -1230,15 +1231,12 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
 
   // -- GET --
   test("GET lists vehicles assigned to zone (empty)", async () => {
-    const request = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "GET",
-        token: tokenPlannerA,
-        companyId: companyA.id,
-        userId: plannerA.id,
-      },
-    );
+    const request = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "GET",
+      token: tokenPlannerA,
+      companyId: companyA.id,
+      userId: plannerA.id,
+    });
 
     const response = await GET_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: zoneA.id }),
@@ -1258,15 +1256,12 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
       vehicleId: vehicleA1.id,
     });
 
-    const request = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "GET",
-        token: tokenPlannerA,
-        companyId: companyA.id,
-        userId: plannerA.id,
-      },
-    );
+    const request = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "GET",
+      token: tokenPlannerA,
+      companyId: companyA.id,
+      userId: plannerA.id,
+    });
 
     const response = await GET_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: zoneA.id }),
@@ -1281,15 +1276,12 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
 
   test("GET returns 404 for non-existent zone", async () => {
     const fakeId = "00000000-0000-0000-0000-000000000000";
-    const request = await createTestRequest(
-      `/api/zones/${fakeId}/vehicles`,
-      {
-        method: "GET",
-        token: tokenPlannerA,
-        companyId: companyA.id,
-        userId: plannerA.id,
-      },
-    );
+    const request = await createTestRequest(`/api/zones/${fakeId}/vehicles`, {
+      method: "GET",
+      token: tokenPlannerA,
+      companyId: companyA.id,
+      userId: plannerA.id,
+    });
 
     const response = await GET_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: fakeId }),
@@ -1298,15 +1290,12 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
   });
 
   test("GET tenant isolation: cannot list vehicles of another company zone", async () => {
-    const request = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "GET",
-        token: tokenPlannerB,
-        companyId: companyB.id,
-        userId: plannerB.id,
-      },
-    );
+    const request = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "GET",
+      token: tokenPlannerB,
+      companyId: companyB.id,
+      userId: plannerB.id,
+    });
 
     const response = await GET_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: zoneA.id }),
@@ -1316,19 +1305,16 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
 
   // -- POST (Bulk assign) --
   test("POST bulk assigns vehicles to zone", async () => {
-    const request = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "POST",
-        token: tokenAdminA,
-        companyId: companyA.id,
-        userId: adminA.id,
-        body: {
-          vehicleIds: [vehicleA1.id, vehicleA2.id],
-          assignedDays: ["MONDAY", "FRIDAY"],
-        },
+    const request = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "POST",
+      token: tokenAdminA,
+      companyId: companyA.id,
+      userId: adminA.id,
+      body: {
+        vehicleIds: [vehicleA1.id, vehicleA2.id],
+        assignedDays: ["MONDAY", "FRIDAY"],
       },
-    );
+    });
 
     const response = await POST_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: zoneA.id }),
@@ -1346,46 +1332,37 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
 
   test("POST replaces existing assignments", async () => {
     // First assignment: vehicle 1
-    const req1 = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "POST",
-        token: tokenAdminA,
-        companyId: companyA.id,
-        userId: adminA.id,
-        body: { vehicleIds: [vehicleA1.id] },
-      },
-    );
+    const req1 = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "POST",
+      token: tokenAdminA,
+      companyId: companyA.id,
+      userId: adminA.id,
+      body: { vehicleIds: [vehicleA1.id] },
+    });
     await POST_ZONE_VEHICLES(req1, {
       params: Promise.resolve({ id: zoneA.id }),
     });
 
     // Second assignment: vehicle 2 only (replaces vehicle 1)
-    const req2 = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "POST",
-        token: tokenAdminA,
-        companyId: companyA.id,
-        userId: adminA.id,
-        body: { vehicleIds: [vehicleA2.id] },
-      },
-    );
+    const req2 = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "POST",
+      token: tokenAdminA,
+      companyId: companyA.id,
+      userId: adminA.id,
+      body: { vehicleIds: [vehicleA2.id] },
+    });
     const response = await POST_ZONE_VEHICLES(req2, {
       params: Promise.resolve({ id: zoneA.id }),
     });
     expect(response.status).toBe(201);
 
     // GET to verify only vehicle 2 is active
-    const getReq = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "GET",
-        token: tokenAdminA,
-        companyId: companyA.id,
-        userId: adminA.id,
-      },
-    );
+    const getReq = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "GET",
+      token: tokenAdminA,
+      companyId: companyA.id,
+      userId: adminA.id,
+    });
     const getRes = await GET_ZONE_VEHICLES(getReq, {
       params: Promise.resolve({ id: zoneA.id }),
     });
@@ -1396,16 +1373,13 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
 
   test("POST returns 404 for non-existent zone", async () => {
     const fakeId = "00000000-0000-0000-0000-000000000000";
-    const request = await createTestRequest(
-      `/api/zones/${fakeId}/vehicles`,
-      {
-        method: "POST",
-        token: tokenAdminA,
-        companyId: companyA.id,
-        userId: adminA.id,
-        body: { vehicleIds: [vehicleA1.id] },
-      },
-    );
+    const request = await createTestRequest(`/api/zones/${fakeId}/vehicles`, {
+      method: "POST",
+      token: tokenAdminA,
+      companyId: companyA.id,
+      userId: adminA.id,
+      body: { vehicleIds: [vehicleA1.id] },
+    });
 
     const response = await POST_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: fakeId }),
@@ -1415,16 +1389,13 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
 
   test("POST returns 400 for non-existent vehicle IDs", async () => {
     const fakeVehicleId = "00000000-0000-4000-a000-000000000099";
-    const request = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "POST",
-        token: tokenAdminA,
-        companyId: companyA.id,
-        userId: adminA.id,
-        body: { vehicleIds: [fakeVehicleId] },
-      },
-    );
+    const request = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "POST",
+      token: tokenAdminA,
+      companyId: companyA.id,
+      userId: adminA.id,
+      body: { vehicleIds: [fakeVehicleId] },
+    });
 
     const response = await POST_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: zoneA.id }),
@@ -1442,16 +1413,13 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
       role: adminA.role,
     });
 
-    const request = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "POST",
-        token: adminTokenB,
-        companyId: companyB.id,
-        userId: adminA.id,
-        body: { vehicleIds: [vehicleA1.id] },
-      },
-    );
+    const request = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "POST",
+      token: adminTokenB,
+      companyId: companyB.id,
+      userId: adminA.id,
+      body: { vehicleIds: [vehicleA1.id] },
+    });
 
     const response = await POST_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: zoneA.id }),
@@ -1473,15 +1441,12 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
       vehicleId: vehicleA2.id,
     });
 
-    const request = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "DELETE",
-        token: tokenAdminA,
-        companyId: companyA.id,
-        userId: adminA.id,
-      },
-    );
+    const request = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "DELETE",
+      token: tokenAdminA,
+      companyId: companyA.id,
+      userId: adminA.id,
+    });
 
     const response = await DELETE_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: zoneA.id }),
@@ -1497,25 +1462,19 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
       .select()
       .from(zoneVehicles)
       .where(
-        and(
-          eq(zoneVehicles.zoneId, zoneA.id),
-          eq(zoneVehicles.active, true),
-        ),
+        and(eq(zoneVehicles.zoneId, zoneA.id), eq(zoneVehicles.active, true)),
       );
     expect(assignments).toHaveLength(0);
   });
 
   test("DELETE returns 404 for non-existent zone", async () => {
     const fakeId = "00000000-0000-0000-0000-000000000000";
-    const request = await createTestRequest(
-      `/api/zones/${fakeId}/vehicles`,
-      {
-        method: "DELETE",
-        token: tokenAdminA,
-        companyId: companyA.id,
-        userId: adminA.id,
-      },
-    );
+    const request = await createTestRequest(`/api/zones/${fakeId}/vehicles`, {
+      method: "DELETE",
+      token: tokenAdminA,
+      companyId: companyA.id,
+      userId: adminA.id,
+    });
 
     const response = await DELETE_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: fakeId }),
@@ -1531,15 +1490,12 @@ describe("Zone Vehicles - /api/zones/[id]/vehicles", () => {
       role: adminA.role,
     });
 
-    const request = await createTestRequest(
-      `/api/zones/${zoneA.id}/vehicles`,
-      {
-        method: "DELETE",
-        token: adminTokenB,
-        companyId: companyB.id,
-        userId: adminA.id,
-      },
-    );
+    const request = await createTestRequest(`/api/zones/${zoneA.id}/vehicles`, {
+      method: "DELETE",
+      token: adminTokenB,
+      companyId: companyB.id,
+      userId: adminA.id,
+    });
 
     const response = await DELETE_ZONE_VEHICLES(request, {
       params: Promise.resolve({ id: zoneA.id }),

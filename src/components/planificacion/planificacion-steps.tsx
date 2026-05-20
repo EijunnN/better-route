@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState as useLocalState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -20,10 +19,17 @@ import {
   Upload,
   User,
 } from "lucide-react";
+import { useState as useLocalState, useMemo } from "react";
+import { Can } from "@/components/auth/can";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Can } from "@/components/auth/can";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,7 +111,10 @@ export function VehicleStep() {
         {/* Date/Time selector */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <Label htmlFor="plan-date" className="text-xs text-muted-foreground">
+            <Label
+              htmlFor="plan-date"
+              className="text-xs text-muted-foreground"
+            >
               Fecha
             </Label>
             <Input
@@ -117,7 +126,10 @@ export function VehicleStep() {
             />
           </div>
           <div>
-            <Label htmlFor="plan-time" className="text-xs text-muted-foreground">
+            <Label
+              htmlFor="plan-time"
+              className="text-xs text-muted-foreground"
+            >
               Hora inicio
             </Label>
             <Input
@@ -132,7 +144,10 @@ export function VehicleStep() {
 
         {/* Fleet filter and Search */}
         <div className="flex gap-2">
-          <Select value={state.fleetFilter} onValueChange={actions.setFleetFilter}>
+          <Select
+            value={state.fleetFilter}
+            onValueChange={actions.setFleetFilter}
+          >
             <SelectTrigger className="w-[140px] h-9">
               <SelectValue placeholder="Todas las flotas" />
             </SelectTrigger>
@@ -163,16 +178,20 @@ export function VehicleStep() {
               <Checkbox
                 id="select-all-vehicles"
                 checked={derived.filteredVehicles.every((v) =>
-                  derived.selectedVehicleIdsSet.has(v.id)
+                  derived.selectedVehicleIdsSet.has(v.id),
                 )}
                 onCheckedChange={actions.selectAllVehicles}
               />
-              <Label htmlFor="select-all-vehicles" className="text-sm cursor-pointer">
+              <Label
+                htmlFor="select-all-vehicles"
+                className="text-sm cursor-pointer"
+              >
                 Seleccionar todos
               </Label>
             </div>
             <Badge variant="secondary" className="text-xs">
-              {state.selectedVehicleIds.length}/{derived.filteredVehicles.length}
+              {state.selectedVehicleIds.length}/
+              {derived.filteredVehicles.length}
             </Badge>
           </div>
         )}
@@ -192,62 +211,83 @@ export function VehicleStep() {
             derived.filteredVehicles.map((vehicle) => {
               const hasActivePlan = (vehicle.activeStopsCount ?? 0) > 0;
               return (
-              <label
-                key={vehicle.id}
-                htmlFor={`vehicle-${vehicle.id}`}
-                className={`block p-2 rounded-md border transition-colors ${
-                  hasActivePlan
-                    ? "border-orange-300 bg-orange-50/50 dark:bg-orange-950/10 cursor-not-allowed opacity-70"
-                    : derived.selectedVehicleIdsSet.has(vehicle.id)
-                      ? "border-primary bg-primary/5 cursor-pointer"
-                      : "border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`vehicle-${vehicle.id}`}
-                    checked={derived.selectedVehicleIdsSet.has(vehicle.id)}
-                    onCheckedChange={() => !hasActivePlan && actions.toggleVehicle(vehicle.id)}
-                    disabled={hasActivePlan}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">
-                        {vehicle.plate || vehicle.name}
-                      </span>
-                      {hasActivePlan && (
-                        <Badge className="text-[10px] px-1.5 py-0 bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20">
-                          En ruta ({vehicle.activeStopsCount} paradas)
-                        </Badge>
-                      )}
-                      {(vehicle.brand || vehicle.model) && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                          {[vehicle.brand, vehicle.model].filter(Boolean).join(" ")}
-                        </Badge>
-                      )}
-                      {vehicle.assignedDriver && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <User className="size-3" />
-                          {vehicle.assignedDriver.name}
+                <label
+                  key={vehicle.id}
+                  htmlFor={`vehicle-${vehicle.id}`}
+                  className={`block p-2 rounded-md border transition-colors ${
+                    hasActivePlan
+                      ? "border-orange-300 bg-orange-50/50 dark:bg-orange-950/10 cursor-not-allowed opacity-70"
+                      : derived.selectedVehicleIdsSet.has(vehicle.id)
+                        ? "border-primary bg-primary/5 cursor-pointer"
+                        : "border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`vehicle-${vehicle.id}`}
+                      checked={derived.selectedVehicleIdsSet.has(vehicle.id)}
+                      onCheckedChange={() =>
+                        !hasActivePlan && actions.toggleVehicle(vehicle.id)
+                      }
+                      disabled={hasActivePlan}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">
+                          {vehicle.plate || vehicle.name}
                         </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                      {state.companyProfile?.enableWeight && vehicle.weightCapacity && <span>{vehicle.weightCapacity}kg</span>}
-                      {state.companyProfile?.enableVolume && vehicle.volumeCapacity && <span>{vehicle.volumeCapacity}L</span>}
-                      {state.companyProfile?.enableUnits && vehicle.maxUnitsCapacity && <span>{vehicle.maxUnitsCapacity} uds</span>}
-                      {state.companyProfile?.enableOrderValue && vehicle.maxValueCapacity && <span>S/{vehicle.maxValueCapacity}</span>}
-                      {vehicle.maxOrders && <span>Max {vehicle.maxOrders} ped.</span>}
-                      {vehicle.originAddress && (
-                        <span className="truncate flex items-center gap-1">
-                          <MapPin className="size-3 shrink-0" />
-                          {vehicle.originAddress}
-                        </span>
-                      )}
+                        {hasActivePlan && (
+                          <Badge className="text-[10px] px-1.5 py-0 bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20">
+                            En ruta ({vehicle.activeStopsCount} paradas)
+                          </Badge>
+                        )}
+                        {(vehicle.brand || vehicle.model) && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {[vehicle.brand, vehicle.model]
+                              .filter(Boolean)
+                              .join(" ")}
+                          </Badge>
+                        )}
+                        {vehicle.assignedDriver && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <User className="size-3" />
+                            {vehicle.assignedDriver.name}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                        {state.companyProfile?.enableWeight &&
+                          vehicle.weightCapacity && (
+                            <span>{vehicle.weightCapacity}kg</span>
+                          )}
+                        {state.companyProfile?.enableVolume &&
+                          vehicle.volumeCapacity && (
+                            <span>{vehicle.volumeCapacity}L</span>
+                          )}
+                        {state.companyProfile?.enableUnits &&
+                          vehicle.maxUnitsCapacity && (
+                            <span>{vehicle.maxUnitsCapacity} uds</span>
+                          )}
+                        {state.companyProfile?.enableOrderValue &&
+                          vehicle.maxValueCapacity && (
+                            <span>S/{vehicle.maxValueCapacity}</span>
+                          )}
+                        {vehicle.maxOrders && (
+                          <span>Max {vehicle.maxOrders} ped.</span>
+                        )}
+                        {vehicle.originAddress && (
+                          <span className="truncate flex items-center gap-1">
+                            <MapPin className="size-3 shrink-0" />
+                            {vehicle.originAddress}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </label>
+                </label>
               );
             })
           )}
@@ -277,7 +317,9 @@ export function OrderStep() {
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {/* Header with upload button */}
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-muted-foreground">Pedidos pendientes</h3>
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            Pedidos pendientes
+          </h3>
           <Can perm="order:import">
             <Button
               variant="outline"
@@ -298,7 +340,8 @@ export function OrderStep() {
               Todas ({state.orders.length})
             </TabsTrigger>
             <TabsTrigger value="alertas" className="flex-1 text-xs h-7">
-              <AlertTriangle className="size-3 mr-1" />({derived.ordersWithIssues.length})
+              <AlertTriangle className="size-3 mr-1" />(
+              {derived.ordersWithIssues.length})
             </TabsTrigger>
             <TabsTrigger value="conHorario" className="flex-1 text-xs h-7">
               <Clock className="size-3 mr-1" />
@@ -328,11 +371,14 @@ export function OrderStep() {
               <Checkbox
                 id="select-all-orders"
                 checked={derived.filteredOrders.every((o) =>
-                  derived.selectedOrderIdsSet.has(o.id)
+                  derived.selectedOrderIdsSet.has(o.id),
                 )}
                 onCheckedChange={actions.selectAllOrders}
               />
-              <Label htmlFor="select-all-orders" className="text-sm cursor-pointer">
+              <Label
+                htmlFor="select-all-orders"
+                className="text-sm cursor-pointer"
+              >
                 Seleccionar todos
               </Label>
             </div>
@@ -374,12 +420,17 @@ export function OrderStep() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-sm truncate">{order.trackingId}</span>
+                        <span className="font-medium text-sm truncate">
+                          {order.trackingId}
+                        </span>
                         {hasIssue && (
                           <AlertTriangle className="size-3 text-orange-500 shrink-0" />
                         )}
                         {order.priority === "HIGH" && (
-                          <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">
+                          <Badge
+                            variant="destructive"
+                            className="text-[10px] px-1 py-0 h-4"
+                          >
                             !
                           </Badge>
                         )}
@@ -456,12 +507,21 @@ export function OrderStep() {
 }
 
 // Ray-casting point-in-polygon check
-function pointInPolygon(lng: number, lat: number, polygon: number[][]): boolean {
+function pointInPolygon(
+  lng: number,
+  lat: number,
+  polygon: number[][],
+): boolean {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i][0], yi = polygon[i][1];
-    const xj = polygon[j][0], yj = polygon[j][1];
-    if ((yi > lat) !== (yj > lat) && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+    const xi = polygon[i][0],
+      yi = polygon[i][1];
+    const xj = polygon[j][0],
+      yj = polygon[j][1];
+    if (
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi
+    ) {
       inside = !inside;
     }
   }
@@ -475,8 +535,10 @@ function isOrderInAnyZone(
   if (!order.latitude || !order.longitude) return false;
   const lng = parseFloat(order.longitude);
   const lat = parseFloat(order.latitude);
-  if (isNaN(lng) || isNaN(lat)) return false;
-  return zones.some((zone) => pointInPolygon(lng, lat, zone.geometry.coordinates[0]));
+  if (Number.isNaN(lng) || Number.isNaN(lat)) return false;
+  return zones.some((zone) =>
+    pointInPolygon(lng, lat, zone.geometry.coordinates[0]),
+  );
 }
 
 export function ConfigStep() {
@@ -488,8 +550,12 @@ export function ConfigStep() {
     const activeZones = state.zones.filter((z) => z.active);
     if (activeZones.length === 0) return [];
 
-    const selectedOrders = state.orders.filter((o) => state.selectedOrderIds.includes(o.id));
-    return selectedOrders.filter((order) => !isOrderInAnyZone(order, activeZones));
+    const selectedOrders = state.orders.filter((o) =>
+      state.selectedOrderIds.includes(o.id),
+    );
+    return selectedOrders.filter(
+      (order) => !isOrderInAnyZone(order, activeZones),
+    );
   }, [state.zones, state.orders, state.selectedOrderIds]);
 
   return (
@@ -497,7 +563,9 @@ export function ConfigStep() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Plan Name */}
         <div className="space-y-1.5">
-          <Label htmlFor="plan-name" className="text-sm font-medium">Nombre del plan</Label>
+          <Label htmlFor="plan-name" className="text-sm font-medium">
+            Nombre del plan
+          </Label>
           <Input
             id="plan-name"
             placeholder={`Plan ${state.planDate} ${state.planTime}`}
@@ -512,11 +580,15 @@ export function ConfigStep() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Vehículos</p>
-                <p className="font-semibold text-lg">{state.selectedVehicleIds.length}</p>
+                <p className="font-semibold text-lg">
+                  {state.selectedVehicleIds.length}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Visitas</p>
-                <p className="font-semibold text-lg">{state.selectedOrderIds.length}</p>
+                <p className="font-semibold text-lg">
+                  {state.selectedOrderIds.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -525,7 +597,9 @@ export function ConfigStep() {
         {/* Objective */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Objetivo de optimización</CardTitle>
+            <CardTitle className="text-base">
+              Objetivo de optimización
+            </CardTitle>
             <CardDescription className="text-xs">
               Define qué debe priorizar el algoritmo
             </CardDescription>
@@ -543,7 +617,9 @@ export function ConfigStep() {
                 }`}
               >
                 <p className="font-medium text-sm">{opt.label}</p>
-                <p className="text-xs text-muted-foreground">{opt.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {opt.description}
+                </p>
               </button>
             ))}
           </CardContent>
@@ -553,11 +629,18 @@ export function ConfigStep() {
         {state.availablePresets.length > 0 && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Preset de optimización</CardTitle>
+              <CardTitle className="text-base">
+                Preset de optimización
+              </CardTitle>
               <CardDescription className="text-xs">
-                Aplica una configuración guardada del solver (flags, ventanas flexibles, modo fin de ruta…).
-                Gestionalas en{" "}
-                <a href="/optimization-presets" className="underline" target="_blank" rel="noreferrer">
+                Aplica una configuración guardada del solver (flags, ventanas
+                flexibles, modo fin de ruta…). Gestionalas en{" "}
+                <a
+                  href="/optimization-presets"
+                  className="underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   /optimization-presets
                 </a>
                 .
@@ -593,7 +676,9 @@ export function ConfigStep() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Tiempo de servicio</CardTitle>
-            <CardDescription className="text-xs">Tiempo promedio por entrega</CardDescription>
+            <CardDescription className="text-xs">
+              Tiempo promedio por entrega
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -609,7 +694,6 @@ export function ConfigStep() {
             </div>
           </CardContent>
         </Card>
-
       </div>
 
       {/* Zone Warning */}
@@ -619,15 +703,22 @@ export function ConfigStep() {
             <div className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-orange-600 flex-shrink-0" />
               <p className="text-sm text-orange-800 dark:text-orange-400 flex-1">
-                <span className="font-medium">{ordersOutsideZones.length}</span> pedido{ordersOutsideZones.length > 1 ? "s" : ""} fuera de las zonas configuradas.
-                No ser{ordersOutsideZones.length > 1 ? "án" : "á"} incluido{ordersOutsideZones.length > 1 ? "s" : ""} en la optimización.
+                <span className="font-medium">{ordersOutsideZones.length}</span>{" "}
+                pedido{ordersOutsideZones.length > 1 ? "s" : ""} fuera de las
+                zonas configuradas. No ser
+                {ordersOutsideZones.length > 1 ? "án" : "á"} incluido
+                {ordersOutsideZones.length > 1 ? "s" : ""} en la optimización.
               </p>
               <button
                 type="button"
                 onClick={() => setShowOutsideDetails(!showOutsideDetails)}
                 className="text-orange-600 hover:text-orange-800 dark:text-orange-400"
               >
-                {showOutsideDetails ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                {showOutsideDetails ? (
+                  <ChevronUp className="size-4" />
+                ) : (
+                  <ChevronDown className="size-4" />
+                )}
               </button>
             </div>
             {showOutsideDetails && (

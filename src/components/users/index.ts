@@ -1,12 +1,17 @@
 export { UserForm } from "./user-form";
-export { UsersProvider, useUsers, ROLE_TABS, STATUS_COLOR_CLASSES } from "./users-context";
 export type {
-  User,
-  Fleet,
   CustomRole,
-  UsersState,
+  Fleet,
+  User,
   UsersActions,
-  UsersMeta,
   UsersDerived,
+  UsersMeta,
+  UsersState,
 } from "./users-context";
-export { UsersListView, UsersFormView } from "./users-views";
+export {
+  ROLE_TABS,
+  STATUS_COLOR_CLASSES,
+  UsersProvider,
+  useUsers,
+} from "./users-context";
+export { UsersFormView, UsersListView } from "./users-views";

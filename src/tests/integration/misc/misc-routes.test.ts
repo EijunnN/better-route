@@ -14,33 +14,22 @@
  *   - auth/sessions/[id] GET, DELETE           -> auth-sessions.test.ts
  *   - time-window-presets/[id] GET, PATCH, DELETE -> time-window-presets.test.ts
  */
-import {
-  describe,
-  test,
-  expect,
-  beforeAll,
-  afterAll,
-} from "bun:test";
-import { cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-} from "../setup/test-data";
-import { setTenantContext } from "@/lib/infra/tenant";
-
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 // Route handler imports
 // POST /api/admin/cache (warmup) was removed with the dead warmupCache stub —
 // see docs/cache-audit.md.
 import {
-  GET as cacheGET,
   DELETE as cacheDELETE,
+  GET as cacheGET,
 } from "@/app/api/admin/cache/route";
 import { GET as metricsHistoryGET } from "@/app/api/metrics/history/route";
-import { GET as presignedUrlGET } from "@/app/api/upload/presigned-url/route";
 import { POST as onboardingPOST } from "@/app/api/onboarding/setup/route";
+import { GET as presignedUrlGET } from "@/app/api/upload/presigned-url/route";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { createTestToken } from "../setup/test-auth";
+import { createAdmin, createCompany, createPlanner } from "../setup/test-data";
+import { cleanDatabase } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Misc Routes", () => {
   // Shared state across all sub-describes
@@ -401,7 +390,7 @@ describe("Misc Routes", () => {
     });
 
     test("returns 400 for filename exceeding 255 characters", async () => {
-      const longFilename = "a".repeat(256) + ".jpg";
+      const longFilename = `${"a".repeat(256)}.jpg`;
       const request = await createTestRequest("/api/upload/presigned-url", {
         method: "GET",
         token: adminToken,
@@ -440,7 +429,10 @@ describe("Misc Routes", () => {
         token: adminToken,
         companyId: company.id,
         userId: admin.id,
-        searchParams: { filename: "malicious.exe", contentType: "application/x-msdownload" },
+        searchParams: {
+          filename: "malicious.exe",
+          contentType: "application/x-msdownload",
+        },
       });
 
       const response = await presignedUrlGET(request);
@@ -456,7 +448,11 @@ describe("Misc Routes", () => {
         token: adminToken,
         companyId: company.id,
         userId: admin.id,
-        searchParams: { filename: "photo.jpg", contentType: "image/jpeg", folder: "../../../etc" },
+        searchParams: {
+          filename: "photo.jpg",
+          contentType: "image/jpeg",
+          folder: "../../../etc",
+        },
       });
 
       const response = await presignedUrlGET(request);
@@ -472,7 +468,11 @@ describe("Misc Routes", () => {
         token: adminToken,
         companyId: company.id,
         userId: admin.id,
-        searchParams: { trackingId: "TRACK-789", contentType: "image/jpeg", index: "0" },
+        searchParams: {
+          trackingId: "TRACK-789",
+          contentType: "image/jpeg",
+          index: "0",
+        },
       });
 
       const response = await presignedUrlGET(request);
@@ -488,7 +488,11 @@ describe("Misc Routes", () => {
         token: adminToken,
         companyId: company.id,
         userId: admin.id,
-        searchParams: { trackingId: "TRACK-789", contentType: "image/jpeg", index: "100" },
+        searchParams: {
+          trackingId: "TRACK-789",
+          contentType: "image/jpeg",
+          index: "100",
+        },
       });
 
       const response = await presignedUrlGET(request);
@@ -551,7 +555,9 @@ describe("Misc Routes", () => {
 
   describe("Onboarding Setup — POST /api/onboarding/setup", () => {
     test("returns 403 for non-ADMIN_SISTEMA role", async () => {
-      const plannerUser = await createAdmin(null, { role: "PLANIFICADOR" } as any);
+      const plannerUser = await createAdmin(null, {
+        role: "PLANIFICADOR",
+      } as any);
       const plannerOnboardToken = await createTestToken({
         userId: plannerUser.id,
         companyId: null,

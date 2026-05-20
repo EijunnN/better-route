@@ -1,27 +1,25 @@
 import { and, eq, sql } from "drizzle-orm";
-import { after } from "next/server";
-import { type NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import {
-  fleets,
-  vehicleFleets,
-  vehicles,
-} from "@/db/schema";
+import { fleets, vehicleFleets, vehicles } from "@/db/schema";
 import { TenantAccessDeniedError, withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { updateFleetSchema } from "@/lib/validations/fleet";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { updateFleetSchema } from "@/lib/validations/fleet";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.FLEET, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.FLEET,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -76,7 +74,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.FLEET, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.FLEET,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -225,7 +227,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.FLEET, Action.DELETE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.FLEET,
+      Action.DELETE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

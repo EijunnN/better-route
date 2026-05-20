@@ -1,27 +1,27 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
-import { eq, and } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createVehicle,
-  createVehicleSkill,
-  createVehicleSkillAssignment,
-} from "../setup/test-data";
-import { vehicleSkillAssignments, vehicleSkills, vehicles } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import {
   GET as GET_SKILLS,
   PUT as PUT_SKILLS,
 } from "@/app/api/vehicles/[id]/skills/route";
+import { vehicleSkillAssignments, vehicleSkills, vehicles } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createVehicle,
+  createVehicleSkill,
+  createVehicleSkillAssignment,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Vehicle Detail — Skills", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -48,9 +48,7 @@ describe("Vehicle Detail — Skills", () => {
     await testDb
       .delete(vehicleSkills)
       .where(eq(vehicleSkills.companyId, company.id));
-    await testDb
-      .delete(vehicles)
-      .where(eq(vehicles.companyId, company.id));
+    await testDb.delete(vehicles).where(eq(vehicles.companyId, company.id));
   });
 
   afterAll(async () => {

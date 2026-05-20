@@ -1,10 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { USER_ROLES, users } from "@/db/schema";
-import type {
-  AssignedSolvedRoute,
-  VerifiedPlan,
-} from "./optimization-runner";
+import type { AssignedSolvedRoute, VerifiedPlan } from "./optimization-runner";
 
 /**
  * Validation severity levels
@@ -334,7 +331,7 @@ async function validateDriverLicensesAndSkills(
       }
 
       // Skip if invalid date
-      if (isNaN(expiryDate.getTime())) continue;
+      if (Number.isNaN(expiryDate.getTime())) continue;
 
       // Format date safely
       let formattedDate: string;

@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * Mix of URGENT, RESCHEDULED, NEW. Capacity fits all. Tests that the solver

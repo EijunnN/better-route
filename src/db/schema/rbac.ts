@@ -82,36 +82,47 @@ export const permissions = pgTable("permissions", {
 });
 
 // Role Permissions - The ON/OFF switches
-export const rolePermissions = pgTable("role_permissions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  roleId: uuid("role_id")
-    .notNull()
-    .references(() => roles.id, { onDelete: "cascade" }),
-  permissionId: uuid("permission_id")
-    .notNull()
-    .references(() => permissions.id, { onDelete: "cascade" }),
-  // The switch: true = ON, false = OFF
-  enabled: boolean("enabled").notNull().default(false),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  uniqueIndex("role_permissions_role_permission_idx").on(table.roleId, table.permissionId),
-]);
+export const rolePermissions = pgTable(
+  "role_permissions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    permissionId: uuid("permission_id")
+      .notNull()
+      .references(() => permissions.id, { onDelete: "cascade" }),
+    // The switch: true = ON, false = OFF
+    enabled: boolean("enabled").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("role_permissions_role_permission_idx").on(
+      table.roleId,
+      table.permissionId,
+    ),
+  ],
+);
 
 // User Roles - Many-to-many relationship between users and roles
-export const userRoles = pgTable("user_roles", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  roleId: uuid("role_id")
-    .notNull()
-    .references(() => roles.id, { onDelete: "cascade" }),
-  // Is this the primary role for the user?
-  isPrimary: boolean("is_primary").notNull().default(false),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  uniqueIndex("user_roles_user_role_idx").on(table.userId, table.roleId),
-]);
+export const userRoles = pgTable(
+  "user_roles",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    // Is this the primary role for the user?
+    isPrimary: boolean("is_primary").notNull().default(false),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("user_roles_user_role_idx").on(table.userId, table.roleId),
+  ],
+);

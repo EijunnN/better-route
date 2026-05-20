@@ -20,13 +20,13 @@ import type {
   VerificationReport,
   VerifiedPlan,
 } from "../solved-plan";
+import { checkDriverAssignments } from "./check-assignments";
 import type {
+  OptimizerConfig,
   OptimizerOrder,
   OptimizerVehicle,
-  OptimizerConfig,
 } from "./input-types";
 import { verify } from "./verify";
-import { checkDriverAssignments } from "./check-assignments";
 
 /**
  * Shape of the DB-derived order the verifier needs. Matches the subset of

@@ -6,23 +6,23 @@
  * - Missing / invalid tokens return 401
  * - Tenant isolation prevents cross-company data leaks
  */
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createMonitor,
-  createFleetAdmin,
-  createDriver,
-  createOrder,
-} from "../setup/test-data";
-import {
-  GET as getOrders,
   POST as createOrderRoute,
+  GET as getOrders,
 } from "@/app/api/orders/route";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createDriver,
+  createFleetAdmin,
+  createMonitor,
+  createOrder,
+  createPlanner,
+} from "../setup/test-data";
+import { cleanDatabase } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
@@ -30,14 +30,44 @@ import {
 let companyA: { id: string };
 let companyB: { id: string };
 
-let adminUser: { id: string; email: string; role: string; companyId: string | null };
-let plannerUser: { id: string; email: string; role: string; companyId: string | null };
-let monitorUser: { id: string; email: string; role: string; companyId: string | null };
-let fleetAdminUser: { id: string; email: string; role: string; companyId: string | null };
-let driverUser: { id: string; email: string; role: string; companyId: string | null };
+let adminUser: {
+  id: string;
+  email: string;
+  role: string;
+  companyId: string | null;
+};
+let plannerUser: {
+  id: string;
+  email: string;
+  role: string;
+  companyId: string | null;
+};
+let monitorUser: {
+  id: string;
+  email: string;
+  role: string;
+  companyId: string | null;
+};
+let fleetAdminUser: {
+  id: string;
+  email: string;
+  role: string;
+  companyId: string | null;
+};
+let driverUser: {
+  id: string;
+  email: string;
+  role: string;
+  companyId: string | null;
+};
 
 // Company B user for tenant isolation
-let companyBUser: { id: string; email: string; role: string; companyId: string | null };
+let companyBUser: {
+  id: string;
+  email: string;
+  role: string;
+  companyId: string | null;
+};
 
 beforeAll(async () => {
   await cleanDatabase();
@@ -257,7 +287,10 @@ describe("RBAC enforcement", () => {
   describe("Tenant isolation", () => {
     test("user cannot see orders from another company", async () => {
       // Create an order in company A
-      await createOrder({ companyId: companyA.id, trackingId: `TRK-ISO-${Date.now()}` });
+      await createOrder({
+        companyId: companyA.id,
+        trackingId: `TRK-ISO-${Date.now()}`,
+      });
 
       // Company B user requests orders scoped to company B
       const token = await tokenFor(companyBUser);

@@ -1,26 +1,26 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { eq, and } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
+import { DELETE } from "@/app/api/optimization/configure/[id]/route";
 import {
-  createCompany,
-  createAdmin,
-  createDriver,
-  createVehicle,
-  createOrder,
-  createOptimizationConfig,
-  createOptimizationJob,
-  buildOptimizationResult,
-  createRouteStop,
-} from "../setup/test-data";
-import {
-  orders,
   optimizationConfigurations,
   optimizationJobs,
+  orders,
   routeStops,
 } from "@/db/schema";
-import { DELETE } from "@/app/api/optimization/configure/[id]/route";
+import { createTestToken } from "../setup/test-auth";
+import {
+  buildOptimizationResult,
+  createAdmin,
+  createCompany,
+  createDriver,
+  createOptimizationConfig,
+  createOptimizationJob,
+  createOrder,
+  createRouteStop,
+  createVehicle,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -113,7 +113,16 @@ async function setupConfirmedPlan(orderCount = 2) {
     role: admin.role,
   });
 
-  return { company, admin, driver, vehicle, orders: createdOrders, config, job, token };
+  return {
+    company,
+    admin,
+    driver,
+    vehicle,
+    orders: createdOrders,
+    config,
+    job,
+    token,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +175,11 @@ describe("DELETE /api/optimization/configure/[id]", () => {
   test("reverts ASSIGNED orders to PENDING when deleting a CONFIRMED plan", async () => {
     const fixture = await setupConfirmedPlan(2);
 
-    const response = await callDelete(fixture.config.id, fixture.token, fixture.company.id);
+    const response = await callDelete(
+      fixture.config.id,
+      fixture.token,
+      fixture.company.id,
+    );
     expect(response.status).toBe(200);
 
     const body = await response.json();
@@ -195,7 +208,11 @@ describe("DELETE /api/optimization/configure/[id]", () => {
       .where(eq(routeStops.jobId, fixture.job.id));
     expect(stopsBefore.length).toBe(2);
 
-    const response = await callDelete(fixture.config.id, fixture.token, fixture.company.id);
+    const response = await callDelete(
+      fixture.config.id,
+      fixture.token,
+      fixture.company.id,
+    );
     expect(response.status).toBe(200);
 
     // Route stops should be gone (cascade: config → jobs → route_stops)
@@ -216,7 +233,11 @@ describe("DELETE /api/optimization/configure/[id]", () => {
       .set({ status: "IN_PROGRESS" })
       .where(eq(orders.id, fixture.orders[0].id));
 
-    const response = await callDelete(fixture.config.id, fixture.token, fixture.company.id);
+    const response = await callDelete(
+      fixture.config.id,
+      fixture.token,
+      fixture.company.id,
+    );
     expect(response.status).toBe(200);
 
     // IN_PROGRESS order should remain IN_PROGRESS
@@ -246,7 +267,11 @@ describe("DELETE /api/optimization/configure/[id]", () => {
       .set({ status: "COMPLETED" })
       .where(eq(orders.id, fixture.orders[0].id));
 
-    const response = await callDelete(fixture.config.id, fixture.token, fixture.company.id);
+    const response = await callDelete(
+      fixture.config.id,
+      fixture.token,
+      fixture.company.id,
+    );
     expect(response.status).toBe(200);
 
     // COMPLETED order should remain COMPLETED
@@ -303,7 +328,11 @@ describe("DELETE /api/optimization/configure/[id]", () => {
     const fixture = await setupConfirmedPlan(2);
 
     // Delete the confirmed plan
-    const deleteResponse = await callDelete(fixture.config.id, fixture.token, fixture.company.id);
+    const deleteResponse = await callDelete(
+      fixture.config.id,
+      fixture.token,
+      fixture.company.id,
+    );
     expect(deleteResponse.status).toBe(200);
 
     // Orders should be PENDING now
@@ -392,12 +421,24 @@ describe("DELETE /api/optimization/configure/[id]", () => {
     const trackingId2 = fixture.orders[1].trackingId;
 
     // Delete the plan
-    const response = await callDelete(fixture.config.id, fixture.token, fixture.company.id);
+    const response = await callDelete(
+      fixture.config.id,
+      fixture.token,
+      fixture.company.id,
+    );
     expect(response.status).toBe(200);
 
     // Orders should be PENDING with original tracking IDs intact
-    const [o1After] = await testDb.select().from(orders).where(eq(orders.id, fixture.orders[0].id)).limit(1);
-    const [o2After] = await testDb.select().from(orders).where(eq(orders.id, fixture.orders[1].id)).limit(1);
+    const [o1After] = await testDb
+      .select()
+      .from(orders)
+      .where(eq(orders.id, fixture.orders[0].id))
+      .limit(1);
+    const [o2After] = await testDb
+      .select()
+      .from(orders)
+      .where(eq(orders.id, fixture.orders[1].id))
+      .limit(1);
     expect(o1After.status).toBe("PENDING");
     expect(o2After.status).toBe("PENDING");
     expect(o1After.trackingId).toBe(trackingId1);

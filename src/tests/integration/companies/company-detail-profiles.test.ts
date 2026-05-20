@@ -1,49 +1,39 @@
-import {
-  describe,
-  test,
-  expect,
-  beforeAll,
-  afterAll,
-} from "bun:test";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createFieldDefinition,
-  createCompanyProfile,
-} from "../setup/test-data";
-import { companyFieldDefinitions } from "@/db/schema";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-
-// Route handlers - Company detail
+// Route handlers - Field definition by ID
 import {
-  GET as companyGET,
-  PATCH as companyPATCH,
-  DELETE as companyDELETE,
-} from "@/app/api/companies/[id]/route";
-
+  DELETE as fieldDELETE,
+  GET as fieldGET,
+  PATCH as fieldPATCH,
+} from "@/app/api/companies/[id]/field-definitions/[fieldId]/route";
 // Route handlers - Field definitions (list + create)
 import {
   GET as fieldListGET,
   POST as fieldPOST,
 } from "@/app/api/companies/[id]/field-definitions/route";
-
-// Route handlers - Field definition by ID
+// Route handlers - Company detail
 import {
-  GET as fieldGET,
-  PATCH as fieldPATCH,
-  DELETE as fieldDELETE,
-} from "@/app/api/companies/[id]/field-definitions/[fieldId]/route";
-
+  DELETE as companyDELETE,
+  GET as companyGET,
+  PATCH as companyPATCH,
+} from "@/app/api/companies/[id]/route";
 // Route handlers - Company optimization profiles
 import {
+  DELETE as profileDELETE,
   GET as profileGET,
   POST as profilePOST,
-  DELETE as profileDELETE,
 } from "@/app/api/company-profiles/route";
+import { companyFieldDefinitions } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createCompanyProfile,
+  createFieldDefinition,
+  createPlanner,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Company Detail, Profiles & Field Definitions", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -386,9 +376,24 @@ describe("Company Detail, Profiles & Field Definitions", () => {
   // -------------------------------------------------------------------------
   test("GET /api/companies/[id]/field-definitions returns definitions ordered by position", async () => {
     const listCo = await createCompany();
-    await createFieldDefinition({ companyId: listCo.id, code: "z_field", label: "Z", position: 20 });
-    await createFieldDefinition({ companyId: listCo.id, code: "a_field", label: "A", position: 1 });
-    await createFieldDefinition({ companyId: listCo.id, code: "m_field", label: "M", position: 10 });
+    await createFieldDefinition({
+      companyId: listCo.id,
+      code: "z_field",
+      label: "Z",
+      position: 20,
+    });
+    await createFieldDefinition({
+      companyId: listCo.id,
+      code: "a_field",
+      label: "A",
+      position: 1,
+    });
+    await createFieldDefinition({
+      companyId: listCo.id,
+      code: "m_field",
+      label: "M",
+      position: 10,
+    });
 
     const request = await createTestRequest(
       `/api/companies/${listCo.id}/field-definitions`,
@@ -411,8 +416,16 @@ describe("Company Detail, Profiles & Field Definitions", () => {
   // -------------------------------------------------------------------------
   test("GET /api/companies/[id]/field-definitions filters by entity query param", async () => {
     const filterCo = await createCompany();
-    await createFieldDefinition({ companyId: filterCo.id, code: "order_f", entity: "orders" });
-    await createFieldDefinition({ companyId: filterCo.id, code: "stop_f", entity: "route_stops" });
+    await createFieldDefinition({
+      companyId: filterCo.id,
+      code: "order_f",
+      entity: "orders",
+    });
+    await createFieldDefinition({
+      companyId: filterCo.id,
+      code: "stop_f",
+      entity: "route_stops",
+    });
 
     const request = await createTestRequest(
       `/api/companies/${filterCo.id}/field-definitions`,
@@ -454,7 +467,11 @@ describe("Company Detail, Profiles & Field Definitions", () => {
   test("GET /api/companies/[id]/field-definitions tenant isolation", async () => {
     const coA = await createCompany();
     const coB = await createCompany();
-    await createFieldDefinition({ companyId: coA.id, code: "private_field", label: "Private" });
+    await createFieldDefinition({
+      companyId: coA.id,
+      code: "private_field",
+      label: "Private",
+    });
 
     const request = await createTestRequest(
       `/api/companies/${coB.id}/field-definitions`,
@@ -489,7 +506,13 @@ describe("Company Detail, Profiles & Field Definitions", () => {
 
     const request = await createTestRequest(
       `/api/companies/${company.id}/field-definitions`,
-      { method: "POST", token: adminToken, companyId: company.id, userId: admin.id, body },
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+        body,
+      },
     );
     const response = await fieldPOST(request, {
       params: Promise.resolve({ id: company.id }),
@@ -526,7 +549,13 @@ describe("Company Detail, Profiles & Field Definitions", () => {
 
     const request = await createTestRequest(
       `/api/companies/${company.id}/field-definitions`,
-      { method: "POST", token: adminToken, companyId: company.id, userId: admin.id, body },
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+        body,
+      },
     );
     const response = await fieldPOST(request, {
       params: Promise.resolve({ id: company.id }),
@@ -553,7 +582,13 @@ describe("Company Detail, Profiles & Field Definitions", () => {
 
     const request = await createTestRequest(
       `/api/companies/${company.id}/field-definitions`,
-      { method: "POST", token: adminToken, companyId: company.id, userId: admin.id, body },
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+        body,
+      },
     );
     const response = await fieldPOST(request, {
       params: Promise.resolve({ id: company.id }),
@@ -579,7 +614,13 @@ describe("Company Detail, Profiles & Field Definitions", () => {
 
     const request = await createTestRequest(
       `/api/companies/${company.id}/field-definitions`,
-      { method: "POST", token: adminToken, companyId: company.id, userId: admin.id, body },
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+        body,
+      },
     );
     const response = await fieldPOST(request, {
       params: Promise.resolve({ id: company.id }),
@@ -603,7 +644,13 @@ describe("Company Detail, Profiles & Field Definitions", () => {
 
     const request = await createTestRequest(
       `/api/companies/${company.id}/field-definitions`,
-      { method: "POST", token: adminToken, companyId: company.id, userId: admin.id, body },
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+        body,
+      },
     );
     const response = await fieldPOST(request, {
       params: Promise.resolve({ id: company.id }),
@@ -694,7 +741,13 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     // First creation succeeds
     const req1 = await createTestRequest(
       `/api/companies/${dupCo.id}/field-definitions`,
-      { method: "POST", token: adminToken, companyId: dupCo.id, userId: admin.id, body },
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: dupCo.id,
+        userId: admin.id,
+        body,
+      },
     );
     const res1 = await fieldPOST(req1, {
       params: Promise.resolve({ id: dupCo.id }),
@@ -704,7 +757,13 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     // Second with same code+entity returns 409
     const req2 = await createTestRequest(
       `/api/companies/${dupCo.id}/field-definitions`,
-      { method: "POST", token: adminToken, companyId: dupCo.id, userId: admin.id, body },
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: dupCo.id,
+        userId: admin.id,
+        body,
+      },
     );
     const res2 = await fieldPOST(req2, {
       params: Promise.resolve({ id: dupCo.id }),
@@ -734,7 +793,13 @@ describe("Company Detail, Profiles & Field Definitions", () => {
 
     const req1 = await createTestRequest(
       `/api/companies/${multiCo.id}/field-definitions`,
-      { method: "POST", token: adminToken, companyId: multiCo.id, userId: admin.id, body: bodyOrders },
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: multiCo.id,
+        userId: admin.id,
+        body: bodyOrders,
+      },
     );
     const res1 = await fieldPOST(req1, {
       params: Promise.resolve({ id: multiCo.id }),
@@ -743,7 +808,13 @@ describe("Company Detail, Profiles & Field Definitions", () => {
 
     const req2 = await createTestRequest(
       `/api/companies/${multiCo.id}/field-definitions`,
-      { method: "POST", token: adminToken, companyId: multiCo.id, userId: admin.id, body: bodyStops },
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: multiCo.id,
+        userId: admin.id,
+        body: bodyStops,
+      },
     );
     const res2 = await fieldPOST(req2, {
       params: Promise.resolve({ id: multiCo.id }),
@@ -940,7 +1011,12 @@ describe("Company Detail, Profiles & Field Definitions", () => {
         token: adminToken,
         companyId: company.id,
         userId: admin.id,
-        body: { position: 10, showInList: true, showInMobile: false, showInCsv: false },
+        body: {
+          position: 10,
+          showInList: true,
+          showInMobile: false,
+          showInCsv: false,
+        },
       },
     );
     const response = await fieldPATCH(request, {
@@ -1042,7 +1118,12 @@ describe("Company Detail, Profiles & Field Definitions", () => {
 
     const request = await createTestRequest(
       `/api/companies/${company.id}/field-definitions/${field.id}`,
-      { method: "DELETE", token: adminToken, companyId: company.id, userId: admin.id },
+      {
+        method: "DELETE",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+      },
     );
     const response = await fieldDELETE(request, {
       params: Promise.resolve({ id: company.id, fieldId: field.id }),
@@ -1067,7 +1148,12 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     const fakeId = "00000000-0000-0000-0000-000000000000";
     const request = await createTestRequest(
       `/api/companies/${company.id}/field-definitions/${fakeId}`,
-      { method: "DELETE", token: adminToken, companyId: company.id, userId: admin.id },
+      {
+        method: "DELETE",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+      },
     );
     const response = await fieldDELETE(request, {
       params: Promise.resolve({ id: company.id, fieldId: fakeId }),
@@ -1088,7 +1174,12 @@ describe("Company Detail, Profiles & Field Definitions", () => {
 
     const request = await createTestRequest(
       `/api/companies/${company2.id}/field-definitions/${field.id}`,
-      { method: "DELETE", token: adminToken, companyId: company2.id, userId: admin.id },
+      {
+        method: "DELETE",
+        token: adminToken,
+        companyId: company2.id,
+        userId: admin.id,
+      },
     );
     const response = await fieldDELETE(request, {
       params: Promise.resolve({ id: company2.id, fieldId: field.id }),

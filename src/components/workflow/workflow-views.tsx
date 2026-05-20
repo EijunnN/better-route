@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { ErrorState } from "@/components/ui/error-state";
+import { useState } from "react";
 import { useCan } from "@/components/auth/can";
+import { ErrorState } from "@/components/ui/error-state";
+import { useWorkflow } from "./workflow-context";
 import { WorkflowPipelineView } from "./workflow-pipeline-view";
 import { WorkflowTemplatePicker } from "./workflow-template-picker";
-import { useWorkflow } from "./workflow-context";
 
 /**
  * Orchestrator for the `/workflow` page. Chooses between:

@@ -12,8 +12,8 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { companies } from "./companies";
+import type { TIME_WINDOW_STRICTNESS } from "./orders";
 import { users } from "./users";
-import { TIME_WINDOW_STRICTNESS } from "./orders";
 
 // Optimization objective types
 export const OPTIMIZATION_OBJECTIVE = {
@@ -36,7 +36,9 @@ export const optimizationConfigurations = pgTable(
     depotLongitude: varchar("depot_longitude", { length: 20 }).notNull(),
     depotAddress: text("depot_address"),
     // Vehicle and driver selection (stored as JSON arrays)
-    selectedVehicleIds: jsonb("selected_vehicle_ids").notNull().$type<string[]>(),
+    selectedVehicleIds: jsonb("selected_vehicle_ids")
+      .notNull()
+      .$type<string[]>(),
     selectedDriverIds: jsonb("selected_driver_ids").notNull().$type<string[]>(),
     // Optimization parameters
     objective: varchar("objective", { length: 20 })
@@ -55,7 +57,9 @@ export const optimizationConfigurations = pgTable(
     penaltyFactor: integer("penalty_factor").notNull().default(3),
     maxRoutes: integer("max_routes"),
     // Engine selection — VROOM is the only supported value (legacy column kept for data).
-    optimizerType: varchar("optimizer_type", { length: 20 }).notNull().default("VROOM"),
+    optimizerType: varchar("optimizer_type", { length: 20 })
+      .notNull()
+      .default("VROOM"),
     // Which optimization preset to apply when this config is run. NULL means
     // "use whatever preset is marked isDefault=true for the company" — keeps
     // legacy configs working. ON DELETE SET NULL: deleting a preset doesn't
@@ -84,37 +88,44 @@ export const OPTIMIZATION_JOB_STATUS = {
 } as const;
 
 // Optimization jobs for async execution tracking
-export const optimizationJobs = pgTable("optimization_jobs", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "restrict" }),
-  configurationId: uuid("configuration_id")
-    .notNull()
-    .references(() => optimizationConfigurations.id, { onDelete: "cascade" }),
-  status: varchar("status", { length: 50 })
-    .notNull()
-    .$type<keyof typeof OPTIMIZATION_JOB_STATUS>()
-    .default("PENDING"),
-  progress: integer("progress").notNull().default(0), // 0-100
-  result: jsonb("result"), // Optimization results
-  error: text("error"), // Error message if failed
-  // Timestamps for job lifecycle
-  startedAt: timestamp("started_at"),
-  completedAt: timestamp("completed_at"),
-  cancelledAt: timestamp("cancelled_at"),
-  // Timeout configuration
-  timeoutMs: integer("timeout_ms").notNull().default(300000), // 5 minutes default
-  // Input hash for result caching
-  inputHash: varchar("input_hash", { length: 64 }),
-  // Metadata
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("optimization_jobs_company_id_idx").on(table.companyId),
-  index("optimization_jobs_company_status_idx").on(table.companyId, table.status),
-  index("optimization_jobs_config_idx").on(table.configurationId),
-]);
+export const optimizationJobs = pgTable(
+  "optimization_jobs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "restrict" }),
+    configurationId: uuid("configuration_id")
+      .notNull()
+      .references(() => optimizationConfigurations.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 50 })
+      .notNull()
+      .$type<keyof typeof OPTIMIZATION_JOB_STATUS>()
+      .default("PENDING"),
+    progress: integer("progress").notNull().default(0), // 0-100
+    result: jsonb("result"), // Optimization results
+    error: text("error"), // Error message if failed
+    // Timestamps for job lifecycle
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    cancelledAt: timestamp("cancelled_at"),
+    // Timeout configuration
+    timeoutMs: integer("timeout_ms").notNull().default(300000), // 5 minutes default
+    // Input hash for result caching
+    inputHash: varchar("input_hash", { length: 64 }),
+    // Metadata
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("optimization_jobs_company_id_idx").on(table.companyId),
+    index("optimization_jobs_company_status_idx").on(
+      table.companyId,
+      table.status,
+    ),
+    index("optimization_jobs_config_idx").on(table.configurationId),
+  ],
+);
 
 // Optimization presets - saved optimization configurations
 export const optimizationPresets = pgTable("optimization_presets", {
@@ -177,9 +188,13 @@ export const companyOptimizationProfiles = pgTable(
     enableVolume: boolean("enable_volume").notNull().default(true),
     enableUnits: boolean("enable_units").notNull().default(false),
     // Active capacity dimensions
-    activeDimensions: jsonb("active_dimensions").notNull().default(["WEIGHT", "VOLUME"]),
+    activeDimensions: jsonb("active_dimensions")
+      .notNull()
+      .default(["WEIGHT", "VOLUME"]),
     // Priority mapping by order type
-    priorityMapping: jsonb("priority_mapping").notNull().default({ NEW: 50, RESCHEDULED: 80, URGENT: 100 }),
+    priorityMapping: jsonb("priority_mapping")
+      .notNull()
+      .default({ NEW: 50, RESCHEDULED: 80, URGENT: 100 }),
     // Default time windows
     defaultTimeWindows: jsonb("default_time_windows"),
     // Metadata

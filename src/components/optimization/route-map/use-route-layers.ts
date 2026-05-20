@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import type { RefObject } from "react";
+import { useEffect } from "react";
 import { ROUTE_COLORS, UNSELECTED_COLOR } from "./constants";
 import type { Route } from "./types";
 

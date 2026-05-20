@@ -3,9 +3,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { driverLocations, optimizationJobs, routeStops } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
@@ -71,7 +71,9 @@ export async function GET(request: NextRequest) {
     const jobId = request.nextUrl.searchParams.get("jobId");
     // Accept optional vehicleIds filter (comma-separated)
     const vehicleIdsParam = request.nextUrl.searchParams.get("vehicleIds");
-    const filterVehicleIds = vehicleIdsParam ? vehicleIdsParam.split(",").filter(Boolean) : null;
+    const filterVehicleIds = vehicleIdsParam
+      ? vehicleIdsParam.split(",").filter(Boolean)
+      : null;
 
     let confirmedJob;
     if (jobId) {
@@ -198,7 +200,9 @@ export async function GET(request: NextRequest) {
 
     // Filter routes by vehicleIds if specified
     const routesToRender = filterVehicleIds
-      ? parsedResult.routes.filter((r) => r.vehicleId && filterVehicleIds.includes(r.vehicleId))
+      ? parsedResult.routes.filter(
+          (r) => r.vehicleId && filterVehicleIds.includes(r.vehicleId),
+        )
       : parsedResult.routes;
 
     routesToRender.forEach(
@@ -240,7 +244,8 @@ export async function GET(request: NextRequest) {
           // Get driver info from DB (more reliable than job result)
           const driverInfo = routeDriverMap.get(route.routeId);
           const driverId = driverInfo?.id || null;
-          const driverName = driverInfo?.name || route.driverName || "Sin asignar";
+          const driverName =
+            driverInfo?.name || route.driverName || "Sin asignar";
 
           features.push({
             type: "Feature",
@@ -315,13 +320,13 @@ export async function GET(request: NextRequest) {
           and(
             eq(driverLocations.companyId, tenantCtx.companyId),
             inArray(driverLocations.driverId, driverIds),
-          )
+          ),
         )
         .orderBy(desc(driverLocations.recordedAt))
         .limit(1000);
 
       // Create a map of driver ID to their most recent location
-      const locationMap = new Map<string, typeof latestLocations[0]>();
+      const locationMap = new Map<string, (typeof latestLocations)[0]>();
       for (const loc of latestLocations) {
         if (!locationMap.has(loc.driverId)) {
           locationMap.set(loc.driverId, loc);
@@ -329,7 +334,10 @@ export async function GET(request: NextRequest) {
       }
 
       // Find route info for each driver
-      const driverRouteMap = new Map<string, { routeId: string; vehiclePlate: string; color: string }>();
+      const driverRouteMap = new Map<
+        string,
+        { routeId: string; vehiclePlate: string; color: string }
+      >();
       parsedResult.routes.forEach((route, routeIndex) => {
         const driverInfo = routeDriverMap.get(route.routeId);
         if (driverInfo) {
@@ -343,7 +351,9 @@ export async function GET(request: NextRequest) {
 
       // Add driver location features
       locationMap.forEach((location, driverId) => {
-        const driverInfo = [...routeDriverMap.values()].find((d) => d.id === driverId);
+        const driverInfo = [...routeDriverMap.values()].find(
+          (d) => d.id === driverId,
+        );
         const routeInfo = driverRouteMap.get(driverId);
         const isRecent = location.recordedAt > tenMinutesAgo;
 

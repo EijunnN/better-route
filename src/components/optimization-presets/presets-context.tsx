@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,9 +34,21 @@ export interface OptimizationPreset {
 }
 
 export const ROUTE_END_MODES = [
-  { value: "DRIVER_ORIGIN", label: "Origen del conductor", description: "Cada ruta termina donde inició el conductor" },
-  { value: "SPECIFIC_DEPOT", label: "Depot específico", description: "Todas las rutas terminan en un punto fijo" },
-  { value: "OPEN_END", label: "Fin abierto", description: "Las rutas terminan en la última parada" },
+  {
+    value: "DRIVER_ORIGIN",
+    label: "Origen del conductor",
+    description: "Cada ruta termina donde inició el conductor",
+  },
+  {
+    value: "SPECIFIC_DEPOT",
+    label: "Depot específico",
+    description: "Todas las rutas terminan en un punto fijo",
+  },
+  {
+    value: "OPEN_END",
+    label: "Fin abierto",
+    description: "Las rutas terminan en la última parada",
+  },
 ] as const;
 
 export const DEFAULT_PRESET: Partial<OptimizationPreset> = {
@@ -87,7 +106,9 @@ interface PresetsContextValue {
   meta: PresetsMeta;
 }
 
-const PresetsContext = createContext<PresetsContextValue | undefined>(undefined);
+const PresetsContext = createContext<PresetsContextValue | undefined>(
+  undefined,
+);
 
 export function PresetsProvider({ children }: { children: ReactNode }) {
   const {
@@ -105,7 +126,8 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingPreset, setEditingPreset] = useState<Partial<OptimizationPreset> | null>(null);
+  const [editingPreset, setEditingPreset] =
+    useState<Partial<OptimizationPreset> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchPresets = useCallback(async () => {
@@ -120,7 +142,11 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
       setError(null);
     } catch (err) {
       console.error("Error fetching presets:", err);
-      setError(err instanceof Error ? err.message : "Error al cargar presets de optimización");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Error al cargar presets de optimización",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -164,17 +190,29 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
         await fetchPresets();
       } else {
         const data = await response.json().catch(() => null);
-        toast({ title: "Error al guardar preset", description: data?.error || "Ocurrió un error inesperado", variant: "destructive" });
+        toast({
+          title: "Error al guardar preset",
+          description: data?.error || "Ocurrió un error inesperado",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      toast({ title: "Error al guardar preset", description: error instanceof Error ? error.message : "Ocurrió un error inesperado", variant: "destructive" });
+      toast({
+        title: "Error al guardar preset",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!companyId || !confirm("¿Estás seguro de eliminar este preset?")) return;
+    if (!companyId || !confirm("¿Estás seguro de eliminar este preset?"))
+      return;
     try {
       const response = await fetch(`/api/optimization-presets/${id}`, {
         method: "DELETE",
@@ -184,10 +222,21 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
         await fetchPresets();
       } else {
         const data = await response.json().catch(() => null);
-        toast({ title: "Error al eliminar preset", description: data?.error || "Ocurrió un error inesperado", variant: "destructive" });
+        toast({
+          title: "Error al eliminar preset",
+          description: data?.error || "Ocurrió un error inesperado",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      toast({ title: "Error al eliminar preset", description: error instanceof Error ? error.message : "Ocurrió un error inesperado", variant: "destructive" });
+      toast({
+        title: "Error al eliminar preset",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
     }
   };
 
@@ -206,10 +255,21 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
         await fetchPresets();
       } else {
         const data = await response.json().catch(() => null);
-        toast({ title: "Error al establecer preset predeterminado", description: data?.error || "Ocurrió un error inesperado", variant: "destructive" });
+        toast({
+          title: "Error al establecer preset predeterminado",
+          description: data?.error || "Ocurrió un error inesperado",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      toast({ title: "Error al establecer preset predeterminado", description: error instanceof Error ? error.message : "Ocurrió un error inesperado", variant: "destructive" });
+      toast({
+        title: "Error al establecer preset predeterminado",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
     }
   };
 
@@ -217,7 +277,14 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
     setEditingPreset((prev) => (prev ? { ...prev, ...updates } : null));
   };
 
-  const state: PresetsState = { presets, isLoading, error, dialogOpen, editingPreset, isSaving };
+  const state: PresetsState = {
+    presets,
+    isLoading,
+    error,
+    dialogOpen,
+    editingPreset,
+    isSaving,
+  };
 
   const actions: PresetsActions = {
     fetchPresets,
@@ -241,7 +308,9 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
     authCompanyId,
   };
 
-  return <PresetsContext value={{ state, actions, meta }}>{children}</PresetsContext>;
+  return (
+    <PresetsContext value={{ state, actions, meta }}>{children}</PresetsContext>
+  );
 }
 
 export function usePresets(): PresetsContextValue {

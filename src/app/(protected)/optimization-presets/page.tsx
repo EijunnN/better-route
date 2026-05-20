@@ -1,7 +1,11 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { PresetsProvider, usePresets, PresetsListView } from "@/components/optimization-presets";
+import {
+  PresetsListView,
+  PresetsProvider,
+  usePresets,
+} from "@/components/optimization-presets";
 
 function OptimizationPresetsPageContent() {
   const { meta } = usePresets();

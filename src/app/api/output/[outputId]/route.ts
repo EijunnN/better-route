@@ -9,6 +9,9 @@ import {
   users,
   vehicles,
 } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import {
   convertOutputToCSV,
   formatOutputForDisplay,
@@ -20,9 +23,6 @@ import type {
   PlanOutput,
   RouteStopOutput,
 } from "@/lib/routing/output-generator-types";
-import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 interface RouteParams {
@@ -43,7 +43,11 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OUTPUT, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OUTPUT,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
 
     // Extract tenant context from headers
@@ -68,10 +72,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Get output record
     const outputRecord = await getOutputById(companyId, outputId);
     if (!outputRecord) {
-      return NextResponse.json(
-        { error: "Output not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Output not found" }, { status: 404 });
     }
 
     // Check if output generation failed
@@ -315,10 +316,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Get existing output record
     const existingOutput = await getOutputById(companyId, outputId);
     if (!existingOutput) {
-      return NextResponse.json(
-        { error: "Output not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Output not found" }, { status: 404 });
     }
 
     // Use existing format if not specified

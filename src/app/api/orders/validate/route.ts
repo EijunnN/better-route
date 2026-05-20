@@ -2,9 +2,9 @@ import { and, eq, or } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, timeWindowPresets } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
 import {
   getEffectiveStrictness,
   isStrictnessOverridden,
@@ -29,7 +29,11 @@ import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
  */
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.VALIDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.VALIDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -226,7 +230,11 @@ function parseTimeToMinutes(timeString: string): number {
 // GET - Get validation summary (no simulation)
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.VALIDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.VALIDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

@@ -1,9 +1,8 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { PermissionsProvider } from "@/hooks/use-permissions";
+import { cn } from "@/lib/utils";
 import { CompanyProvider } from "./company-context";
-import { Header } from "./header";
 import { LayoutProvider, useLayoutContext } from "./layout-context";
 import { Sidebar } from "./sidebar";
 import { ThemeProvider } from "./theme-context";

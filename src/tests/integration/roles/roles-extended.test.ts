@@ -1,44 +1,35 @@
-import {
-  describe,
-  test,
-  expect,
-  beforeAll,
-  afterAll,
-} from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
-  createAdmin,
-  createRole,
-  createPermission,
-  createRolePermission,
-  createCsvMappingTemplate,
-} from "../setup/test-data";
-import { csvColumnMappingTemplates } from "@/db/schema";
-
-// Route handlers — Batch permissions
-import { GET as BATCH_PERMS_GET } from "@/app/api/roles/batch/permissions/route";
-
-// Route handlers — Role detail (for 404 / edge-case tests not in role-permissions.test.ts)
-import {
-  GET as GET_ROLE,
-  PATCH as PATCH_ROLE,
-  DELETE as DELETE_ROLE,
-} from "@/app/api/roles/[id]/route";
-
-// Route handlers — CSV column mapping templates
-import {
-  GET as LIST_TEMPLATES,
-  POST as CREATE_TEMPLATE,
-} from "@/app/api/csv-column-mapping-templates/route";
-import {
+  DELETE as DELETE_TEMPLATE,
   GET as GET_TEMPLATE,
   PATCH as PATCH_TEMPLATE,
-  DELETE as DELETE_TEMPLATE,
 } from "@/app/api/csv-column-mapping-templates/[id]/route";
+// Route handlers — CSV column mapping templates
+import {
+  POST as CREATE_TEMPLATE,
+  GET as LIST_TEMPLATES,
+} from "@/app/api/csv-column-mapping-templates/route";
+// Route handlers — Role detail (for 404 / edge-case tests not in role-permissions.test.ts)
+import {
+  DELETE as DELETE_ROLE,
+  GET as GET_ROLE,
+  PATCH as PATCH_ROLE,
+} from "@/app/api/roles/[id]/route";
+// Route handlers — Batch permissions
+import { GET as BATCH_PERMS_GET } from "@/app/api/roles/batch/permissions/route";
+import { csvColumnMappingTemplates } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createCsvMappingTemplate,
+  createPermission,
+  createRole,
+  createRolePermission,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // =============================================================================
 // Helpers
@@ -79,8 +70,14 @@ describe("Roles Extended & CSV Templates", () => {
   // ===========================================================================
 
   test("batch perms: returns grouped permissions for multiple roles", async () => {
-    const roleA = await createRole({ companyId: company.id, name: `BatchA ${Date.now()}` });
-    const roleB = await createRole({ companyId: company.id, name: `BatchB ${Date.now()}` });
+    const roleA = await createRole({
+      companyId: company.id,
+      name: `BatchA ${Date.now()}`,
+    });
+    const roleB = await createRole({
+      companyId: company.id,
+      name: `BatchB ${Date.now()}`,
+    });
     const perm1 = await createPermission({
       entity: "orders",
       action: "VIEW",
@@ -95,10 +92,26 @@ describe("Roles Extended & CSV Templates", () => {
       category: "VEHICLES",
       displayOrder: 1,
     });
-    await createRolePermission({ roleId: roleA.id, permissionId: perm1.id, enabled: true });
-    await createRolePermission({ roleId: roleA.id, permissionId: perm2.id, enabled: false });
-    await createRolePermission({ roleId: roleB.id, permissionId: perm1.id, enabled: false });
-    await createRolePermission({ roleId: roleB.id, permissionId: perm2.id, enabled: true });
+    await createRolePermission({
+      roleId: roleA.id,
+      permissionId: perm1.id,
+      enabled: true,
+    });
+    await createRolePermission({
+      roleId: roleA.id,
+      permissionId: perm2.id,
+      enabled: false,
+    });
+    await createRolePermission({
+      roleId: roleB.id,
+      permissionId: perm1.id,
+      enabled: false,
+    });
+    await createRolePermission({
+      roleId: roleB.id,
+      permissionId: perm2.id,
+      enabled: true,
+    });
 
     const request = await createTestRequest("/api/roles/batch/permissions", {
       method: "GET",
@@ -139,7 +152,10 @@ describe("Roles Extended & CSV Templates", () => {
   });
 
   test("batch perms: returns permissions grouped by category with all fields", async () => {
-    const role = await createRole({ companyId: company.id, name: `CatRole ${Date.now()}` });
+    const role = await createRole({
+      companyId: company.id,
+      name: `CatRole ${Date.now()}`,
+    });
     const perm = await createPermission({
       entity: "orders",
       action: "VIEW",
@@ -147,7 +163,11 @@ describe("Roles Extended & CSV Templates", () => {
       category: "ORDERS",
       displayOrder: 1,
     });
-    await createRolePermission({ roleId: role.id, permissionId: perm.id, enabled: true });
+    await createRolePermission({
+      roleId: role.id,
+      permissionId: perm.id,
+      enabled: true,
+    });
 
     const request = await createTestRequest("/api/roles/batch/permissions", {
       method: "GET",
@@ -164,10 +184,10 @@ describe("Roles Extended & CSV Templates", () => {
     const body = await response.json();
     const roleData = body.data[role.id];
     expect(roleData).toBeDefined();
-    expect(roleData["ORDERS"]).toBeDefined();
+    expect(roleData.ORDERS).toBeDefined();
 
     // Each entry should have expected fields
-    const ordersPerms = roleData["ORDERS"] as Array<{
+    const ordersPerms = roleData.ORDERS as Array<{
       id: string;
       entity: string;
       action: string;
@@ -177,9 +197,9 @@ describe("Roles Extended & CSV Templates", () => {
     expect(ordersPerms.length).toBeGreaterThanOrEqual(1);
     const found = ordersPerms.find((p) => p.id === perm.id);
     expect(found).toBeDefined();
-    expect(found!.entity).toBe("orders");
-    expect(found!.action).toBe("VIEW");
-    expect(found!.enabled).toBe(true);
+    expect(found?.entity).toBe("orders");
+    expect(found?.action).toBe("VIEW");
+    expect(found?.enabled).toBe(true);
   });
 
   test("batch perms: returns 400 when roleIds param is missing", async () => {
@@ -216,7 +236,10 @@ describe("Roles Extended & CSV Templates", () => {
   });
 
   test("batch perms: filters out roles from other companies", async () => {
-    const roleA = await createRole({ companyId: company.id, name: `IsoA ${Date.now()}` });
+    const roleA = await createRole({
+      companyId: company.id,
+      name: `IsoA ${Date.now()}`,
+    });
     const otherRole = await createRole({
       companyId: company2.id,
       name: `IsoOther ${Date.now()}`,
@@ -257,7 +280,10 @@ describe("Roles Extended & CSV Templates", () => {
   });
 
   test("batch perms: handles single role ID", async () => {
-    const role = await createRole({ companyId: company.id, name: `Single ${Date.now()}` });
+    const role = await createRole({
+      companyId: company.id,
+      name: `Single ${Date.now()}`,
+    });
 
     const request = await createTestRequest("/api/roles/batch/permissions", {
       method: "GET",
@@ -438,8 +464,8 @@ describe("Roles Extended & CSV Templates", () => {
       description: "Some description",
       columnMapping: {
         "ID Seguimiento": "trackingId",
-        "Direccion": "address",
-        "Lat": "latitude",
+        Direccion: "address",
+        Lat: "latitude",
       },
       requiredFields: ["trackingId", "address"],
     });
@@ -932,8 +958,8 @@ describe("Roles Extended & CSV Templates", () => {
           name: `Lifecycle ${ts}`,
           description: "Created for lifecycle test",
           columnMapping: {
-            "Tracking": "trackingId",
-            "Address": "address",
+            Tracking: "trackingId",
+            Address: "address",
           },
           requiredFields: ["trackingId", "address"],
         },
@@ -973,9 +999,9 @@ describe("Roles Extended & CSV Templates", () => {
         body: {
           name: `Lifecycle v2 ${ts}`,
           columnMapping: {
-            "Tracking": "trackingId",
-            "Address": "address",
-            "Customer": "customerName",
+            Tracking: "trackingId",
+            Address: "address",
+            Customer: "customerName",
           },
         },
       },
@@ -986,7 +1012,7 @@ describe("Roles Extended & CSV Templates", () => {
     expect(updateRes.status).toBe(200);
     const updated = await updateRes.json();
     expect(updated.name).toBe(`Lifecycle v2 ${ts}`);
-    expect(updated.columnMapping["Customer"]).toBe("customerName");
+    expect(updated.columnMapping.Customer).toBe("customerName");
 
     // DELETE
     const deleteReq = await createTestRequest(

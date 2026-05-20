@@ -1,6 +1,6 @@
 "use client";
 
-import { use, createContext } from "react";
+import { createContext, use } from "react";
 import { cn } from "@/lib/utils";
 
 const TabsContext = createContext<{

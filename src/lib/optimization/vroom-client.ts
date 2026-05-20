@@ -150,15 +150,19 @@ export async function isVroomAvailable(): Promise<boolean> {
   try {
     // Send a minimal request with valid Lima coordinates
     const testRequest = {
-      vehicles: [{
-        id: 1,
-        start: [-77.0428, -12.0464],  // Lima centro
-        end: [-77.0428, -12.0464]
-      }],
-      jobs: [{
-        id: 1,
-        location: [-77.0300, -12.0500]  // Nearby in Lima
-      }],
+      vehicles: [
+        {
+          id: 1,
+          start: [-77.0428, -12.0464], // Lima centro
+          end: [-77.0428, -12.0464],
+        },
+      ],
+      jobs: [
+        {
+          id: 1,
+          location: [-77.03, -12.05], // Nearby in Lima
+        },
+      ],
     };
     const response = await fetch(VROOM_URL, {
       method: "POST",
@@ -228,11 +232,11 @@ export function parseTimeWindow(timeStr: string): number | null {
   }
   const [hours, minutes] = timeStr.split(":").map(Number);
   // Validate parsed values
-  if (isNaN(hours) || hours < 0 || hours > 23) {
+  if (Number.isNaN(hours) || hours < 0 || hours > 23) {
     return null;
   }
   const mins = minutes || 0;
-  if (isNaN(mins) || mins < 0 || mins > 59) {
+  if (Number.isNaN(mins) || mins < 0 || mins > 59) {
     return null;
   }
   return hours * 3600 + mins * 60;
@@ -354,7 +358,11 @@ export function createVroomVehicle(
   }
 
   // Add break/lunch if configured
-  if (options?.breakDuration && options?.breakTimeStart && options?.breakTimeEnd) {
+  if (
+    options?.breakDuration &&
+    options?.breakTimeStart &&
+    options?.breakTimeEnd
+  ) {
     const breakStart = parseTimeWindow(options.breakTimeStart);
     const breakEnd = parseTimeWindow(options.breakTimeEnd);
     if (breakStart !== null && breakEnd !== null && breakStart < breakEnd) {

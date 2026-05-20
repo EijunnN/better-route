@@ -1,5 +1,9 @@
 import type { AggregatedPlan, ViolationSeverity } from "../solved-plan";
-import type { OptimizerConfig, OptimizerOrder, OptimizerVehicle } from "./input-types";
+import type {
+  OptimizerConfig,
+  OptimizerOrder,
+  OptimizerVehicle,
+} from "./input-types";
 
 export type { ViolationSeverity };
 

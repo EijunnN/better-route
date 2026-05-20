@@ -1,11 +1,11 @@
 "use client";
 
 import { GitBranch } from "lucide-react";
+import { Can } from "@/components/auth/can";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Can } from "@/components/auth/can";
-import { WorkflowFlowView } from "./workflow-flow-view";
 import { useWorkflow } from "./workflow-context";
+import { WorkflowFlowView } from "./workflow-flow-view";
 
 /**
  * Pipeline view — the canvas IS the editor. Every create/edit/delete happens
@@ -37,8 +37,8 @@ export function WorkflowPipelineView({
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {state.states.length} estado
-              {state.states.length === 1 ? "" : "s"} · {state.transitions.length}{" "}
-              transición
+              {state.states.length === 1 ? "" : "s"} ·{" "}
+              {state.transitions.length} transición
               {state.transitions.length === 1 ? "" : "es"}
             </p>
           </div>
@@ -98,8 +98,8 @@ function HelpFootnote() {
       </span>{" "}
       clic en un nodo para editarlo · arrastrar desde el punto derecho de un
       nodo hasta otro para crear una transición · hover sobre una línea para
-      borrarla · tecla Delete sobre nodo o línea seleccionados para
-      eliminar · botón «+ Agregar estado» arriba a la derecha del canvas.
+      borrarla · tecla Delete sobre nodo o línea seleccionados para eliminar ·
+      botón «+ Agregar estado» arriba a la derecha del canvas.
     </p>
   );
 }

@@ -47,7 +47,10 @@ export async function loadVehicleSkillsMap(
       code: vehicleSkills.code,
     })
     .from(vehicleSkillAssignments)
-    .innerJoin(vehicleSkills, eq(vehicleSkillAssignments.skillId, vehicleSkills.id))
+    .innerJoin(
+      vehicleSkills,
+      eq(vehicleSkillAssignments.skillId, vehicleSkills.id),
+    )
     .where(
       and(
         inArray(vehicleSkillAssignments.vehicleId, vehicleIds),

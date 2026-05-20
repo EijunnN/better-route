@@ -1,12 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { count } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import {
-  companies,
-  permissions,
-  rolePermissions,
-  roles,
-} from "@/db/schema";
+import { companies, permissions, rolePermissions, roles } from "@/db/schema";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 import { ROLE_PERMISSIONS } from "@/lib/auth/authorization";
 import { onboardingSetupSchema } from "@/lib/validations/onboarding";
@@ -118,19 +113,23 @@ export async function POST(request: NextRequest) {
     // Only ADMIN_SISTEMA can run onboarding
     if (user.role !== "ADMIN_SISTEMA") {
       return NextResponse.json(
-        { error: "Solo el administrador del sistema puede ejecutar el onboarding" },
+        {
+          error:
+            "Solo el administrador del sistema puede ejecutar el onboarding",
+        },
         { status: 403 },
       );
     }
 
     // Check no companies exist (prevent double onboarding)
-    const [companyCount] = await db
-      .select({ count: count() })
-      .from(companies);
+    const [companyCount] = await db.select({ count: count() }).from(companies);
 
     if (companyCount.count > 0) {
       return NextResponse.json(
-        { error: "Ya existe al menos una empresa. El onboarding ya fue completado." },
+        {
+          error:
+            "Ya existe al menos una empresa. El onboarding ya fue completado.",
+        },
         { status: 409 },
       );
     }
@@ -141,7 +140,10 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Datos inválidos", details: parsed.error.flatten().fieldErrors },
+        {
+          error: "Datos inválidos",
+          details: parsed.error.flatten().fieldErrors,
+        },
         { status: 400 },
       );
     }
@@ -187,7 +189,10 @@ export async function POST(request: NextRequest) {
         // Create rolePermissions for each system permission
         const rpValues = allPermissions.map((perm) => {
           const normalized = normalizePermission(perm.entity, perm.action);
-          const enabled = isPermissionEnabledForRole(normalized, rolePermPatterns as string[]);
+          const enabled = isPermissionEnabledForRole(
+            normalized,
+            rolePermPatterns as string[],
+          );
           return {
             roleId: newRole.id,
             permissionId: perm.id,

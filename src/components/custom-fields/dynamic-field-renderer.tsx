@@ -1,7 +1,7 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FieldDefinition } from "./custom-fields-context";
 
@@ -12,7 +12,12 @@ interface DynamicFieldRendererProps {
   error?: string;
 }
 
-export function DynamicFieldRenderer({ definition, value, onChange, error }: DynamicFieldRendererProps) {
+export function DynamicFieldRenderer({
+  definition,
+  value,
+  onChange,
+  error,
+}: DynamicFieldRendererProps) {
   const fieldId = `custom-field-${definition.code}`;
 
   const renderInput = () => {
@@ -33,7 +38,9 @@ export function DynamicFieldRenderer({ definition, value, onChange, error }: Dyn
             id={fieldId}
             type="number"
             value={(value as string | number) ?? ""}
-            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) =>
+              onChange(e.target.value ? Number(e.target.value) : null)
+            }
             placeholder={definition.placeholder ?? undefined}
             step="1"
           />
@@ -42,12 +49,16 @@ export function DynamicFieldRenderer({ definition, value, onChange, error }: Dyn
       case "currency":
         return (
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              $
+            </span>
             <Input
               id={fieldId}
               type="number"
               value={(value as string | number) ?? ""}
-              onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) =>
+                onChange(e.target.value ? Number(e.target.value) : null)
+              }
               placeholder={definition.placeholder ?? "$0.00"}
               step="0.01"
               className="pl-7"
@@ -63,7 +74,9 @@ export function DynamicFieldRenderer({ definition, value, onChange, error }: Dyn
             onChange={(e) => onChange(e.target.value || null)}
             className="w-full px-3 py-2 border rounded-md bg-background text-sm"
           >
-            <option value="">{definition.placeholder || "Seleccionar..."}</option>
+            <option value="">
+              {definition.placeholder || "Seleccionar..."}
+            </option>
             {(definition.options ?? []).map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
@@ -135,7 +148,9 @@ export function DynamicFieldRenderer({ definition, value, onChange, error }: Dyn
       {definition.fieldType !== "boolean" && (
         <Label htmlFor={fieldId}>
           {definition.label}
-          {definition.required && <span className="text-destructive ml-0.5">*</span>}
+          {definition.required && (
+            <span className="text-destructive ml-0.5">*</span>
+          )}
         </Label>
       )}
       {renderInput()}

@@ -3,14 +3,14 @@
 import { useState } from "react";
 import type { CsvImportPreview } from "@/components/orders/csv-import-preview-dialog";
 import type {
-  Vehicle,
-  Fleet,
-  Order,
-  Zone,
   CompanyProfile,
   CsvRow,
-  StepId,
   FieldDefinition,
+  Fleet,
+  Order,
+  StepId,
+  Vehicle,
+  Zone,
 } from "../planificacion-types";
 
 /**
@@ -51,7 +51,9 @@ export function usePlanificacionState() {
   const [objective, setObjective] = useState("BALANCED");
   const [serviceTime, setServiceTime] = useState(10);
   // NULL means "use company default" — matches the DB semantics exactly.
-  const [optimizationPresetId, setOptimizationPresetId] = useState<string | null>(null);
+  const [optimizationPresetId, setOptimizationPresetId] = useState<
+    string | null
+  >(null);
   const [availablePresets, setAvailablePresets] = useState<
     Array<{ id: string; name: string; isDefault: boolean }>
   >([]);
@@ -61,7 +63,9 @@ export function usePlanificacionState() {
   const [showZones, setShowZones] = useState(true);
 
   // Company profile state
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(
+    null,
+  );
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,12 +86,15 @@ export function usePlanificacionState() {
   const [csvRawText, setCsvRawText] = useState<string>("");
 
   // CSV preview-and-confirm state (issue 006).
-  const [csvPreviewData, setCsvPreviewData] =
-    useState<CsvImportPreview | null>(null);
+  const [csvPreviewData, setCsvPreviewData] = useState<CsvImportPreview | null>(
+    null,
+  );
   const [showCsvPreviewDialog, setShowCsvPreviewDialog] = useState(false);
 
   // Custom field definitions
-  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>(
+    [],
+  );
   const [csvCustomFieldMappings, setCsvCustomFieldMappings] = useState<
     Array<{ csvHeader: string; code: string; label: string }>
   >([]);

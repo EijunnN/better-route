@@ -1,7 +1,7 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { WorkflowProvider, WorkflowDashboardView } from "@/components/workflow";
+import { WorkflowDashboardView, WorkflowProvider } from "@/components/workflow";
 
 export default function WorkflowPage() {
   return (

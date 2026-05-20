@@ -4,7 +4,9 @@ import type { ProfileSchema } from "@/lib/orders/profile-schema";
  * Minimal schema with only BASE + CUSTOMER fields and weight-only capacity.
  * Good default for tests that don't care about dimensions.
  */
-export function baseSchema(overrides: Partial<ProfileSchema> = {}): ProfileSchema {
+export function baseSchema(
+  overrides: Partial<ProfileSchema> = {},
+): ProfileSchema {
   return {
     companyId: "test-company",
     profileId: "test-profile",

@@ -48,7 +48,11 @@ interface PlanningMapProps {
   showVehicleOrigins?: boolean;
   showOrders?: boolean;
   selectedVehicleIds?: string[];
-  onOrderDragEnd?: (orderId: string, latitude: number, longitude: number) => void;
+  onOrderDragEnd?: (
+    orderId: string,
+    latitude: number,
+    longitude: number,
+  ) => void;
 }
 
 // Popup styles injected into the document
@@ -192,7 +196,7 @@ export function PlanningMap({
       map.current?.remove();
       map.current = null;
     };
-  }, []);
+  }, [isDark]);
 
   // React to theme changes
   useEffect(() => {
@@ -200,10 +204,13 @@ export function PlanningMap({
     if (mapThemeRef.current === isDark) return;
     mapThemeRef.current = isDark;
     const style = getMapStyle(isDark);
-    map.current.setStyle({
-      ...style,
-      glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-    }, { diff: false });
+    map.current.setStyle(
+      {
+        ...style,
+        glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+      },
+      { diff: false },
+    );
   }, [isDark, isLoaded]);
 
   // Update markers when data changes
@@ -221,7 +228,7 @@ export function PlanningMap({
 
     // Add vehicle origin markers
     if (showVehicleOrigins) {
-      vehicles.forEach((vehicle, index) => {
+      vehicles.forEach((vehicle, _index) => {
         if (!vehicle.originLatitude || !vehicle.originLongitude) return;
 
         const lat = parseFloat(vehicle.originLatitude);
@@ -483,7 +490,11 @@ export function PlanningMap({
     const registeredHandlers: Array<{
       event: "click" | "mouseenter" | "mouseleave";
       layerId: string;
-      handler: (e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => void;
+      handler: (
+        e: maplibregl.MapMouseEvent & {
+          features?: maplibregl.MapGeoJSONFeature[];
+        },
+      ) => void;
     }> = [];
     const addedSourceIds: string[] = [];
     const addedLayerIds: string[] = [];
@@ -541,7 +552,9 @@ export function PlanningMap({
 
       // Add click handler for zone popup
       const clickHandler = (
-        e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] },
+        e: maplibregl.MapMouseEvent & {
+          features?: maplibregl.MapGeoJSONFeature[];
+        },
       ) => {
         if (!map.current || !e.features?.[0]) return;
 
@@ -569,7 +582,11 @@ export function PlanningMap({
           .addTo(map.current);
       };
       mapInstance.on("click", fillLayerId, clickHandler);
-      registeredHandlers.push({ event: "click", layerId: fillLayerId, handler: clickHandler });
+      registeredHandlers.push({
+        event: "click",
+        layerId: fillLayerId,
+        handler: clickHandler,
+      });
 
       // Change cursor on hover
       const enterHandler = () => {
@@ -580,8 +597,16 @@ export function PlanningMap({
       };
       mapInstance.on("mouseenter", fillLayerId, enterHandler);
       mapInstance.on("mouseleave", fillLayerId, leaveHandler);
-      registeredHandlers.push({ event: "mouseenter", layerId: fillLayerId, handler: enterHandler });
-      registeredHandlers.push({ event: "mouseleave", layerId: fillLayerId, handler: leaveHandler });
+      registeredHandlers.push({
+        event: "mouseenter",
+        layerId: fillLayerId,
+        handler: enterHandler,
+      });
+      registeredHandlers.push({
+        event: "mouseleave",
+        layerId: fillLayerId,
+        handler: leaveHandler,
+      });
     });
 
     return () => {
@@ -593,7 +618,8 @@ export function PlanningMap({
           if (mapInstance.getLayer(layerId)) mapInstance.removeLayer(layerId);
         });
         addedSourceIds.forEach((sourceId) => {
-          if (mapInstance.getSource(sourceId)) mapInstance.removeSource(sourceId);
+          if (mapInstance.getSource(sourceId))
+            mapInstance.removeSource(sourceId);
         });
       } catch {
         // Map might be already destroyed
@@ -602,9 +628,6 @@ export function PlanningMap({
   }, [zones, isLoaded]);
 
   return (
-    <div
-      ref={mapContainer}
-      className="size-full rounded-lg overflow-hidden"
-    />
+    <div ref={mapContainer} className="size-full rounded-lg overflow-hidden" />
   );
 }

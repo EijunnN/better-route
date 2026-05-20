@@ -1,13 +1,9 @@
 "use client";
 
-import { parseCSVLine } from "@/lib/csv/parse-csv-line";
 import type { useRouter } from "next/navigation";
 import type { useToast } from "@/hooks/use-toast";
-import type {
-  Order,
-  CsvRow,
-  StepId,
-} from "../planificacion-types";
+import { parseCSVLine } from "@/lib/csv/parse-csv-line";
+import type { CsvRow, Order, StepId } from "../planificacion-types";
 import type { PlanificacionActions, PlanificacionDerived } from "./types";
 import { STEPS } from "./types";
 import type { PlanificacionStateBag } from "./use-state";
@@ -25,7 +21,9 @@ interface ActionsDeps {
  * Assembles the PlanificacionActions bag. All functions are recreated on each
  * render, matching the original provider's behavior (no memoization).
  */
-export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions {
+export function usePlanificacionActions(
+  deps: ActionsDeps,
+): PlanificacionActions {
   const { state, derived, companyId, router, toast, loadOrders } = deps;
   const {
     currentStep,
@@ -78,7 +76,13 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     editOrderData,
   } = state;
 
-  const { filteredVehicles, filteredOrders, selectedVehicles, selectedVehicleIdsSet, selectedOrderIdsSet } = derived;
+  const {
+    filteredVehicles,
+    filteredOrders,
+    selectedVehicles,
+    selectedVehicleIdsSet,
+    selectedOrderIdsSet,
+  } = derived;
 
   // Actions
   const goToStep = (step: StepId) => {
@@ -102,17 +106,23 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
 
   const toggleVehicle = (id: string) => {
     setSelectedVehicleIds((prev) =>
-      prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id],
     );
   };
 
   const selectAllVehicles = () => {
     // Exclude vehicles with active route stops from selection
-    const selectableVehicles = filteredVehicles.filter((v) => !(v.activeStopsCount && v.activeStopsCount > 0));
-    const allSelected = selectableVehicles.every((v) => selectedVehicleIdsSet.has(v.id));
+    const selectableVehicles = filteredVehicles.filter(
+      (v) => !(v.activeStopsCount && v.activeStopsCount > 0),
+    );
+    const allSelected = selectableVehicles.every((v) =>
+      selectedVehicleIdsSet.has(v.id),
+    );
     if (allSelected) {
       const filteredSet = new Set(selectableVehicles.map((v) => v.id));
-      setSelectedVehicleIds((prev) => prev.filter((id) => !filteredSet.has(id)));
+      setSelectedVehicleIds((prev) =>
+        prev.filter((id) => !filteredSet.has(id)),
+      );
     } else {
       const newIds = selectableVehicles.map((v) => v.id);
       setSelectedVehicleIds((prev) => [...new Set([...prev, ...newIds])]);
@@ -121,12 +131,14 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
 
   const toggleOrder = (id: string) => {
     setSelectedOrderIds((prev) =>
-      prev.includes(id) ? prev.filter((o) => o !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((o) => o !== id) : [...prev, id],
     );
   };
 
   const selectAllOrders = () => {
-    const allSelected = filteredOrders.every((o) => selectedOrderIdsSet.has(o.id));
+    const allSelected = filteredOrders.every((o) =>
+      selectedOrderIdsSet.has(o.id),
+    );
     if (allSelected) {
       const filteredSet = new Set(filteredOrders.map((o) => o.id));
       setSelectedOrderIds((prev) => prev.filter((id) => !filteredSet.has(id)));
@@ -151,7 +163,10 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     } catch (error) {
       toast({
         title: "Error al eliminar pedido",
-        description: error instanceof Error ? error.message : "Ocurrió un error inesperado",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -214,7 +229,9 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
       const configData = await configResponse.json();
       router.push(`/planificacion/${configData.data.id}/results`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al iniciar la optimización");
+      setError(
+        err instanceof Error ? err.message : "Error al iniciar la optimización",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -225,7 +242,9 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
    * + live validation via CsvSchemaGuide. Authoritative validation + mapping
    * happens server-side in /api/orders/import (powered by profile-schema).
    */
-  const parseCsvPreview = (text: string): {
+  const parseCsvPreview = (
+    text: string,
+  ): {
     headers: string[];
     rows: CsvRow[];
   } => {
@@ -242,7 +261,9 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     if (firstLine.includes("\t")) delimiter = "\t";
     else if (firstLine.includes(";")) delimiter = ";";
 
-    const headerFields = parseCSVLine(firstLine, delimiter).map((h) => h.trim());
+    const headerFields = parseCSVLine(firstLine, delimiter).map((h) =>
+      h.trim(),
+    );
     const rows: CsvRow[] = [];
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i], delimiter).map((v) => v.trim());
@@ -412,9 +433,12 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
   const downloadCsvTemplate = async () => {
     if (!companyId) return;
     try {
-      const response = await fetch("/api/orders/csv-template?format=csv&locale=es", {
-        headers: { "x-company-id": companyId },
-      });
+      const response = await fetch(
+        "/api/orders/csv-template?format=csv&locale=es",
+        {
+          headers: { "x-company-id": companyId },
+        },
+      );
       if (!response.ok) throw new Error("Error al descargar la plantilla");
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -426,7 +450,9 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      setCsvError(err instanceof Error ? err.message : "Error al descargar la plantilla");
+      setCsvError(
+        err instanceof Error ? err.message : "Error al descargar la plantilla",
+      );
     }
   };
 
@@ -474,13 +500,15 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
                 latitude: editOrderData.latitude || null,
                 longitude: editOrderData.longitude || null,
               }
-            : o
-        )
+            : o,
+        ),
       );
 
       setEditingOrder(null);
     } catch (err) {
-      setUpdateOrderError(err instanceof Error ? err.message : "Error desconocido");
+      setUpdateOrderError(
+        err instanceof Error ? err.message : "Error desconocido",
+      );
     } finally {
       setIsUpdatingOrder(false);
     }
@@ -490,7 +518,11 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     setEditingOrder(null);
   };
 
-  const updateOrderLocation = async (orderId: string, latitude: string, longitude: string) => {
+  const updateOrderLocation = async (
+    orderId: string,
+    latitude: string,
+    longitude: string,
+  ) => {
     if (!companyId) return;
 
     const response = await fetch(`/api/orders/${orderId}`, {
@@ -508,9 +540,7 @@ export function usePlanificacionActions(deps: ActionsDeps): PlanificacionActions
     }
 
     setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId ? { ...o, latitude, longitude } : o
-      )
+      prev.map((o) => (o.id === orderId ? { ...o, latitude, longitude } : o)),
     );
   };
 

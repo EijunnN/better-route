@@ -107,9 +107,7 @@ export async function assignDriversToRoutes(
     requests[0].companyId,
     allDriverIds,
   );
-  const candidateDriversById = new Map(
-    candidateDrivers.map((d) => [d.id, d]),
-  );
+  const candidateDriversById = new Map(candidateDrivers.map((d) => [d.id, d]));
 
   // Calculate scores for each request
   for (const request of requests) {

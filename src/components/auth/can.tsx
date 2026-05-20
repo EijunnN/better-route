@@ -3,9 +3,9 @@
 import type { ReactNode } from "react";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
-  type Permission,
-  EntityType,
   Action,
+  EntityType,
+  type Permission,
   WILDCARD_PERMISSION,
 } from "@/lib/auth/permissions";
 

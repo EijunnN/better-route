@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { roles, rolePermissions, userRoles } from "@/db/schema";
+import { rolePermissions, roles, userRoles } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/permissions";
 import {
   checkPermissionOrError,

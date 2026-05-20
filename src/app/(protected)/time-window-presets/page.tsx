@@ -1,7 +1,11 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { TimeWindowPresetsProvider, useTimeWindowPresets, TimeWindowPresetsListView } from "@/components/time-window-presets";
+import {
+  TimeWindowPresetsListView,
+  TimeWindowPresetsProvider,
+  useTimeWindowPresets,
+} from "@/components/time-window-presets";
 
 function TimeWindowPresetsPageContent() {
   const { meta } = useTimeWindowPresets();

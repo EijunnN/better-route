@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { FleetInput } from "@/lib/validations/fleet";
@@ -84,7 +84,10 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
   const fetchFleets = async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
-      const response = await fetch("/api/fleets", { headers: { "x-company-id": companyId }, signal });
+      const response = await fetch("/api/fleets", {
+        headers: { "x-company-id": companyId },
+        signal,
+      });
       const data = await response.json();
       setFleets(data.data || []);
       setError(null);
@@ -100,11 +103,19 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
   const fetchVehicles = async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
-      const vehiclesRes = await fetch("/api/vehicles", { headers: { "x-company-id": companyId }, signal });
+      const vehiclesRes = await fetch("/api/vehicles", {
+        headers: { "x-company-id": companyId },
+        signal,
+      });
       const vehiclesData = await vehiclesRes.json();
       const vehiclesList = vehiclesData.data || [];
       const vehiclesWithFleets: VehicleWithFleets[] = vehiclesList.map(
-        (v: { id: string; name?: string; plate?: string; fleets?: Array<{ id: string; name: string }> }) => ({
+        (v: {
+          id: string;
+          name?: string;
+          plate?: string;
+          fleets?: Array<{ id: string; name: string }>;
+        }) => ({
           id: v.id,
           name: v.name || v.plate || "Sin nombre",
           plate: v.plate,
@@ -131,14 +142,17 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     });
 
     return () => controller.abort();
-  }, [companyId]);
+  }, [companyId, fetchFleets, fetchVehicles]);
 
   const handleCreate = async (data: FleetInput) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/fleets", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -147,11 +161,15 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
       }
       await Promise.all([fetchFleets(), fetchVehicles()]);
       setShowForm(false);
-      toast({ title: "Flota creada", description: `La flota "${data.name}" ha sido creada exitosamente.` });
+      toast({
+        title: "Flota creada",
+        description: `La flota "${data.name}" ha sido creada exitosamente.`,
+      });
     } catch (err) {
       toast({
         title: "Error al crear flota",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -163,7 +181,10 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`/api/fleets/${editingFleet.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -172,11 +193,15 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
       }
       await Promise.all([fetchFleets(), fetchVehicles()]);
       setEditingFleet(null);
-      toast({ title: "Flota actualizada", description: `La flota "${data.name}" ha sido actualizada exitosamente.` });
+      toast({
+        title: "Flota actualizada",
+        description: `La flota "${data.name}" ha sido actualizada exitosamente.`,
+      });
     } catch (err) {
       toast({
         title: "Error al actualizar flota",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -194,17 +219,22 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al desactivar la flota");
+        throw new Error(
+          error.error || error.details || "Error al desactivar la flota",
+        );
       }
       await Promise.all([fetchFleets(), fetchVehicles()]);
       toast({
         title: "Flota desactivada",
-        description: fleet ? `La flota "${fleet.name}" ha sido desactivada.` : "La flota ha sido desactivada.",
+        description: fleet
+          ? `La flota "${fleet.name}" ha sido desactivada.`
+          : "La flota ha sido desactivada.",
       });
     } catch (err) {
       toast({
         title: "Error al desactivar flota",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -217,11 +247,37 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     setEditingFleet(null);
   };
 
-  const state: FleetsState = { fleets, vehicles, isLoading, error, showForm, editingFleet, deletingId };
-  const actions: FleetsActions = { fetchFleets, handleCreate, handleUpdate, handleDelete, setShowForm, setEditingFleet, cancelForm };
-  const meta: FleetsMeta = { companyId, isReady, isSystemAdmin, companies, selectedCompanyId, setSelectedCompanyId, authCompanyId };
+  const state: FleetsState = {
+    fleets,
+    vehicles,
+    isLoading,
+    error,
+    showForm,
+    editingFleet,
+    deletingId,
+  };
+  const actions: FleetsActions = {
+    fetchFleets,
+    handleCreate,
+    handleUpdate,
+    handleDelete,
+    setShowForm,
+    setEditingFleet,
+    cancelForm,
+  };
+  const meta: FleetsMeta = {
+    companyId,
+    isReady,
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    authCompanyId,
+  };
 
-  return <FleetsContext value={{ state, actions, meta }}>{children}</FleetsContext>;
+  return (
+    <FleetsContext value={{ state, actions, meta }}>{children}</FleetsContext>
+  );
 }
 
 export function useFleets(): FleetsContextValue {

@@ -1,7 +1,12 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { FleetsProvider, useFleets, FleetsListView, FleetsFormView } from "@/components/fleets";
+import {
+  FleetsFormView,
+  FleetsListView,
+  FleetsProvider,
+  useFleets,
+} from "@/components/fleets";
 
 function FleetsPageContent() {
   const { state, meta } = useFleets();

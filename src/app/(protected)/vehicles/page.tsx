@@ -1,7 +1,12 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { VehiclesProvider, useVehicles, VehiclesListView, VehiclesFormView } from "@/components/vehicles";
+import {
+  useVehicles,
+  VehiclesFormView,
+  VehiclesListView,
+  VehiclesProvider,
+} from "@/components/vehicles";
 
 function VehiclesPageContent() {
   const { state, meta } = useVehicles();

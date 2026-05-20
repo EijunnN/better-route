@@ -1,13 +1,13 @@
+import { randomBytes } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, trackingTokens, companyTrackingSettings } from "@/db/schema";
+import { companyTrackingSettings, orders, trackingTokens } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
-import { randomBytes } from "crypto";
 
 /**
  * POST /api/tracking/generate
@@ -16,7 +16,11 @@ import { randomBytes } from "crypto";
  */
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -83,7 +87,10 @@ export async function POST(request: NextRequest) {
         });
 
         if (existingToken) {
-          if (!existingToken.expiresAt || existingToken.expiresAt > new Date()) {
+          if (
+            !existingToken.expiresAt ||
+            existingToken.expiresAt > new Date()
+          ) {
             return {
               trackingId: order.trackingId,
               token: existingToken.token,

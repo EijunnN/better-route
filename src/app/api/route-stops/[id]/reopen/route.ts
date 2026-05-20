@@ -195,9 +195,7 @@ export async function POST(
       const [result] = await tx
         .update(routeStops)
         .set(stopUpdate)
-        .where(
-          and(eq(routeStops.id, stopId), eq(routeStops.status, "FAILED")),
-        )
+        .where(and(eq(routeStops.id, stopId), eq(routeStops.status, "FAILED")))
         .returning();
       if (!result) throw new Error("CONFLICT");
 

@@ -1,13 +1,13 @@
 "use client";
 
+import { Loader2, Search, Truck } from "lucide-react";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Search, Truck } from "lucide-react";
 import type { FleetInput } from "@/lib/validations/fleet";
 
 interface VehicleWithFleets {
@@ -118,7 +118,10 @@ export function FleetForm({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="h-full flex flex-col min-h-0 gap-3">
+    <form
+      onSubmit={handleSubmit}
+      className="h-full flex flex-col min-h-0 gap-3"
+    >
       {errors.form && (
         <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {errors.form}
@@ -127,13 +130,17 @@ export function FleetForm({
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-3">
         <div className="flex-1 min-w-[200px] space-y-1">
-          <Label htmlFor="name" className="text-xs">Nombre *</Label>
+          <Label htmlFor="name" className="text-xs">
+            Nombre *
+          </Label>
           <Input
             id="name"
             value={formData.name}
             onChange={(e) => updateField("name", e.target.value)}
             disabled={isSubmitting}
-            className={errors.name ? "border-destructive h-8 text-sm" : "h-8 text-sm"}
+            className={
+              errors.name ? "border-destructive h-8 text-sm" : "h-8 text-sm"
+            }
             placeholder="Ej: Flota Norte - Express"
           />
           {errors.name && (
@@ -141,7 +148,9 @@ export function FleetForm({
           )}
         </div>
         <div className="flex-1 min-w-[200px] space-y-1">
-          <Label htmlFor="description" className="text-xs">Descripción</Label>
+          <Label htmlFor="description" className="text-xs">
+            Descripción
+          </Label>
           <Input
             id="description"
             value={formData.description ?? ""}
@@ -155,10 +164,15 @@ export function FleetForm({
           <Checkbox
             id="active"
             checked={formData.active}
-            onCheckedChange={(checked) => updateField("active", checked === true)}
+            onCheckedChange={(checked) =>
+              updateField("active", checked === true)
+            }
             disabled={isSubmitting}
           />
-          <Label htmlFor="active" className="cursor-pointer text-xs whitespace-nowrap">
+          <Label
+            htmlFor="active"
+            className="cursor-pointer text-xs whitespace-nowrap"
+          >
             Activa
           </Label>
         </div>
@@ -253,7 +267,10 @@ export function FleetForm({
                         </Badge>
                       ))}
                       {vehicle.fleets.length > 2 && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0"
+                        >
                           +{vehicle.fleets.length - 2}
                         </Badge>
                       )}
@@ -268,7 +285,13 @@ export function FleetForm({
 
       <div className="flex justify-end gap-3">
         {onCancel && (
-          <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
             Cancelar
           </Button>
         )}

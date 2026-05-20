@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   AlertTriangle,
   Building2,
@@ -10,6 +9,8 @@ import {
   Truck,
   X,
 } from "lucide-react";
+import { useState } from "react";
+import { Can } from "@/components/auth/can";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,14 +22,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Can } from "@/components/auth/can";
 import { Card, CardContent } from "@/components/ui/card";
-import { WorkflowStateDialog } from "./workflow-state-dialog";
 import {
-  WORKFLOW_TEMPLATES,
-  useWorkflow,
   type TemplateType,
+  useWorkflow,
+  WORKFLOW_TEMPLATES,
 } from "./workflow-context";
+import { WorkflowStateDialog } from "./workflow-state-dialog";
 
 const TEMPLATE_ICONS: Record<TemplateType, typeof Package> = {
   delivery: Truck,
@@ -149,9 +149,9 @@ export function WorkflowTemplatePicker({
 
                 <div className="truncate text-[11px] text-muted-foreground">
                   {[
-                    ...template.states.filter((s) => !s.isTerminal).map(
-                      (s) => s.label,
-                    ),
+                    ...template.states
+                      .filter((s) => !s.isTerminal)
+                      .map((s) => s.label),
                     template.states.find((s) => s.systemState === "COMPLETED")
                       ?.label,
                   ]
@@ -232,16 +232,14 @@ export function WorkflowTemplatePicker({
               </strong>{" "}
               eliminará los {existingCount} estados actuales y todas sus
               transiciones. Los pedidos ya completados no se ven afectados, pero
-              cualquier pedido en un estado intermedio podría perder su
-              progreso visible. ¿Continuar?
+              cualquier pedido en un estado intermedio podría perder su progreso
+              visible. ¿Continuar?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                pendingTemplate && applyTemplate(pendingTemplate)
-              }
+              onClick={() => pendingTemplate && applyTemplate(pendingTemplate)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Sí, reemplazar

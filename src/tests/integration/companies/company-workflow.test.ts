@@ -1,45 +1,40 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
+  DELETE as DELETE_STATE,
+  GET as GET_STATE,
+  PATCH as PATCH_STATE,
+} from "@/app/api/companies/[id]/workflow-states/[stateId]/route";
+// ---- Workflow states route handlers ----
+import {
+  POST as CREATE_STATE,
+  GET as LIST_STATES,
+} from "@/app/api/companies/[id]/workflow-states/route";
+import { DELETE as DELETE_TRANSITION_BY_ID } from "@/app/api/companies/[id]/workflow-transitions/[transitionId]/route";
+// ---- Workflow transitions route handlers ----
+import {
+  POST as CREATE_TRANSITION,
+  DELETE as DELETE_TRANSITION_BY_PAIR,
+  GET as LIST_TRANSITIONS,
+} from "@/app/api/companies/[id]/workflow-transitions/route";
+import { companyWorkflowStates, companyWorkflowTransitions } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
   createAdmin,
+  createCompany,
   createPlanner,
   createWorkflowState,
   createWorkflowTransition,
 } from "../setup/test-data";
-import {
-  companyWorkflowStates,
-  companyWorkflowTransitions,
-} from "@/db/schema";
-
-// ---- Workflow states route handlers ----
-import {
-  GET as LIST_STATES,
-  POST as CREATE_STATE,
-} from "@/app/api/companies/[id]/workflow-states/route";
-import {
-  GET as GET_STATE,
-  PATCH as PATCH_STATE,
-  DELETE as DELETE_STATE,
-} from "@/app/api/companies/[id]/workflow-states/[stateId]/route";
-
-// ---- Workflow transitions route handlers ----
-import {
-  GET as LIST_TRANSITIONS,
-  POST as CREATE_TRANSITION,
-  DELETE as DELETE_TRANSITION_BY_PAIR,
-} from "@/app/api/companies/[id]/workflow-transitions/route";
-import { DELETE as DELETE_TRANSITION_BY_ID } from "@/app/api/companies/[id]/workflow-transitions/[transitionId]/route";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Company Workflow States & Transitions", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -242,7 +237,13 @@ describe("Company Workflow States & Transitions", () => {
 
         const request = await createTestRequest(
           `/api/companies/${company.id}/workflow-states`,
-          { method: "POST", token, companyId: company.id, userId: admin.id, body },
+          {
+            method: "POST",
+            token,
+            companyId: company.id,
+            userId: admin.id,
+            body,
+          },
         );
 
         const response = await CREATE_STATE(request, {
@@ -275,7 +276,13 @@ describe("Company Workflow States & Transitions", () => {
 
         const request = await createTestRequest(
           `/api/companies/${company.id}/workflow-states`,
-          { method: "POST", token, companyId: company.id, userId: admin.id, body },
+          {
+            method: "POST",
+            token,
+            companyId: company.id,
+            userId: admin.id,
+            body,
+          },
         );
 
         const response = await CREATE_STATE(request, {
@@ -301,7 +308,13 @@ describe("Company Workflow States & Transitions", () => {
 
         const request = await createTestRequest(
           `/api/companies/${company.id}/workflow-states`,
-          { method: "POST", token, companyId: company.id, userId: admin.id, body },
+          {
+            method: "POST",
+            token,
+            companyId: company.id,
+            userId: admin.id,
+            body,
+          },
         );
 
         const response = await CREATE_STATE(request, {
@@ -318,7 +331,13 @@ describe("Company Workflow States & Transitions", () => {
 
         const request = await createTestRequest(
           `/api/companies/${company.id}/workflow-states`,
-          { method: "POST", token, companyId: company.id, userId: admin.id, body },
+          {
+            method: "POST",
+            token,
+            companyId: company.id,
+            userId: admin.id,
+            body,
+          },
         );
 
         const response = await CREATE_STATE(request, {
@@ -335,7 +354,13 @@ describe("Company Workflow States & Transitions", () => {
 
         const request = await createTestRequest(
           `/api/companies/${company.id}/workflow-states`,
-          { method: "POST", token, companyId: company.id, userId: admin.id, body },
+          {
+            method: "POST",
+            token,
+            companyId: company.id,
+            userId: admin.id,
+            body,
+          },
         );
 
         const response = await CREATE_STATE(request, {
@@ -356,7 +381,13 @@ describe("Company Workflow States & Transitions", () => {
 
         const request = await createTestRequest(
           `/api/companies/${company.id}/workflow-states`,
-          { method: "POST", token, companyId: company.id, userId: admin.id, body },
+          {
+            method: "POST",
+            token,
+            companyId: company.id,
+            userId: admin.id,
+            body,
+          },
         );
 
         const response = await CREATE_STATE(request, {
@@ -401,7 +432,13 @@ describe("Company Workflow States & Transitions", () => {
 
         const request = await createTestRequest(
           `/api/companies/${company.id}/workflow-states`,
-          { method: "POST", token, companyId: company.id, userId: admin.id, body },
+          {
+            method: "POST",
+            token,
+            companyId: company.id,
+            userId: admin.id,
+            body,
+          },
         );
 
         const response = await CREATE_STATE(request, {
@@ -1827,7 +1864,12 @@ describe("Company Workflow States & Transitions", () => {
       // List company B's states -- should be empty
       const request = await createTestRequest(
         `/api/companies/${companyB.id}/workflow-states`,
-        { method: "GET", token: tokenB, companyId: companyB.id, userId: adminB.id },
+        {
+          method: "GET",
+          token: tokenB,
+          companyId: companyB.id,
+          userId: adminB.id,
+        },
       );
 
       const response = await LIST_STATES(request, {
@@ -1874,7 +1916,12 @@ describe("Company Workflow States & Transitions", () => {
       // List company B's transitions -- should be empty
       const request = await createTestRequest(
         `/api/companies/${companyB.id}/workflow-transitions`,
-        { method: "GET", token: tokenB, companyId: companyB.id, userId: adminB.id },
+        {
+          method: "GET",
+          token: tokenB,
+          companyId: companyB.id,
+          userId: adminB.id,
+        },
       );
 
       const response = await LIST_TRANSITIONS(request, {
@@ -1904,7 +1951,12 @@ describe("Company Workflow States & Transitions", () => {
 
       const request = await createTestRequest(
         `/api/companies/${company.id}/workflow-states`,
-        { method: "GET", token: plannerToken, companyId: company.id, userId: planner.id },
+        {
+          method: "GET",
+          token: plannerToken,
+          companyId: company.id,
+          userId: planner.id,
+        },
       );
 
       const response = await LIST_STATES(request, {

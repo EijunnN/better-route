@@ -1,25 +1,25 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
-import { eq, and } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createDriver,
-  createVehicle,
-  createFleet,
-} from "../setup/test-data";
-import { vehicles, vehicleStatusHistory, vehicleFleets } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { GET as GET_STATUS_HISTORY } from "@/app/api/vehicles/[id]/status-history/route";
 import { GET as GET_AVAILABLE } from "@/app/api/vehicles/available/route";
+import { vehicleFleets, vehicleStatusHistory, vehicles } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createDriver,
+  createFleet,
+  createVehicle,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Vehicle Extended — status-history & available", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -46,9 +46,7 @@ describe("Vehicle Extended — status-history & available", () => {
     await testDb
       .delete(vehicleFleets)
       .where(eq(vehicleFleets.companyId, company.id));
-    await testDb
-      .delete(vehicles)
-      .where(eq(vehicles.companyId, company.id));
+    await testDb.delete(vehicles).where(eq(vehicles.companyId, company.id));
   });
 
   afterAll(async () => {

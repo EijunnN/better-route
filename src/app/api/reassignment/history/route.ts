@@ -1,18 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getReassignmentHistory } from "@/lib/routing/reassignment";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { getReassignmentHistory } from "@/lib/routing/reassignment";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
   type ReassignmentHistoryQuerySchema,
   reassignmentHistoryQuerySchema,
 } from "@/lib/validations/reassignment";
 
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
-
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.REASSIGNMENT, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.REASSIGNMENT,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

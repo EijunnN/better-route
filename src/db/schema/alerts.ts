@@ -88,39 +88,43 @@ export const alertRules = pgTable("alert_rules", {
 });
 
 // Alert instances - actual alerts that have been triggered
-export const alerts = pgTable("alerts", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "restrict" }),
-  ruleId: uuid("rule_id").references(() => alertRules.id, {
-    onDelete: "set null",
-  }),
-  severity: varchar("severity", { length: 20 })
-    .notNull()
-    .$type<keyof typeof ALERT_SEVERITY>(),
-  type: varchar("type", { length: 50 })
-    .notNull()
-    .$type<keyof typeof ALERT_TYPE>(),
-  entityType: varchar("entity_type", { length: 50 }).notNull(), // DRIVER, VEHICLE, ORDER, ROUTE, JOB
-  entityId: uuid("entity_id").notNull(),
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  metadata: jsonb("metadata"), // Flexible data for specific alert types
-  status: varchar("status", { length: 20 })
-    .notNull()
-    .$type<keyof typeof ALERT_STATUS>()
-    .default("ACTIVE"),
-  acknowledgedBy: uuid("acknowledged_by").references(() => users.id),
-  acknowledgedAt: timestamp("acknowledged_at"),
-  resolvedAt: timestamp("resolved_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("alerts_company_id_idx").on(table.companyId),
-  index("alerts_company_status_idx").on(table.companyId, table.status),
-  index("alerts_entity_idx").on(table.entityType, table.entityId),
-]);
+export const alerts = pgTable(
+  "alerts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "restrict" }),
+    ruleId: uuid("rule_id").references(() => alertRules.id, {
+      onDelete: "set null",
+    }),
+    severity: varchar("severity", { length: 20 })
+      .notNull()
+      .$type<keyof typeof ALERT_SEVERITY>(),
+    type: varchar("type", { length: 50 })
+      .notNull()
+      .$type<keyof typeof ALERT_TYPE>(),
+    entityType: varchar("entity_type", { length: 50 }).notNull(), // DRIVER, VEHICLE, ORDER, ROUTE, JOB
+    entityId: uuid("entity_id").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    metadata: jsonb("metadata"), // Flexible data for specific alert types
+    status: varchar("status", { length: 20 })
+      .notNull()
+      .$type<keyof typeof ALERT_STATUS>()
+      .default("ACTIVE"),
+    acknowledgedBy: uuid("acknowledged_by").references(() => users.id),
+    acknowledgedAt: timestamp("acknowledged_at"),
+    resolvedAt: timestamp("resolved_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("alerts_company_id_idx").on(table.companyId),
+    index("alerts_company_status_idx").on(table.companyId, table.status),
+    index("alerts_entity_idx").on(table.entityType, table.entityId),
+  ],
+);
 
 // Alert notifications - tracking delivery of alerts
 export const alertNotifications = pgTable("alert_notifications", {

@@ -1,11 +1,18 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken, createExpiredToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import { createCompany, createUser } from "../setup/test-data";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+} from "bun:test";
 import { POST as loginPOST } from "@/app/api/auth/login/route";
 import { GET as ordersGET } from "@/app/api/orders/route";
 import { resetRateLimit } from "@/lib/infra/rate-limit";
+import { createExpiredToken, createTestToken } from "../setup/test-auth";
+import { createCompany, createUser } from "../setup/test-data";
+import { cleanDatabase } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Auth lifecycle", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;

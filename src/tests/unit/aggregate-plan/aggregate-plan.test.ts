@@ -1,4 +1,4 @@
-import { describe, test, expect, mock } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import type {
   AssignedSolvedRoute,
   UnassignedOrderRecord,
@@ -20,7 +20,9 @@ const { aggregatePlan } = await import(
  * See ADR-0004 (runner pipeline stages).
  */
 
-function route(overrides: Partial<AssignedSolvedRoute> = {}): AssignedSolvedRoute {
+function route(
+  overrides: Partial<AssignedSolvedRoute> = {},
+): AssignedSolvedRoute {
   return {
     routeId: "route-1",
     vehicleId: "veh-1",
@@ -60,7 +62,12 @@ const baseArgs = {
   ]),
   vehiclesForFallback: [
     { id: "veh-1", plate: "ABC-123" },
-    { id: "veh-2", plate: "XYZ-789", originLatitude: "-12.06", originLongitude: "-77.06" },
+    {
+      id: "veh-2",
+      plate: "XYZ-789",
+      originLatitude: "-12.06",
+      originLongitude: "-77.06",
+    },
   ],
   warnings: [] as string[],
   startTime: Date.now() - 1500,
@@ -161,8 +168,8 @@ describe("aggregatePlan", () => {
       (v) => v.id === "veh-1",
     );
     expect(vehWithoutOrigin).toBeDefined();
-    expect(vehWithoutOrigin!.originLatitude).toBeUndefined();
-    expect(vehWithoutOrigin!.originLongitude).toBeUndefined();
+    expect(vehWithoutOrigin?.originLatitude).toBeUndefined();
+    expect(vehWithoutOrigin?.originLongitude).toBeUndefined();
   });
 
   test("warnings are forwarded only when non-empty", async () => {

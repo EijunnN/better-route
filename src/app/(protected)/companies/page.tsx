@@ -1,7 +1,12 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { CompaniesProvider, useCompanies, CompaniesListView, CompaniesFormView } from "@/components/companies";
+import {
+  CompaniesFormView,
+  CompaniesListView,
+  CompaniesProvider,
+  useCompanies,
+} from "@/components/companies";
 
 function CompaniesPageContent() {
   const { state } = useCompanies();

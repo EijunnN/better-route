@@ -1,11 +1,11 @@
-export { RolesProvider, useRoles, CATEGORY_LABELS } from "./roles-context";
 export type {
-  Role,
-  Permission,
   GroupedPermissions,
+  Permission,
+  Role,
   RolePermissionsResponse,
-  RolesState,
   RolesActions,
   RolesMeta,
+  RolesState,
 } from "./roles-context";
-export { RolesListView, RolesFormView } from "./roles-views";
+export { CATEGORY_LABELS, RolesProvider, useRoles } from "./roles-context";
+export { RolesFormView, RolesListView } from "./roles-views";

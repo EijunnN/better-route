@@ -100,7 +100,9 @@ export async function createSession(
 
   const redis = getRedisClient();
   if (!redis) {
-    console.warn("[Session] Redis unavailable - session created without persistence. JWT-only auth will be used.");
+    console.warn(
+      "[Session] Redis unavailable - session created without persistence. JWT-only auth will be used.",
+    );
     return sessionId;
   }
 
@@ -121,7 +123,10 @@ export async function createSession(
     // Add to global sessions set
     await redis.sadd(ALL_SESSIONS_SET, sessionId);
   } catch (error) {
-    console.warn("[Session] Redis error during session creation, falling back to JWT-only auth:", error);
+    console.warn(
+      "[Session] Redis error during session creation, falling back to JWT-only auth:",
+      error,
+    );
   }
 
   return sessionId;
@@ -138,12 +143,16 @@ export async function getSession(
 ): Promise<SessionData | null> {
   const redis = getRedisClient();
   if (!redis) {
-    console.warn("[Session] Redis unavailable - cannot retrieve session. Falling back to JWT-only validation.");
+    console.warn(
+      "[Session] Redis unavailable - cannot retrieve session. Falling back to JWT-only validation.",
+    );
     return null;
   }
 
   try {
-    const sessionData = await redis.get<string>(`${SESSION_PREFIX}${sessionId}`);
+    const sessionData = await redis.get<string>(
+      `${SESSION_PREFIX}${sessionId}`,
+    );
 
     if (!sessionData) {
       return null;
@@ -151,7 +160,10 @@ export async function getSession(
 
     return JSON.parse(sessionData) as SessionData;
   } catch (error) {
-    console.warn("[Session] Redis error during session retrieval, falling back to JWT-only validation:", error);
+    console.warn(
+      "[Session] Redis error during session retrieval, falling back to JWT-only validation:",
+      error,
+    );
     return null;
   }
 }
@@ -217,7 +229,9 @@ export async function getSessionByRefreshToken(
 ): Promise<SessionData | null> {
   const redis = getRedisClient();
   if (!redis) {
-    console.warn("[Session] Redis unavailable - cannot look up session by refresh token.");
+    console.warn(
+      "[Session] Redis unavailable - cannot look up session by refresh token.",
+    );
     return null;
   }
 
@@ -245,7 +259,9 @@ export async function getSessionByRefreshToken(
 export async function invalidateSession(sessionId: string): Promise<void> {
   const redis = getRedisClient();
   if (!redis) {
-    console.warn("[Session] Redis unavailable - session invalidation skipped. Token will remain valid until JWT expiry.");
+    console.warn(
+      "[Session] Redis unavailable - session invalidation skipped. Token will remain valid until JWT expiry.",
+    );
     return;
   }
 
@@ -279,7 +295,9 @@ export async function invalidateSession(sessionId: string): Promise<void> {
 export async function invalidateUserSessions(userId: string): Promise<void> {
   const redis = getRedisClient();
   if (!redis) {
-    console.warn("[Session] Redis unavailable - user session invalidation skipped.");
+    console.warn(
+      "[Session] Redis unavailable - user session invalidation skipped.",
+    );
     return;
   }
 
@@ -290,12 +308,17 @@ export async function invalidateUserSessions(userId: string): Promise<void> {
     );
 
     // Invalidate each session in parallel; entries are independent.
-    await Promise.all(sessionIds.map((sessionId) => invalidateSession(sessionId)));
+    await Promise.all(
+      sessionIds.map((sessionId) => invalidateSession(sessionId)),
+    );
 
     // Remove user's sessions list
     await redis.del(`${USER_SESSIONS_PREFIX}${userId}`);
   } catch (error) {
-    console.warn("[Session] Redis error during user session invalidation:", error);
+    console.warn(
+      "[Session] Redis error during user session invalidation:",
+      error,
+    );
   }
 }
 
@@ -307,7 +330,9 @@ export async function invalidateUserSessions(userId: string): Promise<void> {
 export async function invalidateAllSessions(): Promise<number> {
   const redis = getRedisClient();
   if (!redis) {
-    console.warn("[Session] Redis unavailable - global session invalidation skipped.");
+    console.warn(
+      "[Session] Redis unavailable - global session invalidation skipped.",
+    );
     return 0;
   }
 
@@ -316,11 +341,16 @@ export async function invalidateAllSessions(): Promise<number> {
     const sessionIds = await redis.smembers<string[]>(ALL_SESSIONS_SET);
 
     // Invalidate each session in parallel; entries are independent.
-    await Promise.all(sessionIds.map((sessionId) => invalidateSession(sessionId)));
+    await Promise.all(
+      sessionIds.map((sessionId) => invalidateSession(sessionId)),
+    );
 
     return sessionIds.length;
   } catch (error) {
-    console.warn("[Session] Redis error during global session invalidation:", error);
+    console.warn(
+      "[Session] Redis error during global session invalidation:",
+      error,
+    );
     return 0;
   }
 }
@@ -334,7 +364,9 @@ export async function invalidateAllSessions(): Promise<number> {
 export async function getUserSessions(userId: string): Promise<SessionData[]> {
   const redis = getRedisClient();
   if (!redis) {
-    console.warn("[Session] Redis unavailable - cannot retrieve user sessions.");
+    console.warn(
+      "[Session] Redis unavailable - cannot retrieve user sessions.",
+    );
     return [];
   }
 
@@ -353,7 +385,10 @@ export async function getUserSessions(userId: string): Promise<SessionData[]> {
 
     return sessions;
   } catch (error) {
-    console.warn("[Session] Redis error during user sessions retrieval:", error);
+    console.warn(
+      "[Session] Redis error during user sessions retrieval:",
+      error,
+    );
     return [];
   }
 }
@@ -378,7 +413,9 @@ export async function getUserSessionCount(userId: string): Promise<number> {
 
     // Filter out expired sessions; check existence in parallel.
     const existsResults = await Promise.all(
-      sessionIds.map((sessionId) => redis.exists(`${SESSION_PREFIX}${sessionId}`)),
+      sessionIds.map((sessionId) =>
+        redis.exists(`${SESSION_PREFIX}${sessionId}`),
+      ),
     );
     const activeCount = existsResults.reduce((n, e) => n + (e ? 1 : 0), 0);
 
@@ -406,7 +443,9 @@ export async function getGlobalSessionCount(): Promise<number> {
 
     // Filter out expired sessions; check existence in parallel.
     const existsResults = await Promise.all(
-      sessionIds.map((sessionId) => redis.exists(`${SESSION_PREFIX}${sessionId}`)),
+      sessionIds.map((sessionId) =>
+        redis.exists(`${SESSION_PREFIX}${sessionId}`),
+      ),
     );
     const activeCount = existsResults.reduce((n, e) => n + (e ? 1 : 0), 0);
 
@@ -464,7 +503,9 @@ export async function isRefreshTokenValid(
   if (!redis) {
     // When Redis is unavailable, we cannot validate refresh tokens against session store.
     // Return true to allow JWT-only validation to handle token validity.
-    console.warn("[Session] Redis unavailable - refresh token validation falling back to JWT-only.");
+    console.warn(
+      "[Session] Redis unavailable - refresh token validation falling back to JWT-only.",
+    );
     return true;
   }
 
@@ -485,7 +526,10 @@ export async function isRefreshTokenValid(
 
     return sessionId !== null;
   } catch (error) {
-    console.warn("[Session] Redis error during refresh token validation:", error);
+    console.warn(
+      "[Session] Redis error during refresh token validation:",
+      error,
+    );
     // Fall back to trusting the JWT signature
     return true;
   }
@@ -501,7 +545,9 @@ export async function invalidateRefreshToken(
 ): Promise<void> {
   const redis = getRedisClient();
   if (!redis) {
-    console.warn("[Session] Redis unavailable - refresh token invalidation skipped.");
+    console.warn(
+      "[Session] Redis unavailable - refresh token invalidation skipped.",
+    );
     return;
   }
 
@@ -514,6 +560,9 @@ export async function invalidateRefreshToken(
       await invalidateSession(sessionId);
     }
   } catch (error) {
-    console.warn("[Session] Redis error during refresh token invalidation:", error);
+    console.warn(
+      "[Session] Redis error during refresh token invalidation:",
+      error,
+    );
   }
 }

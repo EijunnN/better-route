@@ -171,11 +171,14 @@ export function TrackingSettingsSection() {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Tinte el nombre de la empresa y el badge de estado &ldquo;En camino&rdquo;.
+                      Tinte el nombre de la empresa y el badge de estado
+                      &ldquo;En camino&rdquo;.
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="custom-message">Mensaje personalizado</Label>
+                    <Label htmlFor="custom-message">
+                      Mensaje personalizado
+                    </Label>
                     <Input
                       id="custom-message"
                       value={tracking.customMessage || ""}
@@ -195,13 +198,18 @@ export function TrackingSettingsSection() {
                 <BrandPreviewCard
                   brandColor={tracking.brandColor || "#3B82F6"}
                   customMessage={tracking.customMessage}
-                  companyName={meta.companies.find((c) => c.id === meta.companyId)?.commercialName ?? "Tu empresa"}
+                  companyName={
+                    meta.companies.find((c) => c.id === meta.companyId)
+                      ?.commercialName ?? "Tu empresa"
+                  }
                 />
               </div>
             </div>
 
             <div className="border-t pt-6">
-              <p className="text-sm font-medium mb-3">Configuración de enlaces</p>
+              <p className="text-sm font-medium mb-3">
+                Configuración de enlaces
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="expiry-hours">
@@ -213,7 +221,7 @@ export function TrackingSettingsSection() {
                     value={tracking.tokenExpiryHours}
                     onChange={(e) =>
                       actions.updateTracking({
-                        tokenExpiryHours: parseInt(e.target.value) || 48,
+                        tokenExpiryHours: parseInt(e.target.value, 10) || 48,
                       })
                     }
                     min={1}
@@ -221,7 +229,10 @@ export function TrackingSettingsSection() {
                   />
                   <p className="text-xs text-muted-foreground">
                     Equivale a {Math.round(tracking.tokenExpiryHours / 24)} día
-                    {Math.round(tracking.tokenExpiryHours / 24) === 1 ? "" : "s"}.
+                    {Math.round(tracking.tokenExpiryHours / 24) === 1
+                      ? ""
+                      : "s"}
+                    .
                   </p>
                 </div>
                 <div className="flex items-center justify-between gap-4 rounded-md border px-4 py-3">

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   BarChart3,
@@ -16,6 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,18 +33,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useHistorial, type OptimizationJob, type JobStatus } from "./historial-context";
+import {
+  type JobStatus,
+  type OptimizationJob,
+  useHistorial,
+} from "./historial-context";
 
 // Status Configuration
 const STATUS_CONFIG = {
   CONFIRMED: {
     label: "Confirmado",
-    color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
+    color:
+      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
     icon: "check-circle",
   },
   COMPLETED: {
     label: "Completado",
-    color: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
+    color:
+      "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
     icon: "check-circle",
   },
   FAILED: {
@@ -54,7 +60,8 @@ const STATUS_CONFIG = {
   },
   CANCELLED: {
     label: "Cancelado",
-    color: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
+    color:
+      "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
     icon: "x-circle",
   },
   RUNNING: {
@@ -149,13 +156,18 @@ function MetricCell({
           : "text-foreground";
   return (
     <div className="space-y-0.5">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
       <p className={`text-sm font-semibold ${toneClass}`}>{value}</p>
     </div>
   );
 }
 
-function toneFromPercent(value: number, inverted = false): "good" | "warn" | "bad" {
+function toneFromPercent(
+  value: number,
+  inverted = false,
+): "good" | "warn" | "bad" {
   const v = inverted ? 100 - value : value;
   if (v >= 80) return "good";
   if (v >= 50) return "warn";
@@ -232,8 +244,14 @@ function JobMetricsExpansion({
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4 lg:grid-cols-6">
         <MetricCell label="Rutas" value={String(metrics.totalRoutes)} />
         <MetricCell label="Paradas" value={String(metrics.totalStops)} />
-        <MetricCell label="Distancia" value={formatDistance(metrics.totalDistance)} />
-        <MetricCell label="Duración" value={formatDuration(metrics.totalDuration)} />
+        <MetricCell
+          label="Distancia"
+          value={formatDistance(metrics.totalDistance)}
+        />
+        <MetricCell
+          label="Duración"
+          value={formatDuration(metrics.totalDuration)}
+        />
         <MetricCell
           label="Utilización"
           value={formatPercent(metrics.averageUtilizationRate)}
@@ -277,7 +295,8 @@ function JobMetricsExpansion({
           tone={toneFromPercent(metrics.workloadBalance)}
         />
       </div>
-      {(metrics.assignmentsWithWarnings > 0 || metrics.assignmentsWithErrors > 0) && (
+      {(metrics.assignmentsWithWarnings > 0 ||
+        metrics.assignmentsWithErrors > 0) && (
         <div className="text-[11px] text-muted-foreground flex gap-3 pt-1 border-t">
           {metrics.assignmentsWithWarnings > 0 && (
             <span className="text-amber-600 dark:text-amber-400">
@@ -359,7 +378,14 @@ export function HistorialHeader() {
 
 export function HistorialFilters() {
   const { state, actions } = useHistorial();
-  const statuses: JobStatus[] = ["all", "COMPLETED", "CANCELLED", "FAILED", "RUNNING", "PENDING"];
+  const statuses: JobStatus[] = [
+    "all",
+    "COMPLETED",
+    "CANCELLED",
+    "FAILED",
+    "RUNNING",
+    "PENDING",
+  ];
 
   return (
     <div className="flex gap-1 flex-wrap">
@@ -420,9 +446,10 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
   const { meta } = useHistorial();
   const [showMetrics, setShowMetrics] = useState(false);
   // Show "Confirmado" when job is COMPLETED and configuration was confirmed
-  const effectiveStatus = job.status === "COMPLETED" && job.configurationStatus === "CONFIRMED"
-    ? "CONFIRMED"
-    : job.status;
+  const effectiveStatus =
+    job.status === "COMPLETED" && job.configurationStatus === "CONFIRMED"
+      ? "CONFIRMED"
+      : job.status;
   const statusConfig = getStatusConfig(effectiveStatus);
   // Plan metrics only exist after confirm. Cancelled/failed jobs have no row.
   const canShowMetrics = effectiveStatus === "CONFIRMED";
@@ -441,22 +468,42 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
           </Badge>
 
           {job.result?.isPartial && (
-            <Badge variant="outline" className="text-xs py-0 shrink-0 text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-500">
+            <Badge
+              variant="outline"
+              className="text-xs py-0 shrink-0 text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-500"
+            >
               Parcial
             </Badge>
           )}
 
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">
-              {job.configuration?.name || `Config ${job.configurationId?.slice(0, 8)}...`}
+              {job.configuration?.name ||
+                `Config ${job.configurationId?.slice(0, 8)}...`}
             </p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span>{formatDate(job.completedAt || job.cancelledAt || job.createdAt)}</span>
+              <span>
+                {formatDate(
+                  job.completedAt || job.cancelledAt || job.createdAt,
+                )}
+              </span>
               {job.result && (
                 <>
-                  <span><span className="font-medium text-foreground">{job.result.metrics.totalRoutes}</span> rutas</span>
-                  <span><span className="font-medium text-foreground">{job.result.metrics.totalStops}</span> paradas</span>
-                  <span>{formatDistance(job.result.metrics.totalDistance)}</span>
+                  <span>
+                    <span className="font-medium text-foreground">
+                      {job.result.metrics.totalRoutes}
+                    </span>{" "}
+                    rutas
+                  </span>
+                  <span>
+                    <span className="font-medium text-foreground">
+                      {job.result.metrics.totalStops}
+                    </span>{" "}
+                    paradas
+                  </span>
+                  <span>
+                    {formatDistance(job.result.metrics.totalDistance)}
+                  </span>
                   {job.result.unassignedOrders.length > 0 && (
                     <span className="text-orange-600 dark:text-orange-400">
                       {job.result.unassignedOrders.length} sin asignar
@@ -475,10 +522,16 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
               variant="ghost"
               size="sm"
               onClick={() => setShowMetrics((v) => !v)}
-              title={showMetrics ? "Ocultar métricas" : "Ver métricas detalladas"}
+              title={
+                showMetrics ? "Ocultar métricas" : "Ver métricas detalladas"
+              }
             >
               <BarChart3 className="size-4 mr-1" />
-              {showMetrics ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+              {showMetrics ? (
+                <ChevronUp className="size-3" />
+              ) : (
+                <ChevronDown className="size-3" />
+              )}
             </Button>
           )}
 
@@ -528,7 +581,8 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
             <AlertDialogHeader>
               <AlertDialogTitle>¿Eliminar este plan?</AlertDialogTitle>
               <AlertDialogDescription>
-                Se eliminará la configuración y sus datos asociados. Esta acción no se puede deshacer.
+                Se eliminará la configuración y sus datos asociados. Esta acción
+                no se puede deshacer.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -578,7 +632,8 @@ function HistorialJobActions({ job }: { job: OptimizationJob }) {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar este plan?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará la configuración y sus datos asociados. Esta acción no se puede deshacer.
+              Se eliminará la configuración y sus datos asociados. Esta acción
+              no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

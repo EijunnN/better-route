@@ -29,8 +29,8 @@ import {
   Warehouse,
 } from "lucide-react";
 import Link from "next/link";
-import { LogoAnt } from "@/components/ui/logo-ant";
 import { Button } from "@/components/ui/button";
+import { LogoAnt } from "@/components/ui/logo-ant";
 import {
   Popover,
   PopoverContent,
@@ -38,13 +38,13 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useGlobalCompany } from "./company-context";
-import { useTheme } from "./theme-context";
 import {
-  SidebarProvider,
-  useSidebar,
   type NavItem,
   type NavSection,
+  SidebarProvider,
+  useSidebar,
 } from "./sidebar-context";
+import { useTheme } from "./theme-context";
 
 // Default navigation sections with permission requirements
 // Permissions use format "entity:action" matching authorization.ts EntityType and Action enums
@@ -52,49 +52,134 @@ const defaultNavSections: NavSection[] = [
   {
     title: "Operaciones",
     items: [
-      { title: "Dashboard", href: "/dashboard", icon: BarChart3, requiredPermission: "metrics:read" },
-      { title: "Pedidos", href: "/orders", icon: Package, requiredPermission: "order:read" },
+      {
+        title: "Dashboard",
+        href: "/dashboard",
+        icon: BarChart3,
+        requiredPermission: "metrics:read",
+      },
+      {
+        title: "Pedidos",
+        href: "/orders",
+        icon: Package,
+        requiredPermission: "order:read",
+      },
       {
         title: "Planificación",
         href: "/planificacion",
         icon: Route,
         requiredPermission: "plan:read",
         children: [
-          { title: "Nueva Planificación", href: "/planificacion", icon: PlusCircle, requiredPermission: "plan:read" },
-          { title: "Historial", href: "/planificacion/historial", icon: History, requiredPermission: "plan:read" },
+          {
+            title: "Nueva Planificación",
+            href: "/planificacion",
+            icon: PlusCircle,
+            requiredPermission: "plan:read",
+          },
+          {
+            title: "Historial",
+            href: "/planificacion/historial",
+            icon: History,
+            requiredPermission: "plan:read",
+          },
         ],
       },
-      { title: "Monitoreo", href: "/monitoring", icon: MapIcon, requiredPermission: "vehicle:read" },
+      {
+        title: "Monitoreo",
+        href: "/monitoring",
+        icon: MapIcon,
+        requiredPermission: "vehicle:read",
+      },
     ],
   },
   {
     title: "Recursos",
     items: [
-      { title: "Vehículos", href: "/vehicles", icon: Truck, requiredPermission: "vehicle:read" },
-      { title: "Flotas", href: "/fleets", icon: Warehouse, requiredPermission: "fleet:read" },
-      { title: "Zonas", href: "/zones", icon: MapPin, requiredPermission: "route:read" },
+      {
+        title: "Vehículos",
+        href: "/vehicles",
+        icon: Truck,
+        requiredPermission: "vehicle:read",
+      },
+      {
+        title: "Flotas",
+        href: "/fleets",
+        icon: Warehouse,
+        requiredPermission: "fleet:read",
+      },
+      {
+        title: "Zonas",
+        href: "/zones",
+        icon: MapPin,
+        requiredPermission: "route:read",
+      },
     ],
   },
   {
     title: "Administración",
     items: [
-      { title: "Usuarios", href: "/users", icon: Users, requiredPermission: "user:read" },
-      { title: "Roles", href: "/roles", icon: Shield, requiredPermission: "role:read" },
+      {
+        title: "Usuarios",
+        href: "/users",
+        icon: Users,
+        requiredPermission: "user:read",
+      },
+      {
+        title: "Roles",
+        href: "/roles",
+        icon: Shield,
+        requiredPermission: "role:read",
+      },
       // company:create only granted by the wildcard (ADMIN_SISTEMA). Using
       // it as the gate for the cross-tenant Empresas page keeps it admin-only,
       // while ADMIN_FLOTA still gets company:read/update for own-tenant config.
-      { title: "Empresas", href: "/companies", icon: Building2, requiredPermission: "company:create" },
+      {
+        title: "Empresas",
+        href: "/companies",
+        icon: Building2,
+        requiredPermission: "company:create",
+      },
     ],
   },
   {
     title: "Configuración",
     items: [
-      { title: "Perfil Empresa", href: "/configuracion", icon: Settings, requiredPermission: "company:update" },
-      { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2, requiredPermission: "optimization_preset:read" },
-      { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock, requiredPermission: "time_window_preset:read" },
-      { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award, requiredPermission: "vehicle_skill:read" },
-      { title: "Estados de entrega", href: "/workflow", icon: GitBranch, requiredPermission: "company:update" },
-      { title: "Campos personalizados", href: "/custom-fields", icon: ListChecks, requiredPermission: "company:update" },
+      {
+        title: "Perfil Empresa",
+        href: "/configuracion",
+        icon: Settings,
+        requiredPermission: "company:update",
+      },
+      {
+        title: "Presets Optimización",
+        href: "/optimization-presets",
+        icon: Settings2,
+        requiredPermission: "optimization_preset:read",
+      },
+      {
+        title: "Ventanas de Tiempo",
+        href: "/time-window-presets",
+        icon: Clock,
+        requiredPermission: "time_window_preset:read",
+      },
+      {
+        title: "Habilidades Vehículos",
+        href: "/vehicle-skills",
+        icon: Award,
+        requiredPermission: "vehicle_skill:read",
+      },
+      {
+        title: "Estados de entrega",
+        href: "/workflow",
+        icon: GitBranch,
+        requiredPermission: "company:update",
+      },
+      {
+        title: "Campos personalizados",
+        href: "/custom-fields",
+        icon: ListChecks,
+        requiredPermission: "company:update",
+      },
     ],
   },
 ];
@@ -108,7 +193,7 @@ function SidebarFrame({ children }: { children: React.ReactNode }) {
     <aside
       className={cn(
         "flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-300",
-        state.collapsed ? "w-16" : "w-64"
+        state.collapsed ? "w-16" : "w-64",
       )}
     >
       {children}
@@ -123,7 +208,9 @@ function SidebarLogo() {
     <Link href="/dashboard" className="flex items-center gap-2">
       <LogoAnt className="size-9 shrink-0 text-sidebar-foreground" />
       {!state.collapsed && (
-        <span className="text-sm font-semibold text-sidebar-foreground">BetterRoute</span>
+        <span className="text-sm font-semibold text-sidebar-foreground">
+          BetterRoute
+        </span>
       )}
     </Link>
   );
@@ -153,10 +240,12 @@ function SidebarHeader({ children }: { children: React.ReactNode }) {
   const { state } = useSidebar();
 
   return (
-    <div className={cn(
-      "flex h-12 items-center border-b border-sidebar-border px-3",
-      state.collapsed ? "justify-center" : "justify-between"
-    )}>
+    <div
+      className={cn(
+        "flex h-12 items-center border-b border-sidebar-border px-3",
+        state.collapsed ? "justify-center" : "justify-between",
+      )}
+    >
       {children}
     </div>
   );
@@ -179,7 +268,7 @@ function SidebarNavigation({ children }: { children?: React.ReactNode }) {
                 key={j}
                 className={cn(
                   "h-8 bg-sidebar-accent/30 rounded-lg mx-1 animate-pulse",
-                  state.collapsed ? "w-12" : "w-full"
+                  state.collapsed ? "w-12" : "w-full",
                 )}
               />
             ))}
@@ -193,7 +282,11 @@ function SidebarNavigation({ children }: { children?: React.ReactNode }) {
     <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-1.5">
       {children ||
         meta.navSections.map((section, sectionIndex) => (
-          <SidebarSection key={section.title} section={section} isFirst={sectionIndex === 0} />
+          <SidebarSection
+            key={section.title}
+            section={section}
+            isFirst={sectionIndex === 0}
+          />
         ))}
     </nav>
   );
@@ -238,7 +331,7 @@ function SidebarNavItem({ item }: { item: NavItem }) {
             isItemActive
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            state.collapsed && "justify-center px-2"
+            state.collapsed && "justify-center px-2",
           )}
           title={state.collapsed ? item.title : undefined}
         >
@@ -249,7 +342,7 @@ function SidebarNavItem({ item }: { item: NavItem }) {
               <ChevronDown
                 className={cn(
                   "size-3.5 shrink-0 transition-transform",
-                  isExpanded && "rotate-180"
+                  isExpanded && "rotate-180",
                 )}
               />
             </>
@@ -257,7 +350,7 @@ function SidebarNavItem({ item }: { item: NavItem }) {
         </button>
         {!state.collapsed && isExpanded && (
           <div className="ml-3.5 space-y-0.5 border-l border-sidebar-border pl-2.5">
-            {item.children!.map((child) => (
+            {item.children?.map((child) => (
               <SidebarNavLink key={child.href} item={child} isChild />
             ))}
           </div>
@@ -287,7 +380,7 @@ function SidebarNavLink({
         isItemActive
           ? "bg-primary text-primary-foreground shadow-sm"
           : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        state.collapsed && "justify-center px-2"
+        state.collapsed && "justify-center px-2",
       )}
       title={state.collapsed ? item.title : undefined}
     >
@@ -303,7 +396,11 @@ function SidebarNavLink({
 }
 
 function SidebarFooter({ children }: { children: React.ReactNode }) {
-  return <div className="border-t border-sidebar-border px-2 py-1.5 space-y-0.5">{children}</div>;
+  return (
+    <div className="border-t border-sidebar-border px-2 py-1.5 space-y-0.5">
+      {children}
+    </div>
+  );
 }
 
 function SidebarThemeToggle() {
@@ -316,10 +413,12 @@ function SidebarThemeToggle() {
       size="sm"
       className={cn(
         "w-full justify-start gap-2.5 text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        state.collapsed && "justify-center px-2"
+        state.collapsed && "justify-center px-2",
       )}
       onClick={toggleTheme}
-      title={state.collapsed ? (isDark ? "Modo claro" : "Modo oscuro") : undefined}
+      title={
+        state.collapsed ? (isDark ? "Modo claro" : "Modo oscuro") : undefined
+      }
     >
       {isDark ? (
         <Sun className="size-4 shrink-0" />
@@ -340,7 +439,7 @@ function SidebarLogoutButton() {
       size="sm"
       className={cn(
         "w-full justify-start gap-2.5 text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        state.collapsed && "justify-center px-2"
+        state.collapsed && "justify-center px-2",
       )}
       onClick={() => {
         window.location.href = "/login";
@@ -388,11 +487,13 @@ function SidebarCompanySwitcher() {
                 onClick={() => setSelectedCompanyId(company.id)}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent",
-                  company.id === selectedCompanyId && "bg-accent"
+                  company.id === selectedCompanyId && "bg-accent",
                 )}
               >
                 <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="flex-1 truncate text-left">{company.commercialName}</span>
+                <span className="flex-1 truncate text-left">
+                  {company.commercialName}
+                </span>
                 {company.id === selectedCompanyId && (
                   <Check className="size-3.5 shrink-0 text-primary" />
                 )}
@@ -411,7 +512,7 @@ function SidebarCompanySwitcher() {
           <button
             className={cn(
               "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-              "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             )}
           >
             <div className="flex size-6 shrink-0 items-center justify-center rounded-md border border-sidebar-border bg-sidebar-accent/50">
@@ -435,13 +536,15 @@ function SidebarCompanySwitcher() {
               onClick={() => setSelectedCompanyId(company.id)}
               className={cn(
                 "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent",
-                company.id === selectedCompanyId && "bg-accent"
+                company.id === selectedCompanyId && "bg-accent",
               )}
             >
               <div className="flex size-5 shrink-0 items-center justify-center rounded border bg-muted">
                 <Building2 className="size-3 text-muted-foreground" />
               </div>
-              <span className="flex-1 truncate text-left">{company.commercialName}</span>
+              <span className="flex-1 truncate text-left">
+                {company.commercialName}
+              </span>
               {company.id === selectedCompanyId && (
                 <Check className="size-3.5 shrink-0 text-primary" />
               )}
@@ -521,6 +624,6 @@ Sidebar.CompanySwitcher = SidebarCompanySwitcher;
 Sidebar.ThemeToggle = SidebarThemeToggle;
 Sidebar.LogoutButton = SidebarLogoutButton;
 
+export type { NavItem, NavSection } from "./sidebar-context";
 // Hook export for custom implementations
 export { useSidebar } from "./sidebar-context";
-export type { NavItem, NavSection } from "./sidebar-context";

@@ -2,17 +2,16 @@ import { and, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { reassignmentsHistory, USER_ROLES, users } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { createAuditLog } from "@/lib/infra/audit";
-import { executeReassignment } from "@/lib/routing/reassignment";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { executeReassignment } from "@/lib/routing/reassignment";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
   type ExecuteReassignmentSchema,
   executeReassignmentSchema,
 } from "@/lib/validations/reassignment";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * POST /api/reassignment/execute
@@ -27,7 +26,11 @@ import { EntityType, Action } from "@/lib/auth/authorization";
  */
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.REASSIGNMENT, Action.EXECUTE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.REASSIGNMENT,
+      Action.EXECUTE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -197,7 +200,11 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.REASSIGNMENT, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.REASSIGNMENT,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

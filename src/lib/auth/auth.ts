@@ -8,7 +8,8 @@ import {
 } from "./session";
 
 // JWT Configuration
-const ACCESS_TOKEN_EXPIRY = process.env.NODE_ENV === "development" ? "24h" : "15min";
+const ACCESS_TOKEN_EXPIRY =
+  process.env.NODE_ENV === "development" ? "24h" : "15min";
 const REFRESH_TOKEN_EXPIRY = "7d"; // 7 days
 const ACCESS_TOKEN_MAX_AGE_SECONDS =
   process.env.NODE_ENV === "development" ? 24 * 60 * 60 : 15 * 60;

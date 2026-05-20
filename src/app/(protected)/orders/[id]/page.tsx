@@ -91,7 +91,9 @@ function OrderDetailContent() {
         ]);
         if (!orderRes.ok) {
           throw new Error(
-            orderRes.status === 404 ? "Pedido no encontrado" : "Error al cargar el pedido",
+            orderRes.status === 404
+              ? "Pedido no encontrado"
+              : "Error al cargar el pedido",
           );
         }
         const orderJson = (await orderRes.json()) as OrderDetail;
@@ -115,26 +117,26 @@ function OrderDetailContent() {
     return () => {
       cancelled = true;
     };
-  }, [companyId, orderId, refreshTick]);
+  }, [companyId, orderId]);
 
   const handleReopenSubmit = async (payload: ReschedulePayload) => {
     if (!latestStop || !companyId) return;
-    const res = await fetch(
-      `/api/route-stops/${latestStop.id}/reopen`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(payload),
+    const res = await fetch(`/api/route-stops/${latestStop.id}/reopen`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": companyId,
       },
-    );
+      body: JSON.stringify(payload),
+    });
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(err.error || "No se pudo reabrir la parada");
     }
-    toast({ title: "Parada reabierta", description: "El conductor verá el pedido nuevamente en su lista." });
+    toast({
+      title: "Parada reabierta",
+      description: "El conductor verá el pedido nuevamente en su lista.",
+    });
     refresh();
   };
 
@@ -224,11 +226,7 @@ function OrderDetailContent() {
   if (error) {
     return (
       <div className="mx-auto max-w-3xl p-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => push("/orders")}
-        >
+        <Button variant="ghost" size="sm" onClick={() => push("/orders")}>
           <ArrowLeft className="mr-2 size-4" /> Volver
         </Button>
         <Card className="mt-4">
@@ -247,11 +245,7 @@ function OrderDetailContent() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => push("/orders")}
-        >
+        <Button variant="ghost" size="sm" onClick={() => push("/orders")}>
           <ArrowLeft className="mr-2 size-4" /> Volver
         </Button>
       </div>
@@ -284,7 +278,7 @@ function OrderDetailContent() {
               value={
                 order.timeWindowStart && order.timeWindowEnd
                   ? `${order.timeWindowStart.slice(0, 5)} – ${order.timeWindowEnd.slice(0, 5)}`
-                  : order.presetName ?? "—"
+                  : (order.presetName ?? "—")
               }
             />
           )}
@@ -302,7 +296,9 @@ function OrderDetailContent() {
         <Card>
           <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div>
-              <div className="text-sm font-medium">Parada con entrega fallida</div>
+              <div className="text-sm font-medium">
+                Parada con entrega fallida
+              </div>
               <div className="text-xs text-muted-foreground">
                 Reabre la parada para que el conductor lo vuelva a intentar.
               </div>
@@ -320,7 +316,9 @@ function OrderDetailContent() {
         <Card>
           <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div>
-              <div className="text-sm font-medium">Pedido marcado como fallido</div>
+              <div className="text-sm font-medium">
+                Pedido marcado como fallido
+              </div>
               <div className="text-xs text-muted-foreground">
                 Reactívalo para que entre en el próximo plan disponible.
               </div>

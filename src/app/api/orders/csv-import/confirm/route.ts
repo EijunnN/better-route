@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { confirmCsvImport } from "@/lib/orders/import";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { confirmCsvImport } from "@/lib/orders/import";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
@@ -41,7 +41,9 @@ export async function POST(request: NextRequest) {
     }
 
     const reactivableSelections = Array.isArray(body.reactivableSelections)
-      ? body.reactivableSelections.filter((x): x is string => typeof x === "string")
+      ? body.reactivableSelections.filter(
+          (x): x is string => typeof x === "string",
+        )
       : undefined;
 
     const result = await confirmCsvImport(

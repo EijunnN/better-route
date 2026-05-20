@@ -142,11 +142,11 @@ export function calculatePlanMetrics(
       routes.reduce((sum, r) => sum + (r.stops?.length || 0), 0),
     totalDistance: Math.round(
       metrics.totalDistance ||
-      routes.reduce((sum, r) => sum + (r.totalDistance || 0), 0),
+        routes.reduce((sum, r) => sum + (r.totalDistance || 0), 0),
     ),
     totalDuration: Math.round(
       metrics.totalDuration ||
-      routes.reduce((sum, r) => sum + (r.totalDuration || 0), 0),
+        routes.reduce((sum, r) => sum + (r.totalDuration || 0), 0),
     ),
     averageUtilizationRate,
     maxUtilizationRate,

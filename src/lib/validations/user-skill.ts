@@ -1,4 +1,5 @@
 import { z } from "zod";
+
 export { isExpired, isExpiringSoon } from "./user";
 
 // Base user skill fields

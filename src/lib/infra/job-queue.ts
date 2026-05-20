@@ -69,7 +69,10 @@ export function acquireCompanyLock(companyId: string, jobId: string): boolean {
         `[JobQueue] Orphaned lock detected for company ${companyId}, job ${existing.jobId}. Releasing.`,
       );
       companyOptimizationLocks.delete(companyId);
-      companyOptimizationLocks.set(companyId, { jobId, acquiredAt: new Date() });
+      companyOptimizationLocks.set(companyId, {
+        jobId,
+        acquiredAt: new Date(),
+      });
       return true;
     }
 

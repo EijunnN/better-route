@@ -1,7 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { roles, rolePermissions, permissions } from "@/db/schema";
+import { permissions, rolePermissions, roles } from "@/db/schema";
+import { clearUserPermissionCacheByRole } from "@/lib/auth/authorization";
 import { Action, EntityType } from "@/lib/auth/permissions";
 import {
   checkPermissionOrError,
@@ -11,7 +12,6 @@ import {
   unauthorizedResponse,
 } from "@/lib/routing/route-helpers";
 import { rolePermissionsSchema } from "@/lib/validations/role";
-import { clearUserPermissionCacheByRole } from "@/lib/auth/authorization";
 
 interface RouteParams {
   params: Promise<{ id: string }>;

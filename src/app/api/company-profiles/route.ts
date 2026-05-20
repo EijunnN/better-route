@@ -6,8 +6,8 @@ import { companyOptimizationProfiles } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { safeParseJson } from "@/lib/utils/safe-json";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { safeParseJson } from "@/lib/utils/safe-json";
 
 // ── Local helpers ──────────────────────────────────────────────────────────
 // These used to live in capacity-mapper.ts; only this admin endpoint needs
@@ -68,7 +68,9 @@ function validateProfileConfig(cfg: ProfileConfig): {
   }
   const expect = (flag: boolean, dim: string, label: string) => {
     if (flag && !cfg.activeDimensions.includes(dim)) {
-      errors.push(`${label} está habilitado pero no está en las dimensiones activas`);
+      errors.push(
+        `${label} está habilitado pero no está en las dimensiones activas`,
+      );
     }
   };
   expect(cfg.enableWeight, "WEIGHT", "El peso");
@@ -76,13 +78,16 @@ function validateProfileConfig(cfg: ProfileConfig): {
   expect(cfg.enableOrderValue, "VALUE", "El valorizado");
   expect(cfg.enableUnits, "UNITS", "Las unidades");
   for (const [type, p] of Object.entries(cfg.priorityMapping)) {
-    if (p < 0 || p > 100) errors.push(`Prioridad para ${type} debe estar entre 0 y 100`);
+    if (p < 0 || p > 100)
+      errors.push(`Prioridad para ${type} debe estar entre 0 y 100`);
   }
   return { valid: errors.length === 0, errors };
 }
 
 /** Normalize a DB row into the UI-facing object shape. */
-function serializeProfile(row: typeof companyOptimizationProfiles.$inferSelect) {
+function serializeProfile(
+  row: typeof companyOptimizationProfiles.$inferSelect,
+) {
   return {
     id: row.id,
     companyId: row.companyId,
@@ -94,7 +99,9 @@ function serializeProfile(row: typeof companyOptimizationProfiles.$inferSelect) 
     activeDimensions: (() => {
       try {
         const parsed = safeParseJson<unknown>(row.activeDimensions);
-        return Array.isArray(parsed) ? (parsed as string[]) : [...DEFAULT_DIMENSIONS];
+        return Array.isArray(parsed)
+          ? (parsed as string[])
+          : [...DEFAULT_DIMENSIONS];
       } catch {
         return [...DEFAULT_DIMENSIONS];
       }
@@ -102,7 +109,8 @@ function serializeProfile(row: typeof companyOptimizationProfiles.$inferSelect) 
     priorityMapping: (() => {
       try {
         return (
-          safeParseJson<Record<string, number>>(row.priorityMapping) ?? DEFAULT_PRIORITY
+          safeParseJson<Record<string, number>>(row.priorityMapping) ??
+          DEFAULT_PRIORITY
         );
       } catch {
         return DEFAULT_PRIORITY;
@@ -258,8 +266,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Apply a template if the client referenced one.
-    if (body.templateId && PROFILE_TEMPLATES[body.templateId as keyof typeof PROFILE_TEMPLATES]) {
-      const template = PROFILE_TEMPLATES[body.templateId as keyof typeof PROFILE_TEMPLATES];
+    if (
+      body.templateId &&
+      PROFILE_TEMPLATES[body.templateId as keyof typeof PROFILE_TEMPLATES]
+    ) {
+      const template =
+        PROFILE_TEMPLATES[body.templateId as keyof typeof PROFILE_TEMPLATES];
       body.enableWeight = template.enableWeight;
       body.enableVolume = template.enableVolume;
       body.enableOrderValue = template.enableOrderValue;
@@ -286,18 +298,17 @@ export async function POST(request: NextRequest) {
       .from(companyOptimizationProfiles)
       .where(eq(companyOptimizationProfiles.companyId, context.companyId));
 
-    const result = existing.length > 0
-      ? await db
-          .update(companyOptimizationProfiles)
-          .set({ ...profileConfig, updatedAt: new Date() })
-          .where(
-            eq(companyOptimizationProfiles.companyId, context.companyId),
-          )
-          .returning()
-      : await db
-          .insert(companyOptimizationProfiles)
-          .values({ companyId: context.companyId, ...profileConfig })
-          .returning();
+    const result =
+      existing.length > 0
+        ? await db
+            .update(companyOptimizationProfiles)
+            .set({ ...profileConfig, updatedAt: new Date() })
+            .where(eq(companyOptimizationProfiles.companyId, context.companyId))
+            .returning()
+        : await db
+            .insert(companyOptimizationProfiles)
+            .values({ companyId: context.companyId, ...profileConfig })
+            .returning();
 
     return NextResponse.json(
       {

@@ -6,10 +6,7 @@ import {
   USER_ROLES,
   users,
 } from "@/db/schema";
-import type {
-  ExecuteReassignmentResult,
-  ReassignmentOperation,
-} from "./types";
+import type { ExecuteReassignmentResult, ReassignmentOperation } from "./types";
 
 export async function executeReassignment(
   companyId: string,

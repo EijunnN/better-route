@@ -1,7 +1,4 @@
-import {
-  type CSVValidationError,
-  ERROR_TYPES,
-} from "./types";
+import { type CSVValidationError, ERROR_TYPES } from "./types";
 
 /**
  * Create a validation error with proper categorization

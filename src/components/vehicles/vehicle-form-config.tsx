@@ -214,7 +214,9 @@ export function VehicleFormConfig() {
                           disabled={isSubmitting}
                         />
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-normal">{skill.name}</span>
+                          <span className="text-sm font-normal">
+                            {skill.name}
+                          </span>
                           {skill.description && (
                             <p className="text-xs text-muted-foreground truncate">
                               {skill.description}

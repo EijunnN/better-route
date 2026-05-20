@@ -1,20 +1,19 @@
 import bcrypt from "bcryptjs";
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
   createUserSchema,
   isExpired,
   userQuerySchema,
 } from "@/lib/validations/user";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 function getLicenseStatusFilter(licenseStatus: string) {
   const today = new Date();
@@ -35,7 +34,11 @@ function getLicenseStatusFilter(licenseStatus: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.USER, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.USER,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -167,7 +170,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.USER, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.USER,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -233,8 +240,7 @@ export async function POST(request: NextRequest) {
     if (existingIdentification.length > 0) {
       return NextResponse.json(
         {
-          error:
-            "Ya existe un conductor con esta identificación en la empresa",
+          error: "Ya existe un conductor con esta identificación en la empresa",
         },
         { status: 400 },
       );

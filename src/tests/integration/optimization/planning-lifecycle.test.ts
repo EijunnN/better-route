@@ -1,30 +1,26 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createDriver,
-  createVehicle,
-  createOrder,
-  createOptimizationConfig,
-  createOptimizationJob,
-  buildOptimizationResult,
-} from "../setup/test-data";
-import {
-  orders,
-  optimizationConfigurations,
-  routeStops,
-} from "@/db/schema";
-import { POST as confirmPlan } from "@/app/api/optimization/jobs/[id]/confirm/route";
 import {
   GET as getConfig,
   PATCH as patchConfig,
 } from "@/app/api/optimization/configure/[id]/route";
+import { POST as confirmPlan } from "@/app/api/optimization/jobs/[id]/confirm/route";
 import { PATCH as patchRouteStop } from "@/app/api/route-stops/[id]/route";
+import { optimizationConfigurations, orders, routeStops } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  buildOptimizationResult,
+  createAdmin,
+  createCompany,
+  createDriver,
+  createOptimizationConfig,
+  createOptimizationJob,
+  createOrder,
+  createPlanner,
+  createVehicle,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -38,7 +34,11 @@ async function callConfirm(jobId: string, token: string, companyId: string) {
   return confirmPlan(request, { params: Promise.resolve({ id: jobId }) });
 }
 
-async function callGetConfig(configId: string, token: string, companyId: string) {
+async function callGetConfig(
+  configId: string,
+  token: string,
+  companyId: string,
+) {
   const request = await createTestRequest(
     `/api/optimization/configure/${configId}`,
     { method: "GET", token, companyId },
@@ -66,10 +66,13 @@ async function callPatchRouteStop(
   companyId: string,
   userId?: string,
 ) {
-  const request = await createTestRequest(
-    `/api/route-stops/${stopId}`,
-    { method: "PATCH", body, token, companyId, userId },
-  );
+  const request = await createTestRequest(`/api/route-stops/${stopId}`, {
+    method: "PATCH",
+    body,
+    token,
+    companyId,
+    userId,
+  });
   return patchRouteStop(request, { params: Promise.resolve({ id: stopId }) });
 }
 

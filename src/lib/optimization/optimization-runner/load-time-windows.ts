@@ -88,7 +88,9 @@ function exactToRange(
   const startTotal = Math.max(0, total - toleranceMinutes);
   const endTotal = Math.min(24 * 60 - 1, total + toleranceMinutes);
   const fmt = (mins: number) => {
-    const hh = Math.floor(mins / 60).toString().padStart(2, "0");
+    const hh = Math.floor(mins / 60)
+      .toString()
+      .padStart(2, "0");
     const mm = (mins % 60).toString().padStart(2, "0");
     return `${hh}:${mm}`;
   };

@@ -9,11 +9,7 @@ import { orderById, vehicleById } from "./utils";
  * - no missing orders (unassigned + assigned must equal input)
  * - sequence numbers are monotonic and start at 0 or 1
  */
-export const checkIntegrity: VerifierFn = ({
-  orders,
-  vehicles,
-  plan,
-}) => {
+export const checkIntegrity: VerifierFn = ({ orders, vehicles, plan }) => {
   const violations: Violation[] = [];
   const orderMap = orderById(orders);
   const vehicleMap = vehicleById(vehicles);

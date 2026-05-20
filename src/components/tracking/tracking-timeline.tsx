@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -9,6 +8,7 @@ import {
   User,
   XCircle,
 } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface TimelineEvent {
@@ -154,9 +154,7 @@ export function TrackingTimeline({
                         : "text-white",
                     )}
                     style={
-                      bubbleColor
-                        ? { backgroundColor: bubbleColor }
-                        : undefined
+                      bubbleColor ? { backgroundColor: bubbleColor } : undefined
                     }
                   >
                     <Icon className="size-4" />

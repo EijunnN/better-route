@@ -65,7 +65,8 @@ export function PrioritySlidersSection() {
           Priorización por tipo de pedido
         </CardTitle>
         <CardDescription>
-          Cuanto mayor el valor, más temprano se ubica el pedido en la ruta optimizada.
+          Cuanto mayor el valor, más temprano se ubica el pedido en la ruta
+          optimizada.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

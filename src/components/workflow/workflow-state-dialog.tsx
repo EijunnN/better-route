@@ -1,36 +1,48 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
-  Loader2,
-  Clock,
-  Play,
-  CheckCircle2,
-  XCircle,
-  SkipForward,
-  Camera,
-  FileSignature,
-  NotepadText,
-  MessageCircle,
   ArrowLeft,
+  Camera,
+  CheckCircle2,
+  Clock,
+  FileSignature,
+  Loader2,
+  MessageCircle,
+  NotepadText,
+  Play,
+  SkipForward,
+  XCircle,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { useWorkflow, type WorkflowState, type WorkflowStateInput, type SystemState } from "./workflow-context";
+  type SystemState,
+  useWorkflow,
+  type WorkflowState,
+  type WorkflowStateInput,
+} from "./workflow-context";
 
 const PRESET_COLORS = [
-  "#6B7280", "#3B82F6", "#F59E0B", "#16A34A",
-  "#DC4840", "#8B5CF6", "#EC4899", "#F97316",
-  "#9CA3AF", "#14B8A6",
+  "#6B7280",
+  "#3B82F6",
+  "#F59E0B",
+  "#16A34A",
+  "#DC4840",
+  "#8B5CF6",
+  "#EC4899",
+  "#F97316",
+  "#9CA3AF",
+  "#14B8A6",
 ];
 
 interface SystemStateOption {
@@ -53,7 +65,8 @@ const SYSTEM_STATE_OPTIONS: SystemStateOption[] = [
     label: "Pendiente",
     description: "El pedido aun no se ha iniciado",
     icon: Clock,
-    bgClass: "bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800",
+    bgClass:
+      "bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800",
     defaultColor: "#6B7280",
     defaultRequiresPhoto: false,
     defaultRequiresReason: false,
@@ -66,7 +79,8 @@ const SYSTEM_STATE_OPTIONS: SystemStateOption[] = [
     label: "En progreso",
     description: "El pedido esta siendo procesado",
     icon: Play,
-    bgClass: "bg-blue-100 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800",
+    bgClass:
+      "bg-blue-100 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800",
     defaultColor: "#3B82F6",
     defaultRequiresPhoto: false,
     defaultRequiresReason: false,
@@ -79,7 +93,8 @@ const SYSTEM_STATE_OPTIONS: SystemStateOption[] = [
     label: "Completado",
     description: "El pedido se entrego exitosamente",
     icon: CheckCircle2,
-    bgClass: "bg-green-100 dark:bg-green-800/50 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800",
+    bgClass:
+      "bg-green-100 dark:bg-green-800/50 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800",
     defaultColor: "#16A34A",
     defaultRequiresPhoto: true,
     defaultRequiresReason: false,
@@ -92,20 +107,28 @@ const SYSTEM_STATE_OPTIONS: SystemStateOption[] = [
     label: "Fallido",
     description: "El pedido no pudo ser entregado",
     icon: XCircle,
-    bgClass: "bg-red-100 dark:bg-red-800/50 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800",
+    bgClass:
+      "bg-red-100 dark:bg-red-800/50 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800",
     defaultColor: "#DC4840",
     defaultRequiresPhoto: false,
     defaultRequiresReason: true,
     defaultIsTerminal: true,
     defaultIsDefault: false,
-    defaultReasons: ["Cliente ausente", "Direccion incorrecta", "Paquete danado", "Rechazado", "Otro"],
+    defaultReasons: [
+      "Cliente ausente",
+      "Direccion incorrecta",
+      "Paquete danado",
+      "Rechazado",
+      "Otro",
+    ],
   },
   {
     value: "CANCELLED",
     label: "Cancelado",
     description: "El pedido fue cancelado u omitido",
     icon: SkipForward,
-    bgClass: "bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800",
+    bgClass:
+      "bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800",
     defaultColor: "#9CA3AF",
     defaultRequiresPhoto: false,
     defaultRequiresReason: false,
@@ -137,7 +160,11 @@ interface WorkflowStateDialogProps {
   editingState?: WorkflowState | null;
 }
 
-export function WorkflowStateDialog({ open, onOpenChange, editingState }: WorkflowStateDialogProps) {
+export function WorkflowStateDialog({
+  open,
+  onOpenChange,
+  editingState,
+}: WorkflowStateDialogProps) {
   const { actions, state: ctxState } = useWorkflow();
   const isEdit = !!editingState;
 
@@ -202,9 +229,10 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
   }, [open, editingState]);
 
   const handlePickSystemState = (option: SystemStateOption) => {
-    const nextPosition = ctxState.states.length > 0
-      ? Math.max(...ctxState.states.map((s) => s.position)) + 1
-      : 0;
+    const nextPosition =
+      ctxState.states.length > 0
+        ? Math.max(...ctxState.states.map((s) => s.position)) + 1
+        : 0;
 
     setFormData({
       code: "",
@@ -239,7 +267,10 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
       code: code.toUpperCase(),
       label: formData.label.trim(),
       reasonOptions: formData.requiresReason
-        ? reasonText.split("\n").map((s) => s.trim()).filter(Boolean)
+        ? reasonText
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean)
         : [],
     };
 
@@ -283,7 +314,9 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                     <Icon className="size-5 shrink-0" />
                     <div className="min-w-0">
                       <div className="font-medium text-sm">{option.label}</div>
-                      <div className="text-xs opacity-75">{option.description}</div>
+                      <div className="text-xs opacity-75">
+                        {option.description}
+                      </div>
                     </div>
                   </button>
                 );
@@ -327,7 +360,9 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                 <Label className="text-xs">Nombre *</Label>
                 <Input
                   value={formData.label}
-                  onChange={(e) => setFormData((p) => ({ ...p, label: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, label: e.target.value }))
+                  }
                   placeholder="Ej: En camino"
                   disabled={isSubmitting}
                   className="h-8 text-sm"
@@ -344,7 +379,12 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                 </Label>
                 <Input
                   value={formData.code}
-                  onChange={(e) => setFormData((p) => ({ ...p, code: e.target.value.toUpperCase() }))}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      code: e.target.value.toUpperCase(),
+                    }))
+                  }
                   placeholder={labelToCode(formData.label) || "EN_CAMINO"}
                   disabled={isSubmitting}
                   className="h-8 text-sm font-mono"
@@ -363,7 +403,10 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                       className="size-6 rounded-full border-2 transition-transform hover:scale-110"
                       style={{
                         backgroundColor: color,
-                        borderColor: formData.color === color ? "var(--foreground)" : "transparent",
+                        borderColor:
+                          formData.color === color
+                            ? "var(--foreground)"
+                            : "transparent",
                       }}
                       disabled={isSubmitting}
                     />
@@ -381,7 +424,9 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                       <button
                         key={r.key}
                         type="button"
-                        onClick={() => setFormData((p) => ({ ...p, [r.key]: !p[r.key] }))}
+                        onClick={() =>
+                          setFormData((p) => ({ ...p, [r.key]: !p[r.key] }))
+                        }
                         className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
                           isActive
                             ? "border-primary bg-primary/10 text-primary"
@@ -400,7 +445,9 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
               {/* Reason options */}
               {formData.requiresReason && (
                 <div className="space-y-1">
-                  <Label className="text-xs">Opciones de motivo (una por linea)</Label>
+                  <Label className="text-xs">
+                    Opciones de motivo (una por linea)
+                  </Label>
                   <textarea
                     value={reasonText}
                     onChange={(e) => setReasonText(e.target.value)}
@@ -417,7 +464,9 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={formData.isTerminal}
-                    onCheckedChange={(v) => setFormData((p) => ({ ...p, isTerminal: v }))}
+                    onCheckedChange={(v) =>
+                      setFormData((p) => ({ ...p, isTerminal: v }))
+                    }
                     disabled={isSubmitting}
                   />
                   <Label className="text-sm cursor-pointer">Terminal</Label>
@@ -425,7 +474,9 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={formData.isDefault}
-                    onCheckedChange={(v) => setFormData((p) => ({ ...p, isDefault: v }))}
+                    onCheckedChange={(v) =>
+                      setFormData((p) => ({ ...p, isDefault: v }))
+                    }
                     disabled={isSubmitting}
                   />
                   <Label className="text-sm cursor-pointer">Por defecto</Label>
@@ -442,9 +493,19 @@ export function WorkflowStateDialog({ open, onOpenChange, editingState }: Workfl
                 >
                   Cancelar
                 </Button>
-                <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="size-4 mr-1 animate-spin" />}
-                  {isSubmitting ? "Guardando..." : isEdit ? "Actualizar" : "Crear estado"}
+                <Button
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting && (
+                    <Loader2 className="size-4 mr-1 animate-spin" />
+                  )}
+                  {isSubmitting
+                    ? "Guardando..."
+                    : isEdit
+                      ? "Actualizar"
+                      : "Crear estado"}
                 </Button>
               </div>
             </div>

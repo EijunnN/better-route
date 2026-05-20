@@ -4,12 +4,12 @@ import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Map, PenTool } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/layout/theme-context";
+import { Button } from "@/components/ui/button";
 import {
-  getMapStyle,
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
+  getMapStyle,
 } from "@/lib/map-styles";
 
 interface ZoneFormPreviewProps {
@@ -136,7 +136,7 @@ export function ZoneFormPreview({
       console.error("Failed to initialize map:", error);
       setIsLoading(false);
     }
-  }, []);
+  }, [addZoneLayer, isDark, parsedGeometry.coordinates[0]]);
 
   // Handle runtime theme changes (skip first run - layers added in "load")
   // In MapLibre v5 diff mode, style.load fires synchronously during setStyle(),
@@ -156,7 +156,7 @@ export function ZoneFormPreview({
       addZoneLayer(mapInstance);
     });
     mapInstance.setStyle(getMapStyle(isDark), { diff: false });
-  }, [isDark]);
+  }, [isDark, addZoneLayer, isLoading]);
 
   // Update zone color
   useEffect(() => {

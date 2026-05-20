@@ -4,40 +4,41 @@
  * Each factory inserts a record with sensible defaults that can be
  * overridden via partial input.  All IDs are auto-generated UUIDs.
  */
-import { testDb } from "./test-db";
+
+import bcrypt from "bcryptjs";
 import {
   companies,
-  users,
-  fleets,
-  vehicles,
-  orders,
-  optimizationConfigurations,
-  optimizationJobs,
-  routeStops,
-  zones,
-  zoneVehicles,
+  companyFieldDefinitions,
+  companyOptimizationProfiles,
   companyWorkflowStates,
   companyWorkflowTransitions,
-  companyFieldDefinitions,
-  timeWindowPresets,
-  vehicleSkills,
-  userSkills,
-  vehicleSkillAssignments,
-  roles,
-  userRoles,
-  permissions,
-  rolePermissions,
-  driverLocations,
-  reassignmentsHistory,
-  planMetrics,
-  optimizationPresets,
-  companyOptimizationProfiles,
   csvColumnMappingTemplates,
-  userAvailability,
-  userSecondaryFleets,
+  driverLocations,
+  fleets,
+  optimizationConfigurations,
+  optimizationJobs,
+  optimizationPresets,
+  orders,
   outputHistory,
+  permissions,
+  planMetrics,
+  reassignmentsHistory,
+  rolePermissions,
+  roles,
+  routeStops,
+  timeWindowPresets,
+  userAvailability,
+  userRoles,
+  userSecondaryFleets,
+  userSkills,
+  users,
+  vehicleSkillAssignments,
+  vehicleSkills,
+  vehicles,
+  zones,
+  zoneVehicles,
 } from "@/db/schema";
-import bcrypt from "bcryptjs";
+import { testDb } from "./test-db";
 
 // ---------------------------------------------------------------------------
 // Companies
@@ -98,20 +99,30 @@ export async function createUser(
 }
 
 /** Shorthand factories for each role. */
-export const createAdmin = (companyId: string | null, extra: Record<string, unknown> = {}) =>
-  createUser({ companyId, role: "ADMIN_SISTEMA", ...extra } as any);
+export const createAdmin = (
+  companyId: string | null,
+  extra: Record<string, unknown> = {},
+) => createUser({ companyId, role: "ADMIN_SISTEMA", ...extra } as any);
 
-export const createPlanner = (companyId: string, extra: Record<string, unknown> = {}) =>
-  createUser({ companyId, role: "PLANIFICADOR", ...extra } as any);
+export const createPlanner = (
+  companyId: string,
+  extra: Record<string, unknown> = {},
+) => createUser({ companyId, role: "PLANIFICADOR", ...extra } as any);
 
-export const createMonitor = (companyId: string, extra: Record<string, unknown> = {}) =>
-  createUser({ companyId, role: "MONITOR", ...extra } as any);
+export const createMonitor = (
+  companyId: string,
+  extra: Record<string, unknown> = {},
+) => createUser({ companyId, role: "MONITOR", ...extra } as any);
 
-export const createFleetAdmin = (companyId: string, extra: Record<string, unknown> = {}) =>
-  createUser({ companyId, role: "ADMIN_FLOTA", ...extra } as any);
+export const createFleetAdmin = (
+  companyId: string,
+  extra: Record<string, unknown> = {},
+) => createUser({ companyId, role: "ADMIN_FLOTA", ...extra } as any);
 
-export const createDriver = (companyId: string, extra: Record<string, unknown> = {}) =>
-  createUser({ companyId, role: "CONDUCTOR", ...extra } as any);
+export const createDriver = (
+  companyId: string,
+  extra: Record<string, unknown> = {},
+) => createUser({ companyId, role: "CONDUCTOR", ...extra } as any);
 
 // ---------------------------------------------------------------------------
 // Fleets

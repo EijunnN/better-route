@@ -1,7 +1,7 @@
 "use client";
 
+import { Calendar, Check, Clock, Copy, MapPin } from "lucide-react";
 import { useState } from "react";
-import { Calendar, Clock, Copy, Check, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TrackingOrderInfoProps {
@@ -65,7 +65,10 @@ export function TrackingOrderInfo({
   brandColor,
 }: TrackingOrderInfoProps) {
   const [copied, setCopied] = useState(false);
-  const pill = STATUS_PILLS[status] ?? { label: status, tone: "muted" as const };
+  const pill = STATUS_PILLS[status] ?? {
+    label: status,
+    tone: "muted" as const,
+  };
   const accent = brandColor ?? "#4AB855";
   const isLive = pill.tone === "live";
 
@@ -91,7 +94,9 @@ export function TrackingOrderInfo({
             pill.tone === "info" && "bg-blue-500/15 text-blue-400",
           )}
           style={
-            isLive ? { backgroundColor: `${accent}26`, color: accent } : undefined
+            isLive
+              ? { backgroundColor: `${accent}26`, color: accent }
+              : undefined
           }
         >
           {pill.label}
@@ -121,15 +126,15 @@ export function TrackingOrderInfo({
           <span className="font-medium">{customerName}</span>
         </Field>
 
-        <Field label="Dirección de entrega" icon={<MapPin className="size-3.5" />}>
+        <Field
+          label="Dirección de entrega"
+          icon={<MapPin className="size-3.5" />}
+        >
           <span className="leading-snug">{address}</span>
         </Field>
 
         {promisedDate && (
-          <Field
-            label="Fecha"
-            icon={<Calendar className="size-3.5" />}
-          >
+          <Field label="Fecha" icon={<Calendar className="size-3.5" />}>
             <span className="capitalize">{formatDate(promisedDate)}</span>
           </Field>
         )}

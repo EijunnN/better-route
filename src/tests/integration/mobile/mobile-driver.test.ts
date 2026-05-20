@@ -1,31 +1,30 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { GET as GET_FIELD_DEFINITIONS } from "@/app/api/mobile/driver/field-definitions/route";
 import {
-  createCompany,
+  GET as GET_LOCATION,
+  POST as POST_LOCATION,
+} from "@/app/api/mobile/driver/location/route";
+import { GET as GET_MY_ORDERS } from "@/app/api/mobile/driver/my-orders/route";
+import { GET as GET_MY_ROUTE } from "@/app/api/mobile/driver/my-route/route";
+import { GET as GET_WORKFLOW_STATES } from "@/app/api/mobile/driver/workflow-states/route";
+import { createTestToken } from "../setup/test-auth";
+import {
+  buildOptimizationResult,
   createAdmin,
+  createCompany,
   createDriver,
-  createVehicle,
-  createOrder,
-  createOptimizationConfig,
-  createOptimizationJob,
-  createRouteStop,
   createDriverLocation,
   createFieldDefinition,
+  createOptimizationConfig,
+  createOptimizationJob,
+  createOrder,
+  createRouteStop,
+  createVehicle,
   createWorkflowState,
   createWorkflowTransition,
-  buildOptimizationResult,
 } from "../setup/test-data";
-
-import { GET as GET_MY_ROUTE } from "@/app/api/mobile/driver/my-route/route";
-import { GET as GET_MY_ORDERS } from "@/app/api/mobile/driver/my-orders/route";
-import {
-  POST as POST_LOCATION,
-  GET as GET_LOCATION,
-} from "@/app/api/mobile/driver/location/route";
-import { GET as GET_FIELD_DEFINITIONS } from "@/app/api/mobile/driver/field-definitions/route";
-import { GET as GET_WORKFLOW_STATES } from "@/app/api/mobile/driver/workflow-states/route";
+import { cleanDatabase } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Mobile Driver Endpoints", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;

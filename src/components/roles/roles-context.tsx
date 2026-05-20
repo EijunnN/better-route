@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -66,8 +66,14 @@ export interface RolesActions {
   fetchRoles: () => Promise<void>;
   handleCreateRole: (e: React.FormEvent) => Promise<void>;
   handleDeleteRole: (id: string) => Promise<void>;
-  handleTogglePermission: (permissionId: string, enabled: boolean) => Promise<void>;
-  handleToggleAllInCategory: (category: string, enable: boolean) => Promise<void>;
+  handleTogglePermission: (
+    permissionId: string,
+    enabled: boolean,
+  ) => Promise<void>;
+  handleToggleAllInCategory: (
+    category: string,
+    enable: boolean,
+  ) => Promise<void>;
   setShowForm: (show: boolean) => void;
   setSelectedRole: (role: Role | null) => void;
   setFormData: (data: { name: string; description: string }) => void;
@@ -89,11 +95,7 @@ interface RolesContextValue {
 const RolesContext = createContext<RolesContextValue | undefined>(undefined);
 
 export function RolesProvider({ children }: { children: ReactNode }) {
-  const {
-    effectiveCompanyId,
-    isSystemAdmin,
-    isReady,
-  } = useCompanyContext();
+  const { effectiveCompanyId, isSystemAdmin, isReady } = useCompanyContext();
   const { toast } = useToast();
 
   const [roles, setRoles] = useState<Role[]>([]);
@@ -101,7 +103,8 @@ export function RolesProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [rolePermissions, setRolePermissions] = useState<RolePermissionsResponse | null>(null);
+  const [rolePermissions, setRolePermissions] =
+    useState<RolePermissionsResponse | null>(null);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
   const [savingPermission, setSavingPermission] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -148,7 +151,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       setRolePermissions(null);
       fetchRoles();
     }
-  }, [effectiveCompanyId]);
+  }, [effectiveCompanyId, fetchRoles]);
 
   useEffect(() => {
     if (selectedRole) {
@@ -156,7 +159,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     } else {
       setRolePermissions(null);
     }
-  }, [selectedRole, effectiveCompanyId]);
+  }, [selectedRole, fetchRolePermissions]);
 
   const handleCreateRole = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,11 +188,19 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       await fetchRoles();
       setShowForm(false);
       setFormData({ name: "", description: "" });
-      toast({ title: "Rol creado", description: `El rol "${formData.name}" ha sido creado exitosamente.` });
+      toast({
+        title: "Rol creado",
+        description: `El rol "${formData.name}" ha sido creado exitosamente.`,
+      });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Error al crear el rol";
+      const errorMessage =
+        err instanceof Error ? err.message : "Error al crear el rol";
       setFormError(errorMessage);
-      toast({ title: "Error al crear rol", description: errorMessage, variant: "destructive" });
+      toast({
+        title: "Error al crear rol",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
   };
 
@@ -210,12 +221,15 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       await fetchRoles();
       toast({
         title: "Rol eliminado",
-        description: role ? `El rol "${role.name}" ha sido eliminado.` : "El rol ha sido eliminado.",
+        description: role
+          ? `El rol "${role.name}" ha sido eliminado.`
+          : "El rol ha sido eliminado.",
       });
     } catch (err) {
       toast({
         title: "Error al eliminar rol",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -223,25 +237,31 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleTogglePermission = async (permissionId: string, enabled: boolean) => {
+  const handleTogglePermission = async (
+    permissionId: string,
+    enabled: boolean,
+  ) => {
     if (!selectedRole || selectedRole.isSystem || !effectiveCompanyId) return;
     setSavingPermission(permissionId);
     try {
-      const response = await fetch(`/api/roles/${selectedRole.id}/permissions`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": effectiveCompanyId,
+      const response = await fetch(
+        `/api/roles/${selectedRole.id}/permissions`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": effectiveCompanyId,
+          },
+          body: JSON.stringify({ permissionId, enabled }),
         },
-        body: JSON.stringify({ permissionId, enabled }),
-      });
+      );
       if (response.ok) {
         setRolePermissions((prev) => {
           if (!prev) return prev;
           const updated = { ...prev };
           for (const category in updated.permissions) {
-            updated.permissions[category] = updated.permissions[category].map((p) =>
-              p.id === permissionId ? { ...p, enabled } : p
+            updated.permissions[category] = updated.permissions[category].map(
+              (p) => (p.id === permissionId ? { ...p, enabled } : p),
             );
           }
           return updated;
@@ -249,9 +269,13 @@ export function RolesProvider({ children }: { children: ReactNode }) {
         setRoles((prev) =>
           prev.map((r) =>
             r.id === selectedRole.id
-              ? { ...r, enabledPermissionsCount: r.enabledPermissionsCount + (enabled ? 1 : -1) }
-              : r
-          )
+              ? {
+                  ...r,
+                  enabledPermissionsCount:
+                    r.enabledPermissionsCount + (enabled ? 1 : -1),
+                }
+              : r,
+          ),
         );
       }
     } catch (error) {
@@ -261,10 +285,21 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleToggleAllInCategory = async (category: string, enable: boolean) => {
-    if (!selectedRole || !rolePermissions || selectedRole.isSystem || !effectiveCompanyId) return;
+  const handleToggleAllInCategory = async (
+    category: string,
+    enable: boolean,
+  ) => {
+    if (
+      !selectedRole ||
+      !rolePermissions ||
+      selectedRole.isSystem ||
+      !effectiveCompanyId
+    )
+      return;
     const permsInCategory = rolePermissions.permissions[category] || [];
-    const updates = permsInCategory.filter((p) => p.enabled !== enable).map((p) => ({ permissionId: p.id, enabled: enable }));
+    const updates = permsInCategory
+      .filter((p) => p.enabled !== enable)
+      .map((p) => ({ permissionId: p.id, enabled: enable }));
     if (updates.length === 0) return;
 
     const permissionIdsToUpdate = new Set(updates.map((u) => u.permissionId));
@@ -273,7 +308,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       const updated = { ...prev };
       updated.permissions = { ...updated.permissions };
       updated.permissions[category] = updated.permissions[category].map((p) =>
-        permissionIdsToUpdate.has(p.id) ? { ...p, enabled: enable } : p
+        permissionIdsToUpdate.has(p.id) ? { ...p, enabled: enable } : p,
       );
       return updated;
     });
@@ -281,19 +316,27 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     const countDelta = enable ? updates.length : -updates.length;
     setRoles((prev) =>
       prev.map((r) =>
-        r.id === selectedRole.id ? { ...r, enabledPermissionsCount: r.enabledPermissionsCount + countDelta } : r
-      )
+        r.id === selectedRole.id
+          ? {
+              ...r,
+              enabledPermissionsCount: r.enabledPermissionsCount + countDelta,
+            }
+          : r,
+      ),
     );
 
     try {
-      const response = await fetch(`/api/roles/${selectedRole.id}/permissions`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": effectiveCompanyId,
+      const response = await fetch(
+        `/api/roles/${selectedRole.id}/permissions`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": effectiveCompanyId,
+          },
+          body: JSON.stringify({ permissions: updates }),
         },
-        body: JSON.stringify({ permissions: updates }),
-      });
+      );
       if (!response.ok) {
         await fetchRolePermissions(selectedRole.id);
         await fetchRoles();
@@ -337,9 +380,15 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     resetForm,
   };
 
-  const meta: RolesMeta = { isAuthLoading: !isReady, isSystemAdmin, effectiveCompanyId };
+  const meta: RolesMeta = {
+    isAuthLoading: !isReady,
+    isSystemAdmin,
+    effectiveCompanyId,
+  };
 
-  return <RolesContext value={{ state, actions, meta }}>{children}</RolesContext>;
+  return (
+    <RolesContext value={{ state, actions, meta }}>{children}</RolesContext>
+  );
 }
 
 export function useRoles(): RolesContextValue {

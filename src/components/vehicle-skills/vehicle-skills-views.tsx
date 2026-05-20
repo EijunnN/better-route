@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { Can } from "@/components/auth/can";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,16 +15,35 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Can } from "@/components/auth/can";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  VEHICLE_SKILL_CATEGORY_LABELS,
+  type VehicleSkillInput,
+} from "@/lib/validations/vehicle-skill";
 import { VehicleSkillForm } from "./vehicle-skill-form";
-import { useVehicleSkills, CATEGORY_BADGE_COLORS, type VehicleSkill } from "./vehicle-skills-context";
-import { VEHICLE_SKILL_CATEGORY_LABELS, type VehicleSkillInput } from "@/lib/validations/vehicle-skill";
+import {
+  CATEGORY_BADGE_COLORS,
+  useVehicleSkills,
+  type VehicleSkill,
+} from "./vehicle-skills-context";
 
 export function VehicleSkillsListView() {
   const { state, actions } = useVehicleSkills();
@@ -32,11 +52,17 @@ export function VehicleSkillsListView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Catálogo de Habilidades de Vehículos</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Gestione las capacidades especiales de los vehículos</p>
+          <h1 className="text-2xl font-semibold text-foreground">
+            Catálogo de Habilidades de Vehículos
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Gestione las capacidades especiales de los vehículos
+          </p>
         </div>
         <Can perm="vehicle_skill:create">
-          <Button onClick={() => actions.setShowForm(true)}>Nueva Habilidad</Button>
+          <Button onClick={() => actions.setShowForm(true)}>
+            Nueva Habilidad
+          </Button>
         </Can>
       </div>
 
@@ -54,23 +80,31 @@ export function VehicleSkillsListView() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="category">Categoría</Label>
-              <Select value={state.filterCategory} onValueChange={actions.setFilterCategory}>
+              <Select
+                value={state.filterCategory}
+                onValueChange={actions.setFilterCategory}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">Todas</SelectItem>
-                  {Object.entries(VEHICLE_SKILL_CATEGORY_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(VEHICLE_SKILL_CATEGORY_LABELS).map(
+                    ([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="active">Estado</Label>
-              <Select value={state.filterActive} onValueChange={actions.setFilterActive}>
+              <Select
+                value={state.filterActive}
+                onValueChange={actions.setFilterActive}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -92,7 +126,11 @@ export function VehicleSkillsListView() {
           </CardContent>
         </Card>
       ) : state.error ? (
-        <ErrorState title="Error al cargar habilidades" error={state.error} onRetry={actions.fetchSkills} />
+        <ErrorState
+          title="Error al cargar habilidades"
+          error={state.error}
+          onRetry={actions.fetchSkills}
+        />
       ) : state.skills.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -137,11 +175,17 @@ function VehicleSkillRow({ skill }: { skill: VehicleSkill }) {
       <TableCell className="font-mono font-medium">{skill.code}</TableCell>
       <TableCell className="font-medium">{skill.name}</TableCell>
       <TableCell>
-        <Badge className={CATEGORY_BADGE_COLORS[skill.category] || "bg-gray-100 text-gray-800"}>
+        <Badge
+          className={
+            CATEGORY_BADGE_COLORS[skill.category] || "bg-gray-100 text-gray-800"
+          }
+        >
           {VEHICLE_SKILL_CATEGORY_LABELS[skill.category] || skill.category}
         </Badge>
       </TableCell>
-      <TableCell className="text-muted-foreground max-w-xs truncate">{skill.description || "-"}</TableCell>
+      <TableCell className="text-muted-foreground max-w-xs truncate">
+        {skill.description || "-"}
+      </TableCell>
       <TableCell>
         <Can
           perm="vehicle_skill:update"
@@ -157,7 +201,12 @@ function VehicleSkillRow({ skill }: { skill: VehicleSkill }) {
             </Badge>
           }
         >
-          <Button variant="ghost" size="sm" onClick={() => actions.handleToggleActive(skill)} className="p-0 h-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.handleToggleActive(skill)}
+            className="p-0 h-auto"
+          >
             <Badge
               className={
                 skill.active
@@ -172,7 +221,12 @@ function VehicleSkillRow({ skill }: { skill: VehicleSkill }) {
       </TableCell>
       <TableCell className="text-right">
         <Can perm="vehicle_skill:update">
-          <Button variant="ghost" size="sm" onClick={() => actions.setEditingSkill(skill)} disabled={state.deletingId === skill.id}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.setEditingSkill(skill)}
+            disabled={state.deletingId === skill.id}
+          >
             Editar
           </Button>
         </Can>
@@ -185,14 +239,20 @@ function VehicleSkillRow({ skill }: { skill: VehicleSkill }) {
                 className="text-destructive hover:text-destructive"
                 disabled={state.deletingId === skill.id}
               >
-                {state.deletingId === skill.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                {state.deletingId === skill.id ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>¿Eliminar habilidad?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta acción eliminará permanentemente la habilidad <strong>{skill.name}</strong>. Esta acción no se puede deshacer.
+                  Esta acción eliminará permanentemente la habilidad{" "}
+                  <strong>{skill.name}</strong>. Esta acción no se puede
+                  deshacer.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -218,21 +278,28 @@ export function VehicleSkillsFormView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">{state.editingSkill ? "Editar Habilidad" : "Nueva Habilidad"}</h1>
+        <h1 className="text-2xl font-semibold text-foreground">
+          {state.editingSkill ? "Editar Habilidad" : "Nueva Habilidad"}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {state.editingSkill ? "Actualice la información de la habilidad" : "Complete el formulario para crear una nueva habilidad"}
+          {state.editingSkill
+            ? "Actualice la información de la habilidad"
+            : "Complete el formulario para crear una nueva habilidad"}
         </p>
       </div>
       <Card>
         <CardContent className="pt-6">
           <VehicleSkillForm
-            onSubmit={state.editingSkill ? actions.handleUpdate : actions.handleCreate}
+            onSubmit={
+              state.editingSkill ? actions.handleUpdate : actions.handleCreate
+            }
             initialData={
               state.editingSkill
                 ? {
                     code: state.editingSkill.code,
                     name: state.editingSkill.name,
-                    category: state.editingSkill.category as VehicleSkillInput["category"],
+                    category: state.editingSkill
+                      .category as VehicleSkillInput["category"],
                     description: state.editingSkill.description,
                     active: state.editingSkill.active,
                   }

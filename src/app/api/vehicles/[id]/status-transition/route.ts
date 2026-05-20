@@ -2,10 +2,11 @@ import { and, eq, notInArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { routeStops, vehicleStatusHistory, vehicles } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
   requiresActiveRouteCheck,
   STATUS_DISPLAY_NAMES,
@@ -15,8 +16,6 @@ import {
   validateStatusTransition,
   vehicleStatusTransitionSchema,
 } from "@/lib/validations/vehicle-status";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 async function getVehicle(id: string, companyId: string) {
   const [vehicle] = await db
@@ -37,7 +36,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.VEHICLE, Action.CHANGE_STATUS);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.VEHICLE,
+      Action.CHANGE_STATUS,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -111,7 +114,12 @@ export async function POST(
         const [fresh] = await tx
           .select()
           .from(vehicles)
-          .where(and(eq(vehicles.id, id), eq(vehicles.companyId, tenantCtx.companyId)))
+          .where(
+            and(
+              eq(vehicles.id, id),
+              eq(vehicles.companyId, tenantCtx.companyId),
+            ),
+          )
           .limit(1);
 
         if (!fresh) {
@@ -130,12 +138,7 @@ export async function POST(
             status: newStatus,
             updatedAt: new Date(),
           })
-          .where(
-            and(
-              eq(vehicles.id, id),
-              eq(vehicles.status, currentStatus),
-            ),
-          )
+          .where(and(eq(vehicles.id, id), eq(vehicles.status, currentStatus)))
           .returning();
 
         if (!updated) {

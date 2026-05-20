@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { roles, rolePermissions, permissions } from "@/db/schema";
+import { permissions, rolePermissions, roles } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/permissions";
 import {
   checkPermissionOrError,
@@ -51,12 +51,7 @@ export async function GET(request: NextRequest) {
     const companyRoles = await db
       .select({ id: roles.id })
       .from(roles)
-      .where(
-        and(
-          inArray(roles.id, roleIds),
-          eq(roles.companyId, companyId),
-        ),
-      );
+      .where(and(inArray(roles.id, roleIds), eq(roles.companyId, companyId)));
     const validRoleIds = companyRoles.map((r) => r.id);
 
     if (validRoleIds.length === 0) {
@@ -82,7 +77,7 @@ export async function GET(request: NextRequest) {
       if (!rolePermsMap.has(rp.roleId)) {
         rolePermsMap.set(rp.roleId, new Map());
       }
-      rolePermsMap.get(rp.roleId)!.set(rp.permissionId, rp.enabled);
+      rolePermsMap.get(rp.roleId)?.set(rp.permissionId, rp.enabled);
     }
 
     // Build grouped permissions per role

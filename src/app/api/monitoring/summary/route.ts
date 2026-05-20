@@ -9,9 +9,9 @@ import {
   users,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
@@ -116,7 +116,9 @@ export async function GET(request: NextRequest) {
     let parsedResult: { routes?: Array<{ stops?: unknown[] }> } | null = null;
     if (confirmedJob.result) {
       try {
-        parsedResult = safeParseJson<{ routes?: Array<{ stops?: unknown[] }> }>(confirmedJob.result);
+        parsedResult = safeParseJson<{ routes?: Array<{ stops?: unknown[] }> }>(
+          confirmedJob.result,
+        );
       } catch {
         parsedResult = null;
       }

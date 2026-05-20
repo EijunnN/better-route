@@ -1,24 +1,26 @@
 import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
-import { after } from "next/server";
-import { type NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { fleets, users } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
-import { isExpired, updateUserSchema } from "@/lib/validations/user";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { isExpired, updateUserSchema } from "@/lib/validations/user";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.USER, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.USER,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -88,7 +90,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.USER, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.USER,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -308,7 +314,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.USER, Action.DELETE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.USER,
+      Action.DELETE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

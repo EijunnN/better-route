@@ -1,25 +1,27 @@
 import { and, desc, eq, ilike, sql } from "drizzle-orm";
-import { after } from "next/server";
-import { type NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
-import { createAndExecuteJob } from "@/lib/optimization/optimization-job";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { createAndExecuteJob } from "@/lib/optimization/optimization-job";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
   optimizationJobCreateSchema,
   optimizationJobQuerySchema,
 } from "@/lib/validations/optimization-job";
 
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
-
 // GET - List optimization jobs
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_JOB, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_JOB,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -102,7 +104,11 @@ export async function GET(request: NextRequest) {
 // POST - Create and start optimization job
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_JOB, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_JOB,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

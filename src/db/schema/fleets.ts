@@ -23,59 +23,75 @@ export const FLEET_TYPES = {
   SPECIAL: "SPECIAL",
 } as const;
 
-export const fleets = pgTable("fleets", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "restrict" }),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  type: varchar("type", { length: 50 }).$type<keyof typeof FLEET_TYPES>(),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("fleets_company_id_idx").on(table.companyId),
-]);
+export const fleets = pgTable(
+  "fleets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "restrict" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    type: varchar("type", { length: 50 }).$type<keyof typeof FLEET_TYPES>(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [index("fleets_company_id_idx").on(table.companyId)],
+);
 
 // Vehicle-Fleet many-to-many relationship
-export const vehicleFleets = pgTable("vehicle_fleets", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "restrict" }),
-  vehicleId: uuid("vehicle_id")
-    .notNull()
-    .references(() => vehicles.id, { onDelete: "cascade" }),
-  fleetId: uuid("fleet_id")
-    .notNull()
-    .references(() => fleets.id, { onDelete: "cascade" }),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  uniqueIndex("vehicle_fleets_vehicle_fleet_idx").on(table.vehicleId, table.fleetId),
-  index("vehicle_fleets_fleet_id_idx").on(table.fleetId),
-]);
+export const vehicleFleets = pgTable(
+  "vehicle_fleets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "restrict" }),
+    vehicleId: uuid("vehicle_id")
+      .notNull()
+      .references(() => vehicles.id, { onDelete: "cascade" }),
+    fleetId: uuid("fleet_id")
+      .notNull()
+      .references(() => fleets.id, { onDelete: "cascade" }),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("vehicle_fleets_vehicle_fleet_idx").on(
+      table.vehicleId,
+      table.fleetId,
+    ),
+    index("vehicle_fleets_fleet_id_idx").on(table.fleetId),
+  ],
+);
 
 // Secondary fleets for users (many-to-many relationship, renamed from driver_secondary_fleets)
-export const userSecondaryFleets = pgTable("user_secondary_fleets", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "restrict" }),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  fleetId: uuid("fleet_id")
-    .notNull()
-    .references(() => fleets.id, { onDelete: "cascade" }),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  uniqueIndex("user_secondary_fleets_user_fleet_idx").on(table.userId, table.fleetId),
-]);
+export const userSecondaryFleets = pgTable(
+  "user_secondary_fleets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "restrict" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    fleetId: uuid("fleet_id")
+      .notNull()
+      .references(() => fleets.id, { onDelete: "cascade" }),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("user_secondary_fleets_user_fleet_idx").on(
+      table.userId,
+      table.fleetId,
+    ),
+  ],
+);
 
 // Vehicle fleet history for tracking fleet changes
 export const vehicleFleetHistory = pgTable("vehicle_fleet_history", {

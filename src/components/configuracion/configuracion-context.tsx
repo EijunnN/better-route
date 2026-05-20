@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -95,7 +95,9 @@ interface ConfiguracionContextValue {
   meta: ConfiguracionMeta;
 }
 
-const ConfiguracionContext = createContext<ConfiguracionContextValue | undefined>(undefined);
+const ConfiguracionContext = createContext<
+  ConfiguracionContextValue | undefined
+>(undefined);
 
 const DEFAULT_PROFILE: CompanyProfile = {
   enableWeight: true,
@@ -180,7 +182,7 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     fetchTracking();
     clearDirty();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId, isReady]);
+  }, [clearDirty, fetchProfile, fetchTracking]);
 
   const updateProfile = (partial: Partial<CompanyProfile>) => {
     setProfile((prev) => (prev ? { ...prev, ...partial } : prev));
@@ -201,7 +203,10 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     const activeDimensions = enabled
       ? [...profile.activeDimensions, dimension]
       : profile.activeDimensions.filter((d) => d !== dimension);
-    updateProfile({ [key]: enabled, activeDimensions } as Partial<CompanyProfile>);
+    updateProfile({
+      [key]: enabled,
+      activeDimensions,
+    } as Partial<CompanyProfile>);
   };
 
   const applyTemplate = (templateId: string) => {
@@ -287,7 +292,8 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       toast({
         title: "Error al guardar",
-        description: error instanceof Error ? error.message : "Inténtalo de nuevo",
+        description:
+          error instanceof Error ? error.message : "Inténtalo de nuevo",
         variant: "destructive",
       });
     } finally {

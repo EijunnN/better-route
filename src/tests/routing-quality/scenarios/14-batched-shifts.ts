@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * Morning + afternoon batching at real shift scale (40 orders).
@@ -9,7 +9,8 @@ import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
  */
 export const scenario: Scenario = {
   name: "14-batched-shifts",
-  description: "40 orders across two shifts (MAÑANA / TARDE), 3 vehicles full-day",
+  description:
+    "40 orders across two shifts (MAÑANA / TARDE), 3 vehicles full-day",
   orders: [
     ...Array.from({ length: 20 }, (_, i) =>
       makeOrder(i, {
@@ -25,9 +26,21 @@ export const scenario: Scenario = {
     ),
   ],
   vehicles: [
-    makeVehicle(1, { timeWindowStart: "08:00", timeWindowEnd: "18:00", maxWeight: 9999 }),
-    makeVehicle(2, { timeWindowStart: "08:00", timeWindowEnd: "18:00", maxWeight: 9999 }),
-    makeVehicle(3, { timeWindowStart: "08:00", timeWindowEnd: "18:00", maxWeight: 9999 }),
+    makeVehicle(1, {
+      timeWindowStart: "08:00",
+      timeWindowEnd: "18:00",
+      maxWeight: 9999,
+    }),
+    makeVehicle(2, {
+      timeWindowStart: "08:00",
+      timeWindowEnd: "18:00",
+      maxWeight: 9999,
+    }),
+    makeVehicle(3, {
+      timeWindowStart: "08:00",
+      timeWindowEnd: "18:00",
+      maxWeight: 9999,
+    }),
   ],
   config: baseConfig(),
   expected: {

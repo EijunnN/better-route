@@ -6,6 +6,18 @@
  * → persistence). See docs/CONTEXT.md → "Shapes canónicos del solver output".
  */
 
+export {
+  aggregatedPlanSchema,
+  assertPersistableVerifiedPlan,
+  assignedSolvedRouteSchema,
+  capacityUsageSchema,
+  parseRawSolvedRoute,
+  parseVerifiedPlan,
+  rawSolvedRouteSchema,
+  solvedStopSchema,
+  verificationReportSchema,
+  verifiedPlanSchema,
+} from "./schemas";
 export type {
   AggregatedPlan,
   AssignedSolvedRoute,
@@ -25,16 +37,3 @@ export type {
   Violation,
   ViolationSeverity,
 } from "./types";
-
-export {
-  aggregatedPlanSchema,
-  assertPersistableVerifiedPlan,
-  assignedSolvedRouteSchema,
-  capacityUsageSchema,
-  parseRawSolvedRoute,
-  parseVerifiedPlan,
-  rawSolvedRouteSchema,
-  solvedStopSchema,
-  verificationReportSchema,
-  verifiedPlanSchema,
-} from "./schemas";

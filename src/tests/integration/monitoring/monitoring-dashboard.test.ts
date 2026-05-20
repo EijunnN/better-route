@@ -1,27 +1,26 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createDriver,
-  createVehicle,
-  createOrder,
-  createOptimizationConfig,
-  createOptimizationJob,
-  createRouteStop,
-  createDriverLocation,
-  createFleet,
-  buildOptimizationResult,
-} from "../setup/test-data";
-import { alerts, vehicleFleets } from "@/db/schema";
-
-import { GET as getDrivers } from "@/app/api/monitoring/drivers/route";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { GET as getDriverDetail } from "@/app/api/monitoring/drivers/[id]/route";
+import { GET as getDrivers } from "@/app/api/monitoring/drivers/route";
 import { GET as getEvents } from "@/app/api/monitoring/events/route";
 import { GET as getGeoJson } from "@/app/api/monitoring/geojson/route";
 import { GET as getSummary } from "@/app/api/monitoring/summary/route";
+import { vehicleFleets } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  buildOptimizationResult,
+  createAdmin,
+  createCompany,
+  createDriver,
+  createDriverLocation,
+  createFleet,
+  createOptimizationConfig,
+  createOptimizationJob,
+  createOrder,
+  createRouteStop,
+  createVehicle,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Monitoring Dashboard", () => {
   // Company A (main test company)
@@ -86,8 +85,18 @@ describe("Monitoring Dashboard", () => {
 
     // Link vehicles to fleet
     await testDb.insert(vehicleFleets).values([
-      { companyId: companyA.id, vehicleId: vehicleA1.id, fleetId: fleetA.id, active: true },
-      { companyId: companyA.id, vehicleId: vehicleA2.id, fleetId: fleetA.id, active: true },
+      {
+        companyId: companyA.id,
+        vehicleId: vehicleA1.id,
+        fleetId: fleetA.id,
+        active: true,
+      },
+      {
+        companyId: companyA.id,
+        vehicleId: vehicleA2.id,
+        fleetId: fleetA.id,
+        active: true,
+      },
     ]);
 
     configA = await createOptimizationConfig({ companyId: companyA.id });
@@ -341,7 +350,7 @@ describe("Monitoring Dashboard", () => {
     // Among drivers with routes, sorted by name
     for (let i = 1; i < driversWithRoute.length; i++) {
       expect(
-        driversWithRoute[i - 1].name.localeCompare(driversWithRoute[i].name)
+        driversWithRoute[i - 1].name.localeCompare(driversWithRoute[i].name),
       ).toBeLessThanOrEqual(0);
     }
   });
@@ -418,14 +427,11 @@ describe("Monitoring Dashboard", () => {
   // -----------------------------------------------------------------------
   test("GET /monitoring/drivers/[id] returns 404 for non-existent driver", async () => {
     const fakeId = "00000000-0000-0000-0000-000000000000";
-    const req = await createTestRequest(
-      `/api/monitoring/drivers/${fakeId}`,
-      {
-        token: adminAToken,
-        companyId: companyA.id,
-        userId: adminA.id,
-      },
-    );
+    const req = await createTestRequest(`/api/monitoring/drivers/${fakeId}`, {
+      token: adminAToken,
+      companyId: companyA.id,
+      userId: adminA.id,
+    });
     const res = await getDriverDetail(req, {
       params: Promise.resolve({ id: fakeId }),
     });
@@ -451,7 +457,9 @@ describe("Monitoring Dashboard", () => {
     expect(body.data).toBeArray();
 
     // We have 1 COMPLETED and 1 FAILED stop (both updated recently)
-    const completedEvents = body.data.filter((e: any) => e.type === "COMPLETED");
+    const completedEvents = body.data.filter(
+      (e: any) => e.type === "COMPLETED",
+    );
     const failedEvents = body.data.filter((e: any) => e.type === "FAILED");
     expect(completedEvents.length).toBeGreaterThanOrEqual(1);
     expect(failedEvents.length).toBeGreaterThanOrEqual(1);

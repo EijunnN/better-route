@@ -1,30 +1,25 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
-import { eq, and } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createVehicle,
-  createFleet,
-} from "../setup/test-data";
-import { vehicles, vehicleStatusHistory, vehicleFleets } from "@/db/schema";
-import { GET, POST } from "@/app/api/vehicles/route";
-import {
-  GET as GET_ONE,
-  PATCH,
-  DELETE,
-} from "@/app/api/vehicles/[id]/route";
+import { and, eq } from "drizzle-orm";
+import { DELETE, GET as GET_ONE, PATCH } from "@/app/api/vehicles/[id]/route";
 import { POST as STATUS_TRANSITION } from "@/app/api/vehicles/[id]/status-transition/route";
+import { GET, POST } from "@/app/api/vehicles/route";
+import { vehicleFleets, vehicleStatusHistory, vehicles } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createFleet,
+  createVehicle,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Vehicle CRUD", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -51,9 +46,7 @@ describe("Vehicle CRUD", () => {
     await testDb
       .delete(vehicleFleets)
       .where(eq(vehicleFleets.companyId, company.id));
-    await testDb
-      .delete(vehicles)
-      .where(eq(vehicles.companyId, company.id));
+    await testDb.delete(vehicles).where(eq(vehicles.companyId, company.id));
   });
 
   afterAll(async () => {
@@ -168,9 +161,21 @@ describe("Vehicle CRUD", () => {
   // 4. List with status filter + pagination
   // -----------------------------------------------------------------------
   test("GET /api/vehicles filters by status and paginates", async () => {
-    await createVehicle({ companyId: company.id, status: "AVAILABLE", plate: "AV-001" });
-    await createVehicle({ companyId: company.id, status: "AVAILABLE", plate: "AV-002" });
-    await createVehicle({ companyId: company.id, status: "IN_MAINTENANCE", plate: "MT-001" });
+    await createVehicle({
+      companyId: company.id,
+      status: "AVAILABLE",
+      plate: "AV-001",
+    });
+    await createVehicle({
+      companyId: company.id,
+      status: "AVAILABLE",
+      plate: "AV-002",
+    });
+    await createVehicle({
+      companyId: company.id,
+      status: "IN_MAINTENANCE",
+      plate: "MT-001",
+    });
 
     const request = await createTestRequest("/api/vehicles", {
       method: "GET",
@@ -193,7 +198,10 @@ describe("Vehicle CRUD", () => {
   // 5. Get single vehicle
   // -----------------------------------------------------------------------
   test("GET /api/vehicles/[id] returns vehicle by id", async () => {
-    const vehicle = await createVehicle({ companyId: company.id, plate: "GET-001" });
+    const vehicle = await createVehicle({
+      companyId: company.id,
+      plate: "GET-001",
+    });
 
     const request = await createTestRequest(`/api/vehicles/${vehicle.id}`, {
       method: "GET",
@@ -238,7 +246,10 @@ describe("Vehicle CRUD", () => {
   // 7. Update name, maxOrders
   // -----------------------------------------------------------------------
   test("PATCH /api/vehicles/[id] updates name and maxOrders", async () => {
-    const vehicle = await createVehicle({ companyId: company.id, plate: "UPD-001" });
+    const vehicle = await createVehicle({
+      companyId: company.id,
+      plate: "UPD-001",
+    });
 
     const request = await createTestRequest(`/api/vehicles/${vehicle.id}`, {
       method: "PATCH",
@@ -270,7 +281,10 @@ describe("Vehicle CRUD", () => {
   // 8. Soft delete (active=false)
   // -----------------------------------------------------------------------
   test("DELETE /api/vehicles/[id] soft-deletes vehicle", async () => {
-    const vehicle = await createVehicle({ companyId: company.id, plate: "DEL-001" });
+    const vehicle = await createVehicle({
+      companyId: company.id,
+      plate: "DEL-001",
+    });
 
     const request = await createTestRequest(`/api/vehicles/${vehicle.id}`, {
       method: "DELETE",

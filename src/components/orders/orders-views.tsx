@@ -1,8 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  AlertTriangle,
+  Check,
+  Copy,
+  ExternalLink,
+  Eye,
+  Link2,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
-import { AlertTriangle, Check, Copy, ExternalLink, Eye, Link2, Loader2, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Can } from "@/components/auth/can";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -21,11 +32,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Can } from "@/components/auth/can";
 import { Pagination } from "@/components/ui/pagination";
 import { OrderForm } from "./order-form";
-import { useOrders, type Order } from "./orders-context";
+import { type Order, useOrders } from "./orders-context";
 
 interface ListFieldDefinition {
   id: string;
@@ -48,7 +57,8 @@ function useListFieldDefinitions(companyId: string | null) {
         const data = await res.json();
         setFields(
           (data.data || []).filter(
-            (d: { active: boolean; showInList: boolean }) => d.active && d.showInList,
+            (d: { active: boolean; showInList: boolean }) =>
+              d.active && d.showInList,
           ),
         );
       }
@@ -57,7 +67,9 @@ function useListFieldDefinitions(companyId: string | null) {
     }
   };
 
-  useEffect(() => { load(); }, [companyId]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return fields;
 }
@@ -67,7 +79,7 @@ function formatCustomFieldValue(val: unknown, fieldType: string): string {
   switch (fieldType) {
     case "currency": {
       const num = typeof val === "number" ? val : parseFloat(String(val));
-      return isNaN(num) ? String(val) : `$${num.toFixed(2)}`;
+      return Number.isNaN(num) ? String(val) : `$${num.toFixed(2)}`;
     }
     case "boolean":
       return val === true || val === "true" || val === "1" ? "Si" : "No";
@@ -75,8 +87,12 @@ function formatCustomFieldValue(val: unknown, fieldType: string): string {
       const str = String(val);
       if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
         const d = new Date(str);
-        if (!isNaN(d.getTime())) {
-          return d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" });
+        if (!Number.isNaN(d.getTime())) {
+          return d.toLocaleDateString("es-PE", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          });
         }
       }
       return str;
@@ -95,13 +111,19 @@ export function OrdersListView() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-semibold">Pedidos</h1>
-          <p className="text-muted-foreground mt-1">Gestiona los pedidos de entrega con restricciones de ventana de tiempo</p>
+          <p className="text-muted-foreground mt-1">
+            Gestiona los pedidos de entrega con restricciones de ventana de
+            tiempo
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <Can perm="order:bulk_delete">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" disabled={state.totalOrders === 0}>
+                <Button
+                  variant="destructive"
+                  disabled={state.totalOrders === 0}
+                >
                   <Trash2 className="size-4 mr-2" />
                   Eliminar todos
                 </Button>
@@ -113,7 +135,9 @@ export function OrdersListView() {
                     ¿Eliminar todos los pedidos?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta acción eliminará permanentemente <strong>{state.totalOrders} pedidos</strong>. Esta acción no se puede deshacer.
+                    Esta acción eliminará permanentemente{" "}
+                    <strong>{state.totalOrders} pedidos</strong>. Esta acción no
+                    se puede deshacer.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -130,7 +154,9 @@ export function OrdersListView() {
             </AlertDialog>
           </Can>
           <Can perm="order:create">
-            <Button onClick={() => actions.setShowForm(true)}>Crear Pedido</Button>
+            <Button onClick={() => actions.setShowForm(true)}>
+              Crear Pedido
+            </Button>
           </Can>
         </div>
       </div>
@@ -176,7 +202,9 @@ export function OrdersListView() {
       ) : state.filteredOrders.length === 0 ? (
         <div className="text-center py-12 border rounded-lg bg-muted/30">
           <p className="text-muted-foreground">No se encontraron pedidos.</p>
-          <p className="text-sm text-muted-foreground mt-1">Crea tu primer pedido para comenzar.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Crea tu primer pedido para comenzar.
+          </p>
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden overflow-x-auto">
@@ -198,7 +226,11 @@ export function OrdersListView() {
             </thead>
             <tbody>
               {state.filteredOrders.map((order) => (
-                <OrderRow key={order.id} order={order} customFieldDefs={customFieldDefs} />
+                <OrderRow
+                  key={order.id}
+                  order={order}
+                  customFieldDefs={customFieldDefs}
+                />
               ))}
             </tbody>
           </table>
@@ -215,9 +247,13 @@ export function OrdersListView() {
 
       {state.showForm && (
         <OrderForm
-          onSubmit={state.editingOrder ? actions.handleUpdate : actions.handleCreate}
+          onSubmit={
+            state.editingOrder ? actions.handleUpdate : actions.handleCreate
+          }
           initialData={state.editingOrder || undefined}
-          submitLabel={state.editingOrder ? "Actualizar Pedido" : "Crear Pedido"}
+          submitLabel={
+            state.editingOrder ? "Actualizar Pedido" : "Crear Pedido"
+          }
           onCancel={actions.handleCloseForm}
         />
       )}
@@ -227,7 +263,13 @@ export function OrdersListView() {
   );
 }
 
-function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: ListFieldDefinition[] }) {
+function OrderRow({
+  order,
+  customFieldDefs,
+}: {
+  order: Order;
+  customFieldDefs: ListFieldDefinition[];
+}) {
   const { state, actions } = useOrders();
 
   return (
@@ -236,13 +278,20 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
       <td className="p-4">
         <div>
           <div className="font-medium">{order.customerName || "-"}</div>
-          {order.customerPhone && <div className="text-sm text-muted-foreground">{order.customerPhone}</div>}
+          {order.customerPhone && (
+            <div className="text-sm text-muted-foreground">
+              {order.customerPhone}
+            </div>
+          )}
         </div>
       </td>
       <td className="p-4 max-w-xs truncate text-sm">{order.address}</td>
       <td className="p-4">
         {order.timeWindowStart && order.timeWindowEnd ? (
-          <span className="text-sm font-mono">{order.timeWindowStart.slice(0, 5)} - {order.timeWindowEnd.slice(0, 5)}</span>
+          <span className="text-sm font-mono">
+            {order.timeWindowStart.slice(0, 5)} -{" "}
+            {order.timeWindowEnd.slice(0, 5)}
+          </span>
         ) : order.presetName ? (
           <span className="text-sm">{order.presetName}</span>
         ) : (
@@ -250,14 +299,22 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
         )}
       </td>
       <td className="p-4">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${actions.getStatusColor(order.status)}`}>{order.status}</span>
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${actions.getStatusColor(order.status)}`}
+        >
+          {order.status}
+        </span>
       </td>
       {customFieldDefs.map((fd) => {
         const cf = order.customFields as Record<string, unknown> | null;
         const val = cf?.[fd.code];
         return (
           <td key={fd.id} className="p-4 text-sm">
-            {val != null && val !== "" ? formatCustomFieldValue(val, fd.fieldType) : <span className="text-muted-foreground">-</span>}
+            {val != null && val !== "" ? (
+              formatCustomFieldValue(val, fd.fieldType)
+            ) : (
+              <span className="text-muted-foreground">-</span>
+            )}
           </td>
         );
       })}
@@ -279,22 +336,38 @@ function OrderRow({ order, customFieldDefs }: { order: Order; customFieldDefs: L
           </Button>
         </Can>
         <Can perm="order:update">
-          <Button variant="ghost" size="sm" onClick={() => actions.handleEdit(order)} disabled={state.deletingId === order.id}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.handleEdit(order)}
+            disabled={state.deletingId === order.id}
+          >
             Editar
           </Button>
         </Can>
         <Can perm="order:delete">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={state.deletingId === order.id}>
-                {state.deletingId === order.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                disabled={state.deletingId === order.id}
+              >
+                {state.deletingId === order.id ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>¿Eliminar pedido?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta acción eliminará el pedido <strong>{order.trackingId}</strong>. Esta acción no se puede deshacer.
+                  Esta acción eliminará el pedido{" "}
+                  <strong>{order.trackingId}</strong>. Esta acción no se puede
+                  deshacer.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -326,7 +399,12 @@ function TrackingLinkDialog() {
   };
 
   return (
-    <Dialog open={!!state.trackingLink} onOpenChange={(open) => { if (!open) actions.clearTrackingLink(); }}>
+    <Dialog
+      open={!!state.trackingLink}
+      onOpenChange={(open) => {
+        if (!open) actions.clearTrackingLink();
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -334,7 +412,8 @@ function TrackingLinkDialog() {
             Enlace de Seguimiento
           </DialogTitle>
           <DialogDescription>
-            Comparte este enlace con el cliente para que pueda rastrear el pedido <strong>{state.trackingLink?.trackingId}</strong>.
+            Comparte este enlace con el cliente para que pueda rastrear el
+            pedido <strong>{state.trackingLink?.trackingId}</strong>.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -345,7 +424,11 @@ function TrackingLinkDialog() {
               className="flex-1 px-3 py-2 border rounded-md bg-muted text-sm font-mono"
             />
             <Button size="sm" variant="outline" onClick={handleCopy}>
-              {copied ? <Check className="size-4 text-green-600" /> : <Copy className="size-4" />}
+              {copied ? (
+                <Check className="size-4 text-green-600" />
+              ) : (
+                <Copy className="size-4" />
+              )}
             </Button>
           </div>
           <div className="flex gap-2">
@@ -353,16 +436,14 @@ function TrackingLinkDialog() {
               variant="outline"
               className="flex-1"
               onClick={() => {
-                if (state.trackingLink) window.open(state.trackingLink.url, "_blank");
+                if (state.trackingLink)
+                  window.open(state.trackingLink.url, "_blank");
               }}
             >
               <ExternalLink className="size-4 mr-2" />
               Abrir enlace
             </Button>
-            <Button
-              className="flex-1"
-              onClick={handleCopy}
-            >
+            <Button className="flex-1" onClick={handleCopy}>
               <Copy className="size-4 mr-2" />
               {copied ? "Copiado" : "Copiar enlace"}
             </Button>
@@ -372,4 +453,3 @@ function TrackingLinkDialog() {
     </Dialog>
   );
 }
-

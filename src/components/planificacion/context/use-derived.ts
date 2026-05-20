@@ -8,7 +8,9 @@ import type { PlanificacionStateBag } from "./use-state";
  * Kept as plain computation to preserve the exact reactivity behavior of the
  * original provider (no memoization was used there).
  */
-export function usePlanificacionDerived(state: PlanificacionStateBag): PlanificacionDerived {
+export function usePlanificacionDerived(
+  state: PlanificacionStateBag,
+): PlanificacionDerived {
   const {
     selectedVehicleIds,
     selectedOrderIds,
@@ -45,13 +47,15 @@ export function usePlanificacionDerived(state: PlanificacionStateBag): Planifica
       (o) =>
         o.trackingId.toLowerCase().includes(searchLower) ||
         (o.customerName?.toLowerCase().includes(searchLower) ?? false) ||
-        o.address.toLowerCase().includes(searchLower)
+        o.address.toLowerCase().includes(searchLower),
     );
   }
 
   const ordersWithIssues = orders.filter((o) => !o.latitude || !o.longitude);
 
-  const selectedVehicles = vehicles.filter((v) => selectedVehicleIdsSet.has(v.id));
+  const selectedVehicles = vehicles.filter((v) =>
+    selectedVehicleIdsSet.has(v.id),
+  );
 
   const selectedOrders = orders.filter((o) => selectedOrderIdsSet.has(o.id));
 

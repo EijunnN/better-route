@@ -35,7 +35,6 @@ import {
   optimizationJobs,
   orders,
 } from "@/db/schema";
-import { safeParseJson } from "@/lib/utils/safe-json";
 import {
   acquireCompanyLock,
   cancelJobControl,
@@ -47,6 +46,7 @@ import {
   setJobTimeout,
   unregisterJob,
 } from "@/lib/infra/job-queue";
+import { safeParseJson } from "@/lib/utils/safe-json";
 import { runOptimization } from "../optimization-runner/run";
 import type { OptimizationInput } from "../optimization-runner/types";
 import { calculateInputHash } from "./input-hash";

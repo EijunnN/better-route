@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  use,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
 
@@ -27,8 +21,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const prefersDark = window.matchMedia(
       "(prefers-color-scheme: dark)",
     ).matches;
-    const initialTheme: Theme =
-      savedTheme || (prefersDark ? "dark" : "light");
+    const initialTheme: Theme = savedTheme || (prefersDark ? "dark" : "light");
 
     setThemeState(initialTheme);
     if (initialTheme === "dark") {
@@ -53,7 +46,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ThemeContext value={{ theme, isDark: theme === "dark", toggleTheme, setTheme }}>
+    <ThemeContext
+      value={{ theme, isDark: theme === "dark", toggleTheme, setTheme }}
+    >
       {children}
     </ThemeContext>
   );

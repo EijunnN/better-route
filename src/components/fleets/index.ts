@@ -1,3 +1,9 @@
+export type {
+  Fleet,
+  FleetsActions,
+  FleetsMeta,
+  FleetsState,
+  VehicleWithFleets,
+} from "./fleets-context";
 export { FleetsProvider, useFleets } from "./fleets-context";
-export type { Fleet, VehicleWithFleets, FleetsState, FleetsActions, FleetsMeta } from "./fleets-context";
-export { FleetsListView, FleetsFormView } from "./fleets-views";
+export { FleetsFormView, FleetsListView } from "./fleets-views";

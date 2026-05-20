@@ -9,9 +9,9 @@
  *   - AuthorizationError + sensitive-action policy
  */
 
-import { type AuthenticatedUser } from "./auth-api";
-import { USER_ROLES, EntityType, Action } from "./permissions/types";
+import type { AuthenticatedUser } from "./auth-api";
 import type { Permission } from "./permissions/types";
+import { Action, EntityType, USER_ROLES } from "./permissions/types";
 
 // Re-exported for backward compat — many existing routes/tests import
 // these from "@/lib/auth/authorization". New code should import from
@@ -274,10 +274,10 @@ export interface PermissionCheckResult {
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  userRoles,
-  rolePermissions,
   permissions as permissionsTable,
+  rolePermissions,
   roles,
+  userRoles,
   users,
 } from "@/db/schema";
 
@@ -337,8 +337,10 @@ const ACTION_NORMALIZATION: Record<string, string> = {
  * Example: "orders:VIEW" -> "order:read"
  */
 function normalizePermission(entity: string, action: string): string {
-  const normalizedEntity = ENTITY_NORMALIZATION[entity.toLowerCase()] || entity.toLowerCase();
-  const normalizedAction = ACTION_NORMALIZATION[action.toUpperCase()] || action.toLowerCase();
+  const normalizedEntity =
+    ENTITY_NORMALIZATION[entity.toLowerCase()] || entity.toLowerCase();
+  const normalizedAction =
+    ACTION_NORMALIZATION[action.toUpperCase()] || action.toLowerCase();
   return `${normalizedEntity}:${normalizedAction}`;
 }
 
@@ -581,7 +583,9 @@ export async function getUserPermissionsFromDB(
 
       for (const perm of perms) {
         // Normalize DB permissions to match code format (e.g., "orders:VIEW" -> "order:read")
-        enabledPermissionsSet.add(normalizePermission(perm.entity, perm.action));
+        enabledPermissionsSet.add(
+          normalizePermission(perm.entity, perm.action),
+        );
       }
     }
 

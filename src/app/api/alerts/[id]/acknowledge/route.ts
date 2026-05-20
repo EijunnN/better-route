@@ -2,12 +2,10 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { alerts } from "@/db/schema";
-import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // POST - Acknowledge alert
 export async function POST(
@@ -15,7 +13,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ALERT, Action.ACKNOWLEDGE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ALERT,
+      Action.ACKNOWLEDGE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -34,10 +36,7 @@ export async function POST(
           .select()
           .from(alerts)
           .where(
-            and(
-              eq(alerts.id, id),
-              eq(alerts.companyId, tenantCtx.companyId),
-            ),
+            and(eq(alerts.id, id), eq(alerts.companyId, tenantCtx.companyId)),
           )
           .limit(1);
 
@@ -69,10 +68,7 @@ export async function POST(
             },
           })
           .where(
-            and(
-              eq(alerts.id, id),
-              eq(alerts.status, existingAlert.status),
-            ),
+            and(eq(alerts.id, id), eq(alerts.status, existingAlert.status)),
           )
           .returning();
 

@@ -2,20 +2,23 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
-import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { updateCsvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
-import { safeParseJson } from "@/lib/utils/safe-json";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { safeParseJson } from "@/lib/utils/safe-json";
+import { updateCsvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
 // GET - Get a specific column mapping template
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -63,14 +66,18 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
 
     const { id } = await params;
-    const context = requireTenantContext();
+    const _context = requireTenantContext();
 
     // Check if template exists
     const existing = await db
@@ -173,14 +180,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.DELETE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.DELETE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
 
     const { id } = await params;
-    const context = requireTenantContext();
+    const _context = requireTenantContext();
 
     // Check if template exists
     const existing = await db

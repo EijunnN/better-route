@@ -1,35 +1,35 @@
 "use client";
 
 import {
-  Eye,
-  Smartphone,
-  FileSpreadsheet,
-  Package,
-  MapPin,
   AlertCircle,
+  Calendar,
   CheckCircle2,
-  Type,
+  DollarSign,
+  Eye,
+  FileSpreadsheet,
   Hash,
   List,
-  Calendar,
-  DollarSign,
-  Phone,
   Mail,
+  MapPin,
+  Package,
+  Phone,
+  Smartphone,
   ToggleLeft,
+  Type,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  FIELD_TYPE_LABELS,
   type FieldDefinition,
   type FieldType,
-  FIELD_TYPE_LABELS,
 } from "./custom-fields-context";
 import { DynamicFieldRenderer } from "./dynamic-field-renderer";
 
@@ -82,7 +82,9 @@ export function FieldFlowDialog({
       where: "Pantalla /pedidos → botón Nuevo o editar",
       role: "filled",
       detail: `Tu equipo lo encuentra en el formulario al crear o editar un pedido${
-        definition.required ? ". Es obligatorio: no se podrá guardar sin completarlo." : "."
+        definition.required
+          ? ". Es obligatorio: no se podrá guardar sin completarlo."
+          : "."
       }`,
     });
   } else {
@@ -169,11 +171,15 @@ export function FieldFlowDialog({
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
               <div>
                 <span className="text-muted-foreground">¿Quién lo llena? </span>
-                <span className="font-medium text-foreground">{filledByLabel}</span>
+                <span className="font-medium text-foreground">
+                  {filledByLabel}
+                </span>
               </div>
               <div>
                 <span className="text-muted-foreground">¿Cuándo? </span>
-                <span className="font-medium text-foreground">{filledWhenLabel}</span>
+                <span className="font-medium text-foreground">
+                  {filledWhenLabel}
+                </span>
               </div>
               <div>
                 <span className="text-muted-foreground">Código interno: </span>
@@ -200,10 +206,15 @@ export function FieldFlowDialog({
           <section className="space-y-2">
             <h3 className="text-sm font-medium">Cómo se ve el campo</h3>
             <div className="rounded-md border bg-background p-4">
-              <DynamicFieldRenderer definition={definition} value={null} onChange={() => {}} />
+              <DynamicFieldRenderer
+                definition={definition}
+                value={null}
+                onChange={() => {}}
+              />
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Esta es la representación real que el usuario ve al llenar el campo.
+              Esta es la representación real que el usuario ve al llenar el
+              campo.
             </p>
           </section>
 
@@ -297,13 +308,18 @@ function SurfaceRow({ surface }: { surface: Surface }) {
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="size-2.5 mr-1" />Se muestra aquí
+                    <CheckCircle2 className="size-2.5 mr-1" />
+                    Se muestra aquí
                   </>
                 )}
               </Badge>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{surface.where}</p>
-            <p className="text-xs text-foreground mt-1.5 leading-relaxed">{surface.detail}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {surface.where}
+            </p>
+            <p className="text-xs text-foreground mt-1.5 leading-relaxed">
+              {surface.detail}
+            </p>
           </div>
         </div>
       </CardContent>

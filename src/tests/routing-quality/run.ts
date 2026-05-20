@@ -7,23 +7,22 @@
  *  - Aggregated markdown report in docs/routing-quality-report.md
  */
 
-import { writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import {
-  optimizeRoutes as vroomOptimizeRoutes,
-  type OrderForOptimization,
-  type VehicleForOptimization,
-  type OptimizationConfig as VroomConfig,
-} from "@/lib/optimization/vroom-optimizer";
-import { verify } from "@/lib/optimization/verifier";
 import type {
   AggregatedPlan,
   AssignedSolvedRoute,
   SolvedStop,
   VerificationReport,
 } from "@/lib/optimization/solved-plan";
-import { secondsToHHMM } from "@/lib/optimization/verifier";
+import { secondsToHHMM, verify } from "@/lib/optimization/verifier";
+import {
+  type OrderForOptimization,
+  type VehicleForOptimization,
+  type OptimizationConfig as VroomConfig,
+  optimizeRoutes as vroomOptimizeRoutes,
+} from "@/lib/optimization/vroom-optimizer";
 import { SCENARIOS } from "./scenarios";
 import type { Scenario, ScenarioExpectations } from "./types";
 
@@ -121,9 +120,7 @@ function toVroomConfig(c: Scenario["config"]): VroomConfig {
  * driver-level checks, which the harness deliberately ignores.
  */
 function toAssignedRoute(
-  vroomRoute: Awaited<
-    ReturnType<typeof vroomOptimizeRoutes>
-  >["routes"][number],
+  vroomRoute: Awaited<ReturnType<typeof vroomOptimizeRoutes>>["routes"][number],
 ): AssignedSolvedRoute {
   const stops: SolvedStop[] = vroomRoute.stops.map((s) => ({
     orderId: s.orderId,
@@ -289,7 +286,9 @@ function formatSummary(entries: RunEntry[]): string {
   lines.push("");
   lines.push(`Generated: ${new Date().toISOString()}`);
   lines.push("");
-  lines.push(`Scenarios: ${SCENARIOS.length} × 1 solver = ${entries.length} runs`);
+  lines.push(
+    `Scenarios: ${SCENARIOS.length} × 1 solver = ${entries.length} runs`,
+  );
   lines.push("");
   const passCount = entries.filter((e) => e.ok).length;
   lines.push(`Passed: **${passCount}** / ${entries.length}`);
@@ -358,11 +357,17 @@ function formatSummary(entries: RunEntry[]): string {
       }
     }
     // First few hard violations, for context
-    const firstHard = r.violations.filter((v) => v.severity === "HARD").slice(0, 3);
+    const firstHard = r.violations
+      .filter((v) => v.severity === "HARD")
+      .slice(0, 3);
     if (firstHard.length > 0) {
       lines.push("- sample hard violations:");
       for (const v of firstHard) {
-        const where = v.trackingId ? ` (order ${v.trackingId})` : v.vehicleIdentifier ? ` (veh ${v.vehicleIdentifier})` : "";
+        const where = v.trackingId
+          ? ` (order ${v.trackingId})`
+          : v.vehicleIdentifier
+            ? ` (veh ${v.vehicleIdentifier})`
+            : "";
         const exp = v.expected !== undefined ? ` expected=${v.expected}` : "";
         const act = v.actual !== undefined ? ` actual=${v.actual}` : "";
         lines.push(`  - [${v.code}]${where}${exp}${act}`);

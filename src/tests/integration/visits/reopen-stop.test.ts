@@ -1,21 +1,21 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { and, eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
+import { POST as REOPEN } from "@/app/api/route-stops/[id]/reopen/route";
+import { PATCH } from "@/app/api/route-stops/[id]/route";
+import { deliveryVisits, orders, routeStops } from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
   createAdmin,
+  createCompany,
   createDriver,
-  createVehicle,
-  createOrder,
   createOptimizationConfig,
   createOptimizationJob,
+  createOrder,
   createRouteStop,
+  createVehicle,
 } from "../setup/test-data";
-import { deliveryVisits, orders, routeStops } from "@/db/schema";
-import { PATCH } from "@/app/api/route-stops/[id]/route";
-import { POST as REOPEN } from "@/app/api/route-stops/[id]/reopen/route";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 /**
  * Issue 003 — same-day Stop reopen.
@@ -93,10 +93,12 @@ describe("POST /api/route-stops/:id/reopen (issue 003)", () => {
   }
 
   async function reopen(stopId: string, body: Record<string, unknown>) {
-    const req = await createTestRequest(
-      `/api/route-stops/${stopId}/reopen`,
-      { method: "POST", body, token, companyId: company.id },
-    );
+    const req = await createTestRequest(`/api/route-stops/${stopId}/reopen`, {
+      method: "POST",
+      body,
+      token,
+      companyId: company.id,
+    });
     return await REOPEN(req, { params: Promise.resolve({ id: stopId }) });
   }
 
@@ -226,15 +228,12 @@ describe("POST /api/route-stops/:id/reopen (issue 003)", () => {
       role: otherAdmin.role,
     });
 
-    const req = await createTestRequest(
-      `/api/route-stops/${stop.id}/reopen`,
-      {
-        method: "POST",
-        body: { reason: "cross-tenant attempt" },
-        token: otherToken,
-        companyId: otherCompany.id,
-      },
-    );
+    const req = await createTestRequest(`/api/route-stops/${stop.id}/reopen`, {
+      method: "POST",
+      body: { reason: "cross-tenant attempt" },
+      token: otherToken,
+      companyId: otherCompany.id,
+    });
     const res = await REOPEN(req, {
       params: Promise.resolve({ id: stop.id }),
     });

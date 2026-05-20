@@ -1,8 +1,10 @@
 "use client";
 
 import { Loader2, Upload } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Can } from "@/components/auth/can";
+import { CsvImportPreviewDialog } from "@/components/orders/csv-import-preview-dialog";
+import { CsvSchemaGuide } from "@/components/orders/csv-schema-guide";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,8 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CsvSchemaGuide } from "@/components/orders/csv-schema-guide";
-import { CsvImportPreviewDialog } from "@/components/orders/csv-import-preview-dialog";
 import { usePlanificacion } from "./planificacion-context";
 
 export function CsvUploadDialog() {
@@ -37,7 +37,9 @@ export function CsvUploadDialog() {
           {meta.companyId && (
             <CsvSchemaGuide
               companyId={meta.companyId}
-              csvHeaders={state.csvHeaders.length > 0 ? state.csvHeaders : undefined}
+              csvHeaders={
+                state.csvHeaders.length > 0 ? state.csvHeaders : undefined
+              }
             />
           )}
 
@@ -64,9 +66,10 @@ export function CsvUploadDialog() {
               CsvSchemaGuide above — no second preview table needed. */}
           {state.csvPreview.length > 0 && (
             <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-              Se detectaron <span className="font-medium">{state.csvPreview.length}</span>{" "}
-              fila{state.csvPreview.length === 1 ? "" : "s"} de datos. La validación
-              completa se ejecuta al subir.
+              Se detectaron{" "}
+              <span className="font-medium">{state.csvPreview.length}</span>{" "}
+              fila{state.csvPreview.length === 1 ? "" : "s"} de datos. La
+              validación completa se ejecuta al subir.
             </div>
           )}
         </div>
@@ -118,12 +121,16 @@ export function EditOrderDialog() {
   const { state, actions } = usePlanificacion();
 
   return (
-    <Dialog open={!!state.editingOrder} onOpenChange={(open) => !open && actions.closeEditOrder()}>
+    <Dialog
+      open={!!state.editingOrder}
+      onOpenChange={(open) => !open && actions.closeEditOrder()}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Editar ubicación del pedido</DialogTitle>
           <DialogDescription>
-            {state.editingOrder?.trackingId} - {state.editingOrder?.customerName || "Sin nombre"}
+            {state.editingOrder?.trackingId} -{" "}
+            {state.editingOrder?.customerName || "Sin nombre"}
           </DialogDescription>
         </DialogHeader>
 
@@ -178,8 +185,8 @@ export function EditOrderDialog() {
 
           {/* Coordinates hint */}
           <p className="text-xs text-muted-foreground">
-            Puedes obtener las coordenadas desde Google Maps haciendo clic derecho en el punto y
-            copiando las coordenadas.
+            Puedes obtener las coordenadas desde Google Maps haciendo clic
+            derecho en el punto y copiando las coordenadas.
           </p>
 
           {/* Error message */}

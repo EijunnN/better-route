@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Camera,
   ChevronDown,
@@ -8,7 +8,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface TrackingEvidenceProps {
@@ -115,10 +115,7 @@ function EvidenceLightbox({
   const total = urls.length;
   const hasMultiple = total > 1;
 
-  const next = useCallback(
-    () => setIndex((i) => (i + 1) % total),
-    [total],
-  );
+  const next = useCallback(() => setIndex((i) => (i + 1) % total), [total]);
   const prev = useCallback(
     () => setIndex((i) => (i - 1 + total) % total),
     [total],
@@ -208,11 +205,7 @@ function EvidenceLightbox({
                         : "border-transparent opacity-50 hover:opacity-80",
                     )}
                   >
-                    <img
-                      src={url}
-                      alt=""
-                      className="size-full object-cover"
-                    />
+                    <img src={url} alt="" className="size-full object-cover" />
                   </button>
                 ))}
               </div>

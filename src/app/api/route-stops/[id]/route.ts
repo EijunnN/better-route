@@ -1,31 +1,30 @@
 import { and, eq, sql } from "drizzle-orm";
-import { after } from "next/server";
-import { type NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  companyWorkflowStates,
+  companyWorkflowTransitions,
+  DELIVERY_FAILURE_LABELS,
+  DELIVERY_FAILURE_REASONS,
   deliveryVisits,
   orders,
   routeStopHistory,
   routeStops,
   STOP_STATUS_TRANSITIONS,
-  DELIVERY_FAILURE_REASONS,
-  DELIVERY_FAILURE_LABELS,
   USER_ROLES,
-  companyWorkflowStates,
-  companyWorkflowTransitions,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/infra/tenant";
-import { getAuthenticatedUser, getOptionalUser } from "@/lib/auth/auth-api";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { getOptionalUser } from "@/lib/auth/auth-api";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { publishStopEvent } from "@/lib/realtime";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
   loadStopFieldDefinitions,
   validateStopCustomFields,
 } from "@/lib/routing/stop-custom-fields";
-import { publishStopEvent } from "@/lib/realtime";
+
 // Map route_stop status to order status
 const STOP_TO_ORDER_STATUS: Record<string, string> = {
   PENDING: "ASSIGNED", // Order stays assigned until stop starts
@@ -35,14 +34,17 @@ const STOP_TO_ORDER_STATUS: Record<string, string> = {
   SKIPPED: "FAILED", // Order was skipped (treat as failed)
 };
 
-
 // GET - Get a single route stop with details
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE_STOP,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -56,7 +58,13 @@ export async function GET(
       ),
       with: {
         user: {
-          columns: { id: true, name: true, email: true, role: true, phone: true },
+          columns: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            phone: true,
+          },
         },
         vehicle: {
           columns: { id: true, name: true, plate: true, status: true },
@@ -76,7 +84,13 @@ export async function GET(
         history: {
           with: {
             user: {
-              columns: { id: true, name: true, email: true, role: true, phone: true },
+              columns: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                phone: true,
+              },
             },
           },
           orderBy: (history, { desc }) => [desc(history.createdAt)],
@@ -104,7 +118,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE_STOP,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -123,7 +141,9 @@ export async function PATCH(
     } = body;
     let { status } = body;
     const hasCustomFieldsUpdate =
-      customFieldsInput && typeof customFieldsInput === "object" && !Array.isArray(customFieldsInput);
+      customFieldsInput &&
+      typeof customFieldsInput === "object" &&
+      !Array.isArray(customFieldsInput);
 
     // Get current stop
     const currentStop = await db.query.routeStops.findFirst({
@@ -142,7 +162,10 @@ export async function PATCH(
     if (authUser && authUser.role === USER_ROLES.CONDUCTOR) {
       if (currentStop.userId !== authUser.userId) {
         return NextResponse.json(
-          { error: "No tiene permiso para modificar esta parada. Solo puede modificar paradas asignadas a usted." },
+          {
+            error:
+              "No tiene permiso para modificar esta parada. Solo puede modificar paradas asignadas a usted.",
+          },
           { status: 403 },
         );
       }
@@ -168,14 +191,18 @@ export async function PATCH(
 
       // If the stop currently has a workflowStateId, validate the transition is allowed
       if (currentStop.workflowStateId) {
-        const allowedTransition = await db.query.companyWorkflowTransitions.findFirst({
-          where: and(
-            eq(companyWorkflowTransitions.companyId, tenantCtx.companyId),
-            eq(companyWorkflowTransitions.fromStateId, currentStop.workflowStateId),
-            eq(companyWorkflowTransitions.toStateId, workflowStateId),
-            eq(companyWorkflowTransitions.active, true),
-          ),
-        });
+        const allowedTransition =
+          await db.query.companyWorkflowTransitions.findFirst({
+            where: and(
+              eq(companyWorkflowTransitions.companyId, tenantCtx.companyId),
+              eq(
+                companyWorkflowTransitions.fromStateId,
+                currentStop.workflowStateId,
+              ),
+              eq(companyWorkflowTransitions.toStateId, workflowStateId),
+              eq(companyWorkflowTransitions.active, true),
+            ),
+          });
 
         if (!allowedTransition) {
           return NextResponse.json(
@@ -205,7 +232,9 @@ export async function PATCH(
       const defs = await loadStopFieldDefinitions(tenantCtx.companyId);
       if (defs.length > 0 || hasCustomFieldsUpdate) {
         const result = validateStopCustomFields(
-          hasCustomFieldsUpdate ? (customFieldsInput as Record<string, unknown>) : {},
+          hasCustomFieldsUpdate
+            ? (customFieldsInput as Record<string, unknown>)
+            : {},
           defs,
           (currentStop.customFields as Record<string, unknown> | null) ?? null,
           status === "COMPLETED",
@@ -251,9 +280,7 @@ export async function PATCH(
           { status: 400 },
         );
       }
-      if (
-        !Object.keys(DELIVERY_FAILURE_REASONS).includes(failureReason)
-      ) {
+      if (!Object.keys(DELIVERY_FAILURE_REASONS).includes(failureReason)) {
         return NextResponse.json(
           {
             error: `Invalid failureReason: ${failureReason}`,
@@ -412,8 +439,8 @@ export async function PATCH(
                 and(
                   eq(orders.id, currentStop.orderId),
                   // Optimistic lock: only update if not cancelled
-                  sql`${orders.status} != 'CANCELLED'`
-                )
+                  sql`${orders.status} != 'CANCELLED'`,
+                ),
               );
           }
         }
@@ -443,14 +470,13 @@ export async function PATCH(
             attemptedAt: currentStop.startedAt ?? now,
             completedAt: now,
             outcome: status === "COMPLETED" ? "SUCCESS" : "FAILURE",
-            failureReason: status === "FAILED" ? failureReason ?? null : null,
+            failureReason: status === "FAILED" ? (failureReason ?? null) : null,
             notes: notes || null,
             evidenceUrls: evidenceUrls ?? null,
             intendedAddress: currentStop.address,
             intendedLatitude: currentStop.latitude,
             intendedLongitude: currentStop.longitude,
-            gpsLatitude:
-              typeof gpsLatitude === "string" ? gpsLatitude : null,
+            gpsLatitude: typeof gpsLatitude === "string" ? gpsLatitude : null,
             gpsLongitude:
               typeof gpsLongitude === "string" ? gpsLongitude : null,
           });

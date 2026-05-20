@@ -11,22 +11,24 @@ import {
   vehicles,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { safeParseJson } from "@/lib/utils/safe-json";
 import {
   optimizationConfigQuerySchema,
   optimizationConfigSchema,
 } from "@/lib/validations/optimization-config";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
-import { safeParseJson } from "@/lib/utils/safe-json";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 // GET - List optimization configurations
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_CONFIG,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -101,7 +103,11 @@ export async function GET(request: NextRequest) {
 // POST - Create optimization configuration
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_CONFIG,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -272,15 +278,28 @@ export async function POST(request: NextRequest) {
     if (data.depotLatitude || data.depotLongitude) {
       if (!data.depotLatitude || !data.depotLongitude) {
         return NextResponse.json(
-          { error: "Both depot latitude and longitude must be provided together" },
+          {
+            error:
+              "Both depot latitude and longitude must be provided together",
+          },
           { status: 400 },
         );
       }
       const lat = parseFloat(data.depotLatitude);
       const lng = parseFloat(data.depotLongitude);
-      if (Number.isNaN(lat) || Number.isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      if (
+        Number.isNaN(lat) ||
+        Number.isNaN(lng) ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180
+      ) {
         return NextResponse.json(
-          { error: "Invalid depot coordinates. Latitude must be -90 to 90, longitude -180 to 180." },
+          {
+            error:
+              "Invalid depot coordinates. Latitude must be -90 to 90, longitude -180 to 180.",
+          },
           { status: 400 },
         );
       }

@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   generateCsvTemplate,
   resolveProfileSchema,
 } from "@/lib/orders/profile-schema";
-import { setTenantContext } from "@/lib/infra/tenant";
 
 /**
  * GET /api/companies/[id]/csv-profile-schema
@@ -36,7 +36,10 @@ export async function GET(
     authResult.companyId !== targetCompanyId
   ) {
     return NextResponse.json(
-      { error: "Cannot access another company's schema", code: "TENANT_MISMATCH" },
+      {
+        error: "Cannot access another company's schema",
+        code: "TENANT_MISMATCH",
+      },
       { status: 403 },
     );
   }

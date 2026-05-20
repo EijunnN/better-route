@@ -111,7 +111,9 @@ export async function POST(
 
     if (existing.length > 0) {
       return NextResponse.json(
-        { error: `Ya existe un campo con el código "${body.code}" para esta entidad` },
+        {
+          error: `Ya existe un campo con el código "${body.code}" para esta entidad`,
+        },
         { status: 409 },
       );
     }

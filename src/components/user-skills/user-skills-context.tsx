@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { UserSkillInput } from "@/lib/validations/user-skill";
@@ -14,7 +14,13 @@ export interface UserSkill {
   active: boolean;
   createdAt: string;
   updatedAt: string;
-  skill: { id: string; code: string; name: string; category: string; description?: string };
+  skill: {
+    id: string;
+    code: string;
+    name: string;
+    category: string;
+    description?: string;
+  };
   user: { id: string; name: string; identification: string | null };
   expiryStatus?: string;
 }
@@ -103,7 +109,9 @@ interface UserSkillsContextValue {
   meta: UserSkillsMeta;
 }
 
-const UserSkillsContext = createContext<UserSkillsContextValue | undefined>(undefined);
+const UserSkillsContext = createContext<UserSkillsContextValue | undefined>(
+  undefined,
+);
 
 export function UserSkillsProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
@@ -114,7 +122,9 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
   const [skills, setSkills] = useState<VehicleSkill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingUserSkill, setEditingUserSkill] = useState<UserSkill | null>(null);
+  const [editingUserSkill, setEditingUserSkill] = useState<UserSkill | null>(
+    null,
+  );
   const [filterUser, setFilterUser] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("");
@@ -125,16 +135,25 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     if (!companyId) return;
     try {
       const params = new URLSearchParams();
-      if (filterUser && filterUser !== "__all__") params.append("userId", filterUser);
-      if (filterStatus && filterStatus !== "__all__") params.append("active", filterStatus);
-      if (filterExpiry && filterExpiry !== "__all__") params.append("status", filterExpiry);
+      if (filterUser && filterUser !== "__all__")
+        params.append("userId", filterUser);
+      if (filterStatus && filterStatus !== "__all__")
+        params.append("active", filterStatus);
+      if (filterExpiry && filterExpiry !== "__all__")
+        params.append("status", filterExpiry);
 
-      const response = await fetch(`/api/user-skills?${params.toString()}`, { headers: { "x-company-id": companyId } });
+      const response = await fetch(`/api/user-skills?${params.toString()}`, {
+        headers: { "x-company-id": companyId },
+      });
       const data = await response.json();
       setUserSkills(data.data || []);
     } catch (error) {
       console.error("Error al cargar habilidades:", error);
-      toast({ title: "Error", description: "No se pudieron cargar las habilidades de usuarios", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las habilidades de usuarios",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -143,9 +162,13 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
   const fetchUsers = async () => {
     if (!companyId) return;
     try {
-      const response = await fetch("/api/users?active=true", { headers: { "x-company-id": companyId } });
+      const response = await fetch("/api/users?active=true", {
+        headers: { "x-company-id": companyId },
+      });
       const data = await response.json();
-      const conductors = (data.data || []).filter((u: User) => u.role === "CONDUCTOR");
+      const conductors = (data.data || []).filter(
+        (u: User) => u.role === "CONDUCTOR",
+      );
       setUsers(conductors);
     } catch (error) {
       console.error("Error al cargar usuarios:", error);
@@ -155,7 +178,9 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
   const fetchSkills = async () => {
     if (!companyId) return;
     try {
-      const response = await fetch("/api/vehicle-skills?active=true", { headers: { "x-company-id": companyId } });
+      const response = await fetch("/api/vehicle-skills?active=true", {
+        headers: { "x-company-id": companyId },
+      });
       const data = await response.json();
       setSkills(data.data || []);
     } catch (error) {
@@ -167,14 +192,17 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     fetchUserSkills();
     fetchUsers();
     fetchSkills();
-  }, [companyId, filterUser, filterStatus, filterExpiry]);
+  }, [fetchSkills, fetchUserSkills, fetchUsers]);
 
   const handleCreate = async (data: UserSkillInput) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/user-skills", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -183,11 +211,15 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
       }
       await fetchUserSkills();
       setShowForm(false);
-      toast({ title: "Habilidad asignada", description: "La habilidad ha sido asignada exitosamente al usuario." });
+      toast({
+        title: "Habilidad asignada",
+        description: "La habilidad ha sido asignada exitosamente al usuario.",
+      });
     } catch (err) {
       toast({
         title: "Error al asignar habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -199,7 +231,10 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`/api/user-skills/${editingUserSkill.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -208,11 +243,16 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
       }
       await fetchUserSkills();
       setEditingUserSkill(null);
-      toast({ title: "Habilidad actualizada", description: "La habilidad del usuario ha sido actualizada exitosamente." });
+      toast({
+        title: "Habilidad actualizada",
+        description:
+          "La habilidad del usuario ha sido actualizada exitosamente.",
+      });
     } catch (err) {
       toast({
         title: "Error al actualizar habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -230,7 +270,9 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al desactivar la habilidad");
+        throw new Error(
+          error.error || error.details || "Error al desactivar la habilidad",
+        );
       }
       await fetchUserSkills();
       toast({
@@ -242,7 +284,8 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       toast({
         title: "Error al desactivar habilidad",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -255,19 +298,28 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`/api/user-skills/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify({ active: !currentActive }),
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al actualizar el estado");
+        throw new Error(
+          error.error || error.details || "Error al actualizar el estado",
+        );
       }
       await fetchUserSkills();
-      toast({ title: "Estado actualizado", description: `La habilidad ahora está ${!currentActive ? "activa" : "inactiva"}.` });
+      toast({
+        title: "Estado actualizado",
+        description: `La habilidad ahora está ${!currentActive ? "activa" : "inactiva"}.`,
+      });
     } catch (err) {
       toast({
         title: "Error al actualizar estado",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     }
@@ -278,9 +330,10 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     setEditingUserSkill(null);
   };
 
-  const filteredUserSkills = (!filterCategory || filterCategory === "__all__")
-    ? userSkills
-    : userSkills.filter((us) => us.skill.category === filterCategory);
+  const filteredUserSkills =
+    !filterCategory || filterCategory === "__all__"
+      ? userSkills
+      : userSkills.filter((us) => us.skill.category === filterCategory);
 
   const state: UserSkillsState = {
     userSkills,
@@ -313,7 +366,11 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
 
   const meta: UserSkillsMeta = { companyId, isReady };
 
-  return <UserSkillsContext value={{ state, actions, meta }}>{children}</UserSkillsContext>;
+  return (
+    <UserSkillsContext value={{ state, actions, meta }}>
+      {children}
+    </UserSkillsContext>
+  );
 }
 
 export function useUserSkills(): UserSkillsContextValue {

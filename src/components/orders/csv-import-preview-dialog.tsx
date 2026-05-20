@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Ban,
@@ -9,6 +8,7 @@ import {
   PauseCircle,
   RotateCcw,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,12 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
 export interface PreviewBucketRow {
@@ -102,9 +97,9 @@ export function CsvImportPreviewDialog({
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("new");
-  const [reactivableSelected, setReactivableSelected] = useState<
-    Set<string>
-  >(() => new Set());
+  const [reactivableSelected, setReactivableSelected] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   // When a fresh preview lands, default-select every reactivable.
   useEffect(() => {
@@ -143,7 +138,8 @@ export function CsvImportPreviewDialog({
       });
       if (result) {
         const parts: string[] = [];
-        if (result.inserted > 0) parts.push(`${result.inserted} pedidos creados`);
+        if (result.inserted > 0)
+          parts.push(`${result.inserted} pedidos creados`);
         if (result.reactivated > 0)
           parts.push(`${result.reactivated} reactivados`);
         if (result.raceConditions.length > 0)
@@ -174,9 +170,8 @@ export function CsvImportPreviewDialog({
           <DialogTitle>Vista previa de importación CSV</DialogTitle>
           <DialogDescription>
             Revisa la clasificación antes de confirmar. Se aplicarán{" "}
-            <strong>{willApply}</strong> de{" "}
-            <strong>{preview.totalRows}</strong> filas (
-            {newCount} nuevas + {reactivableActiveCount} reactivaciones
+            <strong>{willApply}</strong> de <strong>{preview.totalRows}</strong>{" "}
+            filas ({newCount} nuevas + {reactivableActiveCount} reactivaciones
             seleccionadas).
           </DialogDescription>
         </DialogHeader>
@@ -188,7 +183,8 @@ export function CsvImportPreviewDialog({
         >
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="new">
-              <CheckCircle2 className="mr-1 size-3.5" /> Nuevas {badge(newCount)}
+              <CheckCircle2 className="mr-1 size-3.5" /> Nuevas{" "}
+              {badge(newCount)}
             </TabsTrigger>
             <TabsTrigger value="reactivable">
               <RotateCcw className="mr-1 size-3.5" /> Reactivables{" "}

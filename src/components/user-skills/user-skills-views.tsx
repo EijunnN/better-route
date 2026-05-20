@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { Can } from "@/components/auth/can";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,18 +15,30 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Can } from "@/components/auth/can";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { UserSkillForm } from "./user-skill-form";
 import {
-  useUserSkills,
-  VEHICLE_SKILL_CATEGORY_LABELS,
   EXPIRY_STATUS_LABELS,
   getCategoryColor,
   type UserSkill,
+  useUserSkills,
+  VEHICLE_SKILL_CATEGORY_LABELS,
 } from "./user-skills-context";
 
 export function UserSkillsListView() {
@@ -35,13 +48,18 @@ export function UserSkillsListView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Gestión de Habilidades de Usuarios</h1>
+          <h1 className="text-2xl font-semibold text-foreground">
+            Gestión de Habilidades de Usuarios
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Asigne y administre las habilidades y certificaciones de los usuarios (conductores)
+            Asigne y administre las habilidades y certificaciones de los
+            usuarios (conductores)
           </p>
         </div>
         <Can perm="driver_skill:create">
-          <Button onClick={() => actions.setShowForm(true)}>Asignar Habilidad</Button>
+          <Button onClick={() => actions.setShowForm(true)}>
+            Asignar Habilidad
+          </Button>
         </Can>
       </div>
 
@@ -50,7 +68,10 @@ export function UserSkillsListView() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="filterUser">Usuario</Label>
-              <Select value={state.filterUser} onValueChange={actions.setFilterUser}>
+              <Select
+                value={state.filterUser}
+                onValueChange={actions.setFilterUser}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -66,23 +87,31 @@ export function UserSkillsListView() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="filterCategory">Categoría</Label>
-              <Select value={state.filterCategory} onValueChange={actions.setFilterCategory}>
+              <Select
+                value={state.filterCategory}
+                onValueChange={actions.setFilterCategory}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">Todas</SelectItem>
-                  {Object.entries(VEHICLE_SKILL_CATEGORY_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(VEHICLE_SKILL_CATEGORY_LABELS).map(
+                    ([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="filterStatus">Estado</Label>
-              <Select value={state.filterStatus} onValueChange={actions.setFilterStatus}>
+              <Select
+                value={state.filterStatus}
+                onValueChange={actions.setFilterStatus}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -95,14 +124,19 @@ export function UserSkillsListView() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="filterExpiry">Vencimiento</Label>
-              <Select value={state.filterExpiry} onValueChange={actions.setFilterExpiry}>
+              <Select
+                value={state.filterExpiry}
+                onValueChange={actions.setFilterExpiry}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">Todos</SelectItem>
                   <SelectItem value="valid">Vigentes</SelectItem>
-                  <SelectItem value="expiring_soon">Prontos a vencer</SelectItem>
+                  <SelectItem value="expiring_soon">
+                    Prontos a vencer
+                  </SelectItem>
                   <SelectItem value="expired">Vencidas</SelectItem>
                 </SelectContent>
               </Select>
@@ -121,7 +155,10 @@ export function UserSkillsListView() {
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="mx-auto size-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No hay habilidades asignadas. Asigne la primera habilidad a un usuario.</p>
+            <p className="text-muted-foreground">
+              No hay habilidades asignadas. Asigne la primera habilidad a un
+              usuario.
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -158,14 +195,19 @@ function UserSkillRow({ userSkill }: { userSkill: UserSkill }) {
       <TableCell className="font-medium">{userSkill.user.name}</TableCell>
       <TableCell>
         <div className="font-medium">{userSkill.skill.name}</div>
-        <div className="text-xs text-muted-foreground">{userSkill.skill.code}</div>
+        <div className="text-xs text-muted-foreground">
+          {userSkill.skill.code}
+        </div>
       </TableCell>
       <TableCell>
         <Badge className={getCategoryColor(userSkill.skill.category)}>
-          {VEHICLE_SKILL_CATEGORY_LABELS[userSkill.skill.category] || userSkill.skill.category}
+          {VEHICLE_SKILL_CATEGORY_LABELS[userSkill.skill.category] ||
+            userSkill.skill.category}
         </Badge>
       </TableCell>
-      <TableCell className="text-muted-foreground">{new Date(userSkill.obtainedAt).toLocaleDateString()}</TableCell>
+      <TableCell className="text-muted-foreground">
+        {new Date(userSkill.obtainedAt).toLocaleDateString()}
+      </TableCell>
       <TableCell>
         {userSkill.expiresAt ? (
           <div className="flex flex-col">
@@ -195,7 +237,14 @@ function UserSkillRow({ userSkill }: { userSkill: UserSkill }) {
             </Badge>
           }
         >
-          <Button variant="ghost" size="sm" onClick={() => actions.handleToggleActive(userSkill.id, userSkill.active)} className="p-0 h-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              actions.handleToggleActive(userSkill.id, userSkill.active)
+            }
+            className="p-0 h-auto"
+          >
             <Badge
               className={
                 userSkill.active
@@ -210,7 +259,12 @@ function UserSkillRow({ userSkill }: { userSkill: UserSkill }) {
       </TableCell>
       <TableCell className="text-right">
         <Can perm="driver_skill:update">
-          <Button variant="ghost" size="sm" onClick={() => actions.setEditingUserSkill(userSkill)} disabled={state.deletingId === userSkill.id}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.setEditingUserSkill(userSkill)}
+            disabled={state.deletingId === userSkill.id}
+          >
             Editar
           </Button>
         </Can>
@@ -224,14 +278,19 @@ function UserSkillRow({ userSkill }: { userSkill: UserSkill }) {
                   className="text-destructive hover:text-destructive"
                   disabled={state.deletingId === userSkill.id}
                 >
-                  {state.deletingId === userSkill.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                  {state.deletingId === userSkill.id ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-4" />
+                  )}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>¿Desactivar habilidad?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta acción desactivará la habilidad <strong>{userSkill.skill.name}</strong> del usuario{" "}
+                    Esta acción desactivará la habilidad{" "}
+                    <strong>{userSkill.skill.name}</strong> del usuario{" "}
                     <strong>{userSkill.user.name}</strong>.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -260,16 +319,24 @@ export function UserSkillsFormView() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-foreground">
-          {state.editingUserSkill ? "Editar Habilidad de Usuario" : "Asignar Nueva Habilidad"}
+          {state.editingUserSkill
+            ? "Editar Habilidad de Usuario"
+            : "Asignar Nueva Habilidad"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {state.editingUserSkill ? "Actualice la información de la habilidad asignada" : "Asigne una habilidad a un usuario (conductor)"}
+          {state.editingUserSkill
+            ? "Actualice la información de la habilidad asignada"
+            : "Asigne una habilidad a un usuario (conductor)"}
         </p>
       </div>
       <Card>
         <CardContent className="pt-6">
           <UserSkillForm
-            onSubmit={state.editingUserSkill ? actions.handleUpdate : actions.handleCreate}
+            onSubmit={
+              state.editingUserSkill
+                ? actions.handleUpdate
+                : actions.handleCreate
+            }
             initialData={
               state.editingUserSkill
                 ? {

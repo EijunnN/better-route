@@ -63,9 +63,9 @@ export function ZoneFormBasicInfo() {
           )}
           {formData.type === "RESTRICTED" && (
             <p className="text-xs text-destructive leading-snug">
-              Las órdenes cuya dirección caiga dentro de esta zona se
-              excluirán automáticamente del ruteo. El conductor sí puede
-              atravesarla si conviene a la ruta.
+              Las órdenes cuya dirección caiga dentro de esta zona se excluirán
+              automáticamente del ruteo. El conductor sí puede atravesarla si
+              conviene a la ruta.
             </p>
           )}
         </div>
@@ -192,7 +192,9 @@ export function ZoneFormAppearance() {
             disabled={isSubmitting}
             className="w-16 h-8 p-1"
           />
-          <span className="text-xs text-muted-foreground">{formData.color}</span>
+          <span className="text-xs text-muted-foreground">
+            {formData.color}
+          </span>
         </div>
       </div>
     </div>
@@ -266,12 +268,8 @@ export function ZoneFormSchedule() {
 export function ZoneFormVehicles() {
   const { state, actions, derived } = useZoneForm();
   const { selectedVehicleIds, vehicleSearch, isSubmitting } = state;
-  const {
-    toggleVehicle,
-    selectAllVehicles,
-    clearVehicles,
-    setVehicleSearch,
-  } = actions;
+  const { toggleVehicle, selectAllVehicles, clearVehicles, setVehicleSearch } =
+    actions;
   const { filteredVehicles } = derived;
 
   return (
@@ -431,7 +429,9 @@ export function ZoneFormActions() {
             <Loader2 className="size-4 animate-spin" />
             Guardando
           </>
-        ) : submitLabel}
+        ) : (
+          submitLabel
+        )}
       </Button>
     </div>
   );

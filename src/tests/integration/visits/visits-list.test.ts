@@ -1,19 +1,19 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { cleanDatabase } from "../setup/test-db";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { GET } from "@/app/api/orders/[id]/visits/route";
+import { PATCH } from "@/app/api/route-stops/[id]/route";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
   createAdmin,
+  createCompany,
   createDriver,
-  createVehicle,
-  createOrder,
   createOptimizationConfig,
   createOptimizationJob,
+  createOrder,
   createRouteStop,
+  createVehicle,
 } from "../setup/test-data";
-import { PATCH } from "@/app/api/route-stops/[id]/route";
-import { GET } from "@/app/api/orders/[id]/visits/route";
+import { cleanDatabase } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 /**
  * Issue 002 — `GET /api/orders/:id/visits` is the read side of the
@@ -45,10 +45,7 @@ describe("GET /api/orders/:id/visits (issue 002)", () => {
     await cleanDatabase();
   });
 
-  async function setupStop(
-    orderId: string,
-    sequence = 1,
-  ) {
+  async function setupStop(orderId: string, sequence = 1) {
     const config = await createOptimizationConfig({ companyId: company.id });
     const job = await createOptimizationJob({
       companyId: company.id,
@@ -88,7 +85,10 @@ describe("GET /api/orders/:id/visits (issue 002)", () => {
       companyId: company.id,
     });
     const res = await GET(req, { params: Promise.resolve({ id: orderId }) });
-    return { status: res.status, body: (await res.json()) as { data: unknown[] } };
+    return {
+      status: res.status,
+      body: (await res.json()) as { data: unknown[] },
+    };
   }
 
   test("returns an empty array for an Order with no Visits yet", async () => {
@@ -128,8 +128,8 @@ describe("GET /api/orders/:id/visits (issue 002)", () => {
     expect(body.data).toHaveLength(3);
 
     // Ordered ascending by attemptedAt.
-    const times = (body.data as Array<{ attemptedAt: string }>).map(
-      (v) => new Date(v.attemptedAt).getTime(),
+    const times = (body.data as Array<{ attemptedAt: string }>).map((v) =>
+      new Date(v.attemptedAt).getTime(),
     );
     expect(times[0]).toBeLessThanOrEqual(times[1]);
     expect(times[1]).toBeLessThanOrEqual(times[2]);
@@ -139,10 +139,11 @@ describe("GET /api/orders/:id/visits (issue 002)", () => {
     const otherCompany = await createCompany();
     const otherOrder = await createOrder({ companyId: otherCompany.id });
 
-    const req = await createTestRequest(
-      `/api/orders/${otherOrder.id}/visits`,
-      { method: "GET", token, companyId: company.id },
-    );
+    const req = await createTestRequest(`/api/orders/${otherOrder.id}/visits`, {
+      method: "GET",
+      token,
+      companyId: company.id,
+    });
     const res = await GET(req, {
       params: Promise.resolve({ id: otherOrder.id }),
     });

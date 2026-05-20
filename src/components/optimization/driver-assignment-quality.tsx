@@ -52,7 +52,9 @@ export function DriverAssignmentDisplay({
     return (
       <div className="p-3 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/20 flex items-center gap-3">
         <User className="size-4 text-orange-500 dark:text-orange-400" />
-        <span className="text-sm text-orange-800 dark:text-orange-300">No driver assigned</span>
+        <span className="text-sm text-orange-800 dark:text-orange-300">
+          No driver assigned
+        </span>
         {onReassignDriver && (
           <Button
             variant="outline"

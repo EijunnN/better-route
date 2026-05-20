@@ -1,17 +1,17 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { eq, and } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createOrder,
-} from "../setup/test-data";
-import { orders } from "@/db/schema";
-import { POST } from "@/app/api/orders/batch/route";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { and, eq } from "drizzle-orm";
 import { DELETE } from "@/app/api/orders/batch/delete/route";
+import { POST } from "@/app/api/orders/batch/route";
+import { orders } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createOrder,
+  createPlanner,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Order Batch Operations", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -90,9 +90,7 @@ describe("Order Batch Operations", () => {
     const dbOrders = await testDb
       .select()
       .from(orders)
-      .where(
-        and(eq(orders.companyId, company.id), eq(orders.active, true)),
-      );
+      .where(and(eq(orders.companyId, company.id), eq(orders.active, true)));
     const batchIds = dbOrders
       .filter((o) => o.trackingId.startsWith("BATCH-"))
       .map((o) => o.trackingId);
@@ -298,8 +296,7 @@ describe("Order Batch Operations", () => {
       .from(orders)
       .where(eq(orders.companyId, company.id));
     const hardDelIds = remaining.filter(
-      (o) =>
-        o.trackingId === "HARD-DEL-001" || o.trackingId === "HARD-DEL-002",
+      (o) => o.trackingId === "HARD-DEL-001" || o.trackingId === "HARD-DEL-002",
     );
     expect(hardDelIds).toHaveLength(0);
   });

@@ -1,24 +1,23 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createFleet,
-  createVehicle,
-} from "../setup/test-data";
-import { fleets, vehicleFleets, vehicles } from "@/db/schema";
-
-import {
+  DELETE as DELETE_FLEET,
   GET as GET_FLEET,
   PATCH as PATCH_FLEET,
-  DELETE as DELETE_FLEET,
 } from "@/app/api/fleets/[id]/route";
 import { GET as GET_VEHICLE_COUNTS } from "@/app/api/fleets/[id]/vehicle-counts/route";
 import { GET as GET_FLEET_VEHICLES } from "@/app/api/fleets/[id]/vehicles/route";
+import { fleets, vehicleFleets } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createFleet,
+  createPlanner,
+  createVehicle,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,7 +62,10 @@ describe("Fleet Detail - GET /api/fleets/[id]", () => {
   });
 
   test("returns fleet by ID with 200", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Detail Fleet" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Detail Fleet",
+    });
 
     const request = await createTestRequest(`/api/fleets/${fleet.id}`, {
       method: "GET",
@@ -87,9 +89,18 @@ describe("Fleet Detail - GET /api/fleets/[id]", () => {
   });
 
   test("returns fleet with associated vehicles", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet With Vehicles Detail" });
-    const v1 = await createVehicle({ companyId: company.id, name: "V1-Detail" });
-    const v2 = await createVehicle({ companyId: company.id, name: "V2-Detail" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet With Vehicles Detail",
+    });
+    const v1 = await createVehicle({
+      companyId: company.id,
+      name: "V1-Detail",
+    });
+    const v2 = await createVehicle({
+      companyId: company.id,
+      name: "V2-Detail",
+    });
     await linkVehicleToFleet(company.id, v1.id, fleet.id);
     await linkVehicleToFleet(company.id, v2.id, fleet.id);
 
@@ -116,7 +127,10 @@ describe("Fleet Detail - GET /api/fleets/[id]", () => {
   });
 
   test("excludes inactive vehicle-fleet links from count", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Inactive Links" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Inactive Links",
+    });
     const v1 = await createVehicle({ companyId: company.id });
     const v2 = await createVehicle({ companyId: company.id });
     await linkVehicleToFleet(company.id, v1.id, fleet.id, true);
@@ -160,7 +174,10 @@ describe("Fleet Detail - GET /api/fleets/[id]", () => {
   });
 
   test("returns 401 when no auth token is provided", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Auth Test" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Auth Test",
+    });
 
     const request = await createTestRequest(`/api/fleets/${fleet.id}`, {
       method: "GET",
@@ -174,7 +191,10 @@ describe("Fleet Detail - GET /api/fleets/[id]", () => {
   });
 
   test("enforces tenant isolation - cannot access fleet from another company", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Tenant A" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Tenant A",
+    });
 
     const companyB = await createCompany();
     const plannerB = await createPlanner(companyB.id);
@@ -225,7 +245,10 @@ describe("Fleet Update - PATCH /api/fleets/[id]", () => {
   });
 
   test("updates fleet name", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Original Name" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Original Name",
+    });
 
     const request = await createTestRequest(`/api/fleets/${fleet.id}`, {
       method: "PATCH",
@@ -252,7 +275,10 @@ describe("Fleet Update - PATCH /api/fleets/[id]", () => {
   });
 
   test("updates fleet description", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Desc Test" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Desc Test",
+    });
 
     const request = await createTestRequest(`/api/fleets/${fleet.id}`, {
       method: "PATCH",
@@ -272,7 +298,10 @@ describe("Fleet Update - PATCH /api/fleets/[id]", () => {
   });
 
   test("updates fleet vehicle associations via vehicleIds", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet VehicleIds Update" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet VehicleIds Update",
+    });
     const v1 = await createVehicle({ companyId: company.id });
     const v2 = await createVehicle({ companyId: company.id });
     const v3 = await createVehicle({ companyId: company.id });
@@ -306,7 +335,10 @@ describe("Fleet Update - PATCH /api/fleets/[id]", () => {
 
   test("rejects duplicate fleet name within same company", async () => {
     await createFleet({ companyId: company.id, name: "Taken Name" });
-    const fleet = await createFleet({ companyId: company.id, name: "Another Name" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Another Name",
+    });
 
     const request = await createTestRequest(`/api/fleets/${fleet.id}`, {
       method: "PATCH",
@@ -322,7 +354,9 @@ describe("Fleet Update - PATCH /api/fleets/[id]", () => {
     expect(response.status).toBe(400);
 
     const data = await response.json();
-    expect(data.error).toBe("Ya existe una flota activa con este nombre en la empresa");
+    expect(data.error).toBe(
+      "Ya existe una flota activa con este nombre en la empresa",
+    );
   });
 
   test("returns 404 when updating non-existent fleet", async () => {
@@ -346,7 +380,10 @@ describe("Fleet Update - PATCH /api/fleets/[id]", () => {
   });
 
   test("returns 401 when no auth token is provided", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Patch Auth" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Patch Auth",
+    });
 
     const request = await createTestRequest(`/api/fleets/${fleet.id}`, {
       method: "PATCH",
@@ -360,7 +397,10 @@ describe("Fleet Update - PATCH /api/fleets/[id]", () => {
   });
 
   test("enforces tenant isolation on PATCH", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Tenant A Fleet Patch" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Tenant A Fleet Patch",
+    });
 
     const companyB = await createCompany();
     const adminB = await createAdmin(companyB.id);
@@ -412,7 +452,10 @@ describe("Fleet Delete - DELETE /api/fleets/[id]", () => {
   });
 
   test("soft deletes a fleet", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet To Soft Delete" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet To Soft Delete",
+    });
 
     const request = await createTestRequest(`/api/fleets/${fleet.id}`, {
       method: "DELETE",
@@ -439,7 +482,10 @@ describe("Fleet Delete - DELETE /api/fleets/[id]", () => {
   });
 
   test("deactivates vehicle links when deleting fleet", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Delete With Vehicles" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Delete With Vehicles",
+    });
     const v1 = await createVehicle({ companyId: company.id });
     const v2 = await createVehicle({ companyId: company.id });
     await linkVehicleToFleet(company.id, v1.id, fleet.id);
@@ -490,7 +536,10 @@ describe("Fleet Delete - DELETE /api/fleets/[id]", () => {
   });
 
   test("returns 401 when no auth token is provided", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Delete Auth" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Delete Auth",
+    });
 
     const request = await createTestRequest(`/api/fleets/${fleet.id}`, {
       method: "DELETE",
@@ -503,7 +552,10 @@ describe("Fleet Delete - DELETE /api/fleets/[id]", () => {
   });
 
   test("enforces tenant isolation on DELETE", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Tenant A Fleet Delete" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Tenant A Fleet Delete",
+    });
 
     const companyB = await createCompany();
     const adminB = await createAdmin(companyB.id);
@@ -561,14 +613,20 @@ describe("Fleet Vehicle Counts - GET /api/fleets/[id]/vehicle-counts", () => {
   });
 
   test("returns zeros when fleet has no vehicles", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Empty Fleet Counts" });
-
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicle-counts`, {
-      method: "GET",
-      token,
+    const fleet = await createFleet({
       companyId: company.id,
-      userId: admin.id,
+      name: "Empty Fleet Counts",
     });
+
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicle-counts`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const response = await GET_VEHICLE_COUNTS(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -587,24 +645,42 @@ describe("Fleet Vehicle Counts - GET /api/fleets/[id]/vehicle-counts", () => {
   });
 
   test("returns correct counts grouped by status", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Counts Mixed" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Counts Mixed",
+    });
 
-    const vAvail1 = await createVehicle({ companyId: company.id, status: "AVAILABLE" });
-    const vAvail2 = await createVehicle({ companyId: company.id, status: "AVAILABLE" });
-    const vAssigned = await createVehicle({ companyId: company.id, status: "ASSIGNED" });
-    const vMaintenance = await createVehicle({ companyId: company.id, status: "IN_MAINTENANCE" });
+    const vAvail1 = await createVehicle({
+      companyId: company.id,
+      status: "AVAILABLE",
+    });
+    const vAvail2 = await createVehicle({
+      companyId: company.id,
+      status: "AVAILABLE",
+    });
+    const vAssigned = await createVehicle({
+      companyId: company.id,
+      status: "ASSIGNED",
+    });
+    const vMaintenance = await createVehicle({
+      companyId: company.id,
+      status: "IN_MAINTENANCE",
+    });
 
     await linkVehicleToFleet(company.id, vAvail1.id, fleet.id);
     await linkVehicleToFleet(company.id, vAvail2.id, fleet.id);
     await linkVehicleToFleet(company.id, vAssigned.id, fleet.id);
     await linkVehicleToFleet(company.id, vMaintenance.id, fleet.id);
 
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicle-counts`, {
-      method: "GET",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicle-counts`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const response = await GET_VEHICLE_COUNTS(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -622,18 +698,30 @@ describe("Fleet Vehicle Counts - GET /api/fleets/[id]/vehicle-counts", () => {
   });
 
   test("excludes inactive vehicle-fleet links from counts", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Counts Inactive Links" });
-    const v1 = await createVehicle({ companyId: company.id, status: "AVAILABLE" });
-    const v2 = await createVehicle({ companyId: company.id, status: "AVAILABLE" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Counts Inactive Links",
+    });
+    const v1 = await createVehicle({
+      companyId: company.id,
+      status: "AVAILABLE",
+    });
+    const v2 = await createVehicle({
+      companyId: company.id,
+      status: "AVAILABLE",
+    });
     await linkVehicleToFleet(company.id, v1.id, fleet.id, true);
     await linkVehicleToFleet(company.id, v2.id, fleet.id, false); // inactive link
 
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicle-counts`, {
-      method: "GET",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicle-counts`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const response = await GET_VEHICLE_COUNTS(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -648,12 +736,15 @@ describe("Fleet Vehicle Counts - GET /api/fleets/[id]/vehicle-counts", () => {
   test("returns 404 for non-existent fleet", async () => {
     const fakeId = "00000000-0000-0000-0000-000000000000";
 
-    const request = await createTestRequest(`/api/fleets/${fakeId}/vehicle-counts`, {
-      method: "GET",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/fleets/${fakeId}/vehicle-counts`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const response = await GET_VEHICLE_COUNTS(request, {
       params: Promise.resolve({ id: fakeId }),
@@ -665,11 +756,17 @@ describe("Fleet Vehicle Counts - GET /api/fleets/[id]/vehicle-counts", () => {
   });
 
   test("returns 401 when no auth token is provided", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Counts Auth" });
-
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicle-counts`, {
-      method: "GET",
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Counts Auth",
     });
+
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicle-counts`,
+      {
+        method: "GET",
+      },
+    );
 
     const response = await GET_VEHICLE_COUNTS(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -678,8 +775,14 @@ describe("Fleet Vehicle Counts - GET /api/fleets/[id]/vehicle-counts", () => {
   });
 
   test("enforces tenant isolation on vehicle-counts", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Counts Tenant" });
-    const v = await createVehicle({ companyId: company.id, status: "AVAILABLE" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Counts Tenant",
+    });
+    const v = await createVehicle({
+      companyId: company.id,
+      status: "AVAILABLE",
+    });
     await linkVehicleToFleet(company.id, v.id, fleet.id);
 
     const companyB = await createCompany();
@@ -691,12 +794,15 @@ describe("Fleet Vehicle Counts - GET /api/fleets/[id]/vehicle-counts", () => {
       role: plannerB.role,
     });
 
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicle-counts`, {
-      method: "GET",
-      token: tokenB,
-      companyId: companyB.id,
-      userId: plannerB.id,
-    });
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicle-counts`,
+      {
+        method: "GET",
+        token: tokenB,
+        companyId: companyB.id,
+        userId: plannerB.id,
+      },
+    );
 
     const response = await GET_VEHICLE_COUNTS(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -730,14 +836,20 @@ describe("Fleet Vehicles - GET /api/fleets/[id]/vehicles", () => {
   });
 
   test("returns empty list when fleet has no vehicles", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Empty Fleet Vehicles" });
-
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicles`, {
-      method: "GET",
-      token,
+    const fleet = await createFleet({
       companyId: company.id,
-      userId: admin.id,
+      name: "Empty Fleet Vehicles",
     });
+
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicles`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const response = await GET_FLEET_VEHICLES(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -752,20 +864,38 @@ describe("Fleet Vehicles - GET /api/fleets/[id]/vehicles", () => {
   });
 
   test("returns vehicles belonging to the fleet", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Vehicles List" });
-    const v1 = await createVehicle({ companyId: company.id, name: "VList-1", plate: "VL-001" });
-    const v2 = await createVehicle({ companyId: company.id, name: "VList-2", plate: "VL-002" });
-    const v3 = await createVehicle({ companyId: company.id, name: "VList-3", plate: "VL-003" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Vehicles List",
+    });
+    const v1 = await createVehicle({
+      companyId: company.id,
+      name: "VList-1",
+      plate: "VL-001",
+    });
+    const v2 = await createVehicle({
+      companyId: company.id,
+      name: "VList-2",
+      plate: "VL-002",
+    });
+    const v3 = await createVehicle({
+      companyId: company.id,
+      name: "VList-3",
+      plate: "VL-003",
+    });
     await linkVehicleToFleet(company.id, v1.id, fleet.id);
     await linkVehicleToFleet(company.id, v2.id, fleet.id);
     await linkVehicleToFleet(company.id, v3.id, fleet.id);
 
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicles`, {
-      method: "GET",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicles`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const response = await GET_FLEET_VEHICLES(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -783,18 +913,24 @@ describe("Fleet Vehicles - GET /api/fleets/[id]/vehicles", () => {
   });
 
   test("excludes inactive vehicle-fleet links", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Vehicles Inactive" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Vehicles Inactive",
+    });
     const v1 = await createVehicle({ companyId: company.id });
     const v2 = await createVehicle({ companyId: company.id });
     await linkVehicleToFleet(company.id, v1.id, fleet.id, true);
     await linkVehicleToFleet(company.id, v2.id, fleet.id, false); // inactive
 
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicles`, {
-      method: "GET",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicles`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const response = await GET_FLEET_VEHICLES(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -807,19 +943,31 @@ describe("Fleet Vehicles - GET /api/fleets/[id]/vehicles", () => {
   });
 
   test("supports filtering by vehicle status", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Status Filter" });
-    const vAvail = await createVehicle({ companyId: company.id, status: "AVAILABLE" });
-    const vAssigned = await createVehicle({ companyId: company.id, status: "ASSIGNED" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Status Filter",
+    });
+    const vAvail = await createVehicle({
+      companyId: company.id,
+      status: "AVAILABLE",
+    });
+    const vAssigned = await createVehicle({
+      companyId: company.id,
+      status: "ASSIGNED",
+    });
     await linkVehicleToFleet(company.id, vAvail.id, fleet.id);
     await linkVehicleToFleet(company.id, vAssigned.id, fleet.id);
 
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicles`, {
-      method: "GET",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-      searchParams: { status: "AVAILABLE" },
-    });
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicles`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        searchParams: { status: "AVAILABLE" },
+      },
+    );
 
     const response = await GET_FLEET_VEHICLES(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -833,7 +981,10 @@ describe("Fleet Vehicles - GET /api/fleets/[id]/vehicles", () => {
   });
 
   test("supports pagination with limit and offset", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Pagination" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Pagination",
+    });
 
     // Create 5 vehicles
     const vehiclePromises = Array.from({ length: 5 }, (_, i) =>
@@ -846,13 +997,16 @@ describe("Fleet Vehicles - GET /api/fleets/[id]/vehicles", () => {
     }
 
     // Request page of 2
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicles`, {
-      method: "GET",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-      searchParams: { limit: "2", offset: "0" },
-    });
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicles`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        searchParams: { limit: "2", offset: "0" },
+      },
+    );
 
     const response = await GET_FLEET_VEHICLES(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -886,11 +1040,17 @@ describe("Fleet Vehicles - GET /api/fleets/[id]/vehicles", () => {
   });
 
   test("returns 401 when no auth token is provided", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Vehicles Auth" });
-
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicles`, {
-      method: "GET",
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Vehicles Auth",
     });
+
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicles`,
+      {
+        method: "GET",
+      },
+    );
 
     const response = await GET_FLEET_VEHICLES(request, {
       params: Promise.resolve({ id: fleet.id }),
@@ -899,7 +1059,10 @@ describe("Fleet Vehicles - GET /api/fleets/[id]/vehicles", () => {
   });
 
   test("enforces tenant isolation on fleet vehicles", async () => {
-    const fleet = await createFleet({ companyId: company.id, name: "Fleet Vehicles Tenant" });
+    const fleet = await createFleet({
+      companyId: company.id,
+      name: "Fleet Vehicles Tenant",
+    });
     const v = await createVehicle({ companyId: company.id });
     await linkVehicleToFleet(company.id, v.id, fleet.id);
 
@@ -912,12 +1075,15 @@ describe("Fleet Vehicles - GET /api/fleets/[id]/vehicles", () => {
       role: plannerB.role,
     });
 
-    const request = await createTestRequest(`/api/fleets/${fleet.id}/vehicles`, {
-      method: "GET",
-      token: tokenB,
-      companyId: companyB.id,
-      userId: plannerB.id,
-    });
+    const request = await createTestRequest(
+      `/api/fleets/${fleet.id}/vehicles`,
+      {
+        method: "GET",
+        token: tokenB,
+        companyId: companyB.id,
+        userId: plannerB.id,
+      },
+    );
 
     const response = await GET_FLEET_VEHICLES(request, {
       params: Promise.resolve({ id: fleet.id }),

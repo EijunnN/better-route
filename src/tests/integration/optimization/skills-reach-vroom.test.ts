@@ -21,8 +21,11 @@
  * plumbing, not VROOM's decisions.
  */
 
-import { describe, test, expect, beforeAll, beforeEach, mock } from "bun:test";
-import { cleanDatabase } from "../setup/test-db";
+import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import type {
+  OrderForOptimization,
+  VehicleForOptimization,
+} from "@/lib/optimization/vroom-optimizer";
 import {
   createAdmin,
   createCompany,
@@ -33,10 +36,7 @@ import {
   createVehicleSkill,
   createVehicleSkillAssignment,
 } from "../setup/test-data";
-import type {
-  OrderForOptimization,
-  VehicleForOptimization,
-} from "@/lib/optimization/vroom-optimizer";
+import { cleanDatabase } from "../setup/test-db";
 
 // Override the default preload mock to capture VROOM arguments. The preload
 // file already mocks this module with a no-op; bun's mock.module lets us
@@ -89,13 +89,18 @@ describe("optimization runner → VROOM: skills plumbing", () => {
     capturedCalls.length = 0;
   });
 
-  test(
-    "passes vehicle skills and order skillsRequired to VROOM (no-zones path)",
-    async () => {
-    const company = await createCompany({ legalName: "Skills Test Co", commercialName: "Skills Test" });
+  test("passes vehicle skills and order skillsRequired to VROOM (no-zones path)", async () => {
+    const company = await createCompany({
+      legalName: "Skills Test Co",
+      commercialName: "Skills Test",
+    });
     await createAdmin(company.id);
-    const driver1 = await createDriver(company.id, { email: `d1-${Date.now()}@t.co` });
-    const driver2 = await createDriver(company.id, { email: `d2-${Date.now()}@t.co` });
+    const driver1 = await createDriver(company.id, {
+      email: `d1-${Date.now()}@t.co`,
+    });
+    const driver2 = await createDriver(company.id, {
+      email: `d2-${Date.now()}@t.co`,
+    });
 
     const refrigerado = await createVehicleSkill({
       companyId: company.id,
@@ -155,16 +160,17 @@ describe("optimization runner → VROOM: skills plumbing", () => {
 
     const ambientVehicleArg = vehicles.find((v) => v.id === ambient.id);
     expect(ambientVehicleArg?.skills).toBeUndefined();
-    },
-    30000,
-  );
+  }, 30000);
 
-  test(
-    "parses CSV with whitespace and ignores blanks",
-    async () => {
-    const company = await createCompany({ legalName: "Skills CSV Co", commercialName: "Skills CSV" });
+  test("parses CSV with whitespace and ignores blanks", async () => {
+    const company = await createCompany({
+      legalName: "Skills CSV Co",
+      commercialName: "Skills CSV",
+    });
     await createAdmin(company.id);
-    const driver = await createDriver(company.id, { email: `d-${Date.now()}@t.co` });
+    const driver = await createDriver(company.id, {
+      email: `d-${Date.now()}@t.co`,
+    });
 
     await createVehicleSkill({
       companyId: company.id,
@@ -205,7 +211,5 @@ describe("optimization runner → VROOM: skills plumbing", () => {
       (o) => o.trackingId === "MULTI-SKILL",
     );
     expect(orderArg?.skillsRequired).toEqual(["FRAGIL", "URGENTE"]);
-    },
-    30000,
-  );
+  }, 30000);
 });

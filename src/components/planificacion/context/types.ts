@@ -1,13 +1,13 @@
 import type { CsvImportPreview } from "@/components/orders/csv-import-preview-dialog";
 import type {
-  Vehicle,
-  Fleet,
-  Order,
-  Zone,
   CompanyProfile,
   CsvRow,
-  StepId,
   FieldDefinition,
+  Fleet,
+  Order,
+  StepId,
+  Vehicle,
+  Zone,
 } from "../planificacion-types";
 
 // State
@@ -62,7 +62,11 @@ export interface PlanificacionState {
   // Custom field definitions
   fieldDefinitions: FieldDefinition[];
   // CSV custom field column mappings (CSV header -> field definition code)
-  csvCustomFieldMappings: Array<{ csvHeader: string; code: string; label: string }>;
+  csvCustomFieldMappings: Array<{
+    csvHeader: string;
+    code: string;
+    label: string;
+  }>;
 }
 
 // Actions
@@ -95,7 +99,9 @@ export interface PlanificacionActions {
   setError: (error: string | null) => void;
   // CSV
   setShowCsvUpload: (show: boolean) => void;
-  handleCsvFileChange: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  handleCsvFileChange: (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => Promise<void>;
   handleCsvUpload: () => Promise<void>;
   handleCsvConfirm: (input: {
     previewId: string;
@@ -114,10 +120,18 @@ export interface PlanificacionActions {
   downloadCsvTemplate: () => Promise<void>;
   // Order edit
   openEditOrder: (order: Order) => void;
-  setEditOrderData: (data: { address: string; latitude: string; longitude: string }) => void;
+  setEditOrderData: (data: {
+    address: string;
+    latitude: string;
+    longitude: string;
+  }) => void;
   saveOrderChanges: () => Promise<void>;
   closeEditOrder: () => void;
-  updateOrderLocation: (orderId: string, latitude: string, longitude: string) => Promise<void>;
+  updateOrderLocation: (
+    orderId: string,
+    latitude: string,
+    longitude: string,
+  ) => Promise<void>;
 }
 
 // Meta

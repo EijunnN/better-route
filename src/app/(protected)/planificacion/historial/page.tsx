@@ -1,12 +1,12 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { HistorialProvider } from "@/components/planificacion/historial-context";
 import {
-  HistorialHeader,
-  HistorialError,
   HistorialContent,
+  HistorialError,
+  HistorialHeader,
 } from "@/components/planificacion/historial-components";
+import { HistorialProvider } from "@/components/planificacion/historial-context";
 
 function PlanificacionHistorialPageContent() {
   return (

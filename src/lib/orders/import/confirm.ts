@@ -6,11 +6,7 @@ import {
   updateTableStatistics,
 } from "@/lib/orders/batch-operations";
 import { resolveProfileSchema } from "@/lib/orders/profile-schema";
-import {
-  dropStoredPreview,
-  loadStoredPreview,
-  type StoredPreview,
-} from "./preview";
+import { dropStoredPreview, loadStoredPreview } from "./preview";
 
 export interface ConfirmCsvImportInput {
   previewId: string;
@@ -95,7 +91,9 @@ export async function confirmCsvImport(
   // ── Inserts ──────────────────────────────────────────────────────────
   let inserted = 0;
   if (stored.newRows.length > 0) {
-    const payload = stored.newRows.map((r) => buildOrderInsert(r.data, customFieldKeys));
+    const payload = stored.newRows.map((r) =>
+      buildOrderInsert(r.data, customFieldKeys),
+    );
     const result = await batchInsertOrders(payload, context.companyId, {
       batchSize: 500,
       timeout: 300000,
@@ -207,7 +205,9 @@ function buildOrderInsert(
     strictness: (data.strictness === "HARD" || data.strictness === "SOFT"
       ? data.strictness
       : null) as "HARD" | "SOFT" | null,
-    promisedDate: data.promisedDate ? new Date(String(data.promisedDate)) : null,
+    promisedDate: data.promisedDate
+      ? new Date(String(data.promisedDate))
+      : null,
     weightRequired: num(data.weightRequired),
     volumeRequired: num(data.volumeRequired),
     orderValue: num(data.orderValue),
@@ -230,7 +230,8 @@ function buildReactivationOverrides(
   data: Record<string, unknown>,
 ): Partial<typeof orders.$inferInsert> {
   const out: Partial<typeof orders.$inferInsert> = {};
-  if (typeof data.address === "string" && data.address) out.address = data.address;
+  if (typeof data.address === "string" && data.address)
+    out.address = data.address;
   if (typeof data.latitude === "string" && data.latitude)
     out.latitude = data.latitude;
   if (typeof data.longitude === "string" && data.longitude)

@@ -3,15 +3,18 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { routeStops } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // POST - Create route stops from optimization job result
 export async function POST(request: NextRequest) {
-  const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.CREATE);
+  const authResult = await requireRoutePermission(
+    request,
+    EntityType.ROUTE_STOP,
+    Action.CREATE,
+  );
   if (authResult instanceof NextResponse) return authResult;
   const tenantCtx = extractTenantContextAuthed(request, authResult);
   if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -100,7 +103,11 @@ export async function POST(request: NextRequest) {
 // GET - List route stops with filters
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE_STOP, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE_STOP,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -139,7 +146,13 @@ export async function GET(request: NextRequest) {
       offset,
       with: {
         user: {
-          columns: { id: true, name: true, email: true, role: true, phone: true },
+          columns: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            phone: true,
+          },
         },
         vehicle: {
           columns: { id: true, name: true, plate: true, status: true },

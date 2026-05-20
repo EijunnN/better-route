@@ -3,13 +3,12 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { updateTimeWindowPresetSchema } from "@/lib/validations/time-window-preset";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { updateTimeWindowPresetSchema } from "@/lib/validations/time-window-preset";
 
 async function getTimeWindowPreset(id: string, _companyId: string) {
   const whereClause = withTenantFilter(timeWindowPresets, [
@@ -29,7 +28,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.TIME_WINDOW_PRESET, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.TIME_WINDOW_PRESET,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -61,7 +64,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.TIME_WINDOW_PRESET, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.TIME_WINDOW_PRESET,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -142,7 +149,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.TIME_WINDOW_PRESET, Action.DELETE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.TIME_WINDOW_PRESET,
+      Action.DELETE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

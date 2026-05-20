@@ -1,20 +1,20 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
+import { PATCH } from "@/app/api/route-stops/[id]/route";
+import { orders, routeStopHistory } from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
   createAdmin,
+  createCompany,
   createDriver,
-  createVehicle,
-  createOrder,
   createOptimizationConfig,
   createOptimizationJob,
+  createOrder,
   createRouteStop,
+  createVehicle,
 } from "../setup/test-data";
-import { orders, routeStopHistory, routeStops } from "@/db/schema";
-import { PATCH } from "@/app/api/route-stops/[id]/route";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("PATCH /api/route-stops/[id] — status transitions", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -29,13 +29,21 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
   let job: Awaited<ReturnType<typeof createOptimizationJob>>;
 
   // Helper: create a fresh route stop with a new order for each test
-  async function freshStop(overrides: {
-    status?: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED" | "SKIPPED";
-    userId?: string;
-    failureReason?: string;
-    evidenceUrls?: string[];
-    orderStatus?: "PENDING" | "ASSIGNED" | "COMPLETED" | "FAILED" | "IN_PROGRESS" | "CANCELLED";
-  } = {}) {
+  async function freshStop(
+    overrides: {
+      status?: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED" | "SKIPPED";
+      userId?: string;
+      failureReason?: string;
+      evidenceUrls?: string[];
+      orderStatus?:
+        | "PENDING"
+        | "ASSIGNED"
+        | "COMPLETED"
+        | "FAILED"
+        | "IN_PROGRESS"
+        | "CANCELLED";
+    } = {},
+  ) {
     const order = await createOrder({
       companyId: company.id,
       status: overrides.orderStatus ?? "ASSIGNED",
@@ -141,7 +149,7 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
     const dbOrder = await testDb.query.orders.findFirst({
       where: eq(orders.id, order.id),
     });
-    expect(dbOrder!.status).toBe("COMPLETED");
+    expect(dbOrder?.status).toBe("COMPLETED");
   });
 
   // -----------------------------------------------------------------------
@@ -176,7 +184,7 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
     const dbOrder = await testDb.query.orders.findFirst({
       where: eq(orders.id, order.id),
     });
-    expect(dbOrder!.status).toBe("FAILED");
+    expect(dbOrder?.status).toBe("FAILED");
   });
 
   // -----------------------------------------------------------------------
@@ -312,7 +320,7 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
     const dbOrder = await testDb.query.orders.findFirst({
       where: eq(orders.id, order.id),
     });
-    expect(dbOrder!.status).toBe("COMPLETED");
+    expect(dbOrder?.status).toBe("COMPLETED");
   });
 
   // -----------------------------------------------------------------------
@@ -330,7 +338,7 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
     const dbOrder = await testDb.query.orders.findFirst({
       where: eq(orders.id, order.id),
     });
-    expect(dbOrder!.status).toBe("IN_PROGRESS");
+    expect(dbOrder?.status).toBe("IN_PROGRESS");
   });
 
   // -----------------------------------------------------------------------
@@ -348,7 +356,7 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
     const dbOrder = await testDb.query.orders.findFirst({
       where: eq(orders.id, order.id),
     });
-    expect(dbOrder!.status).toBe("CANCELLED");
+    expect(dbOrder?.status).toBe("CANCELLED");
   });
 
   // -----------------------------------------------------------------------
@@ -360,10 +368,14 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
       userId: driver.id,
     });
 
-    const res = await patchStop(stop.id, { status: "IN_PROGRESS" }, {
-      token: driverToken,
-      userId: driver.id,
-    });
+    const res = await patchStop(
+      stop.id,
+      { status: "IN_PROGRESS" },
+      {
+        token: driverToken,
+        userId: driver.id,
+      },
+    );
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -380,10 +392,14 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
     });
 
     // driverB tries to update driver's stop
-    const res = await patchStop(stop.id, { status: "IN_PROGRESS" }, {
-      token: driverBToken,
-      userId: driverB.id,
-    });
+    const res = await patchStop(
+      stop.id,
+      { status: "IN_PROGRESS" },
+      {
+        token: driverBToken,
+        userId: driverB.id,
+      },
+    );
     expect(res.status).toBe(403);
 
     const body = await res.json();
@@ -409,11 +425,11 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
     });
 
     expect(history).toBeDefined();
-    expect(history!.previousStatus).toBe("IN_PROGRESS");
-    expect(history!.newStatus).toBe("FAILED");
-    expect(history!.notes).toBe("Zone was restricted");
-    expect(history!.metadata).toBeDefined();
-    const meta = history!.metadata as Record<string, unknown>;
+    expect(history?.previousStatus).toBe("IN_PROGRESS");
+    expect(history?.newStatus).toBe("FAILED");
+    expect(history?.notes).toBe("Zone was restricted");
+    expect(history?.metadata).toBeDefined();
+    const meta = history?.metadata as Record<string, unknown>;
     expect(meta.failureReason).toBe("UNSAFE_AREA");
     expect(meta.evidenceUrls).toEqual(["https://example.com/evidence.jpg"]);
   });
@@ -441,9 +457,9 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
       where: eq(routeStopHistory.routeStopId, stop.id),
     });
     expect(history).toBeDefined();
-    expect(history!.previousStatus).toBe("IN_PROGRESS");
-    expect(history!.newStatus).toBe("COMPLETED");
-    const meta = history!.metadata as Record<string, unknown>;
+    expect(history?.previousStatus).toBe("IN_PROGRESS");
+    expect(history?.newStatus).toBe("COMPLETED");
+    const meta = history?.metadata as Record<string, unknown>;
     expect(meta.evidenceUrls).toEqual(proofUrls);
   });
 });

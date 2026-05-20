@@ -1,13 +1,13 @@
 "use client";
 
 import { Download, Loader2, RotateCcw, Save, Settings } from "lucide-react";
+import { Can, useCan } from "@/components/auth/can";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Can, useCan } from "@/components/auth/can";
 import { CapacityDimensionsCard } from "./capacity-dimensions-card";
+import { useConfiguracion } from "./configuracion-context";
 import { PrioritySlidersSection } from "./priority-sliders-section";
 import { TrackingSettingsSection } from "./tracking-settings-section";
-import { useConfiguracion } from "./configuracion-context";
 
 export function ConfiguracionView() {
   const { state, actions } = useConfiguracion();

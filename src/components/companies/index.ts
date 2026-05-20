@@ -1,3 +1,7 @@
+export type {
+  CompaniesActions,
+  CompaniesState,
+  Company,
+} from "./companies-context";
 export { CompaniesProvider, useCompanies } from "./companies-context";
-export type { Company, CompaniesState, CompaniesActions } from "./companies-context";
-export { CompaniesListView, CompaniesFormView } from "./companies-views";
+export { CompaniesFormView, CompaniesListView } from "./companies-views";

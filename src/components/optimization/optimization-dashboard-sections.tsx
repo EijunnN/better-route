@@ -3,9 +3,8 @@
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   ArrowLeftRight,
-  BarChart3,
+  ArrowRight,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -46,24 +45,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import { exportPlanToExcel } from "@/lib/export/export-plan-excel";
+import { cn } from "@/lib/utils";
 import { DriverAssignmentDisplay } from "./driver-assignment-quality";
-import { PencilSelectOverlay } from "./pencil-select-overlay";
-import { PlanConfirmationDialog } from "./plan-confirmation-dialog";
-import { RouteMap, ROUTE_COLORS } from "./route-map";
 import {
-  useOptimizationDashboard,
   formatDistance,
   formatDuration,
   type RouteData,
+  useOptimizationDashboard,
 } from "./optimization-dashboard-context";
+import { PencilSelectOverlay } from "./pencil-select-overlay";
+import { PlanConfirmationDialog } from "./plan-confirmation-dialog";
+import { ROUTE_COLORS, RouteMap } from "./route-map";
 
 /** Format a time window value that may be HH:mm, HH:mm:ss, or an ISO date string */
 function formatTimeWindow(value: string): string {
   if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(value)) return value.slice(0, 5);
   const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
+  if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
@@ -306,57 +305,59 @@ function CompactRouteCard({
                   stop.groupedTrackingIds && stop.groupedTrackingIds.length > 1;
 
                 if (isGrouped) {
-                  return stop.groupedTrackingIds!.map((trackingId, subIndex) => {
-                    const orderId =
-                      stop.groupedOrderIds?.[subIndex] || stop.orderId;
-                    const selected = isOrderSelected(orderId);
-                    return (
-                      <div
-                        key={`${stop.orderId}-${subIndex}`}
-                        className={cn(
-                          "flex items-center gap-2 px-2 py-1.5 text-xs group cursor-pointer transition-colors",
-                          selected ? "bg-primary/10" : "hover:bg-accent/50",
-                        )}
-                        onClick={() =>
-                          toggleOrderSelection(
-                            orderId,
-                            trackingId,
-                            stop.address,
-                            route.vehicleId,
-                            route.vehicleIdentifier,
-                            route.routeId,
-                          )
-                        }
-                      >
+                  return stop.groupedTrackingIds?.map(
+                    (trackingId, subIndex) => {
+                      const orderId =
+                        stop.groupedOrderIds?.[subIndex] || stop.orderId;
+                      const selected = isOrderSelected(orderId);
+                      return (
                         <div
+                          key={`${stop.orderId}-${subIndex}`}
                           className={cn(
-                            "size-4 rounded border flex items-center justify-center shrink-0 transition-colors",
-                            selected
-                              ? "bg-primary border-primary"
-                              : "border-muted-foreground/30",
+                            "flex items-center gap-2 px-2 py-1.5 text-xs group cursor-pointer transition-colors",
+                            selected ? "bg-primary/10" : "hover:bg-accent/50",
                           )}
+                          onClick={() =>
+                            toggleOrderSelection(
+                              orderId,
+                              trackingId,
+                              stop.address,
+                              route.vehicleId,
+                              route.vehicleIdentifier,
+                              route.routeId,
+                            )
+                          }
                         >
-                          {selected && (
-                            <Check className="size-3 text-primary-foreground" />
+                          <div
+                            className={cn(
+                              "size-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                              selected
+                                ? "bg-primary border-primary"
+                                : "border-muted-foreground/30",
+                            )}
+                          >
+                            {selected && (
+                              <Check className="size-3 text-primary-foreground" />
+                            )}
+                          </div>
+                          <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">
+                            R{routeNumber}-{stop.sequence}.{subIndex + 1}
+                          </span>
+                          <span className="font-medium shrink-0">
+                            {trackingId}
+                          </span>
+                          <span className="text-muted-foreground truncate flex-1">
+                            {stop.address}
+                          </span>
+                          {stop.timeWindow && subIndex === 0 && (
+                            <span className="text-muted-foreground text-[10px] shrink-0">
+                              {formatTimeWindow(stop.timeWindow.start)}
+                            </span>
                           )}
                         </div>
-                        <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">
-                          R{routeNumber}-{stop.sequence}.{subIndex + 1}
-                        </span>
-                        <span className="font-medium shrink-0">
-                          {trackingId}
-                        </span>
-                        <span className="text-muted-foreground truncate flex-1">
-                          {stop.address}
-                        </span>
-                        {stop.timeWindow && subIndex === 0 && (
-                          <span className="text-muted-foreground text-[10px] shrink-0">
-                            {formatTimeWindow(stop.timeWindow.start)}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  });
+                      );
+                    },
+                  );
                 }
 
                 const selected = isOrderSelected(stop.orderId);
@@ -515,7 +516,10 @@ export function DashboardHeader() {
         <div className="h-6 w-px bg-border" />
         <h1 className="text-lg font-semibold">Resultados</h1>
         {isPartial && (
-          <Badge variant="outline" className="text-orange-600 border-orange-600">
+          <Badge
+            variant="outline"
+            className="text-orange-600 border-orange-600"
+          >
             Parcial
           </Badge>
         )}
@@ -523,8 +527,16 @@ export function DashboardHeader() {
 
       {/* KPI Strip (Desktop) */}
       <div className="hidden md:flex items-center gap-2">
-        <KpiBadge icon={Truck} label="rutas" value={result.metrics.totalRoutes} />
-        <KpiBadge icon={MapPin} label="paradas" value={result.metrics.totalStops} />
+        <KpiBadge
+          icon={Truck}
+          label="rutas"
+          value={result.metrics.totalRoutes}
+        />
+        <KpiBadge
+          icon={MapPin}
+          label="paradas"
+          value={result.metrics.totalStops}
+        />
         <KpiBadge
           icon={Ruler}
           label=""
@@ -661,7 +673,9 @@ export function DashboardRoutesPanel() {
     <div className="w-96 lg:w-[450px] xl:w-[500px] border-r flex flex-col shrink-0">
       <div className="px-4 py-2 border-b bg-muted/30">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">{result.routes.length} Rutas</span>
+          <span className="text-sm font-medium">
+            {result.routes.length} Rutas
+          </span>
           <span className="text-xs text-muted-foreground">
             {formatDuration(result.metrics.totalDuration)} total
           </span>
@@ -788,7 +802,9 @@ export function DashboardMapPanel() {
           <CardContent className="p-3">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
               <span>Optimizado: {result.summary.objective}</span>
-              <span>{(result.summary.processingTimeMs / 1000).toFixed(1)}s</span>
+              <span>
+                {(result.summary.processingTimeMs / 1000).toFixed(1)}s
+              </span>
             </div>
             <div className="text-xs text-muted-foreground">
               {new Date(result.summary.optimizedAt).toLocaleString()}
@@ -810,7 +826,8 @@ export function ReassignmentDialog() {
     isReassigning,
     reassignmentError,
   } = state;
-  const { setSelectedVehicleForReassign, handleReassignment, clearSelection } = actions;
+  const { setSelectedVehicleForReassign, handleReassignment, clearSelection } =
+    actions;
   const { availableVehicles } = derived;
 
   return (
@@ -847,7 +864,10 @@ export function ReassignmentDialog() {
             </label>
             <div className="max-h-24 overflow-y-auto border rounded-lg p-2 space-y-1">
               {selectedOrdersForReassign.map((order) => (
-                <div key={order.orderId} className="flex items-center gap-2 text-xs">
+                <div
+                  key={order.orderId}
+                  className="flex items-center gap-2 text-xs"
+                >
                   <Package className="size-3 text-muted-foreground shrink-0" />
                   <span className="font-medium">{order.trackingId}</span>
                   {order.vehiclePlate && (
@@ -878,7 +898,9 @@ export function ReassignmentDialog() {
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Truck className="size-4 shrink-0" />
-                    <span className="font-medium truncate">{vehicle.plate}</span>
+                    <span className="font-medium truncate">
+                      {vehicle.plate}
+                    </span>
                     {vehicle.driverName && (
                       <span className="text-xs opacity-70 truncate">
                         ({vehicle.driverName})
@@ -887,7 +909,9 @@ export function ReassignmentDialog() {
                   </div>
                   <div className="flex items-center gap-2 text-xs shrink-0 ml-2">
                     {vehicle.hasRoute ? (
-                      <span className="opacity-70">{vehicle.stopCount} paradas</span>
+                      <span className="opacity-70">
+                        {vehicle.stopCount} paradas
+                      </span>
                     ) : (
                       <Badge variant="outline" className="text-xs">
                         Sin ruta
@@ -908,7 +932,11 @@ export function ReassignmentDialog() {
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" disabled={isReassigning} onClick={clearSelection}>
+          <Button
+            variant="outline"
+            disabled={isReassigning}
+            onClick={clearSelection}
+          >
             Cancelar
           </Button>
           <Button

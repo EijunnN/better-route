@@ -3,22 +3,24 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { releaseCompanyLock } from "@/lib/infra/job-queue";
-import { cancelOptimizationJob } from "@/lib/optimization/optimization-job";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
-import { safeParseJson } from "@/lib/utils/safe-json";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { releaseCompanyLock } from "@/lib/infra/job-queue";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { cancelOptimizationJob } from "@/lib/optimization/optimization-job";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { safeParseJson } from "@/lib/utils/safe-json";
 // GET - Get job status
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_JOB, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_JOB,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -78,7 +80,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_JOB, Action.DELETE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_JOB,
+      Action.DELETE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -98,10 +104,18 @@ export async function DELETE(
     }
 
     // For COMPLETED/FAILED/CANCELLED jobs: soft-delete and release company lock
-    if (job.status === "COMPLETED" || job.status === "FAILED" || job.status === "CANCELLED") {
+    if (
+      job.status === "COMPLETED" ||
+      job.status === "FAILED" ||
+      job.status === "CANCELLED"
+    ) {
       await db
         .update(optimizationJobs)
-        .set({ status: "CANCELLED", cancelledAt: new Date(), updatedAt: new Date() })
+        .set({
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+          updatedAt: new Date(),
+        })
         .where(eq(optimizationJobs.id, id));
 
       // Release the company lock so user can start a new optimization

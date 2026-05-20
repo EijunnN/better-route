@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -92,8 +92,8 @@ export function CancelOrderDialog({ open, onOpenChange, onConfirm }: Props) {
           </DialogTitle>
           <DialogDescription>
             Esta acción es irreversible. El pedido no podrá reactivarse desde
-            ningún flujo. Si el cliente vuelve a pedir, será un pedido nuevo
-            con otro tracking ID.
+            ningún flujo. Si el cliente vuelve a pedir, será un pedido nuevo con
+            otro tracking ID.
           </DialogDescription>
         </DialogHeader>
 

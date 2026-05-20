@@ -8,14 +8,13 @@
  * `@/lib/auth/authorization` and should be imported only from server code.
  */
 
-export {
-  EntityType,
-  Action,
-  WILDCARD_PERMISSION,
-  USER_ROLES,
-  permission,
-  parsePermission,
-  isPermission,
-} from "./types";
-
 export type { Permission, UserRole } from "./types";
+export {
+  Action,
+  EntityType,
+  isPermission,
+  parsePermission,
+  permission,
+  USER_ROLES,
+  WILDCARD_PERMISSION,
+} from "./types";

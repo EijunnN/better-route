@@ -1,7 +1,5 @@
 "use client";
 
-import dynamicImport from "next/dynamic";
-import { useEffect } from "react";
 import {
   Calendar,
   ChevronRight,
@@ -14,6 +12,10 @@ import {
   Trash2,
   Truck,
 } from "lucide-react";
+import dynamicImport from "next/dynamic";
+import { useEffect } from "react";
+import { Can } from "@/components/auth/can";
+import { useLayoutContext } from "@/components/layout/layout-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,17 +29,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Can } from "@/components/auth/can";
 import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
-import { useLayoutContext } from "@/components/layout/layout-context";
 import { ZoneForm } from "@/components/zones/zone-form";
 import { ZONE_TYPE_LABELS, type ZoneInput } from "@/lib/validations/zone";
-import { useZones, DAY_LABELS } from "./zones-context";
+import { DAY_LABELS, useZones } from "./zones-context";
 
 // Dynamic map components
 const ZoneMapEditor = dynamicImport(
-  () => import("@/components/zones/zone-map-editor").then((mod) => mod.ZoneMapEditor),
+  () =>
+    import("@/components/zones/zone-map-editor").then(
+      (mod) => mod.ZoneMapEditor,
+    ),
   {
     ssr: false,
     loading: () => (
@@ -45,23 +48,29 @@ const ZoneMapEditor = dynamicImport(
         <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     ),
-  }
+  },
 );
 
 const ZonePreviewMap = dynamicImport(
-  () => import("@/components/zones/zone-preview-map").then((mod) => mod.ZonePreviewMap),
+  () =>
+    import("@/components/zones/zone-preview-map").then(
+      (mod) => mod.ZonePreviewMap,
+    ),
   {
     ssr: false,
     loading: () => <div className="h-full bg-muted animate-pulse rounded-lg" />,
-  }
+  },
 );
 
 const ZoneFormPreview = dynamicImport(
-  () => import("@/components/zones/zone-form-preview").then((mod) => mod.ZoneFormPreview),
+  () =>
+    import("@/components/zones/zone-form-preview").then(
+      (mod) => mod.ZoneFormPreview,
+    ),
   {
     ssr: false,
     loading: () => <div className="h-full bg-muted animate-pulse rounded-lg" />,
-  }
+  },
 );
 
 export function ZonesListView() {
@@ -82,11 +91,15 @@ export function ZonesListView() {
             <div className="flex items-center gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <div className="size-2 rounded-full bg-green-500" />
-                <span className="text-muted-foreground">{derived.activeZonesCount} activas</span>
+                <span className="text-muted-foreground">
+                  {derived.activeZonesCount} activas
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Layers className="size-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{state.zones.length} total</span>
+                <span className="text-muted-foreground">
+                  {state.zones.length} total
+                </span>
               </div>
             </div>
             <Can perm="route:create">
@@ -123,16 +136,27 @@ export function ZonesListView() {
                 <Loader2 className="size-6 animate-spin" />
               </div>
             ) : state.error ? (
-              <ErrorState compact title="Error al cargar zonas" error={state.error} onRetry={actions.fetchZones} />
+              <ErrorState
+                compact
+                title="Error al cargar zonas"
+                error={state.error}
+                onRetry={actions.fetchZones}
+              />
             ) : derived.filteredZones.length === 0 ? (
               <div className="text-center py-12">
                 <MapPin className="size-12 mx-auto mb-3 text-muted-foreground opacity-50" />
                 <p className="text-muted-foreground">
-                  {state.searchQuery ? "Sin resultados" : "No hay zonas configuradas"}
+                  {state.searchQuery
+                    ? "Sin resultados"
+                    : "No hay zonas configuradas"}
                 </p>
                 {!state.searchQuery && (
                   <Can perm="route:create">
-                    <Button variant="link" onClick={actions.handleStartNew} className="mt-2">
+                    <Button
+                      variant="link"
+                      onClick={actions.handleStartNew}
+                      className="mt-2"
+                    >
                       Crear primera zona
                     </Button>
                   </Can>
@@ -196,7 +220,10 @@ function ZoneListItem({
       }`}
     >
       <div className="flex items-start gap-3">
-        <div className="size-4 rounded mt-0.5 shrink-0" style={{ backgroundColor: zone.color }} />
+        <div
+          className="size-4 rounded mt-0.5 shrink-0"
+          style={{ backgroundColor: zone.color }}
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">{zone.name}</span>
@@ -211,7 +238,10 @@ function ZoneListItem({
               </Badge>
             )}
             {!zone.active && (
-              <Badge variant="outline" className="text-[10px] px-1.5 text-muted-foreground">
+              <Badge
+                variant="outline"
+                className="text-[10px] px-1.5 text-muted-foreground"
+              >
                 Inactiva
               </Badge>
             )}
@@ -223,7 +253,8 @@ function ZoneListItem({
                 : "text-muted-foreground"
             }`}
           >
-            {ZONE_TYPE_LABELS[zone.type as keyof typeof ZONE_TYPE_LABELS] || zone.type}
+            {ZONE_TYPE_LABELS[zone.type as keyof typeof ZONE_TYPE_LABELS] ||
+              zone.type}
           </p>
           <div className="flex items-center gap-3 mt-2">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -303,8 +334,9 @@ function ZoneDetails() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>¿Desactivar zona?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Esta acción desactivará la zona <strong>{zone.name}</strong>. Los vehículos
-                      asignados serán desvinculados.
+                      Esta acción desactivará la zona{" "}
+                      <strong>{zone.name}</strong>. Los vehículos asignados
+                      serán desvinculados.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -337,7 +369,9 @@ function ZoneDetails() {
             <Calendar className="size-4" />
             <span>Días activos</span>
           </div>
-          <p className="text-xl font-semibold mt-1">{zone.activeDays?.length || 7}</p>
+          <p className="text-xl font-semibold mt-1">
+            {zone.activeDays?.length || 7}
+          </p>
         </div>
         <div className="p-3 rounded-lg bg-muted/50">
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -388,7 +422,10 @@ export function ZonesFormView() {
                 className="size-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: `${derived.currentFormColor}20` }}
               >
-                <MapPin className="size-5" style={{ color: derived.currentFormColor }} />
+                <MapPin
+                  className="size-5"
+                  style={{ color: derived.currentFormColor }}
+                />
               </div>
               <div>
                 <h1 className="text-xl font-semibold">
@@ -419,7 +456,9 @@ export function ZonesFormView() {
         <div className="w-[580px] shrink-0 overflow-y-auto border-r">
           <div className="p-6">
             <ZoneForm
-              onSubmit={state.editingZone ? actions.handleUpdate : actions.handleCreate}
+              onSubmit={
+                state.editingZone ? actions.handleUpdate : actions.handleCreate
+              }
               initialData={
                 state.pendingFormData ||
                 (state.editingZone
@@ -430,7 +469,8 @@ export function ZonesFormView() {
                       geometry: state.editingZone.geometry,
                       color: state.editingZone.color,
                       isDefault: state.editingZone.isDefault,
-                      activeDays: state.editingZone.activeDays as ZoneInput["activeDays"],
+                      activeDays: state.editingZone
+                        .activeDays as ZoneInput["activeDays"],
                       active: state.editingZone.active,
                       parsedGeometry: state.editingZone.parsedGeometry,
                     }
@@ -474,7 +514,9 @@ export function ZonesFormView() {
                     <Truck className="size-3.5" />
                     <span>Vehículos</span>
                   </div>
-                  <p className="text-lg font-semibold mt-1">{state.editingZone.vehicleCount}</p>
+                  <p className="text-lg font-semibold mt-1">
+                    {state.editingZone.vehicleCount}
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2 text-muted-foreground text-xs">
@@ -518,7 +560,8 @@ export function ZonesMapEditorView() {
       <div className="border-b bg-background px-6 py-4 shrink-0">
         <h1 className="text-xl font-semibold">Dibujar Área de Zona</h1>
         <p className="text-sm text-muted-foreground">
-          Haz clic en el mapa para agregar puntos. Cierra el polígono cerca del primer punto.
+          Haz clic en el mapa para agregar puntos. Cierra el polígono cerca del
+          primer punto.
         </p>
       </div>
       <div className="flex-1 min-h-0">

@@ -115,7 +115,11 @@ export interface HeaderValidationResult {
   /** Headers present in the CSV that didn't map to any known field. */
   extra: string[];
   /** Headers mapped via fuzzy/alias match — caller may want to confirm. */
-  ambiguous: Array<{ header: string; resolvedKey: string; confidence: "exact" | "alias" | "partial" }>;
+  ambiguous: Array<{
+    header: string;
+    resolvedKey: string;
+    confidence: "exact" | "alias" | "partial";
+  }>;
 }
 
 /** Per-row validation outcome. */

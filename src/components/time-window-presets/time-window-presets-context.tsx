@@ -1,10 +1,13 @@
 "use client";
 
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
+import type {
+  TIME_WINDOW_STRICTNESS,
+  TIME_WINDOW_TYPES,
+} from "@/lib/validations/time-window-preset";
 import type { TimeWindowPresetFormData } from "./time-window-preset-form";
-import type { TIME_WINDOW_STRICTNESS, TIME_WINDOW_TYPES } from "@/lib/validations/time-window-preset";
 
 export interface TimeWindowPreset {
   id: string;
@@ -62,9 +65,15 @@ interface TimeWindowPresetsContextValue {
   meta: TimeWindowPresetsMeta;
 }
 
-const TimeWindowPresetsContext = createContext<TimeWindowPresetsContextValue | undefined>(undefined);
+const TimeWindowPresetsContext = createContext<
+  TimeWindowPresetsContextValue | undefined
+>(undefined);
 
-export function TimeWindowPresetsProvider({ children }: { children: ReactNode }) {
+export function TimeWindowPresetsProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
   const { toast } = useToast();
 
@@ -72,7 +81,9 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [editingPreset, setEditingPreset] = useState<TimeWindowPreset | null>(null);
+  const [editingPreset, setEditingPreset] = useState<TimeWindowPreset | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchPresets = async () => {
@@ -86,7 +97,11 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
       setPresets(result.data || []);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudieron cargar los presets");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudieron cargar los presets",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -94,14 +109,17 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
 
   useEffect(() => {
     fetchPresets();
-  }, [companyId]);
+  }, [fetchPresets]);
 
   const handleCreate = async (data: TimeWindowPresetFormData) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/time-window-presets", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -110,11 +128,15 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
       }
       await fetchPresets();
       setShowForm(false);
-      toast({ title: "Preset creado", description: `El preset "${data.name}" ha sido creado exitosamente.` });
+      toast({
+        title: "Preset creado",
+        description: `El preset "${data.name}" ha sido creado exitosamente.`,
+      });
     } catch (err) {
       toast({
         title: "Error al crear preset",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -124,11 +146,17 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
   const handleUpdate = async (data: TimeWindowPresetFormData) => {
     if (!editingPreset || !companyId) return;
     try {
-      const response = await fetch(`/api/time-window-presets/${editingPreset.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-company-id": companyId },
-        body: JSON.stringify({ ...data, id: editingPreset.id }),
-      });
+      const response = await fetch(
+        `/api/time-window-presets/${editingPreset.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": companyId,
+          },
+          body: JSON.stringify({ ...data, id: editingPreset.id }),
+        },
+      );
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Error al actualizar el preset");
@@ -136,11 +164,15 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
       await fetchPresets();
       setEditingPreset(null);
       setShowForm(false);
-      toast({ title: "Preset actualizado", description: `El preset "${data.name}" ha sido actualizado exitosamente.` });
+      toast({
+        title: "Preset actualizado",
+        description: `El preset "${data.name}" ha sido actualizado exitosamente.`,
+      });
     } catch (err) {
       toast({
         title: "Error al actualizar preset",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -168,12 +200,15 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
       await fetchPresets();
       toast({
         title: "Preset eliminado",
-        description: preset ? `El preset "${preset.name}" ha sido eliminado.` : "El preset ha sido eliminado.",
+        description: preset
+          ? `El preset "${preset.name}" ha sido eliminado.`
+          : "El preset ha sido eliminado.",
       });
     } catch (err) {
       toast({
         title: "Error al eliminar preset",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -193,7 +228,14 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
     return `${preset.startTime} - ${preset.endTime}`;
   };
 
-  const state: TimeWindowPresetsState = { presets, isLoading, error, showForm, editingPreset, deletingId };
+  const state: TimeWindowPresetsState = {
+    presets,
+    isLoading,
+    error,
+    showForm,
+    editingPreset,
+    deletingId,
+  };
   const actions: TimeWindowPresetsActions = {
     fetchPresets,
     handleCreate,
@@ -206,13 +248,19 @@ export function TimeWindowPresetsProvider({ children }: { children: ReactNode })
   };
   const meta: TimeWindowPresetsMeta = { companyId, isReady };
 
-  return <TimeWindowPresetsContext value={{ state, actions, meta }}>{children}</TimeWindowPresetsContext>;
+  return (
+    <TimeWindowPresetsContext value={{ state, actions, meta }}>
+      {children}
+    </TimeWindowPresetsContext>
+  );
 }
 
 export function useTimeWindowPresets(): TimeWindowPresetsContextValue {
   const context = use(TimeWindowPresetsContext);
   if (context === undefined) {
-    throw new Error("useTimeWindowPresets must be used within a TimeWindowPresetsProvider");
+    throw new Error(
+      "useTimeWindowPresets must be used within a TimeWindowPresetsProvider",
+    );
   }
   return context;
 }

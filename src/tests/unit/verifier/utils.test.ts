@@ -1,12 +1,12 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
+import type { SolvedStop } from "@/lib/optimization/solved-plan";
 import {
   hhmmToSeconds,
-  secondsToHHMM,
   normalizeArrivalSeconds,
+  secondsToHHMM,
   stopArrivalSeconds,
   sumBy,
 } from "@/lib/optimization/verifier/utils";
-import type { SolvedStop } from "@/lib/optimization/solved-plan";
 
 /**
  * Verifier utils are the bridge between the canonical SolvedStop

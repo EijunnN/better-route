@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  use,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { CreateUserInput } from "@/lib/validations/user";
@@ -67,13 +61,17 @@ export const ROLE_TABS = [
 ] as const;
 
 export const STATUS_COLOR_CLASSES: Record<string, string> = {
-  AVAILABLE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  AVAILABLE:
+    "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
   ASSIGNED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  IN_ROUTE: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-  ON_PAUSE: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  IN_ROUTE:
+    "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+  ON_PAUSE:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   COMPLETED: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
   UNAVAILABLE: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  ABSENT: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+  ABSENT:
+    "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
 };
 
 // State
@@ -94,8 +92,14 @@ export interface UsersState {
 // Actions
 export interface UsersActions {
   fetchUsers: () => Promise<void>;
-  handleCreate: (data: CreateUserInput, selectedRoleIds: string[]) => Promise<void>;
-  handleUpdate: (data: CreateUserInput, selectedRoleIds: string[]) => Promise<void>;
+  handleCreate: (
+    data: CreateUserInput,
+    selectedRoleIds: string[],
+  ) => Promise<void>;
+  handleUpdate: (
+    data: CreateUserInput,
+    selectedRoleIds: string[],
+  ) => Promise<void>;
   handleDelete: (id: string) => Promise<void>;
   handleEditUser: (user: User) => Promise<void>;
   setShowForm: (show: boolean) => void;
@@ -127,11 +131,7 @@ interface UsersContextValue {
 const UsersContext = createContext<UsersContextValue | undefined>(undefined);
 
 export function UsersProvider({ children }: { children: ReactNode }) {
-  const {
-    effectiveCompanyId,
-    isSystemAdmin,
-    isReady,
-  } = useCompanyContext();
+  const { effectiveCompanyId, isSystemAdmin, isReady } = useCompanyContext();
   const { toast } = useToast();
 
   const [users, setUsers] = useState<User[]>([]);
@@ -164,7 +164,8 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   const fetchUsers = async () => {
     if (!effectiveCompanyId) return;
     try {
-      const url = activeTab === "all" ? "/api/users" : `/api/users?role=${activeTab}`;
+      const url =
+        activeTab === "all" ? "/api/users" : `/api/users?role=${activeTab}`;
       const response = await fetch(url, {
         headers: { "x-company-id": effectiveCompanyId },
       });
@@ -231,9 +232,13 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       fetchUsers();
     }
-  }, [effectiveCompanyId, activeTab]);
+  }, [effectiveCompanyId, fetchUsers]);
 
-  const assignRolesToUser = async (userId: string, roleIds: string[], currentRoleIds: string[] = []) => {
+  const assignRolesToUser = async (
+    userId: string,
+    roleIds: string[],
+    currentRoleIds: string[] = [],
+  ) => {
     if (!effectiveCompanyId) return;
     const currentSet = new Set(currentRoleIds);
     const desiredSet = new Set(roleIds);
@@ -266,7 +271,10 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const handleCreate = async (data: CreateUserInput, selectedRoleIds: string[]) => {
+  const handleCreate = async (
+    data: CreateUserInput,
+    selectedRoleIds: string[],
+  ) => {
     if (!effectiveCompanyId) return;
     try {
       const response = await fetch("/api/users", {
@@ -279,9 +287,11 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const error = (await response.json().catch(
-          () => ({ error: "Error al crear usuario" }) as ApiErrorResponse,
-        )) as ApiErrorResponse;
+        const error = (await response
+          .json()
+          .catch(
+            () => ({ error: "Error al crear usuario" }) as ApiErrorResponse,
+          )) as ApiErrorResponse;
         throw error;
       }
 
@@ -315,7 +325,10 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleUpdate = async (data: CreateUserInput, selectedRoleIds: string[]) => {
+  const handleUpdate = async (
+    data: CreateUserInput,
+    selectedRoleIds: string[],
+  ) => {
     if (!editingUser || !effectiveCompanyId) return;
 
     try {
@@ -334,13 +347,20 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const error = (await response.json().catch(
-          () => ({ error: "Error al actualizar usuario" }) as ApiErrorResponse,
-        )) as ApiErrorResponse;
+        const error = (await response
+          .json()
+          .catch(
+            () =>
+              ({ error: "Error al actualizar usuario" }) as ApiErrorResponse,
+          )) as ApiErrorResponse;
         throw error;
       }
 
-      await assignRolesToUser(editingUser.id, selectedRoleIds, editingUserRoleIds);
+      await assignRolesToUser(
+        editingUser.id,
+        selectedRoleIds,
+        editingUserRoleIds,
+      );
 
       await fetchUsers();
       setEditingUser(null);
@@ -379,7 +399,9 @@ export function UsersProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || error.details || "Error al desactivar el usuario");
+        throw new Error(
+          error.error || error.details || "Error al desactivar el usuario",
+        );
       }
 
       await fetchUsers();
@@ -392,7 +414,8 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       toast({
         title: "Error al desactivar usuario",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {

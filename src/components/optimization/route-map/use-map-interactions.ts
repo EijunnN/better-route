@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import type { RefObject } from "react";
+import { useEffect } from "react";
 import type { Zone } from "./types";
 
 /**
@@ -43,7 +43,11 @@ export function useZoneLayers(
     const registeredHandlers: Array<{
       event: "click" | "mouseenter" | "mouseleave";
       layerId: string;
-      handler: (e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => void;
+      handler: (
+        e: maplibregl.MapMouseEvent & {
+          features?: maplibregl.MapGeoJSONFeature[];
+        },
+      ) => void;
     }> = [];
     const addedSourceIds: string[] = [];
     const addedLayerIds: string[] = [];
@@ -101,7 +105,9 @@ export function useZoneLayers(
 
       // Add click handler for zone popup (dynamically import maplibregl for popup)
       const clickHandler = async (
-        e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] },
+        e: maplibregl.MapMouseEvent & {
+          features?: maplibregl.MapGeoJSONFeature[];
+        },
       ) => {
         if (!map.current || !e.features?.[0]) return;
 
@@ -132,7 +138,11 @@ export function useZoneLayers(
           .addTo(map.current);
       };
       mapInstance.on("click", fillLayerId, clickHandler);
-      registeredHandlers.push({ event: "click", layerId: fillLayerId, handler: clickHandler });
+      registeredHandlers.push({
+        event: "click",
+        layerId: fillLayerId,
+        handler: clickHandler,
+      });
 
       // Change cursor on hover
       const enterHandler = () => {
@@ -143,8 +153,16 @@ export function useZoneLayers(
       };
       mapInstance.on("mouseenter", fillLayerId, enterHandler);
       mapInstance.on("mouseleave", fillLayerId, leaveHandler);
-      registeredHandlers.push({ event: "mouseenter", layerId: fillLayerId, handler: enterHandler });
-      registeredHandlers.push({ event: "mouseleave", layerId: fillLayerId, handler: leaveHandler });
+      registeredHandlers.push({
+        event: "mouseenter",
+        layerId: fillLayerId,
+        handler: enterHandler,
+      });
+      registeredHandlers.push({
+        event: "mouseleave",
+        layerId: fillLayerId,
+        handler: leaveHandler,
+      });
     });
 
     return () => {
@@ -156,7 +174,8 @@ export function useZoneLayers(
           if (mapInstance.getLayer(layerId)) mapInstance.removeLayer(layerId);
         });
         addedSourceIds.forEach((sourceId) => {
-          if (mapInstance.getSource(sourceId)) mapInstance.removeSource(sourceId);
+          if (mapInstance.getSource(sourceId))
+            mapInstance.removeSource(sourceId);
         });
       } catch {
         // Map might be already destroyed

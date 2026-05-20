@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import type { RefObject } from "react";
+import { useEffect } from "react";
 
 /**
  * Applies pencil-selection highlight styling to markers whose order ids are

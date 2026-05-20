@@ -1,23 +1,22 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import {
-  fleets,
-  vehicleFleets,
-  vehicles,
-} from "@/db/schema";
+import { fleets, vehicleFleets, vehicles } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { fleetQuerySchema, fleetSchema } from "@/lib/validations/fleet";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { fleetQuerySchema, fleetSchema } from "@/lib/validations/fleet";
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.FLEET, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.FLEET,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -125,7 +124,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.FLEET, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.FLEET,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

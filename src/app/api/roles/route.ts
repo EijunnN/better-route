@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { roles, rolePermissions, permissions } from "@/db/schema";
+import { permissions, rolePermissions, roles } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/permissions";
 import {
   checkPermissionOrError,
@@ -9,7 +9,7 @@ import {
   setupAuthContext,
   unauthorizedResponse,
 } from "@/lib/routing/route-helpers";
-import { roleSchema, roleQuerySchema } from "@/lib/validations/role";
+import { roleQuerySchema, roleSchema } from "@/lib/validations/role";
 
 // GET /api/roles - List all roles for the company
 export async function GET(request: NextRequest) {

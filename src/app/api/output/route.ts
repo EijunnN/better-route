@@ -1,13 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 import type { OUTPUT_FORMAT } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import {
   canGenerateOutput,
   convertOutputToCSV,
   generatePlanOutput,
 } from "@/lib/routing/output-generator";
-import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * POST /api/output
@@ -29,7 +29,11 @@ import { EntityType, Action } from "@/lib/auth/authorization";
  */
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OUTPUT, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OUTPUT,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
 
     // Extract tenant context from headers
@@ -51,10 +55,7 @@ export async function POST(request: NextRequest) {
     }: { jobId: string; format?: keyof typeof OUTPUT_FORMAT } = body;
 
     if (!jobId) {
-      return NextResponse.json(
-        { error: "jobId is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "jobId is required" }, { status: 400 });
     }
 
     // Validate format
@@ -135,7 +136,11 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OUTPUT, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OUTPUT,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
 
     // Extract tenant context from headers

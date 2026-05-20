@@ -39,7 +39,9 @@ export function generateCsvTemplate(
   const examples: string[] = [];
 
   for (const field of schema.fields) {
-    headers.push(locale === "en" && field.labelEn ? field.labelEn : field.label);
+    headers.push(
+      locale === "en" && field.labelEn ? field.labelEn : field.label,
+    );
     examples.push(defaultExample(field.example, field.kind));
   }
 

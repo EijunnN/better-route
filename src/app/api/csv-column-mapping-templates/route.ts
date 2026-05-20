@@ -2,18 +2,20 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
-import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-import { csvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
-import { safeParseJson } from "@/lib/utils/safe-json";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { safeParseJson } from "@/lib/utils/safe-json";
+import { csvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
 // GET - List all column mapping templates for the company
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -51,7 +53,11 @@ export async function GET(request: NextRequest) {
 // POST - Create a new column mapping template
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

@@ -1,5 +1,5 @@
+import { baseConfig, LIMA_DEPOT, makeOrder, makeVehicle } from "../fixtures";
 import type { Scenario } from "../types";
-import { baseConfig, makeOrder, makeVehicle, LIMA_DEPOT } from "../fixtures";
 
 /**
  * Depot closes at 16:00 even though vehicles can work until 18:00.
@@ -11,7 +11,9 @@ import { baseConfig, makeOrder, makeVehicle, LIMA_DEPOT } from "../fixtures";
 export const scenario: Scenario = {
   name: "15-depot-closes-early",
   description: "Depot 08:00-16:00, vehicle 08:00-18:00 — depot window binds",
-  orders: Array.from({ length: 15 }, (_, i) => makeOrder(i, { serviceTime: 600 })),
+  orders: Array.from({ length: 15 }, (_, i) =>
+    makeOrder(i, { serviceTime: 600 }),
+  ),
   vehicles: [
     makeVehicle(1, {
       timeWindowStart: "08:00",

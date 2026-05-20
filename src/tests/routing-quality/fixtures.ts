@@ -1,8 +1,8 @@
 import type {
+  OptimizerConfig,
+  OptimizerDepot,
   OptimizerOrder,
   OptimizerVehicle,
-  OptimizerDepot,
-  OptimizerConfig,
 } from "@/lib/optimization/verifier";
 
 /**
@@ -18,13 +18,13 @@ export const LIMA_DEPOT: OptimizerDepot = {
 /** Small cluster of coordinates around Lima for building scenarios. */
 export const LIMA_POINTS: Array<{ lat: number; lng: number; name: string }> = [
   { lat: -12.0564, lng: -77.0366, name: "La Victoria" },
-  { lat: -12.1180, lng: -77.0269, name: "Miraflores" },
+  { lat: -12.118, lng: -77.0269, name: "Miraflores" },
   { lat: -12.0908, lng: -77.0502, name: "San Isidro" },
   { lat: -12.1461, lng: -77.0197, name: "Barranco" },
   { lat: -12.0631, lng: -77.0365, name: "Centro 1" },
   { lat: -12.0719, lng: -77.0889, name: "Callao 1" },
   { lat: -12.0862, lng: -77.0813, name: "San Miguel" },
-  { lat: -12.1089, lng: -77.0370, name: "Lince" },
+  { lat: -12.1089, lng: -77.037, name: "Lince" },
   { lat: -12.1352, lng: -77.0223, name: "Chorrillos Norte" },
   { lat: -12.0267, lng: -77.0543, name: "San Martín de Porres" },
   { lat: -11.9855, lng: -77.0658, name: "Los Olivos" },
@@ -72,7 +72,9 @@ export function makeVehicle(
   };
 }
 
-export function baseConfig(overrides: Partial<OptimizerConfig> = {}): OptimizerConfig {
+export function baseConfig(
+  overrides: Partial<OptimizerConfig> = {},
+): OptimizerConfig {
   return {
     depot: LIMA_DEPOT,
     objective: "BALANCED",

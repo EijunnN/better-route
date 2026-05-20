@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getZoneForOrder, type ZoneData } from "@/lib/geo/zone-utils";
 import { useCompanyContext } from "@/hooks/use-company-context";
+import { getZoneForOrder, type ZoneData } from "@/lib/geo/zone-utils";
 
 interface ZoneApiRow {
   id: string;

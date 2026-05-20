@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
   validateCsvHeaders,
   validateCsvRow,
@@ -9,7 +9,14 @@ describe("validateCsvHeaders", () => {
   test("maps canonical Spanish headers exactly", () => {
     const schema = baseSchema();
     const result = validateCsvHeaders(
-      ["trackcode", "direccion", "latitud", "longitud", "nombre_cliente", "peso"],
+      [
+        "trackcode",
+        "direccion",
+        "latitud",
+        "longitud",
+        "nombre_cliente",
+        "peso",
+      ],
       schema,
     );
     expect(result.missing).toEqual([]);
@@ -109,7 +116,9 @@ describe("validateCsvRow", () => {
     const result = validateCsvRow(row, schema);
     expect(result.ok).toBe(false);
     expect(result.errors.find((e) => e.fieldKey === "latitude")).toBeDefined();
-    expect(result.errors.find((e) => e.fieldKey === "weightRequired")).toBeDefined();
+    expect(
+      result.errors.find((e) => e.fieldKey === "weightRequired"),
+    ).toBeDefined();
   });
 
   test("applies defaultValue when field is optional and empty", () => {

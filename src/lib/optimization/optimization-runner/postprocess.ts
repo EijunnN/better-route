@@ -2,7 +2,11 @@
 export function parseHHmmToSeconds(hhmm: string): number | null {
   const match = hhmm.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
   if (!match) return null;
-  return parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + (match[3] ? parseInt(match[3]) : 0);
+  return (
+    parseInt(match[1], 10) * 3600 +
+    parseInt(match[2], 10) * 60 +
+    (match[3] ? parseInt(match[3], 10) : 0)
+  );
 }
 
 // Helper: convert seconds since midnight to HH:mm string

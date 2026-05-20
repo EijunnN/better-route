@@ -1,11 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  fleets,
-  USER_ROLES,
-  userSkills,
-  users,
-} from "@/db/schema";
+import { fleets, USER_ROLES, userSkills, users } from "@/db/schema";
 import type { ReassignmentStrategy } from "./types";
 
 /**

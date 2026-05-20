@@ -220,7 +220,7 @@ export function OptimizationDashboardProvider({
 
   useEffect(() => {
     loadZones();
-  }, [companyId]);
+  }, [loadZones]);
 
   // Derived: Available vehicles. When the reassign modal is open we
   // hide the vehicle that already owns *every* selected order — moving
@@ -451,11 +451,11 @@ export function OptimizationDashboardProvider({
       }
 
       const plateA =
-        result.routes.find((r) => r.vehicleId === vehicleAId)?.vehicleIdentifier ||
-        vehicleAId;
+        result.routes.find((r) => r.vehicleId === vehicleAId)
+          ?.vehicleIdentifier || vehicleAId;
       const plateB =
-        result.routes.find((r) => r.vehicleId === vehicleBId)?.vehicleIdentifier ||
-        vehicleBId;
+        result.routes.find((r) => r.vehicleId === vehicleBId)
+          ?.vehicleIdentifier || vehicleBId;
 
       toast({
         title: "Rutas intercambiadas exitosamente",

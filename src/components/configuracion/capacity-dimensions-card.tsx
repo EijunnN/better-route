@@ -1,9 +1,14 @@
 "use client";
 
 import { Box, Package, Scale, Tag, Weight } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -11,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useConfiguracion } from "./configuracion-context";
 
 const DIMENSIONS = [
@@ -66,12 +72,15 @@ export function CapacityDimensionsCard() {
             Dimensiones de capacidad
           </CardTitle>
           <CardDescription className="mt-1">
-            Qué restricciones aplican a vehículos y pedidos durante la optimización.
+            Qué restricciones aplican a vehículos y pedidos durante la
+            optimización.
           </CardDescription>
         </div>
         {state.templates.length > 0 && (
           <div className="w-60">
-            <Label className="text-xs text-muted-foreground">Plantilla rápida</Label>
+            <Label className="text-xs text-muted-foreground">
+              Plantilla rápida
+            </Label>
             <Select
               value=""
               onValueChange={(v) => v && actions.applyTemplate(v)}

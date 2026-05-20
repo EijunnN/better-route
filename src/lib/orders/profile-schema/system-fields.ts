@@ -70,7 +70,12 @@ const CUSTOMER: ProfileField[] = [
     kind: "string",
     description: "Nombre completo del cliente",
     example: "Juan Pérez",
-    aliases: ["customer_name", "customername", "customer name", "nombre del cliente"],
+    aliases: [
+      "customer_name",
+      "customername",
+      "customer name",
+      "nombre del cliente",
+    ],
   }),
   sys({
     key: "customerPhone",
@@ -153,8 +158,12 @@ export const ORDER_TYPE_FIELD: SystemFieldSeed = {
   description: "Tipo de pedido (NUEVO, REPROGRAMADO, URGENTE)",
   example: "NUEVO",
   enumValues: [
-    "NEW", "RESCHEDULED", "URGENT",
-    "NUEVO", "REPROGRAMADO", "URGENTE",
+    "NEW",
+    "RESCHEDULED",
+    "URGENT",
+    "NUEVO",
+    "REPROGRAMADO",
+    "URGENTE",
   ],
   aliases: ["order_type", "tipo de pedido", "tipo"],
 };

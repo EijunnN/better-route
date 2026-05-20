@@ -1,14 +1,14 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { ZodError } from "zod";
-import {
-  parseRawSolvedRoute,
-  parseVerifiedPlan,
-  assertPersistableVerifiedPlan,
-} from "@/lib/optimization/solved-plan/schemas";
 import type {
   RawSolvedRoute,
   VerifiedPlan,
 } from "@/lib/optimization/solved-plan";
+import {
+  assertPersistableVerifiedPlan,
+  parseRawSolvedRoute,
+  parseVerifiedPlan,
+} from "@/lib/optimization/solved-plan/schemas";
 
 /**
  * The Solved-Plan boundary parsers are the only place where Zod runs
@@ -18,7 +18,9 @@ import type {
  * See ADR-0003 (canonical SolvedPlan).
  */
 
-function validRawRoute(overrides: Partial<RawSolvedRoute> = {}): RawSolvedRoute {
+function validRawRoute(
+  overrides: Partial<RawSolvedRoute> = {},
+): RawSolvedRoute {
   return {
     routeId: "route-1",
     vehicleId: "veh-1",
@@ -184,7 +186,7 @@ describe("parseVerifiedPlan", () => {
 
   test("rejects negative byCode count", () => {
     const plan = validVerifiedPlan();
-    plan.verification.summary.byCode["TIME_WINDOW_VIOLATION"] = -1;
+    plan.verification.summary.byCode.TIME_WINDOW_VIOLATION = -1;
     expect(() => parseVerifiedPlan(plan)).toThrow(ZodError);
   });
 

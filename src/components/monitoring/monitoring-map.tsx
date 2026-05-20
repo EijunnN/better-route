@@ -565,7 +565,6 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
             </div>
           </div>
         )}
-
       </div>
     );
   },

@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  use,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { ZoneInput } from "@/lib/validations/zone";
@@ -130,8 +124,11 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
-  const [editingZoneVehicleIds, setEditingZoneVehicleIds] = useState<string[]>([]);
-  const [pendingFormData, setPendingFormData] = useState<Partial<ZoneInput> | null>(null);
+  const [editingZoneVehicleIds, setEditingZoneVehicleIds] = useState<string[]>(
+    [],
+  );
+  const [pendingFormData, setPendingFormData] =
+    useState<Partial<ZoneInput> | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -167,8 +164,8 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
             id: v.id,
             name: v.name || v.plate || "Sin nombre",
             plate: v.plate ?? null,
-          })
-        )
+          }),
+        ),
       );
     } catch (error) {
       console.error("Error fetching vehicles:", error);
@@ -180,7 +177,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
       fetchZones();
       fetchVehicles();
     }
-  }, [companyId]);
+  }, [companyId, fetchVehicles, fetchZones]);
 
   const handleCreate = async (data: ZoneInput, vehicleIds: string[]) => {
     if (!companyId || isSubmitting) return;
@@ -225,7 +222,8 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       toast({
         title: "Error al crear zona",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -276,7 +274,8 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       toast({
         title: "Error al actualizar zona",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
       throw err;
@@ -312,7 +311,8 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       toast({
         title: "Error al desactivar zona",
-        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        description:
+          err instanceof Error ? err.message : "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -353,7 +353,9 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
         });
         if (response.ok) {
           const data = await response.json();
-          setEditingZoneVehicleIds((data.vehicles || []).map((v: { id: string }) => v.id));
+          setEditingZoneVehicleIds(
+            (data.vehicles || []).map((v: { id: string }) => v.id),
+          );
         }
       } catch {
         setEditingZoneVehicleIds([]);
@@ -383,8 +385,10 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
 
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const activeZonesCount = zones.filter((z) => z.active).length;
-  const currentFormGeometry = pendingFormData?.geometry || editingZone?.geometry;
-  const currentFormColor = pendingFormData?.color || editingZone?.color || "#3B82F6";
+  const currentFormGeometry =
+    pendingFormData?.geometry || editingZone?.geometry;
+  const currentFormColor =
+    pendingFormData?.color || editingZone?.color || "#3B82F6";
 
   const state: ZonesState = {
     zones,

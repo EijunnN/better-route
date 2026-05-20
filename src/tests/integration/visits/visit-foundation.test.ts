@@ -1,20 +1,20 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
+import { PATCH } from "@/app/api/route-stops/[id]/route";
+import { deliveryVisits, routeStops } from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
   createAdmin,
+  createCompany,
   createDriver,
-  createVehicle,
-  createOrder,
   createOptimizationConfig,
   createOptimizationJob,
+  createOrder,
   createRouteStop,
+  createVehicle,
 } from "../setup/test-data";
-import { deliveryVisits, routeStops } from "@/db/schema";
-import { PATCH } from "@/app/api/route-stops/[id]/route";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 /**
  * Issue 001 — Visit foundation.

@@ -1,26 +1,32 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationConfigurations, optimizationJobs, orders } from "@/db/schema";
+import {
+  optimizationConfigurations,
+  optimizationJobs,
+  orders,
+} from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { forceReleaseCompanyLock } from "@/lib/infra/job-queue";
 import { setTenantContext } from "@/lib/infra/tenant";
 import type { VerifiedPlan } from "@/lib/optimization/optimization-runner";
-import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-config";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
 import { safeParseJson } from "@/lib/utils/safe-json";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-config";
 // GET - Get single optimization configuration
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_CONFIG,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -60,7 +66,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.UPDATE);
+  const authResult = await requireRoutePermission(
+    request,
+    EntityType.OPTIMIZATION_CONFIG,
+    Action.UPDATE,
+  );
   if (authResult instanceof NextResponse) return authResult;
   const tenantCtx = extractTenantContextAuthed(request, authResult);
   if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -132,14 +142,16 @@ export async function PATCH(
       .set({
         ...restData,
         ...(selectedVehicleIds !== undefined && {
-          selectedVehicleIds: typeof selectedVehicleIds === "string"
-            ? safeParseJson<string[]>(selectedVehicleIds)
-            : selectedVehicleIds,
+          selectedVehicleIds:
+            typeof selectedVehicleIds === "string"
+              ? safeParseJson<string[]>(selectedVehicleIds)
+              : selectedVehicleIds,
         }),
         ...(selectedDriverIds !== undefined && {
-          selectedDriverIds: typeof selectedDriverIds === "string"
-            ? safeParseJson<string[]>(selectedDriverIds)
-            : selectedDriverIds,
+          selectedDriverIds:
+            typeof selectedDriverIds === "string"
+              ? safeParseJson<string[]>(selectedDriverIds)
+              : selectedDriverIds,
         }),
         updatedAt: new Date(),
       })
@@ -173,7 +185,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.OPTIMIZATION_CONFIG, Action.DELETE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.OPTIMIZATION_CONFIG,
+      Action.DELETE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -241,7 +257,7 @@ export async function DELETE(
           }
 
           if (assignedOrderIds.length > 0) {
-            const updateResult = await db
+            const _updateResult = await db
               .update(orders)
               .set({ status: "PENDING", updatedAt: new Date() })
               .where(
@@ -254,7 +270,9 @@ export async function DELETE(
             ordersReverted = assignedOrderIds.length;
           }
         } catch {
-          console.error("[Delete Plan] Failed to parse job result for order reversion");
+          console.error(
+            "[Delete Plan] Failed to parse job result for order reversion",
+          );
         }
       }
     }

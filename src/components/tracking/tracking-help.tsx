@@ -1,6 +1,6 @@
 "use client";
 
-import { Headphones, ChevronRight } from "lucide-react";
+import { ChevronRight, Headphones } from "lucide-react";
 
 interface TrackingHelpProps {
   supportUrl?: string | null;

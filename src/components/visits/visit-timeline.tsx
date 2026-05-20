@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { CheckCircle2, ImageOff, MapPin, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { DELIVERY_FAILURE_LABELS } from "@/db/schema";
 import { cn } from "@/lib/utils";

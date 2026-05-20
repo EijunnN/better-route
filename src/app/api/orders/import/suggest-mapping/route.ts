@@ -4,11 +4,11 @@ import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import {
   resolveProfileSchema,
   validateCsvHeaders,
 } from "@/lib/orders/profile-schema";
-import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { safeParseJson } from "@/lib/utils/safe-json";
 import { columnMappingSuggestionRequestSchema } from "@/lib/validations/csv-column-mapping";
@@ -52,7 +52,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const suggestedMapping = { ...autoResult.mapping, ...(templateMapping ?? {}) };
+    const suggestedMapping = {
+      ...autoResult.mapping,
+      ...(templateMapping ?? {}),
+    };
 
     // Re-compute missing required keys against the final mapping.
     const mappedKeys = new Set(Object.values(suggestedMapping));

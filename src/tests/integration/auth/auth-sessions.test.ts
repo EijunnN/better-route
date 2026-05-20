@@ -1,22 +1,18 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { cleanDatabase } from "../setup/test-db";
-import {
-  createTestToken,
-  createExpiredToken,
-  createTestRefreshToken,
-} from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import { createCompany, createUser } from "../setup/test-data";
-
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { POST as logoutPOST } from "@/app/api/auth/logout/route";
 import { GET as meGET } from "@/app/api/auth/me/route";
 import { POST as refreshPOST } from "@/app/api/auth/refresh/route";
-import { POST as logoutPOST } from "@/app/api/auth/logout/route";
+import { DELETE as sessionDELETE } from "@/app/api/auth/sessions/[id]/route";
+import { POST as invalidateAllPOST } from "@/app/api/auth/sessions/invalidate-all/route";
 import { GET as sessionsGET } from "@/app/api/auth/sessions/route";
 import {
-  GET as sessionByIdGET,
-  DELETE as sessionDELETE,
-} from "@/app/api/auth/sessions/[id]/route";
-import { POST as invalidateAllPOST } from "@/app/api/auth/sessions/invalidate-all/route";
+  createExpiredToken,
+  createTestRefreshToken,
+  createTestToken,
+} from "../setup/test-auth";
+import { createCompany, createUser } from "../setup/test-data";
+import { cleanDatabase } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Auth sessions & token management", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;

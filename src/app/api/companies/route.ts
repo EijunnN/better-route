@@ -3,9 +3,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { handleError } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { Action, EntityType } from "@/lib/auth/permissions";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { handleError } from "@/lib/routing/route-helpers";
 import { companyQuerySchema, companySchema } from "@/lib/validations/company";
 
 export async function GET(request: NextRequest) {
@@ -61,7 +61,10 @@ export async function GET(request: NextRequest) {
         .orderBy(desc(companies.createdAt))
         .limit(query.limit)
         .offset(query.offset),
-      db.select({ count: sql<number>`count(*)::int` }).from(companies).where(whereClause),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(companies)
+        .where(whereClause),
     ]);
 
     return NextResponse.json({

@@ -1,31 +1,28 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createDriver,
-  createVehicle,
-  createFleet,
-  createOrder,
-  createOptimizationConfig,
-  createOptimizationJob,
-  buildOptimizationResult,
-  createVehicleSkill,
-  createUserSkillAssignment,
-} from "../setup/test-data";
-import { optimizationJobs } from "@/db/schema";
-
+import { GET as HistoryGET } from "@/app/api/driver-assignment/history/[routeId]/route";
 import { POST as ManualPOST } from "@/app/api/driver-assignment/manual/route";
+import {
+  DELETE as RemoveDELETE,
+  GET as RemoveGET,
+} from "@/app/api/driver-assignment/remove/[routeId]/[vehicleId]/route";
 import { POST as SuggestionsPOST } from "@/app/api/driver-assignment/suggestions/route";
 import { POST as ValidatePOST } from "@/app/api/driver-assignment/validate/route";
-import { GET as HistoryGET } from "@/app/api/driver-assignment/history/[routeId]/route";
+import { optimizationJobs } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
 import {
-  GET as RemoveGET,
-  DELETE as RemoveDELETE,
-} from "@/app/api/driver-assignment/remove/[routeId]/[vehicleId]/route";
+  buildOptimizationResult,
+  createAdmin,
+  createCompany,
+  createDriver,
+  createFleet,
+  createOptimizationConfig,
+  createOptimizationJob,
+  createOrder,
+  createVehicle,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Driver Assignment API", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -130,22 +127,19 @@ describe("Driver Assignment API", () => {
         result: result as unknown as Record<string, unknown>,
       });
 
-      const request = await createTestRequest(
-        "/api/driver-assignment/manual",
-        {
-          method: "POST",
-          token,
+      const request = await createTestRequest("/api/driver-assignment/manual", {
+        method: "POST",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        body: {
           companyId: company.id,
-          userId: admin.id,
-          body: {
-            companyId: company.id,
-            vehicleId: vehicle.id,
-            driverId: driver.id,
-            routeId: job.id,
-            overrideWarnings: true,
-          },
+          vehicleId: vehicle.id,
+          driverId: driver.id,
+          routeId: job.id,
+          overrideWarnings: true,
         },
-      );
+      });
 
       const response = await ManualPOST(request);
       expect(response.status).toBe(200);
@@ -162,7 +156,7 @@ describe("Driver Assignment API", () => {
       const dbJob = await testDb.query.optimizationJobs.findFirst({
         where: eq(optimizationJobs.id, job.id),
       });
-      const dbResult = dbJob!.result as any;
+      const dbResult = dbJob?.result as any;
       const route = dbResult.routes.find(
         (r: any) => r.vehicleId === vehicle.id,
       );
@@ -179,21 +173,18 @@ describe("Driver Assignment API", () => {
       });
 
       // admin is ADMIN_SISTEMA, not CONDUCTOR
-      const request = await createTestRequest(
-        "/api/driver-assignment/manual",
-        {
-          method: "POST",
-          token,
+      const request = await createTestRequest("/api/driver-assignment/manual", {
+        method: "POST",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        body: {
           companyId: company.id,
-          userId: admin.id,
-          body: {
-            companyId: company.id,
-            vehicleId: vehicle.id,
-            driverId: admin.id,
-            routeId: job.id,
-          },
+          vehicleId: vehicle.id,
+          driverId: admin.id,
+          routeId: job.id,
         },
-      );
+      });
 
       const response = await ManualPOST(request);
       expect(response.status).toBe(404);
@@ -211,21 +202,18 @@ describe("Driver Assignment API", () => {
         result: result as unknown as Record<string, unknown>,
       });
 
-      const request = await createTestRequest(
-        "/api/driver-assignment/manual",
-        {
-          method: "POST",
-          token,
+      const request = await createTestRequest("/api/driver-assignment/manual", {
+        method: "POST",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        body: {
           companyId: company.id,
-          userId: admin.id,
-          body: {
-            companyId: company.id,
-            vehicleId: vehicle.id,
-            driverId: driverB.id,
-            routeId: job.id,
-          },
+          vehicleId: vehicle.id,
+          driverId: driverB.id,
+          routeId: job.id,
         },
-      );
+      });
 
       const response = await ManualPOST(request);
       // Driver query filters by companyId, so wrong-company driver = not found
@@ -236,16 +224,13 @@ describe("Driver Assignment API", () => {
     });
 
     test("returns 400 with validation errors when body is invalid", async () => {
-      const request = await createTestRequest(
-        "/api/driver-assignment/manual",
-        {
-          method: "POST",
-          token,
-          companyId: company.id,
-          userId: admin.id,
-          body: { vehicleId: "not-a-uuid" },
-        },
-      );
+      const request = await createTestRequest("/api/driver-assignment/manual", {
+        method: "POST",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        body: { vehicleId: "not-a-uuid" },
+      });
 
       const response = await ManualPOST(request);
       expect(response.status).toBe(400);
@@ -619,7 +604,7 @@ describe("Driver Assignment API", () => {
       const dbJob = await testDb.query.optimizationJobs.findFirst({
         where: eq(optimizationJobs.id, job.id),
       });
-      const dbResult = dbJob!.result as any;
+      const dbResult = dbJob?.result as any;
       const route = dbResult.routes.find(
         (r: any) => r.vehicleId === vehicle.id,
       );
@@ -673,21 +658,18 @@ describe("Driver Assignment API", () => {
       });
       const vehicleB = await createVehicle({ companyId: companyB.id });
 
-      const request = await createTestRequest(
-        "/api/driver-assignment/manual",
-        {
-          method: "POST",
-          token: tokenB,
+      const request = await createTestRequest("/api/driver-assignment/manual", {
+        method: "POST",
+        token: tokenB,
+        companyId: companyB.id,
+        userId: adminB.id,
+        body: {
           companyId: companyB.id,
-          userId: adminB.id,
-          body: {
-            companyId: companyB.id,
-            vehicleId: vehicleB.id,
-            driverId: driverB.id,
-            routeId: job.id,
-          },
+          vehicleId: vehicleB.id,
+          driverId: driverB.id,
+          routeId: job.id,
         },
-      );
+      });
 
       const response = await ManualPOST(request);
       // Job belongs to company A, companyB token filters by companyB => 404

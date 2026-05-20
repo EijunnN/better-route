@@ -357,7 +357,9 @@ export async function GET(request: NextRequest) {
     // como same-day reopen (mismo Stop, attemptNumber sigue siendo 1 pero ya
     // hubo una Visit fallida). Excluimos las visits del propio Stop para que
     // un Stop COMPLETED no se autocuente.
-    const stopOrderIds = stops.map((s) => s.orderId).filter(Boolean) as string[];
+    const stopOrderIds = stops
+      .map((s) => s.orderId)
+      .filter(Boolean) as string[];
     const stopIds = stops.map((s) => s.id);
     const priorVisitsRaw = stopOrderIds.length
       ? await db
@@ -385,63 +387,69 @@ export async function GET(request: NextRequest) {
     const stopsData = stops.map((stop) => {
       const priorVisitsCount = priorVisitsByOrder.get(stop.orderId) ?? 0;
       const isRevisit = priorVisitsCount > 0 || stop.attemptNumber > 1;
-      const visibleAttemptNumber = Math.max(stop.attemptNumber, priorVisitsCount + 1);
+      const visibleAttemptNumber = Math.max(
+        stop.attemptNumber,
+        priorVisitsCount + 1,
+      );
       return {
-      id: stop.id,
-      jobId: stop.jobId,
-      sequence: stop.sequence,
-      /**
-       * Cuántos intentos físicos lleva este pedido. Para revisitas
-       * de mismo día (reopen), el `attempt_number` del DB sigue en 1
-       * porque el Stop es el mismo, así que computamos un número
-       * "visible" sumando las visitas previas del Order. La app debe
-       * pintar el badge "Intento #N" cuando `isRevisit` es true.
-       */
-      attemptNumber: visibleAttemptNumber,
-      priorVisitsCount,
-      isRevisit,
-      status: stop.status,
-      // Ubicacion
-      address: stop.address,
-      latitude: stop.latitude,
-      longitude: stop.longitude,
-      // Tiempos
-      estimatedArrival: stop.estimatedArrival?.toISOString() || null,
-      estimatedServiceTime: stop.estimatedServiceTime,
-      timeWindow: {
-        start:
-          stop.timeWindowStart?.toISOString() ??
-          composeTimestamp(
-            stop.order?.promisedDate,
-            stop.order?.timeWindowStart,
-          ),
-        end:
-          stop.timeWindowEnd?.toISOString() ??
-          composeTimestamp(stop.order?.promisedDate, stop.order?.timeWindowEnd),
-      },
-      // Timestamps de ejecucion
-      startedAt: stop.startedAt?.toISOString() || null,
-      completedAt: stop.completedAt?.toISOString() || null,
-      // Notas y motivo de fallo
-      notes: stop.notes,
-      failureReason: stop.failureReason,
-      evidenceUrls: stop.evidenceUrls,
-      // Datos del pedido
-      order: stop.order
-        ? {
-            id: stop.order.id,
-            trackingId: stop.order.trackingId,
-            customerName: stop.order.customerName,
-            customerPhone: stop.order.customerPhone,
-            customerEmail: stop.order.customerEmail,
-            notes: stop.order.notes,
-            weight: stop.order.weightRequired,
-            volume: stop.order.volumeRequired,
-            value: stop.order.orderValue,
-            units: stop.order.unitsRequired,
-            customFields: stop.order.customFields,
-          }
-        : null,
+        id: stop.id,
+        jobId: stop.jobId,
+        sequence: stop.sequence,
+        /**
+         * Cuántos intentos físicos lleva este pedido. Para revisitas
+         * de mismo día (reopen), el `attempt_number` del DB sigue en 1
+         * porque el Stop es el mismo, así que computamos un número
+         * "visible" sumando las visitas previas del Order. La app debe
+         * pintar el badge "Intento #N" cuando `isRevisit` es true.
+         */
+        attemptNumber: visibleAttemptNumber,
+        priorVisitsCount,
+        isRevisit,
+        status: stop.status,
+        // Ubicacion
+        address: stop.address,
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+        // Tiempos
+        estimatedArrival: stop.estimatedArrival?.toISOString() || null,
+        estimatedServiceTime: stop.estimatedServiceTime,
+        timeWindow: {
+          start:
+            stop.timeWindowStart?.toISOString() ??
+            composeTimestamp(
+              stop.order?.promisedDate,
+              stop.order?.timeWindowStart,
+            ),
+          end:
+            stop.timeWindowEnd?.toISOString() ??
+            composeTimestamp(
+              stop.order?.promisedDate,
+              stop.order?.timeWindowEnd,
+            ),
+        },
+        // Timestamps de ejecucion
+        startedAt: stop.startedAt?.toISOString() || null,
+        completedAt: stop.completedAt?.toISOString() || null,
+        // Notas y motivo de fallo
+        notes: stop.notes,
+        failureReason: stop.failureReason,
+        evidenceUrls: stop.evidenceUrls,
+        // Datos del pedido
+        order: stop.order
+          ? {
+              id: stop.order.id,
+              trackingId: stop.order.trackingId,
+              customerName: stop.order.customerName,
+              customerPhone: stop.order.customerPhone,
+              customerEmail: stop.order.customerEmail,
+              notes: stop.order.notes,
+              weight: stop.order.weightRequired,
+              volume: stop.order.volumeRequired,
+              value: stop.order.orderValue,
+              units: stop.order.unitsRequired,
+              customFields: stop.order.customFields,
+            }
+          : null,
       };
     });
 

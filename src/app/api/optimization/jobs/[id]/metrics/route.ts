@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getTenantContext } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import {
   getHistoricalMetrics,
   getMetricsSummaryStats,
   getPlanMetrics,
 } from "@/lib/optimization/plan-metrics";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * GET /api/optimization/jobs/[id]/metrics
@@ -18,7 +18,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.METRICS, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.METRICS,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
 
     const { id: jobId } = await params;

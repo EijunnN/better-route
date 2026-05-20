@@ -1,16 +1,12 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createOrder,
-} from "../setup/test-data";
-import { orders } from "@/db/schema";
-import { POST as PREVIEW } from "@/app/api/orders/csv-import/preview/route";
 import { POST as CONFIRM } from "@/app/api/orders/csv-import/confirm/route";
+import { POST as PREVIEW } from "@/app/api/orders/csv-import/preview/route";
+import { orders } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import { createAdmin, createCompany, createOrder } from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 /**
  * Issue 006 — CSV import preview-and-confirm.
@@ -40,7 +36,10 @@ describe("CSV import preview + confirm (issue 006)", () => {
     await cleanDatabase();
   });
 
-  function csvOf(rows: Array<Record<string, string>>, headers: string[]): string {
+  function csvOf(
+    rows: Array<Record<string, string>>,
+    headers: string[],
+  ): string {
     const head = headers.join(",");
     const body = rows
       .map((r) => headers.map((h) => r[h] ?? "").join(","))
@@ -100,11 +99,46 @@ describe("CSV import preview + confirm (issue 006)", () => {
     ];
     const csv = csvOf(
       [
-        { trackcode: "TRK-NEW-1", direccion: "Av. Nueva 1", latitud: "-12.10", longitud: "-77.00", nombre_cliente: "Cli A", peso: "10" },
-        { trackcode: "TRK-NEW-2", direccion: "Av. Nueva 2", latitud: "-12.11", longitud: "-77.01", nombre_cliente: "Cli B", peso: "20" },
-        { trackcode: "TRK-FAIL-1", direccion: "Av. Re 1", latitud: "-12.12", longitud: "-77.02", nombre_cliente: "Cli C", peso: "30" },
-        { trackcode: "TRK-ACT-1", direccion: "Av. Sk 1", latitud: "-12.13", longitud: "-77.03", nombre_cliente: "Cli D", peso: "40" },
-        { trackcode: "TRK-CAN-1", direccion: "Av. Sk 2", latitud: "-12.14", longitud: "-77.04", nombre_cliente: "Cli E", peso: "50" },
+        {
+          trackcode: "TRK-NEW-1",
+          direccion: "Av. Nueva 1",
+          latitud: "-12.10",
+          longitud: "-77.00",
+          nombre_cliente: "Cli A",
+          peso: "10",
+        },
+        {
+          trackcode: "TRK-NEW-2",
+          direccion: "Av. Nueva 2",
+          latitud: "-12.11",
+          longitud: "-77.01",
+          nombre_cliente: "Cli B",
+          peso: "20",
+        },
+        {
+          trackcode: "TRK-FAIL-1",
+          direccion: "Av. Re 1",
+          latitud: "-12.12",
+          longitud: "-77.02",
+          nombre_cliente: "Cli C",
+          peso: "30",
+        },
+        {
+          trackcode: "TRK-ACT-1",
+          direccion: "Av. Sk 1",
+          latitud: "-12.13",
+          longitud: "-77.03",
+          nombre_cliente: "Cli D",
+          peso: "40",
+        },
+        {
+          trackcode: "TRK-CAN-1",
+          direccion: "Av. Sk 2",
+          latitud: "-12.14",
+          longitud: "-77.04",
+          nombre_cliente: "Cli E",
+          peso: "50",
+        },
       ],
       headers,
     );
@@ -141,9 +175,24 @@ describe("CSV import preview + confirm (issue 006)", () => {
     const headers = ["trackcode", "direccion", "latitud", "longitud"];
     const csv = csvOf(
       [
-        { trackcode: "TRK-INS-1", direccion: "Av. Ins 1", latitud: "-12", longitud: "-77" },
-        { trackcode: "TRK-FAIL-2", direccion: "Av. Reactivada", latitud: "-12.5", longitud: "-77.5" },
-        { trackcode: "TRK-CAN-2", direccion: "X", latitud: "-12", longitud: "-77" },
+        {
+          trackcode: "TRK-INS-1",
+          direccion: "Av. Ins 1",
+          latitud: "-12",
+          longitud: "-77",
+        },
+        {
+          trackcode: "TRK-FAIL-2",
+          direccion: "Av. Reactivada",
+          latitud: "-12.5",
+          longitud: "-77.5",
+        },
+        {
+          trackcode: "TRK-CAN-2",
+          direccion: "X",
+          latitud: "-12",
+          longitud: "-77",
+        },
       ],
       headers,
     );
@@ -182,7 +231,14 @@ describe("CSV import preview + confirm (issue 006)", () => {
 
     const headers = ["trackcode", "direccion", "latitud", "longitud"];
     const csv = csvOf(
-      [{ trackcode: "TRK-RACE-1", direccion: "Av. X", latitud: "-12", longitud: "-77" }],
+      [
+        {
+          trackcode: "TRK-RACE-1",
+          direccion: "Av. X",
+          latitud: "-12",
+          longitud: "-77",
+        },
+      ],
       headers,
     );
 
@@ -234,7 +290,14 @@ describe("CSV import preview + confirm (issue 006)", () => {
 
     const headers = ["trackcode", "direccion", "latitud", "longitud"];
     const csv = csvOf(
-      [{ trackcode: "TRK-XT-1", direccion: "Av. X", latitud: "-12", longitud: "-77" }],
+      [
+        {
+          trackcode: "TRK-XT-1",
+          direccion: "Av. X",
+          latitud: "-12",
+          longitud: "-77",
+        },
+      ],
       headers,
     );
 

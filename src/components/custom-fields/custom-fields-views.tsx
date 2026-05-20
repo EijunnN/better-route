@@ -1,39 +1,32 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
-  Plus,
-  Pencil,
   Archive,
   ArchiveRestore,
-  Loader2,
-  Type,
-  Hash,
-  List,
   Calendar,
-  DollarSign,
-  Phone,
-  Mail,
-  ToggleLeft,
-  Package,
-  MapPin,
-  ChevronUp,
   ChevronDown,
-  Search,
+  ChevronUp,
+  DollarSign,
   Eye,
-  Smartphone,
   FileSpreadsheet,
+  Hash,
   HelpCircle,
+  List,
+  Loader2,
+  Mail,
+  MapPin,
+  Package,
+  Pencil,
+  Phone,
+  Plus,
+  Search,
+  Smartphone,
+  ToggleLeft,
+  Type,
   Workflow,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+import { useMemo, useState } from "react";
 import { Can } from "@/components/auth/can";
-import { ErrorState } from "@/components/ui/error-state";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,21 +38,28 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ErrorState } from "@/components/ui/error-state";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  useCustomFields,
   FIELD_TYPE_LABELS,
   type FieldDefinition,
   type FieldEntity,
   type FieldType,
+  useCustomFields,
 } from "./custom-fields-context";
-import { FieldDefinitionDialog } from "./field-definition-dialog";
 import { CustomFieldsLearn } from "./custom-fields-learn";
+import { FieldDefinitionDialog } from "./field-definition-dialog";
 import { FieldFlowDialog } from "./field-flow-dialog";
 
 const FIELD_TYPE_ICON: Record<FieldType, typeof Type> = {
@@ -76,19 +76,26 @@ const FIELD_TYPE_ICON: Record<FieldType, typeof Type> = {
 const FIELD_TYPE_COLOR: Record<FieldType, string> = {
   text: "text-slate-600 bg-slate-100 dark:bg-slate-800/50 dark:text-slate-300",
   number: "text-blue-600 bg-blue-100 dark:bg-blue-800/50 dark:text-blue-300",
-  select: "text-purple-600 bg-purple-100 dark:bg-purple-800/50 dark:text-purple-300",
+  select:
+    "text-purple-600 bg-purple-100 dark:bg-purple-800/50 dark:text-purple-300",
   date: "text-amber-600 bg-amber-100 dark:bg-amber-800/50 dark:text-amber-300",
-  currency: "text-green-600 bg-green-100 dark:bg-green-800/50 dark:text-green-300",
+  currency:
+    "text-green-600 bg-green-100 dark:bg-green-800/50 dark:text-green-300",
   phone: "text-cyan-600 bg-cyan-100 dark:bg-cyan-800/50 dark:text-cyan-300",
   email: "text-pink-600 bg-pink-100 dark:bg-pink-800/50 dark:text-pink-300",
-  boolean: "text-orange-600 bg-orange-100 dark:bg-orange-800/50 dark:text-orange-300",
+  boolean:
+    "text-orange-600 bg-orange-100 dark:bg-orange-800/50 dark:text-orange-300",
 };
 
-const ENTITY_META: Record<FieldEntity, { label: string; icon: typeof Package; description: string }> = {
+const ENTITY_META: Record<
+  FieldEntity,
+  { label: string; icon: typeof Package; description: string }
+> = {
   orders: {
     label: "Pedidos",
     icon: Package,
-    description: "Se llenan al crear el pedido desde el panel o al importarlos.",
+    description:
+      "Se llenan al crear el pedido desde el panel o al importarlos.",
   },
   route_stops: {
     label: "Entregas",
@@ -142,7 +149,9 @@ export function CustomFieldsDashboardView() {
         <div className="mx-auto max-w-5xl space-y-6">
           <header className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">Campos personalizados</h1>
+              <h1 className="text-2xl font-semibold text-foreground">
+                Campos personalizados
+              </h1>
               <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
                 Antes de crear tu primer campo, leé cómo funciona el flujo
                 completo. Al terminar, vas a saber exactamente para qué sirve,
@@ -167,10 +176,13 @@ export function CustomFieldsDashboardView() {
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">Campos personalizados</h1>
+            <h1 className="text-2xl font-semibold text-foreground">
+              Campos personalizados
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-              Define información adicional que tu equipo necesita capturar en cada pedido y cada
-              entrega. Los cambios se aplican solo a los pedidos creados a partir de ahora.
+              Define información adicional que tu equipo necesita capturar en
+              cada pedido y cada entrega. Los cambios se aplican solo a los
+              pedidos creados a partir de ahora.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -183,7 +195,10 @@ export function CustomFieldsDashboardView() {
               ¿Cómo funciona?
             </Button>
             <Can perm="company:update">
-              <Button size="sm" onClick={() => actions.openCreateDialog(activeTab)}>
+              <Button
+                size="sm"
+                onClick={() => actions.openCreateDialog(activeTab)}
+              >
                 <Plus className="size-4 mr-1.5" />
                 Nuevo campo
               </Button>
@@ -191,7 +206,10 @@ export function CustomFieldsDashboardView() {
           </div>
         </header>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FieldEntity)}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as FieldEntity)}
+        >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <TabsList>
               {(["orders", "route_stops"] as FieldEntity[]).map((entity) => {
@@ -204,7 +222,10 @@ export function CustomFieldsDashboardView() {
                   <TabsTrigger key={entity} value={entity} className="gap-2">
                     <Icon className="size-3.5" />
                     {tabMeta.label}
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                    <Badge
+                      variant="secondary"
+                      className="h-5 px-1.5 text-[10px]"
+                    >
                       {count}
                     </Badge>
                   </TabsTrigger>
@@ -224,7 +245,10 @@ export function CustomFieldsDashboardView() {
                   />
                 </div>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                  <Switch checked={showArchived} onCheckedChange={setShowArchived} />
+                  <Switch
+                    checked={showArchived}
+                    onCheckedChange={setShowArchived}
+                  />
                   Ver archivados
                 </label>
               </div>
@@ -285,15 +309,24 @@ interface EntityPanelProps {
   onCreate: () => void;
 }
 
-function EntityPanel({ entity, query, showArchived, onCreate }: EntityPanelProps) {
+function EntityPanel({
+  entity,
+  query,
+  showArchived,
+  onCreate,
+}: EntityPanelProps) {
   const { state } = useCustomFields();
   const meta = ENTITY_META[entity];
 
   const { active, archived } = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matches = (d: FieldDefinition) =>
-      !q || d.label.toLowerCase().includes(q) || d.code.toLowerCase().includes(q);
-    const inEntity = state.definitions.filter((d) => d.entity === entity && matches(d));
+      !q ||
+      d.label.toLowerCase().includes(q) ||
+      d.code.toLowerCase().includes(q);
+    const inEntity = state.definitions.filter(
+      (d) => d.entity === entity && matches(d),
+    );
     return {
       active: inEntity.filter((d) => d.active),
       archived: inEntity.filter((d) => !d.active),
@@ -321,7 +354,11 @@ function EntityPanel({ entity, query, showArchived, onCreate }: EntityPanelProps
             {examples.map((example) => {
               const Icon = example.icon;
               return (
-                <Badge key={example.label} variant="secondary" className="text-[11px]">
+                <Badge
+                  key={example.label}
+                  variant="secondary"
+                  className="text-[11px]"
+                >
                   <Icon className="size-3 mr-1" />
                   {example.label}
                 </Badge>
@@ -354,7 +391,11 @@ function EntityPanel({ entity, query, showArchived, onCreate }: EntityPanelProps
             <span>Archivados ({archived.length})</span>
           </div>
           {archived.length > 0 ? (
-            <DefinitionsTable definitions={archived} kind="archived" emptyHint="" />
+            <DefinitionsTable
+              definitions={archived}
+              kind="archived"
+              emptyHint=""
+            />
           ) : (
             <p className="text-xs text-muted-foreground italic">
               No hay campos archivados.
@@ -372,7 +413,11 @@ interface DefinitionsTableProps {
   emptyHint: string;
 }
 
-function DefinitionsTable({ definitions, kind, emptyHint }: DefinitionsTableProps) {
+function DefinitionsTable({
+  definitions,
+  kind,
+  emptyHint,
+}: DefinitionsTableProps) {
   if (definitions.length === 0) {
     return (
       <Card>
@@ -389,13 +434,27 @@ function DefinitionsTable({ definitions, kind, emptyHint }: DefinitionsTableProp
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
-              <th className="w-16 p-3 text-left font-medium text-muted-foreground">Orden</th>
-              <th className="p-3 text-left font-medium text-muted-foreground">Campo</th>
-              <th className="p-3 text-left font-medium text-muted-foreground">Tipo</th>
-              <th className="p-3 text-center font-medium text-muted-foreground">Obligatorio</th>
-              <th className="p-3 text-center font-medium text-muted-foreground">Visible en</th>
-              <th className="p-3 text-center font-medium text-muted-foreground">Activo</th>
-              <th className="p-3 text-right font-medium text-muted-foreground">Acciones</th>
+              <th className="w-16 p-3 text-left font-medium text-muted-foreground">
+                Orden
+              </th>
+              <th className="p-3 text-left font-medium text-muted-foreground">
+                Campo
+              </th>
+              <th className="p-3 text-left font-medium text-muted-foreground">
+                Tipo
+              </th>
+              <th className="p-3 text-center font-medium text-muted-foreground">
+                Obligatorio
+              </th>
+              <th className="p-3 text-center font-medium text-muted-foreground">
+                Visible en
+              </th>
+              <th className="p-3 text-center font-medium text-muted-foreground">
+                Activo
+              </th>
+              <th className="p-3 text-right font-medium text-muted-foreground">
+                Acciones
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -422,7 +481,12 @@ interface DefinitionRowProps {
   isLast: boolean;
 }
 
-function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps) {
+function DefinitionRow({
+  definition,
+  kind,
+  isFirst,
+  isLast,
+}: DefinitionRowProps) {
   const { actions } = useCustomFields();
   const [isBusy, setIsBusy] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
@@ -461,167 +525,193 @@ function DefinitionRow({ definition, kind, isFirst, isLast }: DefinitionRowProps
   };
 
   const TypeIcon = FIELD_TYPE_ICON[definition.fieldType] ?? Type;
-  const typeColor = FIELD_TYPE_COLOR[definition.fieldType] ?? FIELD_TYPE_COLOR.text;
+  const typeColor =
+    FIELD_TYPE_COLOR[definition.fieldType] ?? FIELD_TYPE_COLOR.text;
   const isArchived = kind === "archived";
 
   return (
     <>
-    <tr className={`border-b last:border-b-0 ${isArchived ? "opacity-60" : "hover:bg-muted/30"}`}>
-      <td className="p-3">
-        <Can perm="company:update" fallback={<span className="text-xs text-muted-foreground">{"—"}</span>}>
-          <div className="flex flex-col">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-7 p-0"
-              disabled={isBusy || isFirst || isArchived}
-              onClick={() => handleMove("up")}
-              title="Mover arriba"
-            >
-              <ChevronUp className="size-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-7 p-0"
-              disabled={isBusy || isLast || isArchived}
-              onClick={() => handleMove("down")}
-              title="Mover abajo"
-            >
-              <ChevronDown className="size-3" />
-            </Button>
-          </div>
-        </Can>
-      </td>
-      <td className="p-3">
-        <div>
-          <span className="font-medium">{definition.label}</span>
-          <span className="block text-xs text-muted-foreground font-mono">{definition.code}</span>
-        </div>
-      </td>
-      <td className="p-3">
-        <Badge variant="secondary" className={`text-[11px] gap-1 ${typeColor}`}>
-          <TypeIcon className="size-3" />
-          {FIELD_TYPE_LABELS[definition.fieldType]}
-        </Badge>
-      </td>
-      <td className="p-3 text-center">
-        {definition.required ? (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-600">
-            Obligatorio
-          </Badge>
-        ) : (
-          <span className="text-xs text-muted-foreground">Opcional</span>
-        )}
-      </td>
-      <td className="p-3">
-        <VisibilityIcons definition={definition} />
-      </td>
-      <td className="p-3 text-center">
-        <Can
-          perm="company:update"
-          fallback={
-            <Badge variant={definition.active ? "secondary" : "outline"} className="text-[10px]">
-              {definition.active ? "Activo" : "Archivado"}
-            </Badge>
-          }
-        >
-          <Switch
-            checked={definition.active}
-            onCheckedChange={handleToggle}
-            disabled={isBusy}
-            aria-label={definition.active ? "Archivar campo" : "Reactivar campo"}
-          />
-        </Can>
-      </td>
-      <td className="p-3">
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="size-7 p-0 text-muted-foreground hover:text-primary"
-            onClick={() => setShowFlow(true)}
-            title="Ver dónde aparece este campo"
+      <tr
+        className={`border-b last:border-b-0 ${isArchived ? "opacity-60" : "hover:bg-muted/30"}`}
+      >
+        <td className="p-3">
+          <Can
+            perm="company:update"
+            fallback={
+              <span className="text-xs text-muted-foreground">{"—"}</span>
+            }
           >
-            <Workflow className="size-3.5" />
-          </Button>
-          <Can perm="company:update">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="size-7 p-0"
-              onClick={() => actions.openEditDialog(definition)}
-              disabled={isBusy}
-              title="Editar"
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-
-            {definition.active ? (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="size-7 p-0 text-muted-foreground hover:text-destructive"
-                    disabled={isBusy}
-                    title="Archivar"
-                  >
-                    {isBusy ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Archive className="size-3.5" />
-                    )}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>¿Archivar este campo?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      El campo <strong>{definition.label}</strong> dejará de aparecer en
-                      formularios nuevos. Los datos históricos se conservan y podés reactivarlo
-                      cuando quieras desde la vista de archivados.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleArchive}>
-                      Archivar campo
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            ) : (
+            <div className="flex flex-col">
               <Button
                 variant="ghost"
                 size="sm"
-                className="size-7 p-0 text-muted-foreground hover:text-primary"
-                disabled={isBusy}
-                onClick={() => handleToggle(true)}
-                title="Reactivar"
+                className="h-5 w-7 p-0"
+                disabled={isBusy || isFirst || isArchived}
+                onClick={() => handleMove("up")}
+                title="Mover arriba"
               >
-                {isBusy ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <ArchiveRestore className="size-3.5" />
-                )}
+                <ChevronUp className="size-3" />
               </Button>
-            )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-7 p-0"
+                disabled={isBusy || isLast || isArchived}
+                onClick={() => handleMove("down")}
+                title="Mover abajo"
+              >
+                <ChevronDown className="size-3" />
+              </Button>
+            </div>
           </Can>
-        </div>
-      </td>
-    </tr>
-    <FieldFlowDialog
-      open={showFlow}
-      onOpenChange={setShowFlow}
-      definition={definition}
-    />
+        </td>
+        <td className="p-3">
+          <div>
+            <span className="font-medium">{definition.label}</span>
+            <span className="block text-xs text-muted-foreground font-mono">
+              {definition.code}
+            </span>
+          </div>
+        </td>
+        <td className="p-3">
+          <Badge
+            variant="secondary"
+            className={`text-[11px] gap-1 ${typeColor}`}
+          >
+            <TypeIcon className="size-3" />
+            {FIELD_TYPE_LABELS[definition.fieldType]}
+          </Badge>
+        </td>
+        <td className="p-3 text-center">
+          {definition.required ? (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-600"
+            >
+              Obligatorio
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">Opcional</span>
+          )}
+        </td>
+        <td className="p-3">
+          <VisibilityIcons definition={definition} />
+        </td>
+        <td className="p-3 text-center">
+          <Can
+            perm="company:update"
+            fallback={
+              <Badge
+                variant={definition.active ? "secondary" : "outline"}
+                className="text-[10px]"
+              >
+                {definition.active ? "Activo" : "Archivado"}
+              </Badge>
+            }
+          >
+            <Switch
+              checked={definition.active}
+              onCheckedChange={handleToggle}
+              disabled={isBusy}
+              aria-label={
+                definition.active ? "Archivar campo" : "Reactivar campo"
+              }
+            />
+          </Can>
+        </td>
+        <td className="p-3">
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="size-7 p-0 text-muted-foreground hover:text-primary"
+              onClick={() => setShowFlow(true)}
+              title="Ver dónde aparece este campo"
+            >
+              <Workflow className="size-3.5" />
+            </Button>
+            <Can perm="company:update">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="size-7 p-0"
+                onClick={() => actions.openEditDialog(definition)}
+                disabled={isBusy}
+                title="Editar"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+
+              {definition.active ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-7 p-0 text-muted-foreground hover:text-destructive"
+                      disabled={isBusy}
+                      title="Archivar"
+                    >
+                      {isBusy ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Archive className="size-3.5" />
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Archivar este campo?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        El campo <strong>{definition.label}</strong> dejará de
+                        aparecer en formularios nuevos. Los datos históricos se
+                        conservan y podés reactivarlo cuando quieras desde la
+                        vista de archivados.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleArchive}>
+                        Archivar campo
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="size-7 p-0 text-muted-foreground hover:text-primary"
+                  disabled={isBusy}
+                  onClick={() => handleToggle(true)}
+                  title="Reactivar"
+                >
+                  {isBusy ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <ArchiveRestore className="size-3.5" />
+                  )}
+                </Button>
+              )}
+            </Can>
+          </div>
+        </td>
+      </tr>
+      <FieldFlowDialog
+        open={showFlow}
+        onOpenChange={setShowFlow}
+        definition={definition}
+      />
     </>
   );
 }
 
 function VisibilityIcons({ definition }: { definition: FieldDefinition }) {
-  const items: { key: keyof FieldDefinition; icon: typeof Eye; label: string }[] = [
+  const items: {
+    key: keyof FieldDefinition;
+    icon: typeof Eye;
+    label: string;
+  }[] = [
     { key: "showInList", icon: Eye, label: "Tabla del panel" },
     { key: "showInMobile", icon: Smartphone, label: "App del conductor" },
     { key: "showInCsv", icon: FileSpreadsheet, label: "Importar/exportar CSV" },

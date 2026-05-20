@@ -1,31 +1,32 @@
 import { and, eq } from "drizzle-orm";
-import { after } from "next/server";
-import { type NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs, USER_ROLES, users, vehicles } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type AssignmentValidationResult,
   validateDriverAssignment,
 } from "@/lib/routing/driver-assignment";
-import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { safeParseJson } from "@/lib/utils/safe-json";
 import {
   type ManualDriverAssignmentSchema,
   manualDriverAssignmentSchema,
 } from "@/lib/validations/driver-assignment";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
-import { safeParseJson } from "@/lib/utils/safe-json";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 /**
  * POST - Manually assign a driver to a route
  * This endpoint allows manual override of automatic driver assignments
  */
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.ASSIGN);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.ASSIGN,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -96,7 +97,11 @@ export async function POST(request: NextRequest) {
       [];
     if (job.result) {
       try {
-        const result = safeParseJson<{ routes?: Array<{ stops?: Array<{ orderId?: string; promisedDate?: string }> }> }>(job.result);
+        const result = safeParseJson<{
+          routes?: Array<{
+            stops?: Array<{ orderId?: string; promisedDate?: string }>;
+          }>;
+        }>(job.result);
         if (result.routes) {
           for (const route of result.routes) {
             if (route.stops) {
@@ -149,7 +154,16 @@ export async function POST(request: NextRequest) {
     let updatedResult = null;
     if (job.result) {
       try {
-        const result = safeParseJson<{ routes?: Array<{ vehicleId?: string; driverId?: string; driverName?: string; isManualOverride?: boolean; manualAssignmentReason?: string; assignmentValidation?: unknown }> }>(job.result);
+        const result = safeParseJson<{
+          routes?: Array<{
+            vehicleId?: string;
+            driverId?: string;
+            driverName?: string;
+            isManualOverride?: boolean;
+            manualAssignmentReason?: string;
+            assignmentValidation?: unknown;
+          }>;
+        }>(job.result);
         if (result.routes) {
           for (const route of result.routes) {
             if (route.vehicleId === data.vehicleId) {

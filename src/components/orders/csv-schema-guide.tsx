@@ -13,9 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useApiData } from "@/hooks/use-api";
 import {
-  validateCsvHeaders,
   type ProfileField,
   type ProfileSchema,
+  validateCsvHeaders,
 } from "@/lib/orders/profile-schema/client";
 
 // The API returns { schema, template } — keep a type-only description here.
@@ -97,14 +97,18 @@ export function CsvSchemaGuide({
 
   const { schema, template } = data;
   const required = schema.fields.filter((f) => f.required);
-  const optional = schema.fields.filter((f) => !f.required && f.origin === "system");
+  const optional = schema.fields.filter(
+    (f) => !f.required && f.origin === "system",
+  );
   const custom = schema.fields.filter((f) => f.origin === "custom");
 
   return (
     <div className={wrapperClass(className)}>
       <div className="flex items-start justify-between gap-3 pb-2 border-b">
         <div>
-          <h4 className="text-sm font-semibold">Columnas esperadas por tu empresa</h4>
+          <h4 className="text-sm font-semibold">
+            Columnas esperadas por tu empresa
+          </h4>
           <p className="text-xs text-muted-foreground mt-0.5">
             Dimensiones activas:{" "}
             {schema.activeDimensions.length > 0
@@ -170,7 +174,11 @@ export function CsvSchemaGuide({
           </p>
           <div className="flex flex-wrap gap-1">
             {validation.extra.map((h) => (
-              <Badge key={h} variant="outline" className="text-[11px] font-mono">
+              <Badge
+                key={h}
+                variant="outline"
+                className="text-[11px] font-mono"
+              >
                 {h}
               </Badge>
             ))}
@@ -214,7 +222,9 @@ function ValidationBar({
     : "border-red-300 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800";
 
   return (
-    <div className={`rounded-md border px-3 py-2 flex items-start gap-2 ${tone}`}>
+    <div
+      className={`rounded-md border px-3 py-2 flex items-start gap-2 ${tone}`}
+    >
       <Icon className="size-4 mt-0.5 flex-shrink-0" />
       <div className="flex-1 text-xs">
         <p className="font-medium">
@@ -225,8 +235,9 @@ function ValidationBar({
               }`}
         </p>
         <p className="mt-0.5 text-[11px] opacity-80">
-          {mappedRequired}/{totalRequired} obligatorias · {validation.extra.length}{" "}
-          no reconocidas · {validation.ambiguous.length} aproximadas
+          {mappedRequired}/{totalRequired} obligatorias ·{" "}
+          {validation.extra.length} no reconocidas ·{" "}
+          {validation.ambiguous.length} aproximadas
         </p>
       </div>
     </div>
@@ -294,7 +305,8 @@ function FieldChip({
             ? "border-purple-300 bg-purple-50 text-purple-800 dark:bg-purple-950/30 dark:text-purple-300 dark:border-purple-800"
             : "border-muted-foreground/30";
 
-  const Icon = status === "ok" ? CheckCircle2 : status === "missing" ? XCircle : null;
+  const Icon =
+    status === "ok" ? CheckCircle2 : status === "missing" ? XCircle : null;
 
   return (
     <div

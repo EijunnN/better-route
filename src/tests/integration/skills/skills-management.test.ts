@@ -1,52 +1,51 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
-  createAdmin,
-  createDriver,
-  createVehicle,
-  createVehicleSkill,
-  createUserSkillAssignment,
-  createVehicleSkillAssignment,
-} from "../setup/test-data";
-import {
-  vehicleSkills,
-  userSkills,
-  vehicleSkillAssignments,
-} from "@/db/schema";
-
-// Route handlers
-import {
-  GET as LIST_VEHICLE_SKILLS,
-  POST as CREATE_VEHICLE_SKILL,
-} from "@/app/api/vehicle-skills/route";
-import {
-  PATCH as PATCH_VEHICLE_SKILL,
-  DELETE as DELETE_VEHICLE_SKILL,
-} from "@/app/api/vehicle-skills/[id]/route";
-import {
-  GET as LIST_USER_SKILLS,
-  POST as CREATE_USER_SKILL,
-} from "@/app/api/user-skills/route";
-import {
+  DELETE as DELETE_USER_SKILL,
   GET as GET_USER_SKILL,
   PATCH as PATCH_USER_SKILL,
-  DELETE as DELETE_USER_SKILL,
 } from "@/app/api/user-skills/[id]/route";
+import {
+  POST as CREATE_USER_SKILL,
+  GET as LIST_USER_SKILLS,
+} from "@/app/api/user-skills/route";
+import {
+  DELETE as DELETE_VEHICLE_SKILL,
+  PATCH as PATCH_VEHICLE_SKILL,
+} from "@/app/api/vehicle-skills/[id]/route";
+// Route handlers
+import {
+  POST as CREATE_VEHICLE_SKILL,
+  GET as LIST_VEHICLE_SKILLS,
+} from "@/app/api/vehicle-skills/route";
 import {
   GET as GET_VEHICLE_SKILLS,
   PUT as PUT_VEHICLE_SKILLS,
 } from "@/app/api/vehicles/[id]/skills/route";
+import {
+  userSkills,
+  vehicleSkillAssignments,
+  vehicleSkills,
+} from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createDriver,
+  createUserSkillAssignment,
+  createVehicle,
+  createVehicleSkill,
+  createVehicleSkillAssignment,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Skills Management", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -86,9 +85,7 @@ describe("Skills Management", () => {
     await testDb
       .delete(vehicleSkillAssignments)
       .where(eq(vehicleSkillAssignments.companyId, company2.id));
-    await testDb
-      .delete(userSkills)
-      .where(eq(userSkills.companyId, company.id));
+    await testDb.delete(userSkills).where(eq(userSkills.companyId, company.id));
     await testDb
       .delete(userSkills)
       .where(eq(userSkills.companyId, company2.id));
@@ -219,7 +216,9 @@ describe("Skills Management", () => {
       expect(resCat.status).toBe(200);
       const catData = await resCat.json();
       expect(catData.data.length).toBe(2);
-      expect(catData.data.every((s: any) => s.category === "EQUIPMENT")).toBe(true);
+      expect(catData.data.every((s: any) => s.category === "EQUIPMENT")).toBe(
+        true,
+      );
 
       // Search by name
       const reqSearch = await createTestRequest("/api/vehicle-skills", {
@@ -247,13 +246,16 @@ describe("Skills Management", () => {
         category: "CERTIFICATIONS",
       });
 
-      const request = await createTestRequest(`/api/vehicle-skills/${skill.id}`, {
-        method: "PATCH",
-        token,
-        companyId: company.id,
-        userId: admin.id,
-        body: { name: "Manejo de Materiales Peligrosos" },
-      });
+      const request = await createTestRequest(
+        `/api/vehicle-skills/${skill.id}`,
+        {
+          method: "PATCH",
+          token,
+          companyId: company.id,
+          userId: admin.id,
+          body: { name: "Manejo de Materiales Peligrosos" },
+        },
+      );
 
       const response = await PATCH_VEHICLE_SKILL(request, {
         params: Promise.resolve({ id: skill.id }),
@@ -276,12 +278,15 @@ describe("Skills Management", () => {
         category: "SPECIAL",
       });
 
-      const request = await createTestRequest(`/api/vehicle-skills/${skill.id}`, {
-        method: "DELETE",
-        token,
-        companyId: company.id,
-        userId: admin.id,
-      });
+      const request = await createTestRequest(
+        `/api/vehicle-skills/${skill.id}`,
+        {
+          method: "DELETE",
+          token,
+          companyId: company.id,
+          userId: admin.id,
+        },
+      );
 
       const response = await DELETE_VEHICLE_SKILL(request, {
         params: Promise.resolve({ id: skill.id }),

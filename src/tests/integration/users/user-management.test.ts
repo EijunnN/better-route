@@ -1,24 +1,19 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createUser,
-} from "../setup/test-data";
-import { users } from "@/db/schema";
+import { DELETE, GET as GET_ONE, PUT } from "@/app/api/users/[id]/route";
 import { GET, POST } from "@/app/api/users/route";
-import { GET as GET_ONE, PUT, DELETE } from "@/app/api/users/[id]/route";
+import { users } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import { createAdmin, createCompany, createUser } from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("User Management", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -39,9 +34,7 @@ describe("User Management", () => {
 
   beforeEach(async () => {
     // Clean only users that belong to the test company (preserve admin)
-    await testDb
-      .delete(users)
-      .where(eq(users.companyId, company.id));
+    await testDb.delete(users).where(eq(users.companyId, company.id));
   });
 
   afterAll(async () => {
@@ -218,9 +211,9 @@ describe("User Management", () => {
 
     const { data } = await response.json();
     expect(data).toHaveLength(2);
-    expect(
-      data.every((u: { role: string }) => u.role === "PLANIFICADOR"),
-    ).toBe(true);
+    expect(data.every((u: { role: string }) => u.role === "PLANIFICADOR")).toBe(
+      true,
+    );
   });
 
   // 6. Search by name/email

@@ -1,32 +1,28 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
+  DELETE as DELETE_FLEET,
+  PATCH as PATCH_FLEET,
+} from "@/app/api/fleets/[id]/route";
+import { GET as GET_FLEETS, POST as POST_FLEET } from "@/app/api/fleets/route";
+import {
+  DELETE as DELETE_ZONE,
+  PATCH as PATCH_ZONE,
+} from "@/app/api/zones/[id]/route";
+import { GET as GET_ZONES, POST as POST_ZONE } from "@/app/api/zones/route";
+import { fleets, zones } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
   createAdmin,
+  createCompany,
+  createFleet,
   createPlanner,
   createVehicle,
   createZone,
   createZoneVehicle,
-  createFleet,
 } from "../setup/test-data";
-import { fleets, zones } from "@/db/schema";
-
-import { GET as GET_FLEETS, POST as POST_FLEET } from "@/app/api/fleets/route";
-import {
-  GET as GET_FLEET,
-  PATCH as PATCH_FLEET,
-  DELETE as DELETE_FLEET,
-} from "@/app/api/fleets/[id]/route";
-
-import { GET as GET_ZONES, POST as POST_ZONE } from "@/app/api/zones/route";
-import {
-  GET as GET_ZONE,
-  PATCH as PATCH_ZONE,
-  DELETE as DELETE_ZONE,
-} from "@/app/api/zones/[id]/route";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // Valid GeoJSON polygon (Lima area)
 const VALID_POLYGON = JSON.stringify({

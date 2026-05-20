@@ -1,9 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { users, roles, userRoles } from "@/db/schema";
-import { Action, EntityType } from "@/lib/auth/permissions";
+import { roles, userRoles, users } from "@/db/schema";
 import { clearUserPermissionCache } from "@/lib/auth/authorization";
+import { Action, EntityType } from "@/lib/auth/permissions";
 import {
   checkPermissionOrError,
   handleError,
@@ -128,9 +128,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const [role] = await db
       .select()
       .from(roles)
-      .where(
-        and(eq(roles.id, roleId), eq(roles.companyId, companyId)),
-      )
+      .where(and(eq(roles.id, roleId), eq(roles.companyId, companyId)))
       .limit(1);
 
     if (!role) {

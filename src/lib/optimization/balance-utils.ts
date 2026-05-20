@@ -7,7 +7,7 @@
  * - Measuring balance quality
  */
 
-import { calculateDistance, type Coordinates } from "../geo/geospatial";
+import { calculateDistance } from "../geo/geospatial";
 
 // Generic route interface for balancing
 export interface BalanceableRoute {
@@ -73,9 +73,7 @@ export function getBalanceScore(routes: BalanceableRoute[]): number {
   const idealPerRoute = totalStops / routes.length;
 
   // Calculate standard deviation
-  const deviations = routes.map((r) =>
-    Math.pow(r.stops.length - idealPerRoute, 2),
-  );
+  const deviations = routes.map((r) => (r.stops.length - idealPerRoute) ** 2);
   const variance = deviations.reduce((sum, d) => sum + d, 0) / routes.length;
   const stdDev = Math.sqrt(variance);
 
@@ -266,7 +264,7 @@ export function redistributeOrders(
     if (bestOrder) {
       // Remove from overloaded
       const orderIndex = overloaded.stops.findIndex(
-        (s) => s.orderId === bestOrder!.orderId,
+        (s) => s.orderId === bestOrder?.orderId,
       );
       if (orderIndex !== -1) {
         overloaded.stops.splice(orderIndex, 1);

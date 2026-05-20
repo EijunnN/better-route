@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getTenantContext } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import {
   getHistoricalMetrics,
   getMetricsSummaryStats,
 } from "@/lib/optimization/plan-metrics";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 /**
  * GET /api/metrics/history
@@ -15,7 +15,11 @@ import { EntityType, Action } from "@/lib/auth/authorization";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.METRICS, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.METRICS,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
 
     const tenantContext = getTenantContext();

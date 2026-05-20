@@ -1,6 +1,5 @@
 import {
   index,
-  integer,
   jsonb,
   pgTable,
   text,
@@ -9,9 +8,9 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { companies } from "./companies";
-import { orders } from "./orders";
-import { routeStops, DELIVERY_FAILURE_REASONS } from "./routing";
 import { optimizationJobs } from "./optimization";
+import { orders } from "./orders";
+import { type DELIVERY_FAILURE_REASONS, routeStops } from "./routing";
 import { users } from "./users";
 
 /**

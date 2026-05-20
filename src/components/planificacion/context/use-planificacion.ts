@@ -7,7 +7,9 @@ import type { PlanificacionContextValue } from "./types";
 export function usePlanificacion(): PlanificacionContextValue {
   const context = use(PlanificacionContext);
   if (context === undefined) {
-    throw new Error("usePlanificacion must be used within a PlanificacionProvider");
+    throw new Error(
+      "usePlanificacion must be used within a PlanificacionProvider",
+    );
   }
   return context;
 }

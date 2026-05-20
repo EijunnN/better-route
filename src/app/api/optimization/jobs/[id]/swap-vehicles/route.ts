@@ -3,6 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs, orders, vehicles } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type DepotConfig,
@@ -10,12 +12,8 @@ import {
   type VehicleForOptimization,
   optimizeRoutes as vroomOptimizeRoutes,
 } from "@/lib/optimization/vroom-optimizer";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
 import { safeParseJson } from "@/lib/utils/safe-json";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
 
 interface RouteData {
   routeId: string;
@@ -94,7 +92,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.PLAN, Action.UPDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.PLAN,
+      Action.UPDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -278,7 +280,10 @@ export async function POST(
 
             // Pre-index stops by orderId AND grouped order ids so the
             // per-stop lookup below is O(1) instead of O(n*m).
-            const stopByOrderId = new Map<string, (typeof route.stops)[number]>();
+            const stopByOrderId = new Map<
+              string,
+              (typeof route.stops)[number]
+            >();
             for (const s of route.stops) {
               stopByOrderId.set(s.orderId, s);
               if (s.groupedOrderIds) {

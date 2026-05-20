@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * Flex-mode time windows. Same inputs as scenario 02 but with
@@ -10,7 +10,8 @@ import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
  */
 export const scenario: Scenario = {
   name: "13-soft-time-windows",
-  description: "Tight windows with flexibleTimeWindows=true — solver gets ±30min",
+  description:
+    "Tight windows with flexibleTimeWindows=true — solver gets ±30min",
   orders: [
     ...Array.from({ length: 8 }, (_, i) =>
       makeOrder(i, {

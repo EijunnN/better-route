@@ -119,8 +119,8 @@ export function Instructions({
       )}
       {drawMode === "freehand" && !isPolygonClosed && !isDrawingFreehand && (
         <span>
-          <strong>Modo Lapiz:</strong> Manten presionado y dibuja. Cuando
-          cruces tu trazo, se cerrara la zona automaticamente.
+          <strong>Modo Lapiz:</strong> Manten presionado y dibuja. Cuando cruces
+          tu trazo, se cerrara la zona automaticamente.
         </span>
       )}
       {drawMode === "freehand" && isDrawingFreehand && (

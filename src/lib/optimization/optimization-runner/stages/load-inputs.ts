@@ -13,8 +13,8 @@ import {
   USER_ROLES,
   users,
   vehicles,
-  zoneVehicles,
   zones,
+  zoneVehicles,
 } from "@/db/schema";
 import type { VehicleZoneAssignment, ZoneData } from "../../../geo/zone-utils";
 import type { OptimizationInput } from "../types";
@@ -90,9 +90,7 @@ export async function loadInputs(
     db
       .select()
       .from(zones)
-      .where(
-        and(eq(zones.companyId, input.companyId), eq(zones.active, true)),
-      ),
+      .where(and(eq(zones.companyId, input.companyId), eq(zones.active, true))),
     db.query.users.findMany({
       where: and(
         eq(users.companyId, input.companyId),

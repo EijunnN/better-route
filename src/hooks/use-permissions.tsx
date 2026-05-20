@@ -1,11 +1,8 @@
 "use client";
 
-import { createContext, use, type ReactNode } from "react";
+import { createContext, type ReactNode, use } from "react";
+import { type Permission, WILDCARD_PERMISSION } from "@/lib/auth/permissions";
 import { useAuth } from "./use-auth";
-import {
-  type Permission,
-  WILDCARD_PERMISSION,
-} from "@/lib/auth/permissions";
 
 interface PermissionsContextValue {
   permissions: string[];
@@ -19,9 +16,7 @@ interface PermissionsContextValue {
   hasPermission: ((perm: Permission) => boolean) &
     ((entity: string, action: string) => boolean);
   hasAnyPermission: (
-    checks:
-      | Permission[]
-      | Array<{ entity: string; action: string }>,
+    checks: Permission[] | Array<{ entity: string; action: string }>,
   ) => boolean;
   refetch: () => Promise<void>;
 }
@@ -74,7 +69,8 @@ function buildContextValue(
     action?: string,
   ): boolean {
     if (isWildcard) return true;
-    const perm = action !== undefined ? `${permOrEntity}:${action}` : permOrEntity;
+    const perm =
+      action !== undefined ? `${permOrEntity}:${action}` : permOrEntity;
     return permissionsSet.has(perm);
   }
 
@@ -83,7 +79,8 @@ function buildContextValue(
   ): boolean => {
     if (isWildcard) return true;
     return checks.some((check) => {
-      const key = typeof check === "string" ? check : `${check.entity}:${check.action}`;
+      const key =
+        typeof check === "string" ? check : `${check.entity}:${check.action}`;
       return permissionsSet.has(key);
     });
   };
@@ -97,4 +94,3 @@ function buildContextValue(
     refetch,
   };
 }
-

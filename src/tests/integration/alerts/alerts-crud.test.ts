@@ -1,41 +1,40 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
 import { eq, sql } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import { createCompany, createAdmin } from "../setup/test-data";
-import { alerts, alertRules, alertNotifications } from "@/db/schema";
-
+import { POST as ACKNOWLEDGE_ALERT } from "@/app/api/alerts/[id]/acknowledge/route";
+import { POST as DISMISS_ALERT } from "@/app/api/alerts/[id]/dismiss/route";
+import {
+  DELETE as DELETE_ALERT,
+  GET as GET_ALERT,
+  PATCH as PATCH_ALERT,
+} from "@/app/api/alerts/[id]/route";
 // ---------------------------------------------------------------------------
 // Route handler imports
 // ---------------------------------------------------------------------------
 import {
-  GET as LIST_ALERTS,
   POST as CREATE_ALERT,
+  GET as LIST_ALERTS,
 } from "@/app/api/alerts/route";
 import {
-  GET as GET_ALERT,
-  PATCH as PATCH_ALERT,
-  DELETE as DELETE_ALERT,
-} from "@/app/api/alerts/[id]/route";
-import { POST as ACKNOWLEDGE_ALERT } from "@/app/api/alerts/[id]/acknowledge/route";
-import { POST as DISMISS_ALERT } from "@/app/api/alerts/[id]/dismiss/route";
-import {
-  GET as LIST_RULES,
-  POST as CREATE_RULE,
-} from "@/app/api/alerts/rules/route";
-import {
+  DELETE as DELETE_RULE,
   GET as GET_RULE,
   PUT as UPDATE_RULE,
-  DELETE as DELETE_RULE,
 } from "@/app/api/alerts/rules/[id]/route";
+import {
+  POST as CREATE_RULE,
+  GET as LIST_RULES,
+} from "@/app/api/alerts/rules/route";
+import { alertRules, alerts } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import { createAdmin, createCompany } from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -111,12 +110,8 @@ describe("Alerts CRUD & Rules", () => {
     await testDb.execute(
       sql`DELETE FROM alert_notifications WHERE alert_id IN (SELECT id FROM alerts WHERE company_id = ${company.id})`,
     );
-    await testDb
-      .delete(alerts)
-      .where(eq(alerts.companyId, company.id));
-    await testDb
-      .delete(alertRules)
-      .where(eq(alertRules.companyId, company.id));
+    await testDb.delete(alerts).where(eq(alerts.companyId, company.id));
+    await testDb.delete(alertRules).where(eq(alertRules.companyId, company.id));
   });
 
   afterAll(async () => {
@@ -1113,15 +1108,12 @@ describe("Alerts CRUD & Rules", () => {
         threshold: 15,
       });
 
-      const request = await createTestRequest(
-        `/api/alerts/rules/${rule.id}`,
-        {
-          method: "GET",
-          token,
-          companyId: company.id,
-          userId: admin.id,
-        },
-      );
+      const request = await createTestRequest(`/api/alerts/rules/${rule.id}`, {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      });
 
       const response = await GET_RULE(request, {
         params: Promise.resolve({ id: rule.id }),
@@ -1143,15 +1135,12 @@ describe("Alerts CRUD & Rules", () => {
       });
       await insertAlert(company.id, { ruleId: rule.id, title: "From rule" });
 
-      const request = await createTestRequest(
-        `/api/alerts/rules/${rule.id}`,
-        {
-          method: "GET",
-          token,
-          companyId: company.id,
-          userId: admin.id,
-        },
-      );
+      const request = await createTestRequest(`/api/alerts/rules/${rule.id}`, {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      });
 
       const response = await GET_RULE(request, {
         params: Promise.resolve({ id: rule.id }),
@@ -1209,21 +1198,18 @@ describe("Alerts CRUD & Rules", () => {
         threshold: 30,
       });
 
-      const request = await createTestRequest(
-        `/api/alerts/rules/${rule.id}`,
-        {
-          method: "PUT",
-          token,
-          companyId: company.id,
-          userId: admin.id,
-          body: {
-            name: "Updated Name",
-            severity: "CRITICAL",
-            threshold: 7,
-            enabled: false,
-          },
+      const request = await createTestRequest(`/api/alerts/rules/${rule.id}`, {
+        method: "PUT",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        body: {
+          name: "Updated Name",
+          severity: "CRITICAL",
+          threshold: 7,
+          enabled: false,
         },
-      );
+      });
 
       const response = await UPDATE_RULE(request, {
         params: Promise.resolve({ id: rule.id }),
@@ -1254,16 +1240,13 @@ describe("Alerts CRUD & Rules", () => {
         enabled: true,
       });
 
-      const request = await createTestRequest(
-        `/api/alerts/rules/${rule.id}`,
-        {
-          method: "PUT",
-          token,
-          companyId: company.id,
-          userId: admin.id,
-          body: { threshold: 20 },
-        },
-      );
+      const request = await createTestRequest(`/api/alerts/rules/${rule.id}`, {
+        method: "PUT",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        body: { threshold: 20 },
+      });
 
       const response = await UPDATE_RULE(request, {
         params: Promise.resolve({ id: rule.id }),
@@ -1321,15 +1304,12 @@ describe("Alerts CRUD & Rules", () => {
     test("deletes an existing rule (200)", async () => {
       const rule = await insertAlertRule(company.id, { name: "To Delete" });
 
-      const request = await createTestRequest(
-        `/api/alerts/rules/${rule.id}`,
-        {
-          method: "DELETE",
-          token,
-          companyId: company.id,
-          userId: admin.id,
-        },
-      );
+      const request = await createTestRequest(`/api/alerts/rules/${rule.id}`, {
+        method: "DELETE",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      });
 
       const response = await DELETE_RULE(request, {
         params: Promise.resolve({ id: rule.id }),
@@ -1401,15 +1381,12 @@ describe("Alerts CRUD & Rules", () => {
       });
 
       // Company B tries to GET company A's rule
-      const request = await createTestRequest(
-        `/api/alerts/rules/${ruleA.id}`,
-        {
-          method: "GET",
-          token: tokenB,
-          companyId: companyB.id,
-          userId: adminB.id,
-        },
-      );
+      const request = await createTestRequest(`/api/alerts/rules/${ruleA.id}`, {
+        method: "GET",
+        token: tokenB,
+        companyId: companyB.id,
+        userId: adminB.id,
+      });
 
       const response = await GET_RULE(request, {
         params: Promise.resolve({ id: ruleA.id }),
@@ -1431,16 +1408,13 @@ describe("Alerts CRUD & Rules", () => {
         role: adminB.role,
       });
 
-      const request = await createTestRequest(
-        `/api/alerts/rules/${ruleA.id}`,
-        {
-          method: "PUT",
-          token: tokenB,
-          companyId: companyB.id,
-          userId: adminB.id,
-          body: { name: "Hijacked" },
-        },
-      );
+      const request = await createTestRequest(`/api/alerts/rules/${ruleA.id}`, {
+        method: "PUT",
+        token: tokenB,
+        companyId: companyB.id,
+        userId: adminB.id,
+        body: { name: "Hijacked" },
+      });
 
       const response = await UPDATE_RULE(request, {
         params: Promise.resolve({ id: ruleA.id }),
@@ -1462,15 +1436,12 @@ describe("Alerts CRUD & Rules", () => {
         role: adminB.role,
       });
 
-      const request = await createTestRequest(
-        `/api/alerts/rules/${ruleA.id}`,
-        {
-          method: "DELETE",
-          token: tokenB,
-          companyId: companyB.id,
-          userId: adminB.id,
-        },
-      );
+      const request = await createTestRequest(`/api/alerts/rules/${ruleA.id}`, {
+        method: "DELETE",
+        token: tokenB,
+        companyId: companyB.id,
+        userId: adminB.id,
+      });
 
       const response = await DELETE_RULE(request, {
         params: Promise.resolve({ id: ruleA.id }),

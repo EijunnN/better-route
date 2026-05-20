@@ -1,28 +1,28 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
+import { GET as GET_HISTORY } from "@/app/api/route-stops/[id]/history/route";
+import { GET, POST } from "@/app/api/route-stops/route";
+import { routeStopHistory, routeStops } from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
   createAdmin,
+  createCompany,
   createDriver,
-  createVehicle,
-  createOrder,
   createOptimizationConfig,
   createOptimizationJob,
+  createOrder,
   createRouteStop,
+  createVehicle,
 } from "../setup/test-data";
-import { routeStops, routeStopHistory } from "@/db/schema";
-import { GET, POST } from "@/app/api/route-stops/route";
-import { GET as GET_HISTORY } from "@/app/api/route-stops/[id]/history/route";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Route Stop CRUD — list, create, history", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -57,9 +57,7 @@ describe("Route Stop CRUD — list, create, history", () => {
     await testDb
       .delete(routeStopHistory)
       .where(eq(routeStopHistory.companyId, company.id));
-    await testDb
-      .delete(routeStops)
-      .where(eq(routeStops.companyId, company.id));
+    await testDb.delete(routeStops).where(eq(routeStops.companyId, company.id));
   });
 
   afterAll(async () => {

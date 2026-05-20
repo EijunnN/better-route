@@ -1,29 +1,24 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
-import { eq, and } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createOrder,
-  createDriver,
-} from "../setup/test-data";
-import { orders } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { DELETE, PATCH } from "@/app/api/orders/[id]/route";
 import { GET, POST } from "@/app/api/orders/route";
+import { orders } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
 import {
-  PATCH,
-  DELETE,
-  GET as GET_ONE,
-} from "@/app/api/orders/[id]/route";
+  createAdmin,
+  createCompany,
+  createOrder,
+  createPlanner,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Order CRUD", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -43,9 +38,7 @@ describe("Order CRUD", () => {
   });
 
   beforeEach(async () => {
-    await testDb
-      .delete(orders)
-      .where(eq(orders.companyId, company.id));
+    await testDb.delete(orders).where(eq(orders.companyId, company.id));
   });
 
   afterAll(async () => {

@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  type Permission,
-  WILDCARD_PERMISSION,
-} from "@/lib/auth/permissions";
+import { type Permission, WILDCARD_PERMISSION } from "@/lib/auth/permissions";
 
 interface ProtectedPageProps {
   children: React.ReactNode;

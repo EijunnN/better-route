@@ -34,9 +34,7 @@ const DEFAULT_PRIORITY_MAPPING: PriorityMap = {
  * when legacy callers pass `undefined` as the profile (so the solver still has
  * a vector layout) and inside tests that don't need a real company.
  */
-export function defaultProfileSchema(
-  companyId = "__default__",
-): ProfileSchema {
+export function defaultProfileSchema(companyId = "__default__"): ProfileSchema {
   return {
     companyId,
     profileId: "default",
@@ -104,8 +102,9 @@ export async function resolveProfileSchema(
       // (which means "no capacity tracking"). Only fall back to defaults
       // when the JSON failed to parse to an array at all.
       if (Array.isArray(parsed)) {
-        return parsed.filter((d): d is CapacityDimension =>
-          d === "WEIGHT" || d === "VOLUME" || d === "VALUE" || d === "UNITS",
+        return parsed.filter(
+          (d): d is CapacityDimension =>
+            d === "WEIGHT" || d === "VOLUME" || d === "VALUE" || d === "UNITS",
         );
       }
     } catch {
@@ -117,7 +116,10 @@ export async function resolveProfileSchema(
   const priorityMapping = (() => {
     if (!profileRow) return DEFAULT_PRIORITY_MAPPING;
     try {
-      return safeParseJson<PriorityMap>(profileRow.priorityMapping) ?? DEFAULT_PRIORITY_MAPPING;
+      return (
+        safeParseJson<PriorityMap>(profileRow.priorityMapping) ??
+        DEFAULT_PRIORITY_MAPPING
+      );
     } catch {
       return DEFAULT_PRIORITY_MAPPING;
     }
@@ -153,14 +155,23 @@ export async function resolveProfileSchema(
       if (!raw) return undefined;
       try {
         const parsed =
-          typeof raw === "string" ? safeParseJson<Record<string, unknown>>(raw) : (raw as Record<string, unknown>);
+          typeof raw === "string"
+            ? safeParseJson<Record<string, unknown>>(raw)
+            : (raw as Record<string, unknown>);
         return parsed
           ? {
-              minLength: typeof parsed.minLength === "number" ? parsed.minLength : undefined,
-              maxLength: typeof parsed.maxLength === "number" ? parsed.maxLength : undefined,
+              minLength:
+                typeof parsed.minLength === "number"
+                  ? parsed.minLength
+                  : undefined,
+              maxLength:
+                typeof parsed.maxLength === "number"
+                  ? parsed.maxLength
+                  : undefined,
               min: typeof parsed.min === "number" ? parsed.min : undefined,
               max: typeof parsed.max === "number" ? parsed.max : undefined,
-              pattern: typeof parsed.pattern === "string" ? parsed.pattern : undefined,
+              pattern:
+                typeof parsed.pattern === "string" ? parsed.pattern : undefined,
             }
           : undefined;
       } catch {
@@ -196,7 +207,8 @@ export async function resolveProfileSchema(
     try {
       const parsed = safeParseJson<unknown>(profileRow.defaultTimeWindows);
       if (typeof parsed === "string") return parsed;
-      if (Array.isArray(parsed) && typeof parsed[0] === "string") return parsed[0];
+      if (Array.isArray(parsed) && typeof parsed[0] === "string")
+        return parsed[0];
     } catch {
       /* ignore */
     }

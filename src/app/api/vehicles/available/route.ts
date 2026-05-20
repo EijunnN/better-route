@@ -2,12 +2,11 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { routeStops, vehicleFleets, vehicles } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
-import { vehicleAvailabilityQuerySchema } from "@/lib/validations/vehicle-status";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { vehicleAvailabilityQuerySchema } from "@/lib/validations/vehicle-status";
 
 /**
  * GET /api/vehicles/available
@@ -17,7 +16,11 @@ import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.VEHICLE, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.VEHICLE,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

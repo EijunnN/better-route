@@ -8,12 +8,10 @@ import {
   Clock,
   Edit3,
   Loader2,
-  MapPin,
   MessageSquare,
   RefreshCw,
   Signal,
   Truck,
-  User,
   XCircle,
 } from "lucide-react";
 import { useState } from "react";
@@ -21,8 +19,6 @@ import { Can } from "@/components/auth/can";
 import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AttemptBadge,
   ProgramarProximaEntregaDialog,

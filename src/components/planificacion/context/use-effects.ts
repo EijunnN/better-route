@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import type { Order, Zone, FieldDefinition } from "../planificacion-types";
+import type { FieldDefinition, Order, Zone } from "../planificacion-types";
 import type { PlanificacionStateBag } from "./use-state";
 
 interface EffectsDeps {
@@ -85,7 +85,7 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
 
       const firstResponse = await fetch(
         `/api/orders?status=PENDING&active=true&limit=${limit}&offset=0`,
-        { headers: { "x-company-id": companyId }, signal }
+        { headers: { "x-company-id": companyId }, signal },
       );
 
       if (!firstResponse.ok) return;
@@ -105,12 +105,12 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
         batchPromises.push(
           fetch(
             `/api/orders?status=PENDING&active=true&limit=${limit}&offset=${offset}`,
-            { headers: { "x-company-id": companyId }, signal }
+            { headers: { "x-company-id": companyId }, signal },
           ).then(async (res) => {
             if (!res.ok) return [];
             const data = await res.json();
             return data.data || [];
-          })
+          }),
         );
       }
 
@@ -142,23 +142,25 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
         const data = await response.json();
         const mappedZones: Zone[] = (data.data || [])
           .filter((z: { parsedGeometry: unknown }) => z.parsedGeometry)
-          .map((z: {
-            id: string;
-            name: string;
-            parsedGeometry: { type: string; coordinates: number[][][] };
-            color: string | null;
-            active: boolean;
-            vehicleCount: number;
-            vehicles: Array<{ id: string; plate: string | null }>;
-          }) => ({
-            id: z.id,
-            name: z.name,
-            geometry: z.parsedGeometry,
-            color: z.color,
-            active: z.active,
-            vehicleCount: z.vehicleCount,
-            vehicles: z.vehicles || [],
-          }));
+          .map(
+            (z: {
+              id: string;
+              name: string;
+              parsedGeometry: { type: string; coordinates: number[][][] };
+              color: string | null;
+              active: boolean;
+              vehicleCount: number;
+              vehicles: Array<{ id: string; plate: string | null }>;
+            }) => ({
+              id: z.id,
+              name: z.name,
+              geometry: z.parsedGeometry,
+              color: z.color,
+              active: z.active,
+              vehicleCount: z.vehicleCount,
+              vehicles: z.vehicles || [],
+            }),
+          );
         setZones(mappedZones);
       }
     } catch (err) {
@@ -210,13 +212,18 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
   const loadFieldDefinitions = async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
-      const response = await fetch(`/api/companies/${companyId}/field-definitions?entity=orders`, {
-        headers: { "x-company-id": companyId },
-        signal,
-      });
+      const response = await fetch(
+        `/api/companies/${companyId}/field-definitions?entity=orders`,
+        {
+          headers: { "x-company-id": companyId },
+          signal,
+        },
+      );
       if (response.ok) {
         const data = await response.json();
-        setFieldDefinitions((data.data || []).filter((d: FieldDefinition) => d.active));
+        setFieldDefinitions(
+          (data.data || []).filter((d: FieldDefinition) => d.active),
+        );
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -273,7 +280,16 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
 
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId, fleetFilter]);
+  }, [
+    companyId,
+    loadCompanyProfile,
+    loadFieldDefinitions,
+    loadFleets,
+    loadOrders,
+    loadPresets,
+    loadVehicles,
+    loadZones,
+  ]);
 
   return { loadOrders };
 }

@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * 12 orders total: 4 require REFRIGERATED skill, 4 require LIFTING, 4 generic.

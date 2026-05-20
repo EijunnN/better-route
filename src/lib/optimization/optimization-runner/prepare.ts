@@ -16,7 +16,10 @@ export interface GroupedOrder {
 }
 
 // Map to track grouped orders for ungrouping later
-export type OrderGroupMap = Map<string, { orderIds: string[]; trackingIds: string[] }>;
+export type OrderGroupMap = Map<
+  string,
+  { orderIds: string[]; trackingIds: string[] }
+>;
 
 /**
  * Group orders that share the same coordinates

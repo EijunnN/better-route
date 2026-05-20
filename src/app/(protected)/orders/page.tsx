@@ -1,7 +1,7 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { OrdersProvider, OrdersListView } from "@/components/orders";
+import { OrdersListView, OrdersProvider } from "@/components/orders";
 
 export default function OrdersPage() {
   return (

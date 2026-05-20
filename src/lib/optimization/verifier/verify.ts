@@ -1,12 +1,12 @@
 import type { VerificationReport } from "../solved-plan";
-import type { VerifierInput, Violation } from "./types";
-import { checkIntegrity } from "./check-integrity";
-import { checkTimeWindows } from "./check-time-windows";
-import { checkSkills } from "./check-skills";
 import { checkCapacity } from "./check-capacity";
+import { checkIntegrity } from "./check-integrity";
 import { checkPriority } from "./check-priority";
+import { checkSkills } from "./check-skills";
+import { checkTimeWindows } from "./check-time-windows";
 import { checkTravelLimits } from "./check-travel-limits";
 import { checkUnassigned } from "./check-unassigned";
+import type { VerifierInput, Violation } from "./types";
 
 const ALL_CHECKS = [
   checkIntegrity,

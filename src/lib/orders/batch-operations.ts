@@ -135,15 +135,11 @@ export async function batchInsertOrders(
           data.orderType === "URGENT"
             ? data.orderType
             : null,
-        priority: data.priority
-          ? parseInt(String(data.priority), 10)
-          : null,
+        priority: data.priority ? parseInt(String(data.priority), 10) : null,
         timeWindowStart: data.timeWindowStart
           ? String(data.timeWindowStart)
           : null,
-        timeWindowEnd: data.timeWindowEnd
-          ? String(data.timeWindowEnd)
-          : null,
+        timeWindowEnd: data.timeWindowEnd ? String(data.timeWindowEnd) : null,
         requiredSkills: data.requiredSkills
           ? String(data.requiredSkills)
           : null,

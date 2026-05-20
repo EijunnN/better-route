@@ -2,9 +2,9 @@
 
 import type { ZoneInput } from "@/lib/validations/zone";
 import {
-  ZoneFormProvider,
   useZoneForm,
   type VehicleOption,
+  ZoneFormProvider,
 } from "./zone-form-context";
 import {
   ZoneFormActions,
@@ -30,7 +30,10 @@ interface ZoneFormProps {
   vehicles: VehicleOption[];
   initialVehicleIds?: string[];
   submitLabel?: string;
-  onGeometryEdit?: (snapshot: { formData: ZoneInput; vehicleIds: string[] }) => void;
+  onGeometryEdit?: (snapshot: {
+    formData: ZoneInput;
+    vehicleIds: string[];
+  }) => void;
   onFormDataChange?: (data: ZoneInput) => void;
 }
 

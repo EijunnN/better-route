@@ -137,7 +137,7 @@ export function useAuth(): UseAuthReturn {
       scheduleRefresh();
     }
     return () => clearRefreshTimer();
-  }, [user]);
+  }, [user, clearRefreshTimer, scheduleRefresh]);
 
   // Handle visibility change - refresh token when tab becomes visible
   useEffect(() => {
@@ -164,7 +164,7 @@ export function useAuth(): UseAuthReturn {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [user, mutate]);
+  }, [user, mutate, refreshToken, scheduleRefresh]);
 
   return {
     user: user ?? null,

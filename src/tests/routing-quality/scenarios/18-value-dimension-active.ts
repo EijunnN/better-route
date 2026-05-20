@@ -1,6 +1,6 @@
-import type { Scenario } from "../types";
 import { defaultProfileSchema } from "@/lib/orders/profile-schema";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * Company profile with VALUE dimension active. Orders carry a
@@ -15,7 +15,8 @@ const valueProfile = {
 
 export const scenario: Scenario = {
   name: "18-value-dimension-active",
-  description: "VALUE dimension — orders have orderValue, vehicles have maxValueCapacity",
+  description:
+    "VALUE dimension — orders have orderValue, vehicles have maxValueCapacity",
   orders: Array.from({ length: 10 }, (_, i) =>
     makeOrder(i, {
       weightRequired: 1, // irrelevant

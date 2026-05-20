@@ -1,45 +1,34 @@
-import {
-  describe,
-  test,
-  expect,
-  beforeAll,
-  afterAll,
-} from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createPlanner,
-  createOptimizationPreset,
-  createCsvMappingTemplate,
-  createOptimizationConfig,
-  createOptimizationJob,
-  createPlanMetrics,
-} from "../setup/test-data";
-import { optimizationPresets } from "@/db/schema";
-
-// Route handlers
-import {
-  GET as presetsGET,
-  POST as presetsPOST,
-} from "@/app/api/optimization-presets/route";
-import {
-  GET as presetGET,
-  PUT as presetPUT,
-  DELETE as presetDELETE,
-} from "@/app/api/optimization-presets/[id]/route";
 import {
   GET as templatesGET,
   POST as templatesPOST,
 } from "@/app/api/csv-column-mapping-templates/route";
 import {
-  GET as templateGET,
-} from "@/app/api/csv-column-mapping-templates/[id]/route";
-import { GET as plansGET } from "@/app/api/plans/route";
+  DELETE as presetDELETE,
+  GET as presetGET,
+  PUT as presetPUT,
+} from "@/app/api/optimization-presets/[id]/route";
+// Route handlers
+import {
+  GET as presetsGET,
+  POST as presetsPOST,
+} from "@/app/api/optimization-presets/route";
 import { GET as planGET } from "@/app/api/plans/[id]/route";
+import { GET as plansGET } from "@/app/api/plans/route";
+import { optimizationPresets } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createCsvMappingTemplate,
+  createOptimizationConfig,
+  createOptimizationJob,
+  createOptimizationPreset,
+  createPlanMetrics,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Presets, Templates & Output", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -169,16 +158,19 @@ describe("Presets, Templates & Output", () => {
       trafficFactor: 50,
     });
 
-    const request = await createTestRequest(`/api/optimization-presets/${preset.id}`, {
-      method: "PUT",
-      token: adminToken,
-      companyId: company.id,
-      userId: admin.id,
-      body: {
-        name: "Updated Preset",
-        trafficFactor: 80,
+    const request = await createTestRequest(
+      `/api/optimization-presets/${preset.id}`,
+      {
+        method: "PUT",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+        body: {
+          name: "Updated Preset",
+          trafficFactor: 80,
+        },
       },
-    });
+    );
     const response = await presetPUT(request, {
       params: Promise.resolve({ id: preset.id }),
     });
@@ -198,12 +190,15 @@ describe("Presets, Templates & Output", () => {
       name: "To Delete",
     });
 
-    const request = await createTestRequest(`/api/optimization-presets/${preset.id}`, {
-      method: "DELETE",
-      token: adminToken,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/optimization-presets/${preset.id}`,
+      {
+        method: "DELETE",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
     const response = await presetDELETE(request, {
       params: Promise.resolve({ id: preset.id }),
     });
@@ -228,24 +223,33 @@ describe("Presets, Templates & Output", () => {
   // 6. Create CSV template
   // -------------------------------------------------------------------------
   test("POST /api/csv-column-mapping-templates creates template (201)", async () => {
-    const request = await createTestRequest("/api/csv-column-mapping-templates", {
-      method: "POST",
-      token: adminToken,
-      companyId: company.id,
-      userId: admin.id,
-      body: {
-        name: "Standard Import",
-        description: "Standard CSV format",
-        columnMapping: {
-          "ID Seguimiento": "trackingId",
-          "Direccion": "address",
-          "Lat": "latitude",
-          "Lon": "longitude",
-          "Nombre": "customerName",
+    const request = await createTestRequest(
+      "/api/csv-column-mapping-templates",
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+        body: {
+          name: "Standard Import",
+          description: "Standard CSV format",
+          columnMapping: {
+            "ID Seguimiento": "trackingId",
+            Direccion: "address",
+            Lat: "latitude",
+            Lon: "longitude",
+            Nombre: "customerName",
+          },
+          requiredFields: [
+            "trackingId",
+            "address",
+            "latitude",
+            "longitude",
+            "customerName",
+          ],
         },
-        requiredFields: ["trackingId", "address", "latitude", "longitude", "customerName"],
       },
-    });
+    );
     const response = await templatesPOST(request);
 
     expect(response.status).toBe(201);
@@ -259,11 +263,14 @@ describe("Presets, Templates & Output", () => {
   // 7. List CSV templates
   // -------------------------------------------------------------------------
   test("GET /api/csv-column-mapping-templates lists templates", async () => {
-    const request = await createTestRequest("/api/csv-column-mapping-templates", {
-      token: adminToken,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      "/api/csv-column-mapping-templates",
+      {
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
     const response = await templatesGET(request);
 
     expect(response.status).toBe(200);
@@ -284,17 +291,20 @@ describe("Presets, Templates & Output", () => {
       name: "Unique Template Name",
     });
 
-    const request = await createTestRequest("/api/csv-column-mapping-templates", {
-      method: "POST",
-      token: adminToken,
-      companyId: company.id,
-      userId: admin.id,
-      body: {
-        name: "Unique Template Name",
-        columnMapping: { col: "trackingId" },
-        requiredFields: ["trackingId"],
+    const request = await createTestRequest(
+      "/api/csv-column-mapping-templates",
+      {
+        method: "POST",
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+        body: {
+          name: "Unique Template Name",
+          columnMapping: { col: "trackingId" },
+          requiredFields: ["trackingId"],
+        },
       },
-    });
+    );
     const response = await templatesPOST(request);
 
     expect(response.status).toBe(409);
@@ -416,11 +426,14 @@ describe("Presets, Templates & Output", () => {
     });
 
     // Try to GET the preset using company1's token but company1's companyId
-    const request = await createTestRequest(`/api/optimization-presets/${otherPreset.id}`, {
-      token: adminToken,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/optimization-presets/${otherPreset.id}`,
+      {
+        token: adminToken,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
     const response = await presetGET(request, {
       params: Promise.resolve({ id: otherPreset.id }),
     });

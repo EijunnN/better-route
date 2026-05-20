@@ -1,3 +1,4 @@
+import type { Scenario } from "../types";
 import { scenario as s01 } from "./01-basic";
 import { scenario as s02 } from "./02-tight-time-windows";
 import { scenario as s03 } from "./03-skills-scarce";
@@ -26,10 +27,34 @@ import { scenario as s25 } from "./25-open-end-mode";
 import { scenario as s26 } from "./26-driver-origin-mode";
 import { scenario as s27 } from "./27-zero-orders";
 import { scenario as s28 } from "./28-unreachable-coords";
-import type { Scenario } from "../types";
 
 export const SCENARIOS: Scenario[] = [
-  s01, s02, s03, s04, s05, s06, s07, s08, s09, s10, s11, s12,
-  s13, s14, s15, s16, s17, s18, s19, s20, s21, s22, s23, s24,
-  s25, s26, s27, s28,
+  s01,
+  s02,
+  s03,
+  s04,
+  s05,
+  s06,
+  s07,
+  s08,
+  s09,
+  s10,
+  s11,
+  s12,
+  s13,
+  s14,
+  s15,
+  s16,
+  s17,
+  s18,
+  s19,
+  s20,
+  s21,
+  s22,
+  s23,
+  s24,
+  s25,
+  s26,
+  s27,
+  s28,
 ];

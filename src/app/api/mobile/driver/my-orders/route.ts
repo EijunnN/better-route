@@ -7,7 +7,6 @@ import {
   orders,
   routeStops,
   USER_ROLES,
-  users,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
@@ -169,7 +168,7 @@ export async function GET(request: NextRequest) {
     };
 
     summaryResult.forEach((row) => {
-      const statusKey = row.status
+      const _statusKey = row.status
         ?.toLowerCase()
         .replace("_", "") as keyof typeof summary;
       if (row.status === "PENDING") summary.pending = Number(row.count);
@@ -234,7 +233,8 @@ export async function GET(request: NextRequest) {
       // en estado terminal (COMPLETED/FAILED) — su attempt sigue
       // siendo "el actual", no uno previo.
       const ownVisitForActiveStop =
-        stopInfo && (stopInfo.status === "COMPLETED" || stopInfo.status === "FAILED")
+        stopInfo &&
+        (stopInfo.status === "COMPLETED" || stopInfo.status === "FAILED")
           ? 1
           : 0;
       const effectivePriorVisits = Math.max(
@@ -244,7 +244,8 @@ export async function GET(request: NextRequest) {
       const visibleAttemptNumber = stopInfo
         ? Math.max(stopInfo.attemptNumber, effectivePriorVisits + 1)
         : effectivePriorVisits + 1;
-      const isRevisit = effectivePriorVisits > 0 || (stopInfo?.attemptNumber ?? 1) > 1;
+      const isRevisit =
+        effectivePriorVisits > 0 || (stopInfo?.attemptNumber ?? 1) > 1;
 
       return {
         id: order.id,

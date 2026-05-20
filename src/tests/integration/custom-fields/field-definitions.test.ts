@@ -1,29 +1,23 @@
-import {
-  describe,
-  test,
-  expect,
-  beforeAll,
-  afterAll,
-} from "bun:test";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createFieldDefinition,
-} from "../setup/test-data";
-import { companyFieldDefinitions } from "@/db/schema";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
+import {
+  DELETE,
+  GET as GET_ONE,
+  PATCH,
+} from "@/app/api/companies/[id]/field-definitions/[fieldId]/route";
 import {
   GET as LIST,
   POST,
 } from "@/app/api/companies/[id]/field-definitions/route";
+import { companyFieldDefinitions } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
 import {
-  GET as GET_ONE,
-  PATCH,
-  DELETE,
-} from "@/app/api/companies/[id]/field-definitions/[fieldId]/route";
+  createAdmin,
+  createCompany,
+  createFieldDefinition,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Field Definitions CRUD", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -183,7 +177,13 @@ describe("Field Definitions CRUD", () => {
 
     const dateReq = await createTestRequest(
       `/api/companies/${company.id}/field-definitions`,
-      { method: "POST", token, companyId: company.id, userId: admin.id, body: dateBody },
+      {
+        method: "POST",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        body: dateBody,
+      },
     );
     const dateRes = await POST(dateReq, {
       params: Promise.resolve({ id: company.id }),
@@ -201,7 +201,13 @@ describe("Field Definitions CRUD", () => {
 
     const currReq = await createTestRequest(
       `/api/companies/${company.id}/field-definitions`,
-      { method: "POST", token, companyId: company.id, userId: admin.id, body: currencyBody },
+      {
+        method: "POST",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        body: currencyBody,
+      },
     );
     const currRes = await POST(currReq, {
       params: Promise.resolve({ id: company.id }),
@@ -224,7 +230,13 @@ describe("Field Definitions CRUD", () => {
 
     const phoneReq = await createTestRequest(
       `/api/companies/${company.id}/field-definitions`,
-      { method: "POST", token, companyId: company.id, userId: admin.id, body: phoneBody },
+      {
+        method: "POST",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        body: phoneBody,
+      },
     );
     const phoneRes = await POST(phoneReq, {
       params: Promise.resolve({ id: company.id }),
@@ -242,7 +254,13 @@ describe("Field Definitions CRUD", () => {
 
     const emailReq = await createTestRequest(
       `/api/companies/${company.id}/field-definitions`,
-      { method: "POST", token, companyId: company.id, userId: admin.id, body: emailBody },
+      {
+        method: "POST",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        body: emailBody,
+      },
     );
     const emailRes = await POST(emailReq, {
       params: Promise.resolve({ id: company.id }),

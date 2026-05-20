@@ -3,18 +3,20 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicles, zones, zoneVehicles } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { zoneQuerySchema, zoneSchema } from "@/lib/validations/zone";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
 import { safeParseJson } from "@/lib/utils/safe-json";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { zoneQuerySchema, zoneSchema } from "@/lib/validations/zone";
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -142,7 +144,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -157,18 +163,29 @@ export async function POST(request: NextRequest) {
 
     // Validate GeoJSON structure
     if (validatedData.geometry) {
-      const geo = (typeof validatedData.geometry === "string" ? JSON.parse(validatedData.geometry) : validatedData.geometry) as { type?: string; coordinates?: unknown };
+      const geo = (
+        typeof validatedData.geometry === "string"
+          ? JSON.parse(validatedData.geometry)
+          : validatedData.geometry
+      ) as { type?: string; coordinates?: unknown };
 
       // Must be a Polygon or MultiPolygon
       if (!geo.type || !["Polygon", "MultiPolygon"].includes(geo.type)) {
         return NextResponse.json(
-          { error: "Zone geometry must be a Polygon or MultiPolygon GeoJSON object." },
+          {
+            error:
+              "Zone geometry must be a Polygon or MultiPolygon GeoJSON object.",
+          },
           { status: 400 },
         );
       }
 
       // Must have coordinates
-      if (!geo.coordinates || !Array.isArray(geo.coordinates) || geo.coordinates.length === 0) {
+      if (
+        !geo.coordinates ||
+        !Array.isArray(geo.coordinates) ||
+        geo.coordinates.length === 0
+      ) {
         return NextResponse.json(
           { error: "Zone geometry must have valid coordinates." },
           { status: 400 },
@@ -189,7 +206,10 @@ export async function POST(request: NextRequest) {
 
       if (!validateCoords(geo.coordinates)) {
         return NextResponse.json(
-          { error: "Zone geometry contains invalid coordinates. Latitude must be -90 to 90, longitude -180 to 180." },
+          {
+            error:
+              "Zone geometry contains invalid coordinates. Latitude must be -90 to 90, longitude -180 to 180.",
+          },
           { status: 400 },
         );
       }
@@ -260,7 +280,9 @@ export async function POST(request: NextRequest) {
       {
         ...newZone,
         parsedGeometry,
-        activeDays: newZone.activeDays ? safeParseJson(newZone.activeDays) : null,
+        activeDays: newZone.activeDays
+          ? safeParseJson(newZone.activeDays)
+          : null,
         vehicles: [],
         vehicleCount: 0,
       },

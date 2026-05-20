@@ -1,7 +1,12 @@
 "use client";
 
 import { ProtectedPage } from "@/components/auth/protected-page";
-import { UsersProvider, useUsers, UsersListView, UsersFormView } from "@/components/users";
+import {
+  UsersFormView,
+  UsersListView,
+  UsersProvider,
+  useUsers,
+} from "@/components/users";
 
 function UsersContent() {
   const { state, meta } = useUsers();

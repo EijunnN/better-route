@@ -25,7 +25,10 @@ async function main() {
   const ws = new WebSocket(WS_URL);
 
   const outcome = await new Promise<string>((resolve) => {
-    const timeout = setTimeout(() => resolve("✗ TIMEOUT — no push received"), 8000);
+    const timeout = setTimeout(
+      () => resolve("✗ TIMEOUT — no push received"),
+      8000,
+    );
 
     ws.onopen = () => {
       ws.send(JSON.stringify({ id: 1, connect: { token } }));

@@ -81,10 +81,7 @@ export function calculateMidpoints(pts: LngLat[]): Midpoint[] {
   for (let i = 0; i < pts.length; i++) {
     const next = (i + 1) % pts.length;
     mids.push({
-      coord: [
-        (pts[i][0] + pts[next][0]) / 2,
-        (pts[i][1] + pts[next][1]) / 2,
-      ],
+      coord: [(pts[i][0] + pts[next][0]) / 2, (pts[i][1] + pts[next][1]) / 2],
       insertIndex: i + 1,
     });
   }

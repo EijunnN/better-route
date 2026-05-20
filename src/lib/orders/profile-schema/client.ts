@@ -10,31 +10,28 @@
  * from '@/lib/orders/profile-schema' directly.
  */
 
-export type {
-  ProfileSchema,
-  ProfileField,
-  FieldKind,
-  CapacityDimension,
-  PriorityMap,
-  TimeWindowPresetRef,
-  HeaderValidationResult,
-  RowValidationResult,
-} from "./types";
-
-export {
-  validateCsvHeaders,
-  validateCsvRow,
-  validateCustomFieldValues,
-  applyCustomFieldDefaults,
-} from "./validate";
-
 export {
   buildOrderCapacityVector,
   buildVehicleCapacityVector,
-  resolveOrderPriority,
-  type OrderCapacityInput,
-  type VehicleCapacityInput,
   type CapacityVector,
+  type OrderCapacityInput,
+  resolveOrderPriority,
+  type VehicleCapacityInput,
 } from "./capacity";
-
 export { generateCsvTemplate } from "./template";
+export type {
+  CapacityDimension,
+  FieldKind,
+  HeaderValidationResult,
+  PriorityMap,
+  ProfileField,
+  ProfileSchema,
+  RowValidationResult,
+  TimeWindowPresetRef,
+} from "./types";
+export {
+  applyCustomFieldDefaults,
+  validateCsvHeaders,
+  validateCsvRow,
+  validateCustomFieldValues,
+} from "./validate";

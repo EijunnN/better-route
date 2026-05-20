@@ -11,9 +11,9 @@
 import * as turf from "@turf/turf";
 import type {
   Feature,
-  Polygon,
-  MultiPolygon,
   GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
 } from "geojson";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
@@ -66,11 +66,16 @@ function parseGeometry(
   geometryString: unknown,
 ): Feature<Polygon | MultiPolygon, GeoJsonProperties> | null {
   try {
-    const parsed = safeParseJson<{ type: string; [key: string]: unknown }>(geometryString);
+    const parsed = safeParseJson<{ type: string; [key: string]: unknown }>(
+      geometryString,
+    );
 
     // Handle both raw geometry and feature objects
     if (parsed.type === "Feature") {
-      return parsed as unknown as Feature<Polygon | MultiPolygon, GeoJsonProperties>;
+      return parsed as unknown as Feature<
+        Polygon | MultiPolygon,
+        GeoJsonProperties
+      >;
     }
 
     if (parsed.type === "Polygon" || parsed.type === "MultiPolygon") {
@@ -140,7 +145,7 @@ export function getZoneForOrder(
       ? parseFloat(order.longitude)
       : order.longitude;
 
-  if (isNaN(lat) || isNaN(lng)) {
+  if (Number.isNaN(lat) || Number.isNaN(lng)) {
     console.warn(`Invalid coordinates for order ${order.id}`);
     return null;
   }
@@ -412,7 +417,8 @@ export function createZoneBatches<
     // we never assign a vehicle to a no-go area.
     if (zone?.type === "RESTRICTED") continue;
 
-    const zoneLabel = zone?.name || (zoneId === "unzoned" ? "Sin Zona" : zoneId);
+    const zoneLabel =
+      zone?.name || (zoneId === "unzoned" ? "Sin Zona" : zoneId);
     const eligibleVehicles = filterVehiclesForZone(vehicles, zoneId, day);
 
     // Only create batch if there are vehicles available

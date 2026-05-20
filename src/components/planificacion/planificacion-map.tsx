@@ -1,16 +1,19 @@
 "use client";
 
+import { Eye, EyeOff, MapPin, Move, Package, Truck } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
-import { Eye, EyeOff, MapPin, Move, Package, Truck } from "lucide-react";
 import { usePlanificacion } from "./planificacion-context";
 
 const PlanningMap = dynamic(
-  () => import("@/components/planificacion/planning-map").then((mod) => mod.PlanningMap),
+  () =>
+    import("@/components/planificacion/planning-map").then(
+      (mod) => mod.PlanningMap,
+    ),
   {
     ssr: false,
     loading: () => <div className="h-full bg-muted animate-pulse rounded-lg" />,
-  }
+  },
 );
 
 export function PlanificacionMapPanel() {
@@ -18,9 +21,12 @@ export function PlanificacionMapPanel() {
   const [editMode, setEditMode] = useState(false);
 
   const displayVehicles =
-    state.currentStep === "vehiculos" ? derived.filteredVehicles : derived.selectedVehicles;
+    state.currentStep === "vehiculos"
+      ? derived.filteredVehicles
+      : derived.selectedVehicles;
 
-  const showOrders = state.currentStep === "visitas" || state.currentStep === "configuracion";
+  const showOrders =
+    state.currentStep === "visitas" || state.currentStep === "configuracion";
 
   const handleOrderDragEnd = useCallback(
     async (orderId: string, latitude: number, longitude: number) => {
@@ -46,7 +52,9 @@ export function PlanificacionMapPanel() {
         showVehicleOrigins={state.currentStep === "vehiculos"}
         showOrders={showOrders}
         selectedVehicleIds={
-          state.currentStep === "vehiculos" ? state.selectedVehicleIds : undefined
+          state.currentStep === "vehiculos"
+            ? state.selectedVehicleIds
+            : undefined
         }
         onOrderDragEnd={showOrders && editMode ? handleOrderDragEnd : undefined}
       />
@@ -77,7 +85,11 @@ export function PlanificacionMapPanel() {
                 : "bg-background/95 backdrop-blur text-muted-foreground hover:text-foreground"
             }`}
           >
-            {state.showZones ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+            {state.showZones ? (
+              <Eye className="size-4" />
+            ) : (
+              <EyeOff className="size-4" />
+            )}
             Zonas ({state.zones.length})
           </button>
         )}
@@ -95,7 +107,9 @@ export function PlanificacionMapPanel() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Truck className="size-4 text-primary" />
-            <span className="font-medium">{state.selectedVehicleIds.length}</span>
+            <span className="font-medium">
+              {state.selectedVehicleIds.length}
+            </span>
             <span className="text-muted-foreground">vehículos</span>
           </div>
           <div className="flex items-center gap-2">

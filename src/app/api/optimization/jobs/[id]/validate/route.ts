@@ -2,6 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { setTenantContext } from "@/lib/infra/tenant";
 import type { VerifiedPlan } from "@/lib/optimization/optimization-runner";
 import {
   getIssuesByCategory,
@@ -9,14 +12,9 @@ import {
   getValidationSummaryText,
   validatePlanForConfirmation,
 } from "@/lib/optimization/plan-validation";
-import { setTenantContext } from "@/lib/infra/tenant";
-import type { PlanValidationRequestSchema } from "@/lib/validations/plan-confirmation";
-
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
-
 import { safeParseJson } from "@/lib/utils/safe-json";
+import type { PlanValidationRequestSchema } from "@/lib/validations/plan-confirmation";
 /**
  * GET /api/optimization/jobs/[id]/validate
  *
@@ -28,7 +26,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.PLAN, Action.VALIDATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.PLAN,
+      Action.VALIDATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantContext = extractTenantContextAuthed(request, authResult);
     if (tenantContext instanceof NextResponse) return tenantContext;
@@ -123,9 +125,7 @@ export async function GET(
     // Parse optimization result
     let result: VerifiedPlan | null = null;
     try {
-      result = job.result
-        ? (safeParseJson(job.result) as VerifiedPlan)
-        : null;
+      result = job.result ? (safeParseJson(job.result) as VerifiedPlan) : null;
     } catch (_error) {
       return NextResponse.json(
         { error: "Failed to parse optimization result" },

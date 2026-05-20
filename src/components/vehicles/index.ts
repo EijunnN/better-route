@@ -1,12 +1,16 @@
-export { VehiclesProvider, useVehicles, VEHICLE_STATUS_LABELS } from "./vehicles-context";
 export type {
-  Vehicle,
-  Fleet,
-  Driver,
-  VehicleSkill,
   CompanyProfile,
-  VehiclesState,
+  Driver,
+  Fleet,
+  Vehicle,
+  VehicleSkill,
   VehiclesActions,
   VehiclesMeta,
+  VehiclesState,
 } from "./vehicles-context";
-export { VehiclesListView, VehiclesFormView } from "./vehicles-views";
+export {
+  useVehicles,
+  VEHICLE_STATUS_LABELS,
+  VehiclesProvider,
+} from "./vehicles-context";
+export { VehiclesFormView, VehiclesListView } from "./vehicles-views";

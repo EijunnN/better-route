@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 // Import the implementation directly (not the lifecycle barrel) to bypass
 // the global preload mock that stubs the lifecycle module.
 import { calculateInputHash } from "@/lib/optimization/optimization-job/input-hash";

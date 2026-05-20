@@ -3,16 +3,19 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { alertRules } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // GET - List alert rules
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ALERT_RULE, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ALERT_RULE,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -79,7 +82,11 @@ export async function GET(request: NextRequest) {
 // POST - Create alert rule
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ALERT_RULE, Action.CREATE);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ALERT_RULE,
+      Action.CREATE,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

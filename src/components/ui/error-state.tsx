@@ -11,14 +11,21 @@ interface ErrorStateProps {
   compact?: boolean;
 }
 
-export function ErrorState({ title, error, onRetry, compact }: ErrorStateProps) {
+export function ErrorState({
+  title,
+  error,
+  onRetry,
+  compact,
+}: ErrorStateProps) {
   if (compact) {
     return (
       <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-8 text-center mx-4">
         <AlertCircle className="size-10 mx-auto text-destructive mb-3" />
         <h3 className="text-sm font-semibold mb-2">{title}</h3>
         <p className="text-xs text-muted-foreground mb-3">{error}</p>
-        <Button size="sm" onClick={onRetry}>Reintentar</Button>
+        <Button size="sm" onClick={onRetry}>
+          Reintentar
+        </Button>
       </div>
     );
   }

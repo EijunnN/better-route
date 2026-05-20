@@ -109,14 +109,22 @@ export async function PATCH(
         ...(body.label !== undefined && { label: body.label }),
         ...(body.fieldType !== undefined && { fieldType: body.fieldType }),
         ...(body.required !== undefined && { required: body.required }),
-        ...(body.placeholder !== undefined && { placeholder: body.placeholder }),
+        ...(body.placeholder !== undefined && {
+          placeholder: body.placeholder,
+        }),
         ...(body.options !== undefined && { options: body.options }),
-        ...(body.defaultValue !== undefined && { defaultValue: body.defaultValue }),
+        ...(body.defaultValue !== undefined && {
+          defaultValue: body.defaultValue,
+        }),
         ...(body.position !== undefined && { position: body.position }),
         ...(body.showInList !== undefined && { showInList: body.showInList }),
-        ...(body.showInMobile !== undefined && { showInMobile: body.showInMobile }),
+        ...(body.showInMobile !== undefined && {
+          showInMobile: body.showInMobile,
+        }),
         ...(body.showInCsv !== undefined && { showInCsv: body.showInCsv }),
-        ...(body.validationRules !== undefined && { validationRules: body.validationRules }),
+        ...(body.validationRules !== undefined && {
+          validationRules: body.validationRules,
+        }),
         ...(body.active !== undefined && { active: body.active }),
         updatedAt: new Date(),
       })

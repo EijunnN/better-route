@@ -1,44 +1,42 @@
 import {
-  describe,
-  test,
-  expect,
-  beforeAll,
   afterAll,
+  beforeAll,
   beforeEach,
+  describe,
+  expect,
+  test,
 } from "bun:test";
 import { and, eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
-import {
-  createCompany,
-  createAdmin,
-  createUser,
-  createRole,
-  createPermission,
-  createRolePermission,
-  createUserRole,
-} from "../setup/test-data";
-import { roles, rolePermissions, userRoles } from "@/db/schema";
-
-// Route handlers
-import { GET as LIST_ROLES, POST as CREATE_ROLE } from "@/app/api/roles/route";
-import {
-  GET as GET_ROLE,
-  PATCH as PATCH_ROLE,
-  DELETE as DELETE_ROLE,
-} from "@/app/api/roles/[id]/route";
-import {
-  GET as GET_ROLE_PERMS,
-  PUT as PUT_ROLE_PERMS,
-  PATCH as PATCH_ROLE_PERM,
-} from "@/app/api/roles/[id]/permissions/route";
 import { GET as LIST_PERMISSIONS } from "@/app/api/permissions/route";
 import {
-  GET as GET_USER_ROLES,
+  GET as GET_ROLE_PERMS,
+  PATCH as PATCH_ROLE_PERM,
+  PUT as PUT_ROLE_PERMS,
+} from "@/app/api/roles/[id]/permissions/route";
+import {
+  DELETE as DELETE_ROLE,
+  GET as GET_ROLE,
+  PATCH as PATCH_ROLE,
+} from "@/app/api/roles/[id]/route";
+// Route handlers
+import { POST as CREATE_ROLE, GET as LIST_ROLES } from "@/app/api/roles/route";
+import {
   POST as ASSIGN_USER_ROLE,
   DELETE as REMOVE_USER_ROLE,
 } from "@/app/api/users/[id]/roles/route";
+import { rolePermissions, roles, userRoles } from "@/db/schema";
+import { createTestToken } from "../setup/test-auth";
+import {
+  createAdmin,
+  createCompany,
+  createPermission,
+  createRole,
+  createRolePermission,
+  createUser,
+  createUserRole,
+} from "../setup/test-data";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Role & Permission Management", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -215,11 +213,30 @@ describe("Role & Permission Management", () => {
   });
 
   test("GET /api/roles returns enabledPermissionsCount per role", async () => {
-    const role = await createRole({ companyId: company.id, name: "Counted Role" });
-    const perm1 = await createPermission({ entity: "orders", action: "VIEW", category: "ORDERS" });
-    const perm2 = await createPermission({ entity: "orders", action: "CREATE", category: "ORDERS" });
-    await createRolePermission({ roleId: role.id, permissionId: perm1.id, enabled: true });
-    await createRolePermission({ roleId: role.id, permissionId: perm2.id, enabled: false });
+    const role = await createRole({
+      companyId: company.id,
+      name: "Counted Role",
+    });
+    const perm1 = await createPermission({
+      entity: "orders",
+      action: "VIEW",
+      category: "ORDERS",
+    });
+    const perm2 = await createPermission({
+      entity: "orders",
+      action: "CREATE",
+      category: "ORDERS",
+    });
+    await createRolePermission({
+      roleId: role.id,
+      permissionId: perm1.id,
+      enabled: true,
+    });
+    await createRolePermission({
+      roleId: role.id,
+      permissionId: perm2.id,
+      enabled: false,
+    });
 
     const request = await createTestRequest("/api/roles", {
       method: "GET",
@@ -243,9 +260,20 @@ describe("Role & Permission Management", () => {
   // ---------------------------------------------------------------------------
 
   test("GET /api/roles/:id includes permission count and user count", async () => {
-    const role = await createRole({ companyId: company.id, name: "Detail Role" });
-    const perm = await createPermission({ entity: "vehicles", action: "VIEW", category: "VEHICLES" });
-    await createRolePermission({ roleId: role.id, permissionId: perm.id, enabled: true });
+    const role = await createRole({
+      companyId: company.id,
+      name: "Detail Role",
+    });
+    const perm = await createPermission({
+      entity: "vehicles",
+      action: "VIEW",
+      category: "VEHICLES",
+    });
+    await createRolePermission({
+      roleId: role.id,
+      permissionId: perm.id,
+      enabled: true,
+    });
 
     const user = await createUser({ companyId: company.id });
     await createUserRole({ userId: user.id, roleId: role.id, active: true });
@@ -438,7 +466,10 @@ describe("Role & Permission Management", () => {
   // ---------------------------------------------------------------------------
 
   test("GET /api/roles/:id/permissions returns grouped by category", async () => {
-    const role = await createRole({ companyId: company.id, name: "Perm Group Role" });
+    const role = await createRole({
+      companyId: company.id,
+      name: "Perm Group Role",
+    });
     const perm1 = await createPermission({
       entity: "orders",
       action: "VIEW",
@@ -453,16 +484,27 @@ describe("Role & Permission Management", () => {
       category: "VEHICLES",
       displayOrder: 1,
     });
-    await createRolePermission({ roleId: role.id, permissionId: perm1.id, enabled: true });
-    await createRolePermission({ roleId: role.id, permissionId: perm2.id, enabled: false });
-
-    const request = await createTestRequest(`/api/roles/${role.id}/permissions`, {
-      method: "GET",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-      headers: authHeaders,
+    await createRolePermission({
+      roleId: role.id,
+      permissionId: perm1.id,
+      enabled: true,
     });
+    await createRolePermission({
+      roleId: role.id,
+      permissionId: perm2.id,
+      enabled: false,
+    });
+
+    const request = await createTestRequest(
+      `/api/roles/${role.id}/permissions`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        headers: authHeaders,
+      },
+    );
 
     const response = await GET_ROLE_PERMS(request, {
       params: Promise.resolve({ id: role.id }),
@@ -495,7 +537,10 @@ describe("Role & Permission Management", () => {
   // ---------------------------------------------------------------------------
 
   test("PUT /api/roles/:id/permissions bulk updates permissions", async () => {
-    const role = await createRole({ companyId: company.id, name: "Bulk Update Role" });
+    const role = await createRole({
+      companyId: company.id,
+      name: "Bulk Update Role",
+    });
     const perm1 = await createPermission({
       entity: "orders",
       action: "VIEW",
@@ -507,22 +552,33 @@ describe("Role & Permission Management", () => {
       category: "ORDERS",
     });
     // Start with both disabled
-    await createRolePermission({ roleId: role.id, permissionId: perm1.id, enabled: false });
-    await createRolePermission({ roleId: role.id, permissionId: perm2.id, enabled: false });
-
-    const request = await createTestRequest(`/api/roles/${role.id}/permissions`, {
-      method: "PUT",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-      headers: authHeaders,
-      body: {
-        permissions: [
-          { permissionId: perm1.id, enabled: true },
-          { permissionId: perm2.id, enabled: true },
-        ],
-      },
+    await createRolePermission({
+      roleId: role.id,
+      permissionId: perm1.id,
+      enabled: false,
     });
+    await createRolePermission({
+      roleId: role.id,
+      permissionId: perm2.id,
+      enabled: false,
+    });
+
+    const request = await createTestRequest(
+      `/api/roles/${role.id}/permissions`,
+      {
+        method: "PUT",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        headers: authHeaders,
+        body: {
+          permissions: [
+            { permissionId: perm1.id, enabled: true },
+            { permissionId: perm2.id, enabled: true },
+          ],
+        },
+      },
+    );
 
     const response = await PUT_ROLE_PERMS(request, {
       params: Promise.resolve({ id: role.id }),
@@ -558,23 +614,33 @@ describe("Role & Permission Management", () => {
   // ---------------------------------------------------------------------------
 
   test("PATCH /api/roles/:id/permissions toggles single permission", async () => {
-    const role = await createRole({ companyId: company.id, name: "Toggle Role" });
+    const role = await createRole({
+      companyId: company.id,
+      name: "Toggle Role",
+    });
     const perm = await createPermission({
       entity: "vehicles",
       action: "EDIT",
       category: "VEHICLES",
     });
-    await createRolePermission({ roleId: role.id, permissionId: perm.id, enabled: false });
+    await createRolePermission({
+      roleId: role.id,
+      permissionId: perm.id,
+      enabled: false,
+    });
 
     // Toggle ON
-    const requestOn = await createTestRequest(`/api/roles/${role.id}/permissions`, {
-      method: "PATCH",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-      headers: authHeaders,
-      body: { permissionId: perm.id, enabled: true },
-    });
+    const requestOn = await createTestRequest(
+      `/api/roles/${role.id}/permissions`,
+      {
+        method: "PATCH",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        headers: authHeaders,
+        body: { permissionId: perm.id, enabled: true },
+      },
+    );
 
     const responseOn = await PATCH_ROLE_PERM(requestOn, {
       params: Promise.resolve({ id: role.id }),
@@ -587,14 +653,17 @@ describe("Role & Permission Management", () => {
     expect(dataOn.message).toBe("Permiso activado");
 
     // Toggle OFF
-    const requestOff = await createTestRequest(`/api/roles/${role.id}/permissions`, {
-      method: "PATCH",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-      headers: authHeaders,
-      body: { permissionId: perm.id, enabled: false },
-    });
+    const requestOff = await createTestRequest(
+      `/api/roles/${role.id}/permissions`,
+      {
+        method: "PATCH",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+        headers: authHeaders,
+        body: { permissionId: perm.id, enabled: false },
+      },
+    );
 
     const responseOff = await PATCH_ROLE_PERM(requestOff, {
       params: Promise.resolve({ id: role.id }),
@@ -611,7 +680,10 @@ describe("Role & Permission Management", () => {
   // ---------------------------------------------------------------------------
 
   test("POST /api/users/:id/roles assigns role to user", async () => {
-    const role = await createRole({ companyId: company.id, name: "Assignable Role" });
+    const role = await createRole({
+      companyId: company.id,
+      name: "Assignable Role",
+    });
     const user = await createUser({ companyId: company.id });
 
     const request = await createTestRequest(`/api/users/${user.id}/roles`, {
@@ -637,9 +709,7 @@ describe("Role & Permission Management", () => {
     const [dbRecord] = await testDb
       .select()
       .from(userRoles)
-      .where(
-        and(eq(userRoles.userId, user.id), eq(userRoles.roleId, role.id)),
-      );
+      .where(and(eq(userRoles.userId, user.id), eq(userRoles.roleId, role.id)));
     expect(dbRecord).toBeDefined();
     expect(dbRecord.active).toBe(true);
   });
@@ -672,7 +742,10 @@ describe("Role & Permission Management", () => {
   // ---------------------------------------------------------------------------
 
   test("DELETE /api/users/:id/roles removes role assignment", async () => {
-    const role = await createRole({ companyId: company.id, name: "Removable Role" });
+    const role = await createRole({
+      companyId: company.id,
+      name: "Removable Role",
+    });
     const user = await createUser({ companyId: company.id });
     await createUserRole({ userId: user.id, roleId: role.id, active: true });
 
@@ -697,9 +770,7 @@ describe("Role & Permission Management", () => {
     const [dbRecord] = await testDb
       .select()
       .from(userRoles)
-      .where(
-        and(eq(userRoles.userId, user.id), eq(userRoles.roleId, role.id)),
-      );
+      .where(and(eq(userRoles.userId, user.id), eq(userRoles.roleId, role.id)));
     expect(dbRecord.active).toBe(false);
   });
 

@@ -4,12 +4,12 @@ import { AlertCircle, ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
+import { useFullScreenLayout } from "@/components/layout";
 import {
   JobProgress,
   type OptimizationJobData,
 } from "@/components/optimization/job-progress";
 import { OptimizationResultsDashboard } from "@/components/optimization/optimization-results-dashboard";
-import { useFullScreenLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -22,9 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
-
-import { safeParseJson } from "@/lib/utils/safe-json";
 import type { VerifiedPlan } from "@/lib/optimization/solved-plan";
+import { safeParseJson } from "@/lib/utils/safe-json";
 
 type OptimizationResult = VerifiedPlan;
 
@@ -329,18 +328,31 @@ function ResultsPageContent() {
         />
 
         {/* Dialog post-confirmación */}
-        <Dialog open={showPostConfirmDialog} onOpenChange={setShowPostConfirmDialog}>
+        <Dialog
+          open={showPostConfirmDialog}
+          onOpenChange={setShowPostConfirmDialog}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="text-green-600 flex items-center gap-2">
-                <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="size-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
                 Plan confirmado exitosamente
               </DialogTitle>
               <DialogDescription>
-                Los pedidos han sido asignados a las rutas.
-                ¿Qué deseas hacer ahora?
+                Los pedidos han sido asignados a las rutas. ¿Qué deseas hacer
+                ahora?
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="flex-col gap-2 sm:flex-col">

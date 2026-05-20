@@ -13,8 +13,14 @@
  * the preset bound to the config is the one whose settings reach VROOM.
  */
 
-import { describe, test, expect, beforeAll, beforeEach, mock } from "bun:test";
-import { cleanDatabase, testDb } from "../setup/test-db";
+import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { eq } from "drizzle-orm";
+import { optimizationConfigurations } from "@/db/schema";
+import type {
+  OrderForOptimization,
+  VehicleForOptimization,
+  OptimizationConfig as VroomOptConfig,
+} from "@/lib/optimization/vroom-optimizer";
 import {
   createAdmin,
   createCompany,
@@ -24,13 +30,7 @@ import {
   createOrder,
   createVehicle,
 } from "../setup/test-data";
-import type {
-  OptimizationConfig as VroomOptConfig,
-  OrderForOptimization,
-  VehicleForOptimization,
-} from "@/lib/optimization/vroom-optimizer";
-import { eq } from "drizzle-orm";
-import { optimizationConfigurations } from "@/db/schema";
+import { cleanDatabase, testDb } from "../setup/test-db";
 
 interface CapturedCall {
   orders: OrderForOptimization[];
@@ -79,112 +79,104 @@ describe("optimization runner: per-config preset selection", () => {
     capturedCalls.length = 0;
   });
 
-  test(
-    "config with explicit presetId uses THAT preset, not the default",
-    async () => {
-      const company = await createCompany({
-        legalName: "Preset Test Co",
-        commercialName: "Preset Test",
-      });
-      await createAdmin(company.id);
-      const driver = await createDriver(company.id, {
-        email: `d-${Date.now()}@t.co`,
-      });
-      const vehicle = await createVehicle({
-        companyId: company.id,
-        plate: "PRE-01",
-      });
-      await createOrder({ companyId: company.id, trackingId: "ORD-PRE" });
+  test("config with explicit presetId uses THAT preset, not the default", async () => {
+    const company = await createCompany({
+      legalName: "Preset Test Co",
+      commercialName: "Preset Test",
+    });
+    await createAdmin(company.id);
+    const driver = await createDriver(company.id, {
+      email: `d-${Date.now()}@t.co`,
+    });
+    const vehicle = await createVehicle({
+      companyId: company.id,
+      plate: "PRE-01",
+    });
+    await createOrder({ companyId: company.id, trackingId: "ORD-PRE" });
 
-      // Default preset with balanceVisits=false.
-      await createOptimizationPreset({
-        companyId: company.id,
-        name: "Default",
-        balanceVisits: false,
-        minimizeVehicles: false,
-        maxDistanceKm: 100,
-        trafficFactor: 50,
-        isDefault: true,
-      });
+    // Default preset with balanceVisits=false.
+    await createOptimizationPreset({
+      companyId: company.id,
+      name: "Default",
+      balanceVisits: false,
+      minimizeVehicles: false,
+      maxDistanceKm: 100,
+      trafficFactor: 50,
+      isDefault: true,
+    });
 
-      // Non-default preset with distinguishable values.
-      const peak = await createOptimizationPreset({
-        companyId: company.id,
-        name: "Peak",
-        balanceVisits: true,
-        minimizeVehicles: true,
-        maxDistanceKm: 300,
-        trafficFactor: 80,
-        isDefault: false,
-      });
+    // Non-default preset with distinguishable values.
+    const peak = await createOptimizationPreset({
+      companyId: company.id,
+      name: "Peak",
+      balanceVisits: true,
+      minimizeVehicles: true,
+      maxDistanceKm: 300,
+      trafficFactor: 80,
+      isDefault: false,
+    });
 
-      const config = await createOptimizationConfig({ companyId: company.id });
-      // Bind the config to the non-default preset — the whole point of the fix.
-      await testDb
-        .update(optimizationConfigurations)
-        .set({ optimizationPresetId: peak.id })
-        .where(eq(optimizationConfigurations.id, config.id));
+    const config = await createOptimizationConfig({ companyId: company.id });
+    // Bind the config to the non-default preset — the whole point of the fix.
+    await testDb
+      .update(optimizationConfigurations)
+      .set({ optimizationPresetId: peak.id })
+      .where(eq(optimizationConfigurations.id, config.id));
 
-      await runOptimization({
-        configurationId: config.id,
-        companyId: company.id,
-        vehicleIds: [vehicle.id],
-        driverIds: [driver.id],
-      });
+    await runOptimization({
+      configurationId: config.id,
+      companyId: company.id,
+      vehicleIds: [vehicle.id],
+      driverIds: [driver.id],
+    });
 
-      expect(capturedCalls.length).toBeGreaterThan(0);
-      const { config: vroomConfig } = capturedCalls[0];
-      // Values come from the "Peak" preset, not "Default".
-      expect(vroomConfig.balanceVisits).toBe(true);
-      expect(vroomConfig.minimizeVehicles).toBe(true);
-      expect(vroomConfig.maxDistanceKm).toBe(300);
-      expect(vroomConfig.trafficFactor).toBe(80);
-    },
-    30000,
-  );
+    expect(capturedCalls.length).toBeGreaterThan(0);
+    const { config: vroomConfig } = capturedCalls[0];
+    // Values come from the "Peak" preset, not "Default".
+    expect(vroomConfig.balanceVisits).toBe(true);
+    expect(vroomConfig.minimizeVehicles).toBe(true);
+    expect(vroomConfig.maxDistanceKm).toBe(300);
+    expect(vroomConfig.trafficFactor).toBe(80);
+  }, 30000);
 
-  test(
-    "config with null presetId falls back to the company's default preset",
-    async () => {
-      const company = await createCompany({
-        legalName: "Fallback Co",
-        commercialName: "Fallback",
-      });
-      await createAdmin(company.id);
-      const driver = await createDriver(company.id, {
-        email: `d-${Date.now()}@t.co`,
-      });
-      const vehicle = await createVehicle({
-        companyId: company.id,
-        plate: "FB-01",
-      });
-      await createOrder({ companyId: company.id, trackingId: "ORD-FB" });
+  test("config with null presetId falls back to the company's default preset", async () => {
+    const company = await createCompany({
+      legalName: "Fallback Co",
+      commercialName: "Fallback",
+    });
+    await createAdmin(company.id);
+    const driver = await createDriver(company.id, {
+      email: `d-${Date.now()}@t.co`,
+    });
+    const vehicle = await createVehicle({
+      companyId: company.id,
+      plate: "FB-01",
+    });
+    await createOrder({ companyId: company.id, trackingId: "ORD-FB" });
 
-      await createOptimizationPreset({
-        companyId: company.id,
-        name: "Default",
-        balanceVisits: true,
-        minimizeVehicles: false,
-        maxDistanceKm: 150,
-        trafficFactor: 60,
-        isDefault: true,
-      });
+    await createOptimizationPreset({
+      companyId: company.id,
+      name: "Default",
+      balanceVisits: true,
+      minimizeVehicles: false,
+      maxDistanceKm: 150,
+      trafficFactor: 60,
+      isDefault: true,
+    });
 
-      // Config has no presetId → runner should fall back to default.
-      const config = await createOptimizationConfig({ companyId: company.id });
+    // Config has no presetId → runner should fall back to default.
+    const config = await createOptimizationConfig({ companyId: company.id });
 
-      await runOptimization({
-        configurationId: config.id,
-        companyId: company.id,
-        vehicleIds: [vehicle.id],
-        driverIds: [driver.id],
-      });
+    await runOptimization({
+      configurationId: config.id,
+      companyId: company.id,
+      vehicleIds: [vehicle.id],
+      driverIds: [driver.id],
+    });
 
-      const { config: vroomConfig } = capturedCalls[0];
-      expect(vroomConfig.balanceVisits).toBe(true);
-      expect(vroomConfig.maxDistanceKm).toBe(150);
-      expect(vroomConfig.trafficFactor).toBe(60);
-    },
-    30000,
-  );
+    const { config: vroomConfig } = capturedCalls[0];
+    expect(vroomConfig.balanceVisits).toBe(true);
+    expect(vroomConfig.maxDistanceKm).toBe(150);
+    expect(vroomConfig.trafficFactor).toBe(60);
+  }, 30000);
 });

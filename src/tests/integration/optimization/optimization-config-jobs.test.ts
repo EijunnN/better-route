@@ -1,16 +1,16 @@
-import { describe, test, expect, beforeAll, afterAll, mock } from "bun:test";
-import { cleanDatabase } from "../setup/test-db";
+import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
+  buildOptimizationResult,
   createAdmin,
+  createCompany,
   createDriver,
-  createVehicle,
   createOptimizationConfig,
   createOptimizationJob,
-  buildOptimizationResult,
+  createVehicle,
 } from "../setup/test-data";
+import { cleanDatabase } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // Mock for engines route — @/lib/optimization barrel (VROOM only)
 mock.module("@/lib/optimization", () => ({
@@ -38,19 +38,19 @@ mock.module("@/lib/optimization", () => ({
 
 // Route handler imports
 import {
-  GET as listConfigs,
   POST as createConfig,
+  GET as listConfigs,
 } from "@/app/api/optimization/configure/route";
+import { GET as listEngines } from "@/app/api/optimization/engines/route";
 import {
-  GET as listJobs,
-  POST as createJob,
-} from "@/app/api/optimization/jobs/route";
-import {
-  GET as getJob,
   DELETE as cancelJobRoute,
+  GET as getJob,
 } from "@/app/api/optimization/jobs/[id]/route";
 import { GET as validateJob } from "@/app/api/optimization/jobs/[id]/validate/route";
-import { GET as listEngines } from "@/app/api/optimization/engines/route";
+import {
+  POST as createJob,
+  GET as listJobs,
+} from "@/app/api/optimization/jobs/route";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -87,8 +87,13 @@ describe("Optimization Config & Jobs", () => {
 
   test("POST /configure creates config with vehicle/driver validation (201)", async () => {
     const { company, admin, token } = await makeFixtures();
-    const vehicle = await createVehicle({ companyId: company.id, status: "AVAILABLE" });
-    const driver = await createDriver(company.id, { driverStatus: "AVAILABLE" });
+    const vehicle = await createVehicle({
+      companyId: company.id,
+      status: "AVAILABLE",
+    });
+    const driver = await createDriver(company.id, {
+      driverStatus: "AVAILABLE",
+    });
 
     const request = await createTestRequest("/api/optimization/configure", {
       method: "POST",
@@ -121,8 +126,13 @@ describe("Optimization Config & Jobs", () => {
 
   test("POST /configure rejects non-AVAILABLE vehicle (400)", async () => {
     const { company, admin, token } = await makeFixtures();
-    const vehicle = await createVehicle({ companyId: company.id, status: "IN_MAINTENANCE" });
-    const driver = await createDriver(company.id, { driverStatus: "AVAILABLE" });
+    const vehicle = await createVehicle({
+      companyId: company.id,
+      status: "IN_MAINTENANCE",
+    });
+    const driver = await createDriver(company.id, {
+      driverStatus: "AVAILABLE",
+    });
 
     const request = await createTestRequest("/api/optimization/configure", {
       method: "POST",
@@ -151,7 +161,10 @@ describe("Optimization Config & Jobs", () => {
 
   test("POST /configure rejects non-CONDUCTOR driver (400)", async () => {
     const { company, admin, token } = await makeFixtures();
-    const vehicle = await createVehicle({ companyId: company.id, status: "AVAILABLE" });
+    const vehicle = await createVehicle({
+      companyId: company.id,
+      status: "AVAILABLE",
+    });
     // Create an ADMIN_SISTEMA user (not a CONDUCTOR)
     const nonDriver = await createAdmin(company.id);
 
@@ -189,7 +202,10 @@ describe("Optimization Config & Jobs", () => {
 
     await createOptimizationConfig({ companyId: company.id, status: "DRAFT" });
     await createOptimizationConfig({ companyId: company.id, status: "DRAFT" });
-    await createOptimizationConfig({ companyId: company.id, status: "CONFIGURED" });
+    await createOptimizationConfig({
+      companyId: company.id,
+      status: "CONFIGURED",
+    });
 
     // List all
     const reqAll = await createTestRequest("/api/optimization/configure", {
@@ -376,12 +392,15 @@ describe("Optimization Config & Jobs", () => {
       result: result as any,
     });
 
-    const request = await createTestRequest(`/api/optimization/jobs/${job.id}`, {
-      method: "GET",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/optimization/jobs/${job.id}`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const res = await getJob(request, {
       params: Promise.resolve({ id: job.id }),
@@ -401,12 +420,15 @@ describe("Optimization Config & Jobs", () => {
     const { company, admin, token } = await makeFixtures();
     const fakeId = "00000000-0000-4000-a000-000000000099";
 
-    const request = await createTestRequest(`/api/optimization/jobs/${fakeId}`, {
-      method: "GET",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/optimization/jobs/${fakeId}`,
+      {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const res = await getJob(request, {
       params: Promise.resolve({ id: fakeId }),
@@ -431,12 +453,15 @@ describe("Optimization Config & Jobs", () => {
       progress: 0,
     });
 
-    const request = await createTestRequest(`/api/optimization/jobs/${job.id}`, {
-      method: "DELETE",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/optimization/jobs/${job.id}`,
+      {
+        method: "DELETE",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const res = await cancelJobRoute(request, {
       params: Promise.resolve({ id: job.id }),
@@ -457,12 +482,15 @@ describe("Optimization Config & Jobs", () => {
       status: "COMPLETED",
     });
 
-    const request = await createTestRequest(`/api/optimization/jobs/${job.id}`, {
-      method: "DELETE",
-      token,
-      companyId: company.id,
-      userId: admin.id,
-    });
+    const request = await createTestRequest(
+      `/api/optimization/jobs/${job.id}`,
+      {
+        method: "DELETE",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      },
+    );
 
     const res = await cancelJobRoute(request, {
       params: Promise.resolve({ id: job.id }),
@@ -569,7 +597,7 @@ describe("Optimization Config & Jobs", () => {
     const adminA = await createAdmin(null);
     const adminB = await createAdmin(null);
 
-    const tokenA = await createTestToken({
+    const _tokenA = await createTestToken({
       userId: adminA.id,
       companyId: companyA.id,
       email: adminA.email,

@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { PERMISSION_CATEGORIES, PERMISSION_ACTIONS } from "@/db/schema";
 
 // Categorías válidas
 const permissionCategoryEnum = z.enum([

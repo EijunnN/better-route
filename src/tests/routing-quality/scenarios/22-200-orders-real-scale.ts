@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * Realistic morning import size. 200 orders with mixed weights +
@@ -8,7 +8,8 @@ import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
  */
 export const scenario: Scenario = {
   name: "22-200-orders-real-scale",
-  description: "200 orders, 10 vehicles, mixed constraints — real morning import",
+  description:
+    "200 orders, 10 vehicles, mixed constraints — real morning import",
   orders: Array.from({ length: 200 }, (_, i) => {
     const hasWindow = i % 4 === 0; // 25% have a TW
     return makeOrder(i, {

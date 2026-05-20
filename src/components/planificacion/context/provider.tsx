@@ -1,20 +1,20 @@
 "use client";
 
-import { type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
-import type {
-  PlanificacionState,
-  PlanificacionActions,
-  PlanificacionMeta,
-  PlanificacionDerived,
-} from "./types";
 import { PlanificacionContext } from "./context-instance";
-import { usePlanificacionState } from "./use-state";
+import type {
+  PlanificacionActions,
+  PlanificacionDerived,
+  PlanificacionMeta,
+  PlanificacionState,
+} from "./types";
+import { usePlanificacionActions } from "./use-actions";
 import { usePlanificacionDerived } from "./use-derived";
 import { usePlanificacionEffects } from "./use-effects";
-import { usePlanificacionActions } from "./use-actions";
+import { usePlanificacionState } from "./use-state";
 
 export function PlanificacionProvider({ children }: { children: ReactNode }) {
   // Hook order below is load-bearing: router -> companyContext -> toast ->
@@ -112,7 +112,14 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
   const derivedValue: PlanificacionDerived = derived;
 
   return (
-    <PlanificacionContext value={{ state: stateValue, actions: actionsValue, meta, derived: derivedValue }}>
+    <PlanificacionContext
+      value={{
+        state: stateValue,
+        actions: actionsValue,
+        meta,
+        derived: derivedValue,
+      }}
+    >
       {children}
     </PlanificacionContext>
   );

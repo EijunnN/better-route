@@ -1,25 +1,24 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { cleanDatabase } from "../setup/test-db";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { GET as historyGET } from "@/app/api/reassignment/history/route";
+import { POST as impactPOST } from "@/app/api/reassignment/impact/route";
+import { POST as optionsPOST } from "@/app/api/reassignment/options/route";
+import { GET as outputGET } from "@/app/api/reassignment/output/[historyId]/route";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
+  buildOptimizationResult,
   createAdmin,
+  createCompany,
   createDriver,
-  createVehicle,
-  createOrder,
   createFleet,
   createOptimizationConfig,
   createOptimizationJob,
-  buildOptimizationResult,
-  createRouteStop,
+  createOrder,
   createReassignmentHistory,
+  createRouteStop,
+  createVehicle,
 } from "../setup/test-data";
-
-import { GET as historyGET } from "@/app/api/reassignment/history/route";
-import { POST as optionsPOST } from "@/app/api/reassignment/options/route";
-import { POST as impactPOST } from "@/app/api/reassignment/impact/route";
-import { GET as outputGET } from "@/app/api/reassignment/output/[historyId]/route";
+import { cleanDatabase } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Reassignment Advanced API", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -283,10 +282,10 @@ describe("Reassignment Advanced API", () => {
   // GET /api/reassignment/history
   // ---------------------------------------------------------------------------
   describe("GET /api/reassignment/history", () => {
-    let historyRecord: Awaited<ReturnType<typeof createReassignmentHistory>>;
+    let _historyRecord: Awaited<ReturnType<typeof createReassignmentHistory>>;
 
     beforeAll(async () => {
-      historyRecord = await createReassignmentHistory({
+      _historyRecord = await createReassignmentHistory({
         companyId: company.id,
         absentUserId: driverAbsent.id,
         absentUserName: driverAbsent.name,

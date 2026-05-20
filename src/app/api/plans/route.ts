@@ -1,19 +1,26 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationConfigurations, optimizationJobs, planMetrics } from "@/db/schema";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import {
+  optimizationConfigurations,
+  optimizationJobs,
+  planMetrics,
+} from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
  * GET /api/plans - List confirmed plans with metrics
  */
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.PLAN, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.PLAN,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -37,7 +44,10 @@ export async function GET(request: NextRequest) {
         completedAt: optimizationJobs.completedAt,
       })
       .from(optimizationJobs)
-      .leftJoin(optimizationConfigurations, eq(optimizationJobs.configurationId, optimizationConfigurations.id))
+      .leftJoin(
+        optimizationConfigurations,
+        eq(optimizationJobs.configurationId, optimizationConfigurations.id),
+      )
       .where(
         and(
           eq(optimizationJobs.companyId, tenantCtx.companyId),
@@ -58,9 +68,7 @@ export async function GET(request: NextRequest) {
             .where(inArray(planMetrics.jobId, jobIds))
         : [];
 
-    const metricsMap = new Map(
-      allMetrics.map((m) => [m.jobId, m]),
-    );
+    const metricsMap = new Map(allMetrics.map((m) => [m.jobId, m]));
 
     const plansWithMetrics = jobs.map((job) => ({
       ...job,

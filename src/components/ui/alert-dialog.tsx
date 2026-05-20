@@ -93,11 +93,7 @@ interface AlertDialogTitleProps
   ref?: React.Ref<React.ComponentRef<typeof AlertDialogPrimitive.Title>>;
 }
 
-function AlertDialogTitle({
-  className,
-  ref,
-  ...props
-}: AlertDialogTitleProps) {
+function AlertDialogTitle({ className, ref, ...props }: AlertDialogTitleProps) {
   return (
     <AlertDialogPrimitive.Title
       ref={ref}

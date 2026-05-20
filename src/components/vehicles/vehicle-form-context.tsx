@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useState } from "react";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 
 export interface CompanyProfile {
@@ -28,7 +28,10 @@ export interface VehicleFormState {
 }
 
 export interface VehicleFormActions {
-  updateField: (field: keyof VehicleInput, value: VehicleInput[keyof VehicleInput]) => void;
+  updateField: (
+    field: keyof VehicleInput,
+    value: VehicleInput[keyof VehicleInput],
+  ) => void;
   setActiveTab: (tab: string) => void;
   toggleFleetSelection: (fleetId: string) => void;
   toggleSkillSelection: (skillId: string) => void;
@@ -50,7 +53,9 @@ interface VehicleFormContextValue {
   meta: VehicleFormMeta;
 }
 
-const VehicleFormContext = createContext<VehicleFormContextValue | undefined>(undefined);
+const VehicleFormContext = createContext<VehicleFormContextValue | undefined>(
+  undefined,
+);
 
 export interface VehicleFormProviderProps {
   children: ReactNode;
@@ -112,10 +117,14 @@ export function VehicleFormProvider({
   const [selectedFleetIds, setSelectedFleetIds] = useState<string[]>(
     initialData?.fleetIds ?? [],
   );
-  const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>(initialSkillIds);
+  const [selectedSkillIds, setSelectedSkillIds] =
+    useState<string[]>(initialSkillIds);
   const [activeTab, setActiveTab] = useState("general");
 
-  const updateField = (field: keyof VehicleInput, value: VehicleInput[keyof VehicleInput]) => {
+  const updateField = (
+    field: keyof VehicleInput,
+    value: VehicleInput[keyof VehicleInput],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => {
       if (prev[field]) {
@@ -149,7 +158,8 @@ export function VehicleFormProvider({
 
     const validationErrors: Record<string, string> = {};
     if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
-    if (!formData.useNameAsPlate && !formData.plate?.trim()) validationErrors.plate = "Placa es requerida";
+    if (!formData.useNameAsPlate && !formData.plate?.trim())
+      validationErrors.plate = "Placa es requerida";
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;

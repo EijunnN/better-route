@@ -1,5 +1,5 @@
+import { baseConfig, LIMA_POINTS, makeOrder, makeVehicle } from "../fixtures";
 import type { Scenario } from "../types";
-import { baseConfig, makeOrder, makeVehicle, LIMA_POINTS } from "../fixtures";
 
 /**
  * routeEndMode=DRIVER_ORIGIN — each vehicle starts and ends at its

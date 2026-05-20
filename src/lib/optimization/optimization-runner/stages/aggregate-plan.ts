@@ -104,7 +104,9 @@ export async function aggregatePlan(
     driversWithoutRoutes.push({
       id: d.id,
       name: d.name,
-      originLatitude: origin?.latitude ? parseFloat(origin.latitude) : undefined,
+      originLatitude: origin?.latitude
+        ? parseFloat(origin.latitude)
+        : undefined,
       originLongitude: origin?.longitude
         ? parseFloat(origin.longitude)
         : undefined,

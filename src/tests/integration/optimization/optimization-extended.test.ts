@@ -1,26 +1,26 @@
-import { describe, test, expect, beforeAll, afterAll, mock } from "bun:test";
+import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { testDb, cleanDatabase } from "../setup/test-db";
+import { optimizationPresets } from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
 import {
-  createCompany,
+  buildOptimizationResult,
   createAdmin,
-  createVehicle,
+  createCompany,
   createOptimizationConfig,
   createOptimizationJob,
   createOptimizationPreset,
-  createOutputHistory,
   createOrder,
-  buildOptimizationResult,
+  createOutputHistory,
+  createVehicle,
 } from "../setup/test-data";
-import { optimizationPresets } from "@/db/schema";
+import { cleanDatabase, testDb } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 // ---------------------------------------------------------------------------
 // Mocks — plan-metrics (fully controllable)
 // ---------------------------------------------------------------------------
 
-let _planMetricsResults = new Map<string, unknown>();
+const _planMetricsResults = new Map<string, unknown>();
 
 function getPlanMetricsResult(companyId: string, jobId: string) {
   const key = `${companyId}:${jobId}`;
@@ -197,24 +197,20 @@ mock.module("@/lib/routing/output-generator", () => ({
 // Route handler imports
 // ---------------------------------------------------------------------------
 
-import {
-  GET as getPresetById,
-  PUT as updatePreset,
-  DELETE as deletePreset,
-} from "@/app/api/optimization-presets/[id]/route";
-import {
-  GET as listPresets,
-} from "@/app/api/optimization-presets/route";
 import { GET as getJobMetrics } from "@/app/api/optimization/jobs/[id]/metrics/route";
+import { DELETE as deleteJob } from "@/app/api/optimization/jobs/[id]/route";
 import { POST as swapVehicles } from "@/app/api/optimization/jobs/[id]/swap-vehicles/route";
 import {
-  DELETE as deleteJob,
-} from "@/app/api/optimization/jobs/[id]/route";
-import {
-  GET as listOutputs,
-  POST as createOutput,
-} from "@/app/api/output/route";
+  DELETE as deletePreset,
+  GET as getPresetById,
+  PUT as updatePreset,
+} from "@/app/api/optimization-presets/[id]/route";
+import { GET as listPresets } from "@/app/api/optimization-presets/route";
 import { GET as getOutputByIdRoute } from "@/app/api/output/[outputId]/route";
+import {
+  POST as createOutput,
+  GET as listOutputs,
+} from "@/app/api/output/route";
 
 import { setTenantContext } from "@/lib/infra/tenant";
 
@@ -1325,15 +1321,12 @@ describe("Optimization Extended — Presets, Metrics, Swap-Vehicles, Output", ()
 
       setTenantContext({ companyId: company.id, userId: admin.id });
 
-      const request = await createTestRequest(
-        `/api/output/${fakeOutputId}`,
-        {
-          method: "GET",
-          token,
-          companyId: company.id,
-          userId: admin.id,
-        },
-      );
+      const request = await createTestRequest(`/api/output/${fakeOutputId}`, {
+        method: "GET",
+        token,
+        companyId: company.id,
+        userId: admin.id,
+      });
 
       const res = await getOutputByIdRoute(request, {
         params: Promise.resolve({ outputId: fakeOutputId }),
@@ -1423,7 +1416,10 @@ describe("Optimization Extended — Presets, Metrics, Swap-Vehicles, Output", ()
       // Ensure metrics return null for company A querying company B's job
       _planMetricsResults.set(`${fixturesA.company.id}:${jobB.id}`, null);
 
-      setTenantContext({ companyId: fixturesA.company.id, userId: fixturesA.admin.id });
+      setTenantContext({
+        companyId: fixturesA.company.id,
+        userId: fixturesA.admin.id,
+      });
 
       const request = await createTestRequest(
         `/api/optimization/jobs/${jobB.id}/metrics`,
@@ -1450,8 +1446,12 @@ describe("Optimization Extended — Presets, Metrics, Swap-Vehicles, Output", ()
       const configB = await createOptimizationConfig({
         companyId: fixturesB.company.id,
       });
-      const vehicleB1 = await createVehicle({ companyId: fixturesB.company.id });
-      const vehicleB2 = await createVehicle({ companyId: fixturesB.company.id });
+      const vehicleB1 = await createVehicle({
+        companyId: fixturesB.company.id,
+      });
+      const vehicleB2 = await createVehicle({
+        companyId: fixturesB.company.id,
+      });
 
       const result = buildOptimizationResult([
         {
@@ -1564,7 +1564,10 @@ describe("Optimization Extended — Presets, Metrics, Swap-Vehicles, Output", ()
         generatedBy: fixturesB.admin.id,
       });
 
-      setTenantContext({ companyId: fixturesA.company.id, userId: fixturesA.admin.id });
+      setTenantContext({
+        companyId: fixturesA.company.id,
+        userId: fixturesA.admin.id,
+      });
 
       const request = await createTestRequest("/api/output", {
         method: "GET",
@@ -1601,17 +1604,17 @@ describe("Optimization Extended — Presets, Metrics, Swap-Vehicles, Output", ()
         generatedBy: fixturesB.admin.id,
       });
 
-      setTenantContext({ companyId: fixturesA.company.id, userId: fixturesA.admin.id });
+      setTenantContext({
+        companyId: fixturesA.company.id,
+        userId: fixturesA.admin.id,
+      });
 
-      const request = await createTestRequest(
-        `/api/output/${outputB.id}`,
-        {
-          method: "GET",
-          token: fixturesA.token,
-          companyId: fixturesA.company.id,
-          userId: fixturesA.admin.id,
-        },
-      );
+      const request = await createTestRequest(`/api/output/${outputB.id}`, {
+        method: "GET",
+        token: fixturesA.token,
+        companyId: fixturesA.company.id,
+        userId: fixturesA.admin.id,
+      });
 
       const res = await getOutputByIdRoute(request, {
         params: Promise.resolve({ outputId: outputB.id }),

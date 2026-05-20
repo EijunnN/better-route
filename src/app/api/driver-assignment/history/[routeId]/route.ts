@@ -2,13 +2,11 @@ import { and, desc, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { auditLogs, optimizationJobs } from "@/db/schema";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
-import { safeParseJson } from "@/lib/utils/safe-json";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { safeParseJson } from "@/lib/utils/safe-json";
 /**
  * GET - Get assignment history for a route
  * Returns audit log entries for driver assignment changes
@@ -18,7 +16,11 @@ export async function GET(
   { params }: { params: Promise<{ routeId: string }> },
 ) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ROUTE, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ROUTE,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;

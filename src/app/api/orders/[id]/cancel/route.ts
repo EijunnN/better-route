@@ -2,10 +2,10 @@ import { and, eq } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
-  orders,
   ORDER_CANCELLATION_CATEGORIES,
-  USER_ROLES,
   type OrderCancellationCategory,
+  orders,
+  type USER_ROLES,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
@@ -106,17 +106,11 @@ export async function POST(
     .update(orders)
     .set({
       status: "CANCELLED",
-      cancellationReasonCategory:
-        reasonCategory as OrderCancellationCategory,
+      cancellationReasonCategory: reasonCategory as OrderCancellationCategory,
       cancellationReasonNote: reasonNote,
       updatedAt: new Date(),
     })
-    .where(
-      and(
-        eq(orders.id, orderId),
-        eq(orders.status, existing.status),
-      ),
-    )
+    .where(and(eq(orders.id, orderId), eq(orders.status, existing.status)))
     .returning();
 
   if (!updated) {

@@ -1,3 +1,4 @@
+export { runOptimization } from "./run";
 export type {
   AggregatedPlan,
   AssignedSolvedRoute,
@@ -7,4 +8,3 @@ export type {
   UnassignedOrderRecord,
   VerifiedPlan,
 } from "./types";
-export { runOptimization } from "./run";

@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeOrder, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * Mixed fleet: 2 LIGHT vehicles (500 kg each) + 1 HEAVY (2000 kg).

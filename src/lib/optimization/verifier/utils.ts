@@ -1,11 +1,11 @@
-import type { OptimizerVehicle, OptimizerOrder } from "./input-types";
 import type { SolvedStop } from "../solved-plan";
+import type { OptimizerOrder, OptimizerVehicle } from "./input-types";
 
 /** Parse "HH:MM" or "HH:MM:SS" or ISO string → seconds since 00:00. Returns null if unparseable. */
 export function hhmmToSeconds(value: string | undefined | null): number | null {
   if (!value) return null;
   // Take time portion if ISO datetime
-  const timePart = value.includes("T") ? value.split("T")[1] ?? "" : value;
+  const timePart = value.includes("T") ? (value.split("T")[1] ?? "") : value;
   const clean = timePart.slice(0, 8); // HH:MM or HH:MM:SS
   const parts = clean.split(":");
   if (parts.length < 2) return null;

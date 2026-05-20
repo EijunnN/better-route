@@ -14,8 +14,11 @@
  * which is a one-liner surfaced by the test failures if it regresses.
  */
 
-import { describe, test, expect, beforeAll, beforeEach, mock } from "bun:test";
-import { cleanDatabase } from "../setup/test-db";
+import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import type {
+  OrderForOptimization,
+  VehicleForOptimization,
+} from "@/lib/optimization/vroom-optimizer";
 import {
   createAdmin,
   createCompany,
@@ -26,10 +29,7 @@ import {
   createZone,
   createZoneVehicle,
 } from "../setup/test-data";
-import type {
-  OrderForOptimization,
-  VehicleForOptimization,
-} from "@/lib/optimization/vroom-optimizer";
+import { cleanDatabase } from "../setup/test-db";
 
 // The runner wraps whatever the solver returns into `OptimizationRoute`
 // objects. For this test we want the wrapped route to carry `zoneId` even
@@ -91,90 +91,82 @@ describe("optimization runner: route.zoneId is populated for real zones", () => 
     // No shared state — each test creates its own company.
   });
 
-  test(
-    "order inside a zone polygon → route carries the zone id",
-    async () => {
-      const company = await createCompany({
-        legalName: "Zone Test Co",
-        commercialName: "Zone Test",
-      });
-      await createAdmin(company.id);
-      const driver = await createDriver(company.id, {
-        email: `d-${Date.now()}@t.co`,
-      });
-      const vehicle = await createVehicle({
-        companyId: company.id,
-        plate: "Z-01",
-        // Inside the default test polygon [-77.05..-77.04, -12.05..-12.04]
-        originLatitude: "-12.0464",
-        originLongitude: "-77.0428",
-      });
+  test("order inside a zone polygon → route carries the zone id", async () => {
+    const company = await createCompany({
+      legalName: "Zone Test Co",
+      commercialName: "Zone Test",
+    });
+    await createAdmin(company.id);
+    const driver = await createDriver(company.id, {
+      email: `d-${Date.now()}@t.co`,
+    });
+    const vehicle = await createVehicle({
+      companyId: company.id,
+      plate: "Z-01",
+      // Inside the default test polygon [-77.05..-77.04, -12.05..-12.04]
+      originLatitude: "-12.0464",
+      originLongitude: "-77.0428",
+    });
 
-      const zone = await createZone({
-        companyId: company.id,
-        name: "Zona Norte",
-        color: "#3b82f6",
-      });
-      await createZoneVehicle({
-        companyId: company.id,
-        zoneId: zone.id,
-        vehicleId: vehicle.id,
-      });
+    const zone = await createZone({
+      companyId: company.id,
+      name: "Zona Norte",
+      color: "#3b82f6",
+    });
+    await createZoneVehicle({
+      companyId: company.id,
+      zoneId: zone.id,
+      vehicleId: vehicle.id,
+    });
 
-      // Order coordinates fall inside the zone polygon.
-      await createOrder({
-        companyId: company.id,
-        trackingId: "ZONE-ORDER",
-        latitude: "-12.0464",
-        longitude: "-77.0428",
-      });
+    // Order coordinates fall inside the zone polygon.
+    await createOrder({
+      companyId: company.id,
+      trackingId: "ZONE-ORDER",
+      latitude: "-12.0464",
+      longitude: "-77.0428",
+    });
 
-      const config = await createOptimizationConfig({ companyId: company.id });
+    const config = await createOptimizationConfig({ companyId: company.id });
 
-      const result = await runOptimization({
-        configurationId: config.id,
-        companyId: company.id,
-        vehicleIds: [vehicle.id],
-        driverIds: [driver.id],
-      });
+    const result = await runOptimization({
+      configurationId: config.id,
+      companyId: company.id,
+      vehicleIds: [vehicle.id],
+      driverIds: [driver.id],
+    });
 
-      expect(result.routes.length).toBeGreaterThan(0);
-      expect(result.routes[0].zoneId).toBe(zone.id);
-    },
-    30000,
-  );
+    expect(result.routes.length).toBeGreaterThan(0);
+    expect(result.routes[0].zoneId).toBe(zone.id);
+  }, 30000);
 
-  test(
-    "no zones configured → route has no zoneId (no-zones path)",
-    async () => {
-      const company = await createCompany({
-        legalName: "No Zone Co",
-        commercialName: "No Zone",
-      });
-      await createAdmin(company.id);
-      const driver = await createDriver(company.id, {
-        email: `d-${Date.now()}@t.co`,
-      });
-      const vehicle = await createVehicle({
-        companyId: company.id,
-        plate: "NZ-01",
-      });
-      await createOrder({
-        companyId: company.id,
-        trackingId: "NO-ZONE-ORDER",
-      });
-      const config = await createOptimizationConfig({ companyId: company.id });
+  test("no zones configured → route has no zoneId (no-zones path)", async () => {
+    const company = await createCompany({
+      legalName: "No Zone Co",
+      commercialName: "No Zone",
+    });
+    await createAdmin(company.id);
+    const driver = await createDriver(company.id, {
+      email: `d-${Date.now()}@t.co`,
+    });
+    const vehicle = await createVehicle({
+      companyId: company.id,
+      plate: "NZ-01",
+    });
+    await createOrder({
+      companyId: company.id,
+      trackingId: "NO-ZONE-ORDER",
+    });
+    const config = await createOptimizationConfig({ companyId: company.id });
 
-      const result = await runOptimization({
-        configurationId: config.id,
-        companyId: company.id,
-        vehicleIds: [vehicle.id],
-        driverIds: [driver.id],
-      });
+    const result = await runOptimization({
+      configurationId: config.id,
+      companyId: company.id,
+      vehicleIds: [vehicle.id],
+      driverIds: [driver.id],
+    });
 
-      expect(result.routes.length).toBeGreaterThan(0);
-      expect(result.routes[0].zoneId).toBeUndefined();
-    },
-    30000,
-  );
+    expect(result.routes.length).toBeGreaterThan(0);
+    expect(result.routes[0].zoneId).toBeUndefined();
+  }, 30000);
 });

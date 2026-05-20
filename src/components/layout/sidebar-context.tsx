@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  use,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
 import { usePathname } from "next/navigation";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 import { usePermissions } from "@/hooks/use-permissions";
 import type { Permission } from "@/lib/auth/permissions";
 
@@ -61,7 +55,9 @@ interface SidebarContextValue {
   meta: SidebarMeta;
 }
 
-const SidebarContext = createContext<SidebarContextValue | undefined>(undefined);
+const SidebarContext = createContext<SidebarContextValue | undefined>(
+  undefined,
+);
 
 export interface SidebarProviderProps {
   children: ReactNode;
@@ -174,9 +170,7 @@ export function SidebarProvider({
   };
 
   return (
-    <SidebarContext value={{ state, actions, meta }}>
-      {children}
-    </SidebarContext>
+    <SidebarContext value={{ state, actions, meta }}>{children}</SidebarContext>
   );
 }
 

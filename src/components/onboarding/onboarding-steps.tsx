@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Building2,
   CheckCircle2,
@@ -13,6 +12,7 @@ import {
   Truck,
   Users,
 } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -100,7 +100,8 @@ const features = [
   {
     icon: Route,
     title: "Optimizacion de Rutas",
-    description: "Algoritmos avanzados para planificar las rutas mas eficientes",
+    description:
+      "Algoritmos avanzados para planificar las rutas mas eficientes",
   },
   {
     icon: Truck,
@@ -290,9 +291,7 @@ export function CompanyFormStep({
             placeholder="Mi Empresa"
             value={form.commercialName}
             onChange={(e) => updateField("commercialName", e.target.value)}
-            className={
-              fieldErrors.commercialName ? "border-destructive" : ""
-            }
+            className={fieldErrors.commercialName ? "border-destructive" : ""}
             disabled={isLoading}
           />
           {fieldErrors.commercialName && (

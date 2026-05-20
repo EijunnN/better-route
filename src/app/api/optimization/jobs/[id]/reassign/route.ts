@@ -235,8 +235,7 @@ export async function POST(
         if (sourceRouteIndex !== -1) {
           const route = result.routes[sourceRouteIndex];
           const stopIndex = route.stops.findIndex((s) => {
-            if (s.groupedOrderIds && s.groupedOrderIds.includes(orderId))
-              return true;
+            if (s.groupedOrderIds?.includes(orderId)) return true;
             return s.orderId === orderId;
           });
 
@@ -422,7 +421,10 @@ export async function POST(
 
             // Pre-index original stops by orderId AND grouped order ids so
             // the per-stop lookup below is O(1).
-            const stopByOrderId = new Map<string, (typeof route.stops)[number]>();
+            const stopByOrderId = new Map<
+              string,
+              (typeof route.stops)[number]
+            >();
             for (const s of route.stops) {
               stopByOrderId.set(s.orderId, s);
               if (s.groupedOrderIds) {

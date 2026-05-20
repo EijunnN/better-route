@@ -1,22 +1,24 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { cleanDatabase } from "../setup/test-db";
-import { createTestToken } from "../setup/test-auth";
-import { createTestRequest } from "../setup/test-request";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { GET as csvTemplateGET } from "@/app/api/orders/csv-template/route";
+import { GET as geojsonGET } from "@/app/api/orders/geojson/route";
+import { POST as suggestMappingPOST } from "@/app/api/orders/import/suggest-mapping/route";
+import { GET as pendingSummaryGET } from "@/app/api/orders/pending-summary/route";
+
 import {
-  createCompany,
+  GET as validateGET,
+  POST as validatePOST,
+} from "@/app/api/orders/validate/route";
+import { createTestToken } from "../setup/test-auth";
+import {
   createAdmin,
+  createCompany,
+  createCsvMappingTemplate,
+  createFieldDefinition,
   createOrder,
   createTimeWindowPreset,
-  createFieldDefinition,
-  createCsvMappingTemplate,
-  createCompanyProfile,
 } from "../setup/test-data";
-
-import { POST as validatePOST, GET as validateGET } from "@/app/api/orders/validate/route";
-import { GET as geojsonGET } from "@/app/api/orders/geojson/route";
-import { GET as pendingSummaryGET } from "@/app/api/orders/pending-summary/route";
-import { GET as csvTemplateGET } from "@/app/api/orders/csv-template/route";
-import { POST as suggestMappingPOST } from "@/app/api/orders/import/suggest-mapping/route";
+import { cleanDatabase } from "../setup/test-db";
+import { createTestRequest } from "../setup/test-request";
 
 describe("Order Queries API", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -395,11 +397,11 @@ describe("Order Queries API", () => {
       expect(Array.isArray(body.ambiguous)).toBe(true);
 
       // Common headers should be auto-mapped via aliases
-      expect(body.suggestedMapping["tracking_id"]).toBe("trackingId");
-      expect(body.suggestedMapping["customer_name"]).toBe("customerName");
-      expect(body.suggestedMapping["address"]).toBe("address");
-      expect(body.suggestedMapping["latitude"]).toBe("latitude");
-      expect(body.suggestedMapping["longitude"]).toBe("longitude");
+      expect(body.suggestedMapping.tracking_id).toBe("trackingId");
+      expect(body.suggestedMapping.customer_name).toBe("customerName");
+      expect(body.suggestedMapping.address).toBe("address");
+      expect(body.suggestedMapping.latitude).toBe("latitude");
+      expect(body.suggestedMapping.longitude).toBe("longitude");
 
       // Required fields validation
       expect(body.requiredFieldsValidation).toBeDefined();
@@ -446,9 +448,9 @@ describe("Order Queries API", () => {
 
       const body = await response.json();
       // Template mappings should be applied
-      expect(body.suggestedMapping["codigo"]).toBe("trackingId");
-      expect(body.suggestedMapping["nombre"]).toBe("customerName");
-      expect(body.suggestedMapping["dir"]).toBe("address");
+      expect(body.suggestedMapping.codigo).toBe("trackingId");
+      expect(body.suggestedMapping.nombre).toBe("customerName");
+      expect(body.suggestedMapping.dir).toBe("address");
     });
 
     test("returns 400 for invalid request body", async () => {

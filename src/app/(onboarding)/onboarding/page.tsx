@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Loader2, Route } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 import {
   type CompanyFormData,
   CompanyFormStep,
@@ -11,6 +10,7 @@ import {
   SuccessStep,
   WelcomeStep,
 } from "@/components/onboarding/onboarding-steps";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 
 type Step = "welcome" | "company" | "success";

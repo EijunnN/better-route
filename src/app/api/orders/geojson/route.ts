@@ -3,17 +3,16 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { ORDER_STATUS } from "@/lib/validations/order";
 
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 /**
  * GeoJSON API endpoint for order visualization on map
  * Returns orders as GeoJSON FeatureCollection for map rendering
  */
-
 
 // Query parameter validation schema
 const geojsonQuerySchema = z.object({
@@ -41,7 +40,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.ORDER, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.ORDER,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantContext = extractTenantContextAuthed(request, authResult);
     if (tenantContext instanceof NextResponse) return tenantContext;

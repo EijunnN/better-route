@@ -1,5 +1,5 @@
-import type { Scenario } from "../types";
 import { baseConfig, makeVehicle } from "../fixtures";
+import type { Scenario } from "../types";
 
 /**
  * Edge case: no orders to route. The solver should return an empty

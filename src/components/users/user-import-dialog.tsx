@@ -78,7 +78,7 @@ export function UserImportDialog({
     e.stopPropagation();
     setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    if (e.dataTransfer.files?.[0]) {
       const droppedFile = e.dataTransfer.files[0];
       if (
         droppedFile.type === "text/csv" ||
@@ -91,7 +91,7 @@ export function UserImportDialog({
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files?.[0]) {
       setFile(e.target.files[0]);
       setResult(null);
     }
@@ -121,7 +121,7 @@ export function UserImportDialog({
       if (data.created > 0) {
         onImportComplete();
       }
-    } catch (error) {
+    } catch (_error) {
       setResult({
         success: false,
         created: 0,
