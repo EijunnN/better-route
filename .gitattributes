@@ -1,0 +1,19 @@
+# Normalise line endings on commit so a Windows checkout produces the
+# same blob hash as a macOS / Linux one. Without this, every Windows
+# `git commit` prints a CRLF→LF warning for each touched file and
+# blame churn appears when Linux/macOS devs touch the same lines.
+* text=auto eol=lf
+
+# Shell scripts must stay LF (executable on Linux).
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Binary blobs — never touch them.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.osm.pbf binary
+*.osrm* binary
