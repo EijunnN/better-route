@@ -13,4 +13,5 @@ export * from "./tracking";
 export * from "./workflow";
 export * from "./custom-fields";
 export * from "./visits";
+export * from "./chat";
 export * from "./relations";

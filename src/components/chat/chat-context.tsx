@@ -1,0 +1,604 @@
+"use client";
+
+import { Centrifuge, type PublicationContext } from "centrifuge";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import useSWR from "swr";
+import { useCompanyContext } from "@/hooks/use-company-context";
+
+/**
+ * Dispatcher chat (ADR-0007, issue 010).
+ *
+ * One Centrifuge connection per session subscribed to
+ *   chat:{companyId}:inbox          — inbox bumps for every conversation
+ * via the user's connection token (server-side subscription). When the
+ * dispatcher opens a thread we ad-hoc subscribe to
+ *   chat:{companyId}:driver:{id}
+ * with a subscription token minted by /api/realtime/subscription-token —
+ * a narrow, short-lived authorization per thread, so a leak only ever
+ * exposes one conversation.
+ */
+
+const POLLING_INTERVAL = 60000;
+const INITIAL_LIMIT = 50;
+const SCROLL_BACK_LIMIT = 50;
+
+export interface ConversationRow {
+  id: string;
+  driverId: string;
+  driverName: string | null;
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
+  unreadForDispatch: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  companyId: string;
+  driverId: string;
+  senderId: string;
+  direction: "TO_DRIVER" | "TO_DISPATCH";
+  kind: "TEXT" | "TEMPLATE" | "BROADCAST";
+  body: string;
+  templateCode: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+interface InboxPublication {
+  kind?: string;
+  driverId?: string;
+}
+
+interface ThreadPublication {
+  kind?: string;
+  message?: ChatMessage;
+}
+
+function resolveWsUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_CENTRIFUGO_WS_URL;
+  if (explicit) return explicit;
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${proto}://${window.location.host}/connection/websocket`;
+}
+
+async function fetchConversations(
+  url: string,
+  companyId: string,
+): Promise<ConversationRow[]> {
+  const res = await fetch(url, { headers: { "x-company-id": companyId } });
+  if (!res.ok) throw new Error("Bandeja inalcanzable");
+  const json = (await res.json()) as { data: ConversationRow[] };
+  return json.data;
+}
+
+interface ChatState {
+  conversations: ConversationRow[];
+  isLoadingConversations: boolean;
+  selectedDriverId: string | null;
+  messages: ChatMessage[];
+  isLoadingMessages: boolean;
+  isLoadingOlder: boolean;
+  hasMoreOlder: boolean;
+  isSending: boolean;
+  sendError: string | null;
+  threadSubState: "idle" | "connecting" | "subscribed" | "error";
+  // Surface visibility — the right-panel slot is shared with alerts and
+  // events, so chat's "is the panel open?" lives in chat state itself.
+  // That lets the sidebar chat icon and the driver-detail "Chatear"
+  // button open the panel without prop-drilling through monitoring.
+  isPanelOpen: boolean;
+  isPickerOpen: boolean;
+  isBroadcastOpen: boolean;
+  isBroadcasting: boolean;
+  broadcastError: string | null;
+  lastBroadcastReached: number | null;
+}
+
+interface ChatActions {
+  openConversation: (driverId: string) => void;
+  closeConversation: () => void;
+  /** Open the chat panel AND jump straight into a thread — used by
+   *  the driver-list chat icon and the driver-detail "Chatear" button. */
+  openConversationWithPanel: (driverId: string) => void;
+  openPanel: () => void;
+  closePanel: () => void;
+  openPicker: () => void;
+  closePicker: () => void;
+  openBroadcast: () => void;
+  closeBroadcast: () => void;
+  sendMessage: (body: string, templateCode?: string) => Promise<void>;
+  sendBroadcast: (body: string) => Promise<number | null>;
+  loadOlder: () => Promise<void>;
+  refreshConversations: () => Promise<void>;
+}
+
+interface ChatMeta {
+  companyId: string | null;
+  totalUnread: number;
+}
+
+interface ChatContextValue {
+  state: ChatState;
+  actions: ChatActions;
+  meta: ChatMeta;
+}
+
+const ChatContext = createContext<ChatContextValue | undefined>(undefined);
+
+export function ChatProvider({ children }: { children: ReactNode }) {
+  const { effectiveCompanyId: companyId } = useCompanyContext();
+
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastError, setBroadcastError] = useState<string | null>(null);
+  const [lastBroadcastReached, setLastBroadcastReached] = useState<
+    number | null
+  >(null);
+
+  // Latest message id — used to gap-fetch on subscription reconnect so we
+  // never silently drop publications dispatched while the WS was down.
+  const latestMessageIdRef = useRef<string | null>(null);
+  const subscribedOnceRef = useRef(false);
+  const centrifugeRef = useRef<Centrifuge | null>(null);
+  // Ref mirror of selectedDriverId so the connection-level publication
+  // handler (set up ONCE per companyId) can read the current open
+  // thread without going stale. Used as a defensive fallback: chat
+  // publications on the per-driver channel normally arrive on the
+  // Subscription handler, but if the SDK ever routes them up to the
+  // connection handler we still want to append.
+  const selectedDriverIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedDriverIdRef.current = selectedDriverId;
+  }, [selectedDriverId]);
+  const appendMessageIfActive = useCallback((msg: ChatMessage) => {
+    if (msg.driverId !== selectedDriverIdRef.current) return;
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === msg.id)) return prev;
+      return [...prev, msg];
+    });
+    latestMessageIdRef.current = msg.id;
+  }, []);
+
+  // Visible subscription health for the thread. "error" surfaces a
+  // small banner above the composer so the dispatcher knows live
+  // delivery is broken (otherwise they'd think the driver hasn't
+  // replied yet).
+  const [threadSubState, setThreadSubState] = useState<
+    "idle" | "connecting" | "subscribed" | "error"
+  >("idle");
+
+  const {
+    data: conversations = [],
+    isLoading: isLoadingConversations,
+    mutate: mutateConversations,
+  } = useSWR<ConversationRow[]>(
+    companyId ? ["/api/chat/conversations", companyId] : null,
+    ([url, cId]: [string, string]) => fetchConversations(url, cId),
+    {
+      refreshInterval: POLLING_INTERVAL,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+    },
+  );
+
+  // One persistent Centrifuge connection — auto-subscribes to the
+  // dispatcher's company channels (monitoring/inbox/broadcast) via the
+  // token's `channels` claim. Per-thread subscriptions attach to this
+  // same instance so we keep exactly one WS open per dispatcher tab.
+  useEffect(() => {
+    if (!companyId) return;
+
+    const centrifuge = new Centrifuge(resolveWsUrl(), {
+      getToken: async () => {
+        const res = await fetch("/api/realtime/token", {
+          headers: { "x-company-id": companyId },
+        });
+        if (!res.ok) throw new Error("Failed to fetch realtime token");
+        const { token } = (await res.json()) as { token: string };
+        return token;
+      },
+    });
+
+    centrifuge.on("publication", (ctx) => {
+      // Inbox bumps — server-side subscription via the connection JWT.
+      const data = ctx.data as
+        | (InboxPublication & { message?: ChatMessage })
+        | undefined;
+      if (data?.kind === "chat.inbox") {
+        mutateConversations();
+        return;
+      }
+      // Defensive: a chat.message can land here if the SDK routes a
+      // per-driver publication up to the connection handler (it
+      // shouldn't normally, but the cost of handling both paths is
+      // a no-op dedup in appendMessageIfActive).
+      if (data?.kind === "chat.message" && data.message) {
+        appendMessageIfActive(data.message);
+        // Also bump the inbox for moved-to-top ordering.
+        mutateConversations();
+      }
+    });
+
+    centrifuge.connect();
+    centrifugeRef.current = centrifuge;
+
+    return () => {
+      centrifuge.disconnect();
+      centrifugeRef.current = null;
+    };
+  }, [companyId, mutateConversations, appendMessageIfActive]);
+
+  // Whenever the selected thread changes: tear down the previous
+  // subscription, load the initial page, mint a subscription token for
+  // the new channel, attach the publication handler, and POST /read so
+  // the inbox unread badge clears.
+  useEffect(() => {
+    if (!companyId || !selectedDriverId) {
+      setMessages([]);
+      latestMessageIdRef.current = null;
+      subscribedOnceRef.current = false;
+      setHasMoreOlder(false);
+      return;
+    }
+
+    const driverId = selectedDriverId;
+    const centrifuge = centrifugeRef.current;
+    if (!centrifuge) return;
+
+    let cancelled = false;
+    setIsLoadingMessages(true);
+    setSendError(null);
+    subscribedOnceRef.current = false;
+
+    const channel = `chat:${companyId}:driver:${driverId}`;
+
+    const loadInitial = async () => {
+      const res = await fetch(
+        `/api/chat/conversations/${driverId}/messages?limit=${INITIAL_LIMIT}`,
+        { headers: { "x-company-id": companyId } },
+      );
+      if (!res.ok || cancelled) return;
+      const json = (await res.json()) as { data: ChatMessage[] };
+      if (cancelled) return;
+      setMessages(json.data);
+      setHasMoreOlder(json.data.length >= INITIAL_LIMIT);
+      const newest = json.data[json.data.length - 1];
+      latestMessageIdRef.current = newest?.id ?? null;
+    };
+
+    const markRead = async () => {
+      try {
+        await fetch(`/api/chat/conversations/${driverId}/read`, {
+          method: "POST",
+          headers: { "x-company-id": companyId },
+        });
+        if (!cancelled) mutateConversations();
+      } catch {
+        // Best-effort. The badge will clear on the next inbox bump.
+      }
+    };
+
+    const setupSubscription = () => {
+      // Defensive teardown — if a leftover sub exists for this channel
+      // (StrictMode double-mount, fast switch between threads) start
+      // from a clean slate instead of attaching a second set of
+      // listeners on top of the same instance.
+      const existing = centrifuge.getSubscription(channel);
+      if (existing) {
+        existing.removeAllListeners();
+        existing.unsubscribe();
+        centrifuge.removeSubscription(existing);
+      }
+
+      // Per-sub getToken is the recommended pattern: the SDK calls it
+      // on initial subscribe AND on every renewal, so a 5-min token
+      // expiry doesn't kill long chat sessions. Plus we never read a
+      // stale token from a closure.
+      const sub = centrifuge.newSubscription(channel, {
+        getToken: async (ctx) => {
+          const res = await fetch(
+            `/api/realtime/subscription-token?channel=${encodeURIComponent(ctx.channel)}`,
+            { headers: { "x-company-id": companyId } },
+          );
+          if (!res.ok) {
+            console.error(
+              `[chat] subscription-token ${res.status} for ${ctx.channel}`,
+            );
+            throw new Error(`subscription-token ${res.status}`);
+          }
+          const { token } = (await res.json()) as { token: string };
+          return token;
+        },
+      });
+
+      sub.on("publication", (ctx: PublicationContext) => {
+        const data = ctx.data as ThreadPublication | undefined;
+        console.debug("[chat] thread publication", channel, data);
+        if (data?.kind !== "chat.message" || !data.message) return;
+        if (data.message.driverId !== driverId) return;
+
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === data.message?.id)) return prev;
+          return [...prev, data.message as ChatMessage];
+        });
+        latestMessageIdRef.current = data.message.id;
+      });
+
+      sub.on("subscribed", async () => {
+        console.debug("[chat] subscribed", channel);
+        setThreadSubState("subscribed");
+        // First fire is the initial subscribe — the initial fetch
+        // covers the load. Later fires are reconnects, where we need
+        // to pull any messages that landed while the WS was offline.
+        if (!subscribedOnceRef.current) {
+          subscribedOnceRef.current = true;
+          return;
+        }
+        const lastId = latestMessageIdRef.current;
+        if (!lastId) return;
+        try {
+          const gap = await fetch(
+            `/api/chat/conversations/${driverId}/messages?after=${lastId}`,
+            { headers: { "x-company-id": companyId } },
+          );
+          if (!gap.ok || cancelled) return;
+          const gapJson = (await gap.json()) as { data: ChatMessage[] };
+          if (gapJson.data.length === 0 || cancelled) return;
+          setMessages((prev) => {
+            const seen = new Set(prev.map((m) => m.id));
+            const fresh = gapJson.data.filter((m) => !seen.has(m.id));
+            if (fresh.length === 0) return prev;
+            const next = [...prev, ...fresh];
+            latestMessageIdRef.current = next[next.length - 1].id;
+            return next;
+          });
+        } catch {
+          // Stay silent — the next inbox bump will eventually trigger
+          // a manual reopen or another reconnect.
+        }
+      });
+
+      sub.on("subscribing", () => {
+        console.debug("[chat] subscribing", channel);
+        setThreadSubState("connecting");
+      });
+
+      sub.on("unsubscribed", (ctx) => {
+        console.debug("[chat] unsubscribed", channel, ctx);
+        setThreadSubState("idle");
+      });
+
+      sub.on("error", (ctx) => {
+        // Subscription token rejected, server-side rule denied, etc.
+        // Surface so the dispatcher doesn't keep typing into a dead
+        // channel and wonder why the driver isn't replying.
+        console.error("[chat] subscription error", channel, ctx);
+        setThreadSubState("error");
+      });
+
+      setThreadSubState("connecting");
+      sub.subscribe();
+      return sub;
+    };
+
+    const sub = setupSubscription();
+
+    loadInitial().then(() => {
+      if (!cancelled) {
+        setIsLoadingMessages(false);
+        markRead();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      sub.removeAllListeners();
+      sub.unsubscribe();
+      centrifuge.removeSubscription(sub);
+      setThreadSubState("idle");
+    };
+  }, [companyId, selectedDriverId, mutateConversations]);
+
+  const openConversation = useCallback((driverId: string) => {
+    setSelectedDriverId(driverId);
+  }, []);
+
+  const closeConversation = useCallback(() => {
+    setSelectedDriverId(null);
+  }, []);
+
+  const openPanel = useCallback(() => setIsPanelOpen(true), []);
+  const closePanel = useCallback(() => {
+    setIsPanelOpen(false);
+    setSelectedDriverId(null);
+  }, []);
+
+  const openPicker = useCallback(() => setIsPickerOpen(true), []);
+  const closePicker = useCallback(() => setIsPickerOpen(false), []);
+
+  const openBroadcast = useCallback(() => {
+    setBroadcastError(null);
+    setIsBroadcastOpen(true);
+  }, []);
+  const closeBroadcast = useCallback(() => setIsBroadcastOpen(false), []);
+
+  const openConversationWithPanel = useCallback((driverId: string) => {
+    setIsPanelOpen(true);
+    setSelectedDriverId(driverId);
+  }, []);
+
+  const sendBroadcast = useCallback(
+    async (body: string): Promise<number | null> => {
+      if (!companyId) return null;
+      const text = body.trim();
+      if (!text) return null;
+      setIsBroadcasting(true);
+      setBroadcastError(null);
+      try {
+        const res = await fetch("/api/chat/broadcast", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": companyId,
+          },
+          body: JSON.stringify({ body: text }),
+        });
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(err.error ?? "No se pudo enviar la difusión");
+        }
+        const json = (await res.json()) as { reached: number };
+        setLastBroadcastReached(json.reached);
+        return json.reached;
+      } catch (err) {
+        setBroadcastError(
+          err instanceof Error ? err.message : "Error desconocido",
+        );
+        return null;
+      } finally {
+        setIsBroadcasting(false);
+      }
+    },
+    [companyId],
+  );
+
+  const sendMessage = useCallback(
+    async (body: string, templateCode?: string) => {
+      if (!companyId || !selectedDriverId) return;
+      const text = body.trim();
+      if (!text) return;
+
+      setIsSending(true);
+      setSendError(null);
+      try {
+        const res = await fetch(
+          `/api/chat/conversations/${selectedDriverId}/messages`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-company-id": companyId,
+            },
+            body: JSON.stringify({ body: text, templateCode }),
+          },
+        );
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(err.error ?? "No se pudo enviar el mensaje");
+        }
+        // The Centrifugo publish from the server will deliver the
+        // message back to this client on the thread subscription, so
+        // we do not optimistically insert — that would risk a duplicate
+        // when the dedupe-by-id check in the subscription handler runs
+        // a microsecond too late.
+      } catch (err) {
+        setSendError(err instanceof Error ? err.message : "Error desconocido");
+      } finally {
+        setIsSending(false);
+      }
+    },
+    [companyId, selectedDriverId],
+  );
+
+  const loadOlder = useCallback(async () => {
+    if (!companyId || !selectedDriverId || messages.length === 0) return;
+    if (isLoadingOlder || !hasMoreOlder) return;
+
+    const oldestId = messages[0].id;
+    setIsLoadingOlder(true);
+    try {
+      const res = await fetch(
+        `/api/chat/conversations/${selectedDriverId}/messages?before=${oldestId}&limit=${SCROLL_BACK_LIMIT}`,
+        { headers: { "x-company-id": companyId } },
+      );
+      if (!res.ok) return;
+      const json = (await res.json()) as { data: ChatMessage[] };
+      if (json.data.length === 0) {
+        setHasMoreOlder(false);
+        return;
+      }
+      setMessages((prev) => [...json.data, ...prev]);
+      setHasMoreOlder(json.data.length >= SCROLL_BACK_LIMIT);
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }, [companyId, selectedDriverId, messages, isLoadingOlder, hasMoreOlder]);
+
+  const refreshConversations = useCallback(async () => {
+    await mutateConversations();
+  }, [mutateConversations]);
+
+  const totalUnread = conversations.reduce(
+    (acc, c) => acc + c.unreadForDispatch,
+    0,
+  );
+
+  const state: ChatState = {
+    conversations,
+    isLoadingConversations,
+    selectedDriverId,
+    messages,
+    isLoadingMessages,
+    isLoadingOlder,
+    hasMoreOlder,
+    isSending,
+    sendError,
+    threadSubState,
+    isPanelOpen,
+    isPickerOpen,
+    isBroadcastOpen,
+    isBroadcasting,
+    broadcastError,
+    lastBroadcastReached,
+  };
+
+  const actions: ChatActions = {
+    openConversation,
+    closeConversation,
+    openConversationWithPanel,
+    openPanel,
+    closePanel,
+    openPicker,
+    closePicker,
+    openBroadcast,
+    closeBroadcast,
+    sendMessage,
+    sendBroadcast,
+    loadOlder,
+    refreshConversations,
+  };
+
+  const meta: ChatMeta = {
+    companyId,
+    totalUnread,
+  };
+
+  return <ChatContext value={{ state, actions, meta }}>{children}</ChatContext>;
+}
+
+export function useChat(): ChatContextValue {
+  const ctx = use(ChatContext);
+  if (!ctx) throw new Error("useChat must be used within a ChatProvider");
+  return ctx;
+}

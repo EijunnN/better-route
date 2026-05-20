@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  IBM_Plex_Mono,
+  IBM_Plex_Sans,
+} from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -10,6 +15,25 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// IBM Plex pairing reserved for [data-cockpit] surfaces — currently the
+// /monitoring dashboard. Declared globally so the font vars cascade into
+// Radix portals (Dialog, Popover) that render outside the cockpit tree.
+// The CSS in globals.css only applies the family within `[data-cockpit]`,
+// so the rest of the app keeps the Geist look.
+const cockpitSans = IBM_Plex_Sans({
+  variable: "--cockpit-sans",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+const cockpitMono = IBM_Plex_Mono({
+  variable: "--cockpit-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -42,7 +66,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${cockpitSans.variable} ${cockpitMono.variable} antialiased`}
       >
         {children}
       </body>

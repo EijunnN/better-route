@@ -1,4 +1,4 @@
-import { and, desc, eq, sql, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
@@ -12,16 +12,19 @@ import {
   vehicles,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/infra/tenant";
-
-import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { EntityType, Action } from "@/lib/auth/authorization";
+import { setTenantContext } from "@/lib/infra/tenant";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // GET - Get list of drivers with their route status for monitoring
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireRoutePermission(request, EntityType.DRIVER, Action.READ);
+    const authResult = await requireRoutePermission(
+      request,
+      EntityType.DRIVER,
+      Action.READ,
+    );
     if (authResult instanceof NextResponse) return authResult;
     const tenantCtx = extractTenantContextAuthed(request, authResult);
     if (tenantCtx instanceof NextResponse) return tenantCtx;
@@ -57,6 +60,7 @@ export async function GET(request: NextRequest) {
           name: true,
           driverStatus: true,
           primaryFleetId: true,
+          appOnline: true,
         },
         with: {
           primaryFleet: {
@@ -72,18 +76,19 @@ export async function GET(request: NextRequest) {
 
     // Get secondary fleets for all drivers
     const allDriverIds = allDrivers.map((d) => d.id);
-    const allSecondaryFleets = allDriverIds.length > 0
-      ? await db.query.userSecondaryFleets.findMany({
-          where: and(
-            eq(userSecondaryFleets.companyId, tenantCtx.companyId),
-            eq(userSecondaryFleets.active, true),
-            inArray(userSecondaryFleets.userId, allDriverIds),
-          ),
-          with: {
-            fleet: { columns: { id: true, name: true } },
-          },
-        })
-      : [];
+    const allSecondaryFleets =
+      allDriverIds.length > 0
+        ? await db.query.userSecondaryFleets.findMany({
+            where: and(
+              eq(userSecondaryFleets.companyId, tenantCtx.companyId),
+              eq(userSecondaryFleets.active, true),
+              inArray(userSecondaryFleets.userId, allDriverIds),
+            ),
+            with: {
+              fleet: { columns: { id: true, name: true } },
+            },
+          })
+        : [];
 
     const secFleetsByDriver = new Map<string, string[]>();
     for (const sf of allSecondaryFleets) {
@@ -96,31 +101,32 @@ export async function GET(request: NextRequest) {
     if (!confirmedJob) {
       // Get latest locations even without route
       const driverIds = allDrivers.map((d) => d.id);
-      const latestLocs = driverIds.length > 0
-        ? await db
-            .select({
-              driverId: driverLocations.driverId,
-              latitude: driverLocations.latitude,
-              longitude: driverLocations.longitude,
-              accuracy: driverLocations.accuracy,
-              speed: driverLocations.speed,
-              heading: driverLocations.heading,
-              isMoving: driverLocations.isMoving,
-              batteryLevel: driverLocations.batteryLevel,
-              recordedAt: driverLocations.recordedAt,
-            })
-            .from(driverLocations)
-            .where(
-              and(
-                eq(driverLocations.companyId, tenantCtx.companyId),
-                inArray(driverLocations.driverId, driverIds),
+      const latestLocs =
+        driverIds.length > 0
+          ? await db
+              .select({
+                driverId: driverLocations.driverId,
+                latitude: driverLocations.latitude,
+                longitude: driverLocations.longitude,
+                accuracy: driverLocations.accuracy,
+                speed: driverLocations.speed,
+                heading: driverLocations.heading,
+                isMoving: driverLocations.isMoving,
+                batteryLevel: driverLocations.batteryLevel,
+                recordedAt: driverLocations.recordedAt,
+              })
+              .from(driverLocations)
+              .where(
+                and(
+                  eq(driverLocations.companyId, tenantCtx.companyId),
+                  inArray(driverLocations.driverId, driverIds),
+                ),
               )
-            )
-            .orderBy(desc(driverLocations.recordedAt))
-            .limit(1000)
-        : [];
+              .orderBy(desc(driverLocations.recordedAt))
+              .limit(1000)
+          : [];
 
-      const locMap = new Map<string, typeof latestLocs[0]>();
+      const locMap = new Map<string, (typeof latestLocs)[0]>();
       for (const loc of latestLocs) {
         if (!locMap.has(loc.driverId)) {
           locMap.set(loc.driverId, loc);
@@ -132,13 +138,19 @@ export async function GET(request: NextRequest) {
       const driversData = allDrivers.map((driver) => {
         const location = locMap.get(driver.id);
         const isLocationRecent = location && location.recordedAt > fiveMinAgo;
+        // A driver who logged out is offline regardless of GPS recency.
+        const loggedOut = driver.appOnline === false;
 
         return {
           id: driver.id,
           name: driver.name,
           status: driver.driverStatus || "AVAILABLE",
+          appOnline: driver.appOnline ?? null,
           fleetId: driver.primaryFleetId || "",
-          fleetName: driver.primaryFleet?.name || (secFleetsByDriver.get(driver.id)?.[0]) || "Sin flota",
+          fleetName:
+            driver.primaryFleet?.name ||
+            secFleetsByDriver.get(driver.id)?.[0] ||
+            "Sin flota",
           fleetNames: [
             ...(driver.primaryFleet ? [driver.primaryFleet.name] : []),
             ...(secFleetsByDriver.get(driver.id) || []),
@@ -163,7 +175,7 @@ export async function GET(request: NextRequest) {
                 isMoving: location.isMoving,
                 batteryLevel: location.batteryLevel,
                 recordedAt: location.recordedAt.toISOString(),
-                isRecent: isLocationRecent,
+                isRecent: !!isLocationRecent && !loggedOut,
               }
             : null,
         };
@@ -236,7 +248,7 @@ export async function GET(request: NextRequest) {
                 and(
                   eq(driverLocations.companyId, tenantCtx.companyId),
                   inArray(driverLocations.driverId, driverIds),
-                )
+                ),
               )
               .orderBy(desc(driverLocations.recordedAt))
               .limit(1000)
@@ -257,7 +269,7 @@ export async function GET(request: NextRequest) {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
     // Create a map of driver ID to their most recent location
-    const locationMap = new Map<string, typeof latestLocations[0]>();
+    const locationMap = new Map<string, (typeof latestLocations)[0]>();
     for (const loc of latestLocations) {
       // Only keep the first (most recent) location for each driver
       if (!locationMap.has(loc.driverId)) {
@@ -279,10 +291,12 @@ export async function GET(request: NextRequest) {
 
       // Check if location is recent (within last 5 minutes)
       const isLocationRecent = location && location.recordedAt > fiveMinutesAgo;
+      // A driver who logged out is offline regardless of GPS recency.
+      const loggedOut = driver.appOnline === false;
 
       // Generate alerts based on status
       const alerts: string[] = [];
-      if (!driver.primaryFleetId && !(secFleetsByDriver.get(driver.id)?.length)) {
+      if (!driver.primaryFleetId && !secFleetsByDriver.get(driver.id)?.length) {
         alerts.push("Sin flota asignada");
       }
       if (failedStops > 0) {
@@ -300,21 +314,29 @@ export async function GET(request: NextRequest) {
       }
 
       // Prefer the fleet derived from the vehicle in the plan
-      const planFleetName = stopData ? vehicleFleetMap.get(stopData.vehicleId) : undefined;
+      const planFleetName = stopData
+        ? vehicleFleetMap.get(stopData.vehicleId)
+        : undefined;
       const baseFleetNames = [
         ...(driver.primaryFleet ? [driver.primaryFleet.name] : []),
         ...(secFleetsByDriver.get(driver.id) || []),
       ];
-      const fleetNames = planFleetName && !baseFleetNames.includes(planFleetName)
-        ? [planFleetName, ...baseFleetNames]
-        : baseFleetNames;
+      const fleetNames =
+        planFleetName && !baseFleetNames.includes(planFleetName)
+          ? [planFleetName, ...baseFleetNames]
+          : baseFleetNames;
 
       return {
         id: driver.id,
         name: driver.name,
         status: driver.driverStatus || "AVAILABLE",
+        appOnline: driver.appOnline ?? null,
         fleetId: driver.primaryFleetId || "",
-        fleetName: planFleetName || driver.primaryFleet?.name || (secFleetsByDriver.get(driver.id)?.[0]) || "Sin flota",
+        fleetName:
+          planFleetName ||
+          driver.primaryFleet?.name ||
+          secFleetsByDriver.get(driver.id)?.[0] ||
+          "Sin flota",
         fleetNames,
         hasRoute,
         routeId: stopData?.routeId || null,
@@ -340,7 +362,7 @@ export async function GET(request: NextRequest) {
               isMoving: location.isMoving,
               batteryLevel: location.batteryLevel,
               recordedAt: location.recordedAt.toISOString(),
-              isRecent: isLocationRecent,
+              isRecent: !!isLocationRecent && !loggedOut,
             }
           : null,
       };

@@ -71,6 +71,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     `${EntityType.METRICS}:${Action.READ}`,
     `${EntityType.OUTPUT}:${Action.READ}`,
     `${EntityType.OUTPUT}:${Action.EXPORT}`,
+    // Driver chat — dispatch side
+    `${EntityType.CHAT}:${Action.READ}`,
+    `${EntityType.CHAT}:${Action.CREATE}`,
   ],
 
   [USER_ROLES.MONITOR]: [
@@ -135,6 +138,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     `${EntityType.OPTIMIZATION_PRESET}:${Action.UPDATE}`,
     `${EntityType.OPTIMIZATION_PRESET}:${Action.DELETE}`,
     `${EntityType.METRICS}:${Action.READ}`,
+    // Driver chat — dispatch side
+    `${EntityType.CHAT}:${Action.READ}`,
+    `${EntityType.CHAT}:${Action.CREATE}`,
   ],
 
   [USER_ROLES.ADMIN_SISTEMA]: [
@@ -148,6 +154,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     `${EntityType.ROUTE_STOP}:${Action.READ}`,
     `${EntityType.ROUTE_STOP}:${Action.UPDATE}`, // Para marcar entregas como completadas/fallidas
     `${EntityType.ORDER}:${Action.READ}`,
+    // Driver chat — the driver's own thread with the dispatch desk
+    `${EntityType.CHAT}:${Action.READ}`,
+    `${EntityType.CHAT}:${Action.CREATE}`,
   ],
 };
 

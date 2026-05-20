@@ -78,6 +78,7 @@ export const testDb = drizzle(testClient, { schema });
 
 const TRUNCATE_SQL = sql`TRUNCATE TABLE
     tracking_tokens, company_tracking_settings,
+    chat_messages, chat_conversations,
     route_stop_history, route_stops, plan_metrics,
     reassignments_history, output_history, optimization_jobs,
     optimization_configurations, orders,

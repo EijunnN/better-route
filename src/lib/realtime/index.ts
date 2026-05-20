@@ -1,5 +1,11 @@
-export type { MonitoringBus } from "./event-bus";
-export { monitoringBus, monitoringChannel } from "./event-bus";
+// Centrifugo realtime layer (ADR-0007).
+export {
+  centrifugoPublish,
+  issueCentrifugoSubscriptionToken,
+  issueCentrifugoToken,
+} from "./centrifugo";
+export type { ChannelSubject } from "./channels";
+export { centrifugoChannels, computeAllowedChannels } from "./channels";
 export type {
   DriverLocationEvent,
   MonitoringEvent,

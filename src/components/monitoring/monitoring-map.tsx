@@ -18,13 +18,16 @@ interface MonitoringMapProps {
   selectedDriverId: string | null;
   selectedVehicleIds?: string[];
   onDriverSelect?: (driverId: string) => void;
+  /**
+   * Bumps whenever monitoring data should be reloaded — driven by
+   * Centrifugo events and the SWR safety poll. See ADR-0007.
+   */
+  refreshKey: number;
 }
 
 export interface MonitoringMapRef {
   flyTo: (lat: number, lng: number, zoom?: number) => void;
 }
-
-const REFRESH_INTERVAL = 15000; // 15 seconds
 
 export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
   function MonitoringMap(
@@ -34,6 +37,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
       selectedDriverId,
       selectedVehicleIds = [],
       onDriverSelect,
+      refreshKey,
     },
     ref,
   ) {
@@ -44,7 +48,6 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
     const map = useRef<maplibregl.Map | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const refreshInterval = useRef<NodeJS.Timeout | null>(null);
     const mapThemeRef = useRef<boolean | null>(null);
     const popupRef = useRef<maplibregl.Popup | null>(null);
 
@@ -244,6 +247,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
             closeButton: true,
             closeOnClick: true,
             maxWidth: "260px",
+            className: "app-popup",
           });
 
           // Add click handlers
@@ -293,9 +297,9 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${statusColor};"></span>
     Parada #${sequence}
   </div>
-  <div style="color: #888; font-size: 12px;">${trackingId}</div>
+  <div style="color: var(--muted-foreground); font-size: 12px;">${trackingId}</div>
   <div style="margin-top: 6px; font-size: 12px;">${address}</div>
-  <div style="margin-top: 4px; font-size: 11px; color: #888;">Estado: ${statusLabel}</div>
+  <div style="margin-top: 4px; font-size: 11px; color: var(--muted-foreground);">Estado: ${statusLabel}</div>
 </div>`;
 
                 popupRef.current
@@ -358,15 +362,15 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
                   // Stale data - don't show movement/speed, warn the user
                   statusHtml = `<div style="font-size: 12px; color: #f59e0b;">⚠ Sin señal reciente</div>`;
                   if (timeAgoText) {
-                    statusHtml += `<div style="font-size: 11px; color: #888; margin-top: 2px;">Última señal: ${timeAgoText}</div>`;
+                    statusHtml += `<div style="font-size: 11px; color: var(--muted-foreground); margin-top: 2px;">Última señal: ${timeAgoText}</div>`;
                   }
                 } else {
                   const movementText = isMoving
                     ? `En movimiento${speed ? ` · ${Math.round(speed)} km/h` : ""}`
                     : "Detenido";
-                  statusHtml = `<div style="font-size: 12px; color: #888;">${movementText}</div>`;
+                  statusHtml = `<div style="font-size: 12px; color: var(--muted-foreground);">${movementText}</div>`;
                   if (timeAgoText) {
-                    statusHtml += `<div style="font-size: 11px; color: #888; margin-top: 2px;">${timeAgoText}</div>`;
+                    statusHtml += `<div style="font-size: 11px; color: var(--muted-foreground); margin-top: 2px;">${timeAgoText}</div>`;
                   }
                 }
 
@@ -509,9 +513,6 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
       initMap();
 
       return () => {
-        if (refreshInterval.current) {
-          clearInterval(refreshInterval.current);
-        }
         popupRef.current?.remove();
         popupRef.current = null;
         map.current?.remove();
@@ -520,27 +521,20 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Auto-refresh data
+    // Realtime refresh — driven by monitoring events (Centrifugo) and the
+    // SWR safety poll, both surfaced through `refreshKey`. See ADR-0007.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional re-run trigger, not read in the body.
     useEffect(() => {
       if (!map.current || isLoading) return;
+      loadMapDataRef.current(false);
+    }, [refreshKey, isLoading]);
 
-      refreshInterval.current = setInterval(() => {
-        loadMapDataRef.current(false);
-      }, REFRESH_INTERVAL);
-
-      return () => {
-        if (refreshInterval.current) {
-          clearInterval(refreshInterval.current);
-        }
-      };
-    }, [isLoading]);
-
-    // Update data when selectedDriverId, jobId, or vehicleIds change
+    // Update data when selectedDriverId, jobId, or vehicleIds change.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: the deps are intentional re-run triggers; loadMapData closes over them.
     useEffect(() => {
       if (map.current && !isLoading) {
         loadMapData(true);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedDriverId, jobId, selectedVehicleIds.join(","), isLoading]);
 
     // React to theme changes
@@ -572,15 +566,6 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
           </div>
         )}
 
-        {/* Refresh indicator */}
-        {!isLoading && !error && (
-          <div className="absolute bottom-4 right-4 z-10">
-            <div className="bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 text-xs text-muted-foreground flex items-center gap-1.5">
-              <div className="size-1.5 rounded-full bg-green-500 animate-pulse" />
-              Auto-refresh: 15s
-            </div>
-          </div>
-        )}
       </div>
     );
   },

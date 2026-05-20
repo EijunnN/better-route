@@ -1,18 +1,32 @@
+import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { USER_ROLES, users } from "@/db/schema";
 import { clearAuthCookies, invalidateCurrentSession } from "@/lib/auth/auth";
+import { getOptionalUser } from "@/lib/auth/auth-api";
 
 /**
  * POST /api/auth/logout
  *
- * Logout the current user by invalidating the Redis session
- * and clearing all authentication cookies.
+ * Logout the current user by invalidating the Redis session and
+ * clearing all authentication cookies.
+ *
+ * For drivers, this also flips `users.appOnline` to false so the
+ * monitoring dashboard reflects the logout immediately, rather than
+ * waiting out the GPS recency window (see ADR-0007 / the logout gap).
  */
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    // Invalidate Redis session + clear session cookie
-    await invalidateCurrentSession();
+    // Resolve the user before the session is invalidated.
+    const user = await getOptionalUser(request);
+    if (user?.role === USER_ROLES.CONDUCTOR) {
+      await db
+        .update(users)
+        .set({ appOnline: false })
+        .where(eq(users.id, user.userId));
+    }
 
-    // Clear authentication cookies (access + refresh tokens)
+    await invalidateCurrentSession();
     await clearAuthCookies();
 
     return NextResponse.json({

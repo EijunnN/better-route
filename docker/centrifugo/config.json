@@ -1,0 +1,13 @@
+{
+  "channel": {
+    "namespaces": [
+      { "name": "monitoring" },
+      {
+        "name": "chat",
+        "history_size": 50,
+        "history_ttl": "60s",
+        "allow_subscribe_for_client": true
+      }
+    ]
+  }
+}

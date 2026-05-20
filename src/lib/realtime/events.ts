@@ -1,12 +1,14 @@
 /**
  * Monitoring event types and publish helpers.
  *
- * Subscribers receive these from the [`monitoringBus`] via the SSE
- * endpoint at `/api/monitoring/events`. Keep payloads small — they're
- * a hint to revalidate, not a replacement for the data fetch. The
- * client uses the `kind` to decide which SWR cache to invalidate.
+ * Events are published to the `monitoring:{companyId}` Centrifugo
+ * channel (ADR-0007); the dashboard subscribes over WebSocket and uses
+ * `kind` to decide which SWR cache to revalidate. Payloads stay small —
+ * a hint to refetch, not the data itself.
  */
-import { monitoringBus, monitoringChannel } from "./event-bus";
+
+import { centrifugoPublish } from "./centrifugo";
+import { centrifugoChannels } from "./channels";
 
 export type MonitoringEventKind =
   | "stop.started"
@@ -48,6 +50,10 @@ const STATUS_TO_KIND: Record<string, StopEvent["kind"]> = {
   SKIPPED: "stop.skipped",
 };
 
+/**
+ * Publish a stop transition to the company's monitoring channel.
+ * Fire-and-forget — `centrifugoPublish` never throws.
+ */
 export function publishStopEvent(input: {
   companyId: string;
   stopId: string;
@@ -66,14 +72,12 @@ export function publishStopEvent(input: {
     systemState: input.newStatus,
     occurredAt: new Date().toISOString(),
   };
-  monitoringBus.publish(monitoringChannel(input.companyId), event);
+  void centrifugoPublish(centrifugoChannels.monitoring(input.companyId), event);
 }
 
 /**
- * Drop-and-go publisher for the location ping coming in from the
- * mobile app. The payload is intentionally small so the dashboard
- * can patch the marker locally without a re-fetch — but the client
- * still falls back to a SWR revalidate as a safety net.
+ * Publish a driver location ping to the company's monitoring channel.
+ * The dashboard patches the marker and revalidates the driver list.
  */
 export function publishDriverLocationEvent(input: {
   companyId: string;
@@ -97,5 +101,5 @@ export function publishDriverLocationEvent(input: {
     isMoving: input.isMoving,
     occurredAt: new Date().toISOString(),
   };
-  monitoringBus.publish(monitoringChannel(input.companyId), event);
+  void centrifugoPublish(centrifugoChannels.monitoring(input.companyId), event);
 }

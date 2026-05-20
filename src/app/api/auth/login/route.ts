@@ -2,8 +2,13 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { users } from "@/db/schema";
-import { createAuthSession, generateTokenPair, setAuthCookies, verifyToken } from "@/lib/auth/auth";
+import { USER_ROLES, users } from "@/db/schema";
+import {
+  createAuthSession,
+  generateTokenPair,
+  setAuthCookies,
+  verifyToken,
+} from "@/lib/auth/auth";
 import {
   checkRateLimit,
   getClientIp,
@@ -95,10 +100,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // A driver logging in is back online — the monitoring dashboard
+    // reads users.appOnline (see the logout gap fix).
+    if (user.role === USER_ROLES.CONDUCTOR) {
+      await db
+        .update(users)
+        .set({ appOnline: true })
+        .where(eq(users.id, user.id));
+    }
+
     // Create session in Redis and generate tokens with sessionId
     const sessionId = await createAuthSession(
-      { id: user.id, companyId: user.companyId, email: user.email, role: user.role },
-      { userAgent: request.headers.get("user-agent") || undefined, ipAddress: ip },
+      {
+        id: user.id,
+        companyId: user.companyId,
+        email: user.email,
+        role: user.role,
+      },
+      {
+        userAgent: request.headers.get("user-agent") || undefined,
+        ipAddress: ip,
+      },
     );
 
     const { accessToken, refreshToken } = await generateTokenPair({

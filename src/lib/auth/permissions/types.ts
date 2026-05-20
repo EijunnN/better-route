@@ -27,6 +27,7 @@ export enum EntityType {
   ROUTE_STOP = "route_stop",
   ALERT = "alert",
   ALERT_RULE = "alert_rule",
+  CHAT = "chat",
   REASSIGNMENT = "reassignment",
   OUTPUT = "output",
   TIME_WINDOW_PRESET = "time_window_preset",

@@ -1,28 +1,33 @@
 "use client";
 
-import {
-  AlertCircle,
-  AlertTriangle,
-  Filter,
-  Info,
-  RefreshCw,
-  X,
-} from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, Loader2, RefreshCw, Search, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { type Alert, AlertItem } from "./alert-item";
+
+type SeverityKey = "all" | "critical" | "warning" | "info";
+type StatusKey = "ACTIVE" | "ACKNOWLEDGED" | "all";
+
+const SEVERITY_TABS: Array<{
+  key: SeverityKey;
+  label: string;
+  match?: Alert["severity"];
+  ledStatus?: "danger" | "warn" | "live" | "idle";
+}> = [
+  { key: "all", label: "Todas" },
+  { key: "critical", label: "Crítica", match: "CRITICAL", ledStatus: "danger" },
+  { key: "warning", label: "Advert.", match: "WARNING", ledStatus: "warn" },
+  { key: "info", label: "Info", match: "INFO", ledStatus: "live" },
+];
+
+const STATUS_TABS: Array<{ key: StatusKey; label: string }> = [
+  { key: "ACTIVE", label: "Activas" },
+  { key: "ACKNOWLEDGED", label: "Reconocidas" },
+  { key: "all", label: "Todas" },
+];
 
 interface AlertPanelProps {
   companyId: string;
@@ -31,15 +36,10 @@ interface AlertPanelProps {
 
 export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [filteredAlerts, setFilteredAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "all" | "critical" | "warning" | "info"
-  >("all");
+  const [severityTab, setSeverityTab] = useState<SeverityKey>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "ACTIVE" | "ACKNOWLEDGED" | "all"
-  >("ACTIVE");
+  const [statusFilter, setStatusFilter] = useState<StatusKey>("ACTIVE");
   const { toast } = useToast();
 
   const fetchAlerts = useCallback(async () => {
@@ -47,15 +47,9 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
     try {
       const response = await fetch(
         `/api/alerts?status=${statusFilter}&limit=50`,
-        {
-          headers: {
-            "x-company-id": companyId,
-          },
-        },
+        { headers: { "x-company-id": companyId } },
       );
-
       if (!response.ok) throw new Error("Failed to fetch alerts");
-
       const result = await response.json();
       setAlerts(result.data || []);
     } catch (error) {
@@ -71,49 +65,42 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
   }, [companyId, statusFilter, toast]);
 
   useEffect(() => {
-    if (companyId) {
-      fetchAlerts();
-    }
+    if (companyId) fetchAlerts();
   }, [companyId, fetchAlerts]);
 
-  // Filter alerts
-  useEffect(() => {
-    let filtered = [...alerts];
+  // Active-only counts so the chip labels always reflect "what would
+  // wake an operator" regardless of the current status filter.
+  const counts = useMemo(() => {
+    const active = alerts.filter((a) => a.status === "ACTIVE");
+    return {
+      all: alerts.length,
+      critical: active.filter((a) => a.severity === "CRITICAL").length,
+      warning: active.filter((a) => a.severity === "WARNING").length,
+      info: active.filter((a) => a.severity === "INFO").length,
+    };
+  }, [alerts]);
 
-    // Filter by severity tab
-    if (activeTab !== "all") {
-      filtered = filtered.filter((a) => a.severity === activeTab.toUpperCase());
+  const filteredAlerts = useMemo(() => {
+    let out = alerts;
+    if (severityTab !== "all") {
+      const match = SEVERITY_TABS.find((t) => t.key === severityTab)?.match;
+      if (match) out = out.filter((a) => a.severity === match);
     }
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      out = out.filter(
         (a) =>
-          a.title.toLowerCase().includes(query) ||
-          a.description?.toLowerCase().includes(query) ||
-          a.type.toLowerCase().includes(query),
+          a.title.toLowerCase().includes(q) ||
+          a.description?.toLowerCase().includes(q) ||
+          a.type.toLowerCase().includes(q),
       );
     }
+    return out;
+  }, [alerts, severityTab, searchQuery]);
 
-    setFilteredAlerts(filtered);
-  }, [alerts, activeTab, searchQuery]);
-
-  // Get counts
-  const criticalCount = alerts.filter(
-    (a) => a.severity === "CRITICAL" && a.status === "ACTIVE",
-  ).length;
-  const warningCount = alerts.filter(
-    (a) => a.severity === "WARNING" && a.status === "ACTIVE",
-  ).length;
-  const infoCount = alerts.filter(
-    (a) => a.severity === "INFO" && a.status === "ACTIVE",
-  ).length;
-
-  // Handle acknowledge
   const handleAcknowledge = async (alertId: string, note?: string) => {
     try {
-      const response = await fetch(`/api/alerts/${alertId}/acknowledge`, {
+      const res = await fetch(`/api/alerts/${alertId}/acknowledge`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -121,14 +108,11 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
         },
         body: JSON.stringify({ note }),
       });
-
-      if (!response.ok) throw new Error("Failed to acknowledge alert");
-
+      if (!res.ok) throw new Error("Failed to acknowledge alert");
       toast({
         title: "Alerta reconocida",
         description: "La alerta fue marcada como reconocida.",
       });
-
       fetchAlerts();
     } catch (error) {
       console.error("Error acknowledging alert:", error);
@@ -140,10 +124,9 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
     }
   };
 
-  // Handle dismiss
   const handleDismiss = async (alertId: string, note?: string) => {
     try {
-      const response = await fetch(`/api/alerts/${alertId}/dismiss`, {
+      const res = await fetch(`/api/alerts/${alertId}/dismiss`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -151,14 +134,11 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
         },
         body: JSON.stringify({ note }),
       });
-
-      if (!response.ok) throw new Error("Failed to dismiss alert");
-
+      if (!res.ok) throw new Error("Failed to dismiss alert");
       toast({
         title: "Alerta descartada",
         description: "La alerta fue ocultada de la lista activa.",
       });
-
       fetchAlerts();
     } catch (error) {
       console.error("Error dismissing alert:", error);
@@ -170,129 +150,182 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
     }
   };
 
+  const activeCount = counts.critical + counts.warning + counts.info;
+  const hasCritical = counts.critical > 0;
+
   return (
-    <Card className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between mb-4">
+    <div className="flex flex-col h-full">
+      {/* ─── Header ─── */}
+      <div className="px-3 pt-3 pb-2 shrink-0 border-b border-border/60">
+        <div className="flex items-center justify-between gap-2 mb-2.5">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="size-5 text-amber-500" />
-            <h2 className="text-lg font-semibold">Alertas</h2>
-            {criticalCount > 0 && (
-              <Badge variant="destructive" className="ml-2">
-                {criticalCount} crítica{criticalCount === 1 ? "" : "s"}
-              </Badge>
+            <span
+              role="img"
+              aria-label={hasCritical ? "Alertas críticas" : "Sin críticas"}
+              className="cockpit-led shrink-0"
+              data-status={
+                hasCritical ? "danger" : activeCount > 0 ? "warn" : "idle"
+              }
+            />
+            <span className="cockpit-label">Alertas</span>
+            {activeCount > 0 && (
+              <span className="cockpit-mono text-[10px] text-muted-foreground tabular-nums">
+                {activeCount} activa{activeCount === 1 ? "" : "s"}
+              </span>
             )}
           </div>
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
+            className="size-7"
             onClick={fetchAlerts}
             disabled={isLoading}
+            aria-label="Recargar"
           >
             <RefreshCw
-              className={`size-4 ${isLoading ? "animate-spin" : ""}`}
+              className={cn("size-3.5", isLoading && "animate-spin")}
             />
           </Button>
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar alertas..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-              >
-                <X className="size-4 text-muted-foreground hover:text-foreground" />
-              </button>
-            )}
+        {/* Search */}
+        <div className="relative mb-2.5">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Buscar alertas…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-8 text-sm bg-background/60 border-border/60"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 size-6"
+              onClick={() => setSearchQuery("")}
+              aria-label="Limpiar búsqueda"
+            >
+              <X className="size-3" />
+            </Button>
+          )}
+        </div>
+
+        {/* Severity chips — wrap if needed; counts always live-active. */}
+        <div className="space-y-1.5">
+          <span className="cockpit-label">Severidad</span>
+          <div className="flex flex-wrap gap-1">
+            {SEVERITY_TABS.map((tab) => {
+              const count = counts[tab.key];
+              const active = severityTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setSeverityTab(tab.key)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-sm border transition-colors",
+                    active
+                      ? "border-[var(--cockpit-live)]/50 bg-[var(--cockpit-live)]/10 text-[var(--cockpit-live)]"
+                      : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
+                  )}
+                >
+                  {tab.ledStatus && (
+                    <span
+                      aria-hidden
+                      className="size-1.5 rounded-full shrink-0"
+                      style={{
+                        background:
+                          tab.ledStatus === "danger"
+                            ? "var(--cockpit-danger)"
+                            : tab.ledStatus === "warn"
+                              ? "var(--cockpit-warn)"
+                              : tab.ledStatus === "live"
+                                ? "var(--cockpit-live)"
+                                : "transparent",
+                      }}
+                    />
+                  )}
+                  <span>{tab.label}</span>
+                  <span
+                    className={cn(
+                      "cockpit-mono tabular-nums text-[10px]",
+                      active
+                        ? "text-[var(--cockpit-live)]"
+                        : "text-muted-foreground/70",
+                    )}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <Select
-            value={statusFilter}
-            onValueChange={(v: "ACTIVE" | "ACKNOWLEDGED" | "all") =>
-              setStatusFilter(v)
-            }
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ACTIVE">Activas</SelectItem>
-              <SelectItem value="ACKNOWLEDGED">Reconocidas</SelectItem>
-              <SelectItem value="all">Todas</SelectItem>
-            </SelectContent>
-          </Select>
+        </div>
+
+        {/* Status chips — Activas / Reconocidas / Todas. Compact row. */}
+        <div className="space-y-1.5 mt-2">
+          <span className="cockpit-label">Estado</span>
+          <div className="flex gap-1">
+            {STATUS_TABS.map((tab) => {
+              const active = statusFilter === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={cn(
+                    "flex-1 text-[11px] px-1.5 py-0.5 rounded-sm border transition-colors",
+                    active
+                      ? "border-[var(--cockpit-live)]/50 bg-[var(--cockpit-live)]/10 text-[var(--cockpit-live)]"
+                      : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
+                  )}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(v) =>
-          setActiveTab(v as "all" | "critical" | "warning" | "info")
-        }
-        className="flex-1 flex flex-col"
-      >
-        <div className="px-4 pt-2">
-          <TabsList className="w-full">
-            <TabsTrigger value="all" className="flex-1">
-              Todas ({filteredAlerts.length})
-            </TabsTrigger>
-            <TabsTrigger value="critical" className="flex-1">
-              <AlertTriangle className="size-4 mr-1" />
-              Crítica ({criticalCount})
-            </TabsTrigger>
-            <TabsTrigger value="warning" className="flex-1">
-              <AlertCircle className="size-4 mr-1" />
-              Advertencia ({warningCount})
-            </TabsTrigger>
-            <TabsTrigger value="info" className="flex-1">
-              <Info className="size-4 mr-1" />
-              Info ({infoCount})
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        {/* Alert List */}
-        <TabsContent value={activeTab} className="flex-1 overflow-auto p-4 m-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <RefreshCw className="size-6 animate-spin text-muted-foreground" />
+      {/* ─── List ─── */}
+      <div className="flex-1 overflow-y-auto cockpit-scroll">
+        {isLoading && alerts.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : filteredAlerts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+            <div className="size-10 rounded-full border border-border/60 flex items-center justify-center mb-3 bg-background/40">
+              <AlertTriangle className="size-4 text-muted-foreground" />
             </div>
-          ) : filteredAlerts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              <AlertTriangle className="size-12 mb-4 opacity-50" />
-              <p className="font-medium">No hay alertas</p>
-              <p className="text-sm">
-                {searchQuery
-                  ? "Prueba ajustar la búsqueda o los filtros"
-                  : "No hay alertas activas en este momento"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredAlerts.map((alert) => (
-                <AlertItem
-                  key={alert.id}
-                  alert={alert}
-                  onAcknowledge={handleAcknowledge}
-                  onDismiss={handleDismiss}
-                  onClick={() => onAlertClick?.(alert)}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </Card>
+            <p className="text-sm font-medium">
+              {searchQuery || severityTab !== "all"
+                ? "Sin coincidencias"
+                : "Todo en orden"}
+            </p>
+            <p className="cockpit-label mt-2 max-w-[220px]">
+              {searchQuery
+                ? "Ajustá los filtros o limpiá la búsqueda."
+                : statusFilter === "ACTIVE"
+                  ? "No hay alertas activas en este momento."
+                  : "No hay alertas con este estado."}
+            </p>
+          </div>
+        ) : (
+          <ul className="cockpit-divide">
+            {filteredAlerts.map((alert) => (
+              <AlertItem
+                key={alert.id}
+                alert={alert}
+                onAcknowledge={handleAcknowledge}
+                onDismiss={handleDismiss}
+                onClick={() => onAlertClick?.(alert)}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }

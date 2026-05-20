@@ -113,6 +113,20 @@
       "when": 1778221497686,
       "tag": "0015_daffy_marvel_apes",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1779165637576,
+      "tag": "0016_jazzy_squirrel_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1779170309512,
+      "tag": "0017_lucky_ricochet",
+      "breakpoints": true
     }
   ]
 }
