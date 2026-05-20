@@ -2,19 +2,9 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import {
-  AlertCircle,
-  AlertTriangle,
-  Check,
-  Clock,
-  Info,
-  MoreVertical,
-  X,
-} from "lucide-react";
+import { Check, Clock, MoreVertical, X } from "lucide-react";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -60,32 +50,42 @@ interface AlertItemProps {
   onClick?: () => void;
 }
 
-const SEVERITY_CONFIG = {
+const SEVERITY_CONFIG: Record<
+  AlertSeverity,
+  {
+    label: string;
+    borderColor: string;
+    dotColor: string;
+    pillClass: string;
+  }
+> = {
   CRITICAL: {
     label: "Crítica",
-    iconBg: "bg-red-500",
-    borderClass: "border-l-red-500",
-    icon: AlertTriangle,
+    borderColor: "var(--cockpit-danger)",
+    dotColor: "var(--cockpit-danger)",
+    pillClass:
+      "border-[var(--cockpit-danger)]/40 bg-[var(--cockpit-danger)]/10 text-[oklch(0.85_0.15_27)]",
   },
   WARNING: {
     label: "Advertencia",
-    iconBg: "bg-amber-500",
-    borderClass: "border-l-amber-500",
-    icon: AlertCircle,
+    borderColor: "var(--cockpit-warn)",
+    dotColor: "var(--cockpit-warn)",
+    pillClass: "border-amber-500/40 bg-amber-500/10 text-amber-300",
   },
   INFO: {
     label: "Info",
-    iconBg: "bg-blue-500",
-    borderClass: "border-l-blue-500",
-    icon: Info,
+    borderColor: "var(--cockpit-live)",
+    dotColor: "var(--cockpit-live)",
+    pillClass:
+      "border-[var(--cockpit-live)]/40 bg-[var(--cockpit-live)]/10 text-[var(--cockpit-live)]",
   },
 };
 
-const STATUS_CONFIG = {
-  ACTIVE: { label: "Activa" },
-  ACKNOWLEDGED: { label: "Reconocida" },
-  RESOLVED: { label: "Resuelta" },
-  DISMISSED: { label: "Descartada" },
+const STATUS_LABEL: Record<AlertStatus, string> = {
+  ACTIVE: "Activa",
+  ACKNOWLEDGED: "Reconocida",
+  RESOLVED: "Resuelta",
+  DISMISSED: "Descartada",
 };
 
 interface AlertMetadataShape {
@@ -106,9 +106,8 @@ export function AlertItem({
   const [note, setNote] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const severityConfig = SEVERITY_CONFIG[alert.severity];
-  const statusConfig = STATUS_CONFIG[alert.status];
-  const SeverityIcon = severityConfig.icon;
+  const severity = SEVERITY_CONFIG[alert.severity];
+  const isActive = alert.status === "ACTIVE";
 
   const handleAcknowledge = async () => {
     if (!onAcknowledge) return;
@@ -135,7 +134,10 @@ export function AlertItem({
   };
 
   const getTimeSince = (dateString: string) =>
-    formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: es });
+    formatDistanceToNow(new Date(dateString), {
+      addSuffix: true,
+      locale: es,
+    });
 
   const metadata = (alert.metadata as AlertMetadataShape | null) ?? {};
   const contextLabel =
@@ -147,104 +149,138 @@ export function AlertItem({
 
   return (
     <>
-      <Card
+      <li
         className={cn(
-          "hover:bg-accent/50 transition-colors",
-          onClick && "cursor-pointer",
-          alert.status === "ACTIVE" && "border-l-4",
-          alert.status === "ACTIVE" && severityConfig.borderClass,
+          "cockpit-enter relative px-3 py-2.5 transition-colors",
+          onClick &&
+            "cursor-pointer hover:bg-[oklch(0.21_0_0)] focus-within:bg-[oklch(0.21_0_0)]",
+          !isActive && "opacity-70",
         )}
         onClick={onClick}
+        onKeyDown={
+          onClick
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onClick();
+                }
+              }
+            : undefined
+        }
       >
-        <div className="p-4">
-          <div className="flex items-start gap-3">
-            <div
-              className={cn("mt-0.5 rounded-full p-1.5", severityConfig.iconBg)}
-            >
-              <SeverityIcon className="size-4 text-white" />
-            </div>
+        {/* Severity accent — 2px coloured rule on the left edge. The
+            border itself communicates severity, the pill confirms it. */}
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 bottom-0 w-[2px]"
+          style={{
+            background: isActive ? severity.borderColor : "transparent",
+          }}
+        />
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-medium line-clamp-2">{alert.title}</h4>
-                    {alert.status !== "ACTIVE" && (
-                      <Badge variant="outline" className="text-xs">
-                        {statusConfig.label}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {alert.description && (
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {alert.description}
-                    </p>
-                  )}
-
-                  <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Clock className="size-3" />
-                      <span>{getTimeSince(alert.createdAt)}</span>
-                    </div>
-                    {contextLabel && (
-                      <span className="font-medium">{contextLabel}</span>
-                    )}
-                    {alert.acknowledgedBy && (
-                      <span>Reconocida por {alert.acknowledgedBy.name}</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                {alert.status === "ACTIVE" && (onAcknowledge || onDismiss) && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      asChild
-                      onClick={(e) => e.stopPropagation()}
+        <div className="flex items-start gap-2.5 pl-1">
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="font-medium text-sm leading-snug line-clamp-2">
+                {alert.title}
+              </h4>
+              {isActive && (onAcknowledge || onDismiss) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    asChild
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 shrink-0 -mr-1 -mt-0.5"
+                      aria-label="Más acciones"
                     >
-                      <Button variant="ghost" size="sm" className="size-8 p-0">
-                        <MoreVertical className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {onAcknowledge && (
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setAcknowledgeDialogOpen(true);
-                          }}
-                        >
-                          <Check className="size-4 mr-2" />
-                          Reconocer
-                        </DropdownMenuItem>
-                      )}
-                      {onDismiss && (
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDismissDialogOpen(true);
-                          }}
-                        >
-                          <X className="size-4 mr-2" />
-                          Descartar
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
+                      <MoreVertical className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {onAcknowledge && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAcknowledgeDialogOpen(true);
+                        }}
+                      >
+                        <Check className="size-3.5 mr-2" />
+                        Reconocer
+                      </DropdownMenuItem>
+                    )}
+                    {onDismiss && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDismissDialogOpen(true);
+                        }}
+                      >
+                        <X className="size-3.5 mr-2" />
+                        Descartar
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
+
+            {alert.description && (
+              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                {alert.description}
+              </p>
+            )}
+
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-[10px]">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border cockpit-mono uppercase tracking-wider",
+                  severity.pillClass,
+                )}
+              >
+                <span
+                  aria-hidden
+                  className="size-1 rounded-full"
+                  style={{ background: severity.dotColor }}
+                />
+                {severity.label}
+              </span>
+
+              {!isActive && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border/60 text-muted-foreground cockpit-mono uppercase tracking-wider">
+                  {STATUS_LABEL[alert.status]}
+                </span>
+              )}
+
+              <span className="inline-flex items-center gap-1 cockpit-mono text-muted-foreground">
+                <Clock className="size-2.5" />
+                {getTimeSince(alert.createdAt)}
+              </span>
+
+              {contextLabel && (
+                <span className="cockpit-mono text-muted-foreground">
+                  · {contextLabel}
+                </span>
+              )}
+            </div>
+
+            {alert.acknowledgedBy && (
+              <p className="cockpit-label">
+                Reconocida por {alert.acknowledgedBy.name}
+              </p>
+            )}
           </div>
         </div>
-      </Card>
+      </li>
 
       {/* Acknowledge Dialog */}
       <Dialog
         open={acknowledgeDialogOpen}
         onOpenChange={setAcknowledgeDialogOpen}
       >
-        <DialogContent>
+        <DialogContent data-cockpit>
           <DialogHeader>
             <DialogTitle>Reconocer alerta</DialogTitle>
             <DialogDescription>
@@ -252,7 +288,7 @@ export function AlertItem({
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Agregar una nota (opcional)..."
+            placeholder="Agregar una nota (opcional)…"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
@@ -268,14 +304,14 @@ export function AlertItem({
               Cancelar
             </Button>
             <Button onClick={handleAcknowledge} disabled={isLoading}>
-              {isLoading ? "Reconociendo..." : "Reconocer"}
+              {isLoading ? "Reconociendo…" : "Reconocer"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={dismissDialogOpen} onOpenChange={setDismissDialogOpen}>
-        <DialogContent>
+        <DialogContent data-cockpit>
           <DialogHeader>
             <DialogTitle>Descartar alerta</DialogTitle>
             <DialogDescription>
@@ -284,7 +320,7 @@ export function AlertItem({
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Agregar una nota (opcional)..."
+            placeholder="Agregar una nota (opcional)…"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
@@ -304,7 +340,7 @@ export function AlertItem({
               onClick={handleDismiss}
               disabled={isLoading}
             >
-              {isLoading ? "Descartando..." : "Descartar"}
+              {isLoading ? "Descartando…" : "Descartar"}
             </Button>
           </DialogFooter>
         </DialogContent>
