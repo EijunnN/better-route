@@ -566,16 +566,6 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
           </div>
         )}
 
-        {/* Realtime indicator — the map now updates from Centrifugo
-            events (ADR-0007), not a fixed poll. */}
-        {!isLoading && !error && (
-          <div className="absolute bottom-4 right-4 z-10">
-            <div className="bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 text-xs text-muted-foreground flex items-center gap-1.5">
-              <div className="size-1.5 rounded-full bg-green-500 animate-pulse" />
-              En vivo
-            </div>
-          </div>
-        )}
       </div>
     );
   },
