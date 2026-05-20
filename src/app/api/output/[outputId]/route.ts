@@ -385,7 +385,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (tenantCtx instanceof NextResponse) return tenantCtx;
     setTenantContext(tenantCtx);
 
-    const { companyId } = tenantCtx;
     await params;
 
     // Note: The output_history table doesn't have an 'active' field

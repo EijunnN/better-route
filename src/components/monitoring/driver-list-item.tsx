@@ -123,103 +123,98 @@ export const DriverListItem = memo(function DriverListItem({
   const isRecent = currentLocation?.isRecent ?? false;
 
   if (compact) {
+    // Outer is a passive <div>. Inside are two SIBLING buttons: the
+    // full-row select button and the chat overlay (positioned absolute
+    // over the row). Avoids the button-in-button anti-pattern that
+    // forced a role="button" + onKeyDown polyfill before.
     return (
-      // Row stays a div so the inner chat button isn't a button-in-button
-      // (invalid HTML). role=button + tabIndex + onKeyDown bring back the
-      // keyboard semantics that <button> would have given us for free.
-      // biome-ignore lint/a11y/useSemanticElements: a real <button> would nest the chat button — invalid HTML
       <div
-        role="button"
-        tabIndex={0}
-        aria-label={name}
         className={cn(
-          "group relative px-2.5 py-2 cursor-pointer transition-colors border-l-2 focus:outline-none focus-visible:bg-[oklch(0.22_0_0)]",
+          "group relative border-l-2 transition-colors",
           isSelected
             ? "bg-[oklch(0.22_0_0)] border-l-[var(--cockpit-live)]"
             : "border-l-transparent hover:bg-[oklch(0.2_0_0)]",
         )}
-        onClick={onClick}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClick();
-          }
-        }}
       >
-        <div className="flex items-center gap-2.5">
-          <span
-            role="img"
-            aria-label={statusConfig.label}
-            className="cockpit-led shrink-0"
-            data-status={ledStatus === "live" ? undefined : ledStatus}
-          />
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={name}
+          className="w-full text-left px-2.5 py-2 focus:outline-none focus-visible:bg-[oklch(0.22_0_0)]"
+        >
+          <div className="flex items-center gap-2.5 pr-7">
+            <span
+              role="img"
+              aria-label={statusConfig.label}
+              className="cockpit-led shrink-0"
+              data-status={ledStatus === "live" ? undefined : ledStatus}
+            />
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium text-sm truncate">{name}</span>
-              {vehiclePlate && (
-                <span className="cockpit-mono text-[10px] text-muted-foreground px-1.5 py-0.5 border border-border/60 rounded-sm shrink-0">
-                  {vehiclePlate}
-                </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-sm truncate">{name}</span>
+                {vehiclePlate && (
+                  <span className="cockpit-mono text-[10px] text-muted-foreground px-1.5 py-0.5 border border-border/60 rounded-sm shrink-0">
+                    {vehiclePlate}
+                  </span>
+                )}
+              </div>
+
+              {hasRoute && progress.totalStops > 0 ? (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <Progress
+                    value={progress.percentage}
+                    className="h-[3px] flex-1"
+                  />
+                  <span className="cockpit-mono text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                    {progress.completedStops}/{progress.totalStops}
+                  </span>
+                </div>
+              ) : (
+                <div className="cockpit-label mt-0.5">{statusConfig.label}</div>
+              )}
+
+              {(battery !== null || alerts.length > 0) && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  {battery !== null && isRecent && (
+                    <span
+                      className={cn(
+                        "cockpit-mono inline-flex items-center gap-0.5 text-[10px]",
+                        battery > 50
+                          ? "text-[var(--cockpit-live)]"
+                          : battery > 20
+                            ? "text-amber-400"
+                            : "text-red-400",
+                      )}
+                    >
+                      <Battery className="size-2.5" />
+                      {battery}%
+                    </span>
+                  )}
+                  {alerts.length > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] text-red-400">
+                      <AlertTriangle className="size-2.5" />
+                      {alerts.length}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
-
-            {hasRoute && progress.totalStops > 0 ? (
-              <div className="flex items-center gap-2 mt-1.5">
-                <Progress
-                  value={progress.percentage}
-                  className="h-[3px] flex-1"
-                />
-                <span className="cockpit-mono text-[10px] text-muted-foreground shrink-0 tabular-nums">
-                  {progress.completedStops}/{progress.totalStops}
-                </span>
-              </div>
-            ) : (
-              <div className="cockpit-label mt-0.5">{statusConfig.label}</div>
-            )}
-
-            {(battery !== null || alerts.length > 0) && (
-              <div className="flex items-center gap-2 mt-1.5">
-                {battery !== null && isRecent && (
-                  <span
-                    className={cn(
-                      "cockpit-mono inline-flex items-center gap-0.5 text-[10px]",
-                      battery > 50
-                        ? "text-[var(--cockpit-live)]"
-                        : battery > 20
-                          ? "text-amber-400"
-                          : "text-red-400",
-                    )}
-                  >
-                    <Battery className="size-2.5" />
-                    {battery}%
-                  </span>
-                )}
-                {alerts.length > 0 && (
-                  <span className="inline-flex items-center gap-0.5 text-[10px] text-red-400">
-                    <AlertTriangle className="size-2.5" />
-                    {alerts.length}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
+        </button>
 
-          {onChat && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChat();
-              }}
-              aria-label="Chatear"
-            >
-              <MessageSquare className="size-3.5" />
-            </Button>
-          )}
-        </div>
+        {onChat && (
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            aria-label="Chatear"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 size-7 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+            onClick={onChat}
+          >
+            <MessageSquare className="size-3.5" />
+          </Button>
+        )}
       </div>
     );
   }

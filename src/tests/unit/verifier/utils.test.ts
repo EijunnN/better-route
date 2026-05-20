@@ -58,8 +58,9 @@ describe("secondsToHHMM", () => {
   test("round-trips through hhmmToSeconds", () => {
     const samples = ["00:00", "08:30", "14:15", "23:59"];
     for (const t of samples) {
-      const sec = hhmmToSeconds(t)!;
-      expect(secondsToHHMM(sec)).toBe(t);
+      const sec = hhmmToSeconds(t);
+      expect(sec).not.toBeNull();
+      expect(secondsToHHMM(sec as number)).toBe(t);
     }
   });
 });

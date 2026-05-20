@@ -50,14 +50,18 @@ export async function POST(request: NextRequest) {
         ),
         columns: { id: true, trackingId: true },
       });
-    } else {
+    } else if (trackingIds?.length) {
       resolvedOrders = await db.query.orders.findMany({
         where: and(
           withTenantFilter(orders, [], tenantCtx.companyId),
-          inArray(orders.trackingId, trackingIds!),
+          inArray(orders.trackingId, trackingIds),
         ),
         columns: { id: true, trackingId: true },
       });
+    } else {
+      // Unreachable — the early guard rejects both being empty. Kept
+      // so TypeScript can prove `resolvedOrders` is always assigned.
+      resolvedOrders = [];
     }
 
     if (resolvedOrders.length === 0) {

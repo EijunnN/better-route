@@ -105,36 +105,33 @@ export async function PUT(
       if (value !== undefined) updateValues[key] = value;
     }
 
-    let preset;
+    // If this preset is being set as default, wrap in transaction to
+    // ensure only one default per company at any time
+    const settingAsDefault =
+      parsed.isDefault === true && !existingPreset.isDefault;
+    const [preset] = settingAsDefault
+      ? await db.transaction(async (tx) => {
+          await tx
+            .update(optimizationPresets)
+            .set({ isDefault: false, updatedAt: new Date() })
+            .where(
+              and(
+                eq(optimizationPresets.companyId, tenantCtx.companyId),
+                eq(optimizationPresets.isDefault, true),
+              ),
+            );
 
-    // If this preset is being set as default, wrap in transaction to ensure
-    // only one default per company at any time
-    if (parsed.isDefault === true && !existingPreset.isDefault) {
-      [preset] = await db.transaction(async (tx) => {
-        // Unset all other defaults for this company
-        await tx
-          .update(optimizationPresets)
-          .set({ isDefault: false, updatedAt: new Date() })
-          .where(
-            and(
-              eq(optimizationPresets.companyId, tenantCtx.companyId),
-              eq(optimizationPresets.isDefault, true),
-            ),
-          );
-
-        return await tx
+          return await tx
+            .update(optimizationPresets)
+            .set(updateValues)
+            .where(eq(optimizationPresets.id, id))
+            .returning();
+        })
+      : await db
           .update(optimizationPresets)
           .set(updateValues)
           .where(eq(optimizationPresets.id, id))
           .returning();
-      });
-    } else {
-      [preset] = await db
-        .update(optimizationPresets)
-        .set(updateValues)
-        .where(eq(optimizationPresets.id, id))
-        .returning();
-    }
 
     return NextResponse.json({ data: preset });
   } catch (error) {

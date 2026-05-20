@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { useAuth } from "@/hooks/use-auth";
 
 interface Company {
@@ -63,7 +69,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       (isSystemAdmin && !!effectiveCompanyId));
 
   // Fetch companies for system admins
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     if (!isSystemAdmin) return;
     setIsLoadingCompanies(true);
     try {
@@ -77,7 +83,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoadingCompanies(false);
     }
-  };
+  }, [isSystemAdmin]);
 
   useEffect(() => {
     if (isSystemAdmin && !isAuthLoading) {

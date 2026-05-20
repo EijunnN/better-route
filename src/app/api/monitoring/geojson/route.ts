@@ -75,23 +75,20 @@ export async function GET(request: NextRequest) {
       ? vehicleIdsParam.split(",").filter(Boolean)
       : null;
 
-    let confirmedJob;
-    if (jobId) {
-      confirmedJob = await db.query.optimizationJobs.findFirst({
-        where: and(
-          withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
-          eq(optimizationJobs.id, jobId),
-        ),
-      });
-    } else {
-      confirmedJob = await db.query.optimizationJobs.findFirst({
-        where: and(
-          withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
-          eq(optimizationJobs.status, "COMPLETED"),
-        ),
-        orderBy: [desc(optimizationJobs.createdAt)],
-      });
-    }
+    const confirmedJob = jobId
+      ? await db.query.optimizationJobs.findFirst({
+          where: and(
+            withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+            eq(optimizationJobs.id, jobId),
+          ),
+        })
+      : await db.query.optimizationJobs.findFirst({
+          where: and(
+            withTenantFilter(optimizationJobs, [], tenantCtx.companyId),
+            eq(optimizationJobs.status, "COMPLETED"),
+          ),
+          orderBy: [desc(optimizationJobs.createdAt)],
+        });
 
     if (!confirmedJob?.result) {
       return NextResponse.json({

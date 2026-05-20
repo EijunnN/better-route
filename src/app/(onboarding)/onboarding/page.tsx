@@ -2,7 +2,7 @@
 
 import { Loader2, Route } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   type CompanyFormData,
   CompanyFormStep,
@@ -30,8 +30,7 @@ export default function OnboardingPage() {
   const [result, setResult] = useState<SetupResult | null>(null);
   const [checkingCompanies, setCheckingCompanies] = useState(true);
 
-  // Check if companies already exist
-  const checkCompanies = async () => {
+  const checkCompanies = useCallback(async () => {
     try {
       const res = await fetch("/api/companies?limit=1", {
         credentials: "include",
@@ -44,28 +43,25 @@ export default function OnboardingPage() {
         }
       }
     } catch {
-      // If check fails, allow onboarding to proceed
+      // If check fails, allow onboarding to proceed.
     } finally {
       setCheckingCompanies(false);
     }
-  };
+  }, [replace]);
 
   useEffect(() => {
     if (authLoading) return;
 
-    // Not authenticated
     if (!user) {
       replace("/login");
       return;
     }
 
-    // Not admin
     if (user.role !== "ADMIN_SISTEMA") {
       replace("/dashboard");
       return;
     }
 
-    // Check if companies already exist
     checkCompanies();
   }, [user, authLoading, replace, checkCompanies]);
 

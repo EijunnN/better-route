@@ -8,7 +8,7 @@ import {
   Package,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -75,7 +75,7 @@ export function RecentEventsPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "FAILED" | "COMPLETED">("all");
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     try {
       const response = await fetch("/api/monitoring/events", {
         headers: { "x-company-id": companyId },
@@ -90,11 +90,11 @@ export function RecentEventsPanel({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
     fetchEvents();
-    // Refresh every 10 seconds
+    // Refresh every 10 seconds.
     const interval = setInterval(fetchEvents, 10000);
     return () => clearInterval(interval);
   }, [fetchEvents]);

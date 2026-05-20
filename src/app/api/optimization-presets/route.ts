@@ -78,34 +78,29 @@ export async function POST(request: NextRequest) {
       active: true,
     };
 
-    let preset;
-
     // If this preset is set as default, wrap in transaction to ensure
     // only one default per company at any time
-    if (parsed.isDefault) {
-      [preset] = await db.transaction(async (tx) => {
-        // Unset all other defaults for this company
-        await tx
-          .update(optimizationPresets)
-          .set({ isDefault: false, updatedAt: new Date() })
-          .where(
-            and(
-              eq(optimizationPresets.companyId, tenantCtx.companyId),
-              eq(optimizationPresets.isDefault, true),
-            ),
-          );
+    const [preset] = parsed.isDefault
+      ? await db.transaction(async (tx) => {
+          await tx
+            .update(optimizationPresets)
+            .set({ isDefault: false, updatedAt: new Date() })
+            .where(
+              and(
+                eq(optimizationPresets.companyId, tenantCtx.companyId),
+                eq(optimizationPresets.isDefault, true),
+              ),
+            );
 
-        return await tx
+          return await tx
+            .insert(optimizationPresets)
+            .values(presetValues)
+            .returning();
+        })
+      : await db
           .insert(optimizationPresets)
           .values(presetValues)
           .returning();
-      });
-    } else {
-      [preset] = await db
-        .insert(optimizationPresets)
-        .values(presetValues)
-        .returning();
-    }
 
     return NextResponse.json({ data: preset }, { status: 201 });
   } catch (error) {

@@ -112,10 +112,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 3. Generate filename based on trackingId or original filename
+    // 3. Generate filename based on trackingId or original filename.
+    // The earlier guard rejects the case where both are null, so the
+    // else branch reaches only when filename is a string.
     const generatedFilename = trackingId
       ? generateTrackingFilename(trackingId, contentType, index)
-      : generateUniqueFilename(filename!, contentType);
+      : generateUniqueFilename(filename ?? "", contentType);
 
     // Generate key based on folder type
     let key: string;

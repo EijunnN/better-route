@@ -9,17 +9,15 @@ import { ThemeProvider } from "./theme-context";
 
 interface AppShellProps {
   children: React.ReactNode;
-  title?: string;
 }
 
-function AppShellContent({ children, title }: AppShellProps) {
-  const { hideHeader, fullWidth } = useLayoutContext();
+function AppShellContent({ children }: AppShellProps) {
+  const { fullWidth } = useLayoutContext();
 
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* {!hideHeader && <Header title={title} />} */}
         <main
           className={cn(
             "flex flex-1 flex-col overflow-y-auto bg-muted/30",
@@ -33,13 +31,13 @@ function AppShellContent({ children, title }: AppShellProps) {
   );
 }
 
-export function AppShell({ children, title }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
   return (
     <ThemeProvider>
       <PermissionsProvider>
         <CompanyProvider>
           <LayoutProvider>
-            <AppShellContent title={title}>{children}</AppShellContent>
+            <AppShellContent>{children}</AppShellContent>
           </LayoutProvider>
         </CompanyProvider>
       </PermissionsProvider>

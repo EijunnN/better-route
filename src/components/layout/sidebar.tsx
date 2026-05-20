@@ -325,6 +325,7 @@ function SidebarNavItem({ item }: { item: NavItem }) {
     return (
       <div className="space-y-0.5">
         <button
+          type="button"
           onClick={() => actions.toggleExpanded(item.href)}
           className={cn(
             "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
@@ -471,6 +472,7 @@ function SidebarCompanySwitcher() {
         <Popover>
           <PopoverTrigger asChild>
             <button
+              type="button"
               className="flex h-9 w-full items-center justify-center rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
               title={selectedCompany?.commercialName || "Seleccionar empresa"}
             >
@@ -483,6 +485,7 @@ function SidebarCompanySwitcher() {
             </div>
             {companies.map((company) => (
               <button
+                type="button"
                 key={company.id}
                 onClick={() => setSelectedCompanyId(company.id)}
                 className={cn(
@@ -510,6 +513,7 @@ function SidebarCompanySwitcher() {
       <Popover>
         <PopoverTrigger asChild>
           <button
+            type="button"
             className={cn(
               "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
               "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -532,6 +536,7 @@ function SidebarCompanySwitcher() {
           </div>
           {companies.map((company) => (
             <button
+              type="button"
               key={company.id}
               onClick={() => setSelectedCompanyId(company.id)}
               className={cn(
