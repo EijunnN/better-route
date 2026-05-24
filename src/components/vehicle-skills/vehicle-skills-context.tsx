@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { VehicleSkillInput } from "@/lib/validations/vehicle-skill";
@@ -81,7 +88,7 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchSkills = async () => {
+  const fetchSkills = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
     try {
@@ -107,7 +114,7 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId, filterCategory, filterActive, searchTerm]);
 
   useEffect(() => {
     fetchSkills();

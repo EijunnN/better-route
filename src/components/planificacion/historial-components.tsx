@@ -333,12 +333,13 @@ function StatusIcon({ name, className }: { name: string; className?: string }) {
 
 function HistorialSearch() {
   const { actions } = useHistorial();
+  const { setSearchTerm } = actions;
   const [localValue, setLocalValue] = useState("");
   const debouncedValue = useDebounce(localValue, 300);
 
   useEffect(() => {
-    actions.setSearchTerm(debouncedValue);
-  }, [debouncedValue, actions]);
+    setSearchTerm(debouncedValue);
+  }, [debouncedValue, setSearchTerm]);
 
   return (
     <div className="relative">

@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { UserSkillInput } from "@/lib/validations/user-skill";
@@ -131,7 +138,7 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
   const [filterExpiry, setFilterExpiry] = useState<string>("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchUserSkills = async () => {
+  const fetchUserSkills = useCallback(async () => {
     if (!companyId) return;
     try {
       const params = new URLSearchParams();
@@ -157,9 +164,9 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId, filterUser, filterStatus, filterExpiry, toast]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/users?active=true", {
@@ -173,9 +180,9 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error al cargar usuarios:", error);
     }
-  };
+  }, [companyId]);
 
-  const fetchSkills = async () => {
+  const fetchSkills = useCallback(async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/vehicle-skills?active=true", {
@@ -186,7 +193,7 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error al cargar habilidades:", error);
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
     fetchUserSkills();

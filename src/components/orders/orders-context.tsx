@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
@@ -123,7 +130,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   } | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
     try {
@@ -144,15 +151,11 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId, filterStatus, searchQuery, currentPage]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, []);
 
   const handleCreate = async (data: OrderFormData) => {
     if (!companyId) return;

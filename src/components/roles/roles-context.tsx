@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -111,7 +118,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
   const [formData, setFormData] = useState({ name: "", description: "" });
   const [formError, setFormError] = useState("");
 
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
     if (!effectiveCompanyId) return;
     try {
       const response = await fetch("/api/roles", {
@@ -126,23 +133,26 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [effectiveCompanyId]);
 
-  const fetchRolePermissions = async (roleId: string) => {
-    if (!effectiveCompanyId) return;
-    setIsLoadingPermissions(true);
-    try {
-      const response = await fetch(`/api/roles/${roleId}/permissions`, {
-        headers: { "x-company-id": effectiveCompanyId },
-      });
-      const data = await response.json();
-      setRolePermissions(data);
-    } catch (error) {
-      console.error("Error fetching role permissions:", error);
-    } finally {
-      setIsLoadingPermissions(false);
-    }
-  };
+  const fetchRolePermissions = useCallback(
+    async (roleId: string) => {
+      if (!effectiveCompanyId) return;
+      setIsLoadingPermissions(true);
+      try {
+        const response = await fetch(`/api/roles/${roleId}/permissions`, {
+          headers: { "x-company-id": effectiveCompanyId },
+        });
+        const data = await response.json();
+        setRolePermissions(data);
+      } catch (error) {
+        console.error("Error fetching role permissions:", error);
+      } finally {
+        setIsLoadingPermissions(false);
+      }
+    },
+    [effectiveCompanyId],
+  );
 
   useEffect(() => {
     if (effectiveCompanyId) {

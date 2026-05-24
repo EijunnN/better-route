@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
@@ -86,7 +93,7 @@ export function TimeWindowPresetsProvider({
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchPresets = async () => {
+  const fetchPresets = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
     try {
@@ -105,7 +112,7 @@ export function TimeWindowPresetsProvider({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
     fetchPresets();

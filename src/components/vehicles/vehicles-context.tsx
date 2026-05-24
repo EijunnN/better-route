@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { VehicleInput } from "@/lib/validations/vehicle";
@@ -153,7 +160,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/vehicles", {
@@ -176,9 +183,9 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId]);
 
-  const fetchFleets = async () => {
+  const fetchFleets = useCallback(async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/fleets", {
@@ -189,9 +196,9 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching fleets:", error);
     }
-  };
+  }, [companyId]);
 
-  const fetchDrivers = async () => {
+  const fetchDrivers = useCallback(async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/users?role=CONDUCTOR", {
@@ -207,9 +214,9 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching drivers:", error);
     }
-  };
+  }, [companyId]);
 
-  const fetchCompanyProfile = async () => {
+  const fetchCompanyProfile = useCallback(async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/company-profiles", {
@@ -240,9 +247,9 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
         enableVolume: true,
       });
     }
-  };
+  }, [companyId]);
 
-  const fetchAvailableSkills = async () => {
+  const fetchAvailableSkills = useCallback(async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/vehicle-skills?active=true", {
@@ -253,7 +260,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching vehicle skills:", error);
     }
-  };
+  }, [companyId]);
 
   const fetchVehicleSkills = async (vehicleId: string) => {
     if (!companyId) return [];

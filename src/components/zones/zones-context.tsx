@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { ZoneInput } from "@/lib/validations/zone";
@@ -134,7 +141,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchZones = async () => {
+  const fetchZones = useCallback(async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/zones", {
@@ -149,9 +156,9 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId]);
 
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/vehicles?limit=100", {
@@ -170,7 +177,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching vehicles:", error);
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
     if (companyId) {

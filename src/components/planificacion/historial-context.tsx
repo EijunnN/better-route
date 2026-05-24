@@ -1,7 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -151,7 +158,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 10;
 
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
     setError(null);
@@ -222,7 +229,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId, statusFilter, searchTerm, currentPage]);
 
   useEffect(() => {
     if (companyId) {
@@ -230,60 +237,69 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
     }
   }, [companyId, loadJobs]);
 
-  const handleReoptimize = (job: OptimizationJob) => {
-    if (!job.configurationId) {
-      setError("No se puede reoptimizar: configuración no encontrada");
-      return;
-    }
-    push(`/planificacion/${job.configurationId}/results?reoptimize=true`);
-  };
-
-  const handleDelete = async (job: OptimizationJob) => {
-    if (!companyId || !job.configurationId) return;
-    try {
-      const response = await fetch(
-        `/api/optimization/configure/${job.configurationId}`,
-        {
-          method: "DELETE",
-          headers: { "x-company-id": companyId },
-        },
-      );
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Error al eliminar el plan");
+  const handleReoptimize = useCallback(
+    (job: OptimizationJob) => {
+      if (!job.configurationId) {
+        setError("No se puede reoptimizar: configuración no encontrada");
+        return;
       }
-      toast({
-        title: "Plan eliminado",
-        description: "El plan ha sido eliminado exitosamente.",
-      });
-      await loadJobs();
-    } catch (err) {
-      toast({
-        title: "Error al eliminar",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    }
-  };
+      push(`/planificacion/${job.configurationId}/results?reoptimize=true`);
+    },
+    [push],
+  );
 
-  const navigateToResults = (job: OptimizationJob) => {
-    push(`/planificacion/${job.configurationId}/results?jobId=${job.id}`);
-  };
+  const handleDelete = useCallback(
+    async (job: OptimizationJob) => {
+      if (!companyId || !job.configurationId) return;
+      try {
+        const response = await fetch(
+          `/api/optimization/configure/${job.configurationId}`,
+          {
+            method: "DELETE",
+            headers: { "x-company-id": companyId },
+          },
+        );
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Error al eliminar el plan");
+        }
+        toast({
+          title: "Plan eliminado",
+          description: "El plan ha sido eliminado exitosamente.",
+        });
+        await loadJobs();
+      } catch (err) {
+        toast({
+          title: "Error al eliminar",
+          description:
+            err instanceof Error ? err.message : "Ocurrió un error inesperado",
+          variant: "destructive",
+        });
+      }
+    },
+    [companyId, toast, loadJobs],
+  );
 
-  const setPage = (page: number) => {
+  const navigateToResults = useCallback(
+    (job: OptimizationJob) => {
+      push(`/planificacion/${job.configurationId}/results?jobId=${job.id}`);
+    },
+    [push],
+  );
+
+  const setPage = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
-  const handleSetStatusFilter = (status: JobStatus) => {
+  const handleSetStatusFilter = useCallback((status: JobStatus) => {
     setStatusFilter(status);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const setSearchTerm = (term: string) => {
+  const setSearchTerm = useCallback((term: string) => {
     setSearchTermState(term);
     setCurrentPage(1);
-  };
+  }, []);
 
   // Derived values
   const filteredJobs = jobs;

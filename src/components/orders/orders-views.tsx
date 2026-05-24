@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Can } from "@/components/auth/can";
 import {
   AlertDialog,
@@ -46,7 +46,7 @@ interface ListFieldDefinition {
 function useListFieldDefinitions(companyId: string | null) {
   const [fields, setFields] = useState<ListFieldDefinition[]>([]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!companyId) return;
     try {
       const res = await fetch(
@@ -65,7 +65,7 @@ function useListFieldDefinitions(companyId: string | null) {
     } catch {
       // silent
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
     load();

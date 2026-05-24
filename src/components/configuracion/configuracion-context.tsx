@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -138,9 +145,9 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const clearDirty = () => setDirty(new Set());
+  const clearDirty = useCallback(() => setDirty(new Set()), []);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!companyId || !isReady) return;
     setIsLoading(true);
     try {
@@ -162,9 +169,9 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId, isReady]);
 
-  const fetchTracking = async () => {
+  const fetchTracking = useCallback(async () => {
     if (!companyId || !isReady) return;
     try {
       const response = await fetch("/api/tracking/settings", {
@@ -175,13 +182,12 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching tracking settings:", error);
     }
-  };
+  }, [companyId, isReady]);
 
   useEffect(() => {
     fetchProfile();
     fetchTracking();
     clearDirty();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearDirty, fetchProfile, fetchTracking]);
 
   const updateProfile = (partial: Partial<CompanyProfile>) => {

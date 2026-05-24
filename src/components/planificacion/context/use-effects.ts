@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import type { FieldDefinition, Order, Zone } from "../planificacion-types";
 import type { PlanificacionStateBag } from "./use-state";
 
@@ -33,49 +33,54 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
     setOptimizationPresetId,
   } = state;
 
-  // Data loaders
-  const loadFleets = async (signal?: AbortSignal) => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/fleets?limit=100&active=true", {
-        headers: { "x-company-id": companyId },
-        signal,
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setFleets(data.data || []);
+  const loadFleets = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!companyId) return;
+      try {
+        const response = await fetch("/api/fleets?limit=100&active=true", {
+          headers: { "x-company-id": companyId },
+          signal,
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setFleets(data.data || []);
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        console.error("Failed to fetch fleets:", err);
       }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      console.error("Failed to fetch fleets:", err);
-    }
-  };
+    },
+    [companyId, setFleets],
+  );
 
-  const loadVehicles = async (signal?: AbortSignal) => {
-    if (!companyId) return;
-    setVehiclesLoading(true);
-    try {
-      const params = new URLSearchParams({ limit: "100" });
-      if (fleetFilter !== "ALL") {
-        params.append("fleetId", fleetFilter);
+  const loadVehicles = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!companyId) return;
+      setVehiclesLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: "100" });
+        if (fleetFilter !== "ALL") {
+          params.append("fleetId", fleetFilter);
+        }
+        const response = await fetch(`/api/vehicles/available?${params}`, {
+          headers: { "x-company-id": companyId },
+          signal,
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setVehicles(data.data || []);
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        console.error("Failed to fetch vehicles:", err);
+      } finally {
+        setVehiclesLoading(false);
       }
-      const response = await fetch(`/api/vehicles/available?${params}`, {
-        headers: { "x-company-id": companyId },
-        signal,
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setVehicles(data.data || []);
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      console.error("Failed to fetch vehicles:", err);
-    } finally {
-      setVehiclesLoading(false);
-    }
-  };
+    },
+    [companyId, fleetFilter, setVehicles, setVehiclesLoading],
+  );
 
-  const loadOrders = async (signal?: AbortSignal) => {
+  const loadOrders = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     setOrdersLoading(true);
     try {
@@ -129,9 +134,9 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
     } finally {
       setOrdersLoading(false);
     }
-  };
+  }, [companyId, setOrders, setSelectedOrderIds, setOrdersLoading]);
 
-  const loadZones = async (signal?: AbortSignal) => {
+  const loadZones = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/zones?active=true&limit=100", {
@@ -167,9 +172,9 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch zones:", err);
     }
-  };
+  }, [companyId, setZones]);
 
-  const loadCompanyProfile = async (signal?: AbortSignal) => {
+  const loadCompanyProfile = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/company-profiles", {
@@ -207,9 +212,9 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
         enableOrderType: false,
       });
     }
-  };
+  }, [companyId, setCompanyProfile]);
 
-  const loadFieldDefinitions = async (signal?: AbortSignal) => {
+  const loadFieldDefinitions = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch(
@@ -229,9 +234,9 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch field definitions:", err);
     }
-  };
+  }, [companyId, setFieldDefinitions]);
 
-  const loadPresets = async (signal?: AbortSignal) => {
+  const loadPresets = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/optimization-presets", {
@@ -258,9 +263,8 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch optimization presets:", err);
     }
-  };
+  }, [companyId, setAvailablePresets, setOptimizationPresetId]);
 
-  // Initial data load
   useEffect(() => {
     if (!companyId) return;
 
@@ -279,16 +283,15 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
     });
 
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     companyId,
+    loadFleets,
+    loadVehicles,
+    loadOrders,
+    loadZones,
     loadCompanyProfile,
     loadFieldDefinitions,
-    loadFleets,
-    loadOrders,
     loadPresets,
-    loadVehicles,
-    loadZones,
   ]);
 
   return { loadOrders };

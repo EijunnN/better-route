@@ -1,7 +1,14 @@
 "use client";
 
 import type maplibregl from "maplibre-gl";
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
@@ -181,8 +188,7 @@ export function OptimizationDashboardProvider({
   // Swap state
   const [isSwapping, setIsSwapping] = useState(false);
 
-  // Load zones
-  const loadZones = async () => {
+  const loadZones = useCallback(async () => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/zones?active=true&limit=100", {
@@ -216,7 +222,7 @@ export function OptimizationDashboardProvider({
     } catch (err) {
       console.error("Failed to fetch zones:", err);
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
     loadZones();

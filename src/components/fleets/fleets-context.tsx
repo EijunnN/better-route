@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { FleetInput } from "@/lib/validations/fleet";
@@ -81,7 +88,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchFleets = async (signal?: AbortSignal) => {
+  const fetchFleets = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const response = await fetch("/api/fleets", {
@@ -98,9 +105,9 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId]);
 
-  const fetchVehicles = async (signal?: AbortSignal) => {
+  const fetchVehicles = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) return;
     try {
       const vehiclesRes = await fetch("/api/vehicles", {
@@ -127,7 +134,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("Error fetching vehicles:", error);
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
     if (!companyId) return;

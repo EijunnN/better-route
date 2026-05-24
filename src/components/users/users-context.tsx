@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { CreateUserInput } from "@/lib/validations/user";
@@ -161,7 +168,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     return error.error || fallback;
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     if (!effectiveCompanyId) return;
     try {
       const url =
@@ -178,7 +185,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [effectiveCompanyId, activeTab]);
 
   const fetchFleets = async () => {
     if (!effectiveCompanyId) return;
