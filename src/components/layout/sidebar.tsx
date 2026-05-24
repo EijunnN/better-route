@@ -192,7 +192,7 @@ function SidebarFrame({ children }: { children: React.ReactNode }) {
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-300",
+        "m-3 flex flex-col rounded-xl border border-sidebar-border bg-sidebar shadow-xl transition-[width] duration-300",
         state.collapsed ? "w-16" : "w-64",
       )}
     >

@@ -17,10 +17,16 @@ function AppShellContent({ children }: AppShellProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div
+        className={cn(
+          "flex flex-1 flex-col overflow-hidden",
+          !fullWidth &&
+            "my-3 mr-3 rounded-xl border border-border bg-muted/30 shadow-xl",
+        )}
+      >
         <main
           className={cn(
-            "flex flex-1 flex-col overflow-y-auto bg-muted/30",
+            "flex flex-1 flex-col overflow-y-auto",
             fullWidth ? "p-0" : "p-4",
           )}
         >

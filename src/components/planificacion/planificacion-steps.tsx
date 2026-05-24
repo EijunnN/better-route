@@ -54,7 +54,7 @@ export function PlanificacionHeader() {
   const { state, actions } = usePlanificacion();
 
   return (
-    <div className="border-b bg-background px-6 py-4">
+    <div className="border-b px-6 py-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Planificación de Rutas</h1>
@@ -295,7 +295,7 @@ export function VehicleStep() {
       </div>
 
       {/* Next button */}
-      <div className="p-4 border-t bg-background">
+      <div className="p-4 border-t">
         <Button
           className="w-full"
           onClick={actions.nextStep}
@@ -489,7 +489,7 @@ export function OrderStep() {
       </div>
 
       {/* Navigation buttons */}
-      <div className="p-4 border-t bg-background flex gap-2">
+      <div className="p-4 border-t flex gap-2">
         <Button variant="outline" onClick={actions.prevStep} className="flex-1">
           Volver
         </Button>
@@ -735,7 +735,7 @@ export function ConfigStep() {
       )}
 
       {/* Action buttons */}
-      <div className="p-4 border-t bg-background space-y-2">
+      <div className="p-4 border-t space-y-2">
         <Can perm="plan:create">
           <Button
             className="w-full"

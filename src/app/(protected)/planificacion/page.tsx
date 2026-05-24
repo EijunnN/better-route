@@ -27,12 +27,12 @@ function PlanificacionContent() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="h-full flex flex-col">
       <PlanificacionHeader />
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left panel - Controls */}
-        <div className="w-[450px] border-r bg-background overflow-y-auto">
+        <div className="w-[450px] border-r overflow-y-auto">
           {state.error && (
             <div className="m-4 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
               {state.error}

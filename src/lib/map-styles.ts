@@ -1,6 +1,15 @@
 import type { StyleSpecification } from "maplibre-gl";
 
-// CartoDB Dark Matter - for dark mode
+// CartoDB Dark Matter, tinted toward the app's blue-tinted dark theme.
+// The base tiles are near-neutral greyscale, so the obvious raster paint
+// props (`raster-hue-rotate`, `raster-saturation`) are no-ops — no chroma
+// to rotate or amplify. We instead paint a blue background layer under
+// the tiles and drop `raster-opacity` so the colour bleeds through.
+// Overlays (zones, markers, route lines) sit above the raster, fully
+// opaque, so the tint never touches them.
+const DARK_BG_TINT = "#0e1729"; // close to `--background` in dark mode
+const DARK_RASTER_OPACITY = 0.65;
+
 const DARK_MAP_STYLE: StyleSpecification = {
   version: 8 as const,
   sources: {
@@ -17,11 +26,21 @@ const DARK_MAP_STYLE: StyleSpecification = {
   },
   layers: [
     {
+      id: "tint-background",
+      type: "background",
+      paint: {
+        "background-color": DARK_BG_TINT,
+      },
+    },
+    {
       id: "carto",
       type: "raster",
       source: "carto",
       minzoom: 0,
       maxzoom: 20,
+      paint: {
+        "raster-opacity": DARK_RASTER_OPACITY,
+      },
     },
   ],
 };

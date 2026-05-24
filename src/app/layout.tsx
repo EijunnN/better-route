@@ -1,21 +1,23 @@
 import type { Metadata } from "next";
 import {
-  Geist,
-  Geist_Mono,
   IBM_Plex_Mono,
   IBM_Plex_Sans,
+  Inter,
+  JetBrains_Mono,
 } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 // IBM Plex pairing reserved for [data-cockpit] surfaces — currently the
@@ -57,7 +59,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${cockpitSans.variable} ${cockpitMono.variable} antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} ${cockpitSans.variable} ${cockpitMono.variable} antialiased`}
       >
         <Script id="theme-init" strategy="beforeInteractive">
           {themeScript}
