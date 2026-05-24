@@ -1,12 +1,18 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LocationPicker } from "@/components/ui/location-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { useVehicleForm } from "./vehicle-form-context";
+
+const LocationPicker = dynamic(
+  () =>
+    import("@/components/ui/location-picker").then((mod) => mod.LocationPicker),
+  { ssr: false },
+);
 
 export function VehicleFormOperation() {
   const { state, actions } = useVehicleForm();
