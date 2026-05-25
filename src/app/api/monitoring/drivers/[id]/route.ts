@@ -2,6 +2,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  companyDeliveryPolicy,
   driverLocations,
   optimizationJobs,
   orders,
@@ -16,6 +17,50 @@ import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { safeParseJson } from "@/lib/utils/safe-json";
+import type { SystemState } from "@/lib/workflow/states";
+
+/**
+ * Build the per-stop "workflowState" payload from the company's
+ * delivery policy + the stop's system status. Replaces the dead FK
+ * to `company_workflow_states` — the label/colour is now derived,
+ * not stored per stop.
+ */
+function projectWorkflowState(
+  status: SystemState,
+  policy: typeof companyDeliveryPolicy.$inferSelect,
+) {
+  const map: Record<
+    SystemState,
+    { label: string; color: string; code: string }
+  > = {
+    PENDING: {
+      label: policy.labelPending,
+      color: policy.colorPending,
+      code: "PENDING",
+    },
+    IN_PROGRESS: {
+      label: policy.labelInProgress,
+      color: policy.colorInProgress,
+      code: "IN_PROGRESS",
+    },
+    COMPLETED: {
+      label: policy.labelCompleted,
+      color: policy.colorCompleted,
+      code: "COMPLETED",
+    },
+    FAILED: {
+      label: policy.labelFailed,
+      color: policy.colorFailed,
+      code: "FAILED",
+    },
+    CANCELLED: {
+      label: policy.labelCancelled,
+      color: policy.colorCancelled,
+      code: "CANCELLED",
+    },
+  };
+  return { ...map[status], systemState: status };
+}
 // GET - Get detailed driver information with route and stops
 export async function GET(
   request: NextRequest,
@@ -177,15 +222,6 @@ export async function GET(
             maxOrders: true,
           },
         },
-        workflowState: {
-          columns: {
-            id: true,
-            label: true,
-            color: true,
-            code: true,
-            systemState: true,
-          },
-        },
         zone: {
           columns: {
             id: true,
@@ -196,6 +232,20 @@ export async function GET(
       },
       limit: 500,
     });
+
+    // Single fetch of the delivery policy — used to project each stop's
+    // status into label/colour for the dashboard rows below. Lazily
+    // insert the row for legacy companies that predate the autoseed.
+    let policy = await db.query.companyDeliveryPolicy.findFirst({
+      where: eq(companyDeliveryPolicy.companyId, tenantCtx.companyId),
+    });
+    if (!policy) {
+      const [inserted] = await db
+        .insert(companyDeliveryPolicy)
+        .values({ companyId: tenantCtx.companyId })
+        .returning();
+      policy = inserted;
+    }
 
     // If driver has no stops in this job
     if (stops.length === 0) {
@@ -341,15 +391,10 @@ export async function GET(
       failureReason: stop.failureReason,
       timeWindowStart: stop.timeWindowStart?.toISOString() || null,
       timeWindowEnd: stop.timeWindowEnd?.toISOString() || null,
-      workflowState: stop.workflowState
-        ? {
-            id: stop.workflowState.id,
-            label: stop.workflowState.label,
-            color: stop.workflowState.color,
-            code: stop.workflowState.code,
-            systemState: stop.workflowState.systemState,
-          }
-        : null,
+      workflowState: projectWorkflowState(
+        stop.status as SystemState,
+        policy,
+      ),
       zone: stop.zone
         ? {
             id: stop.zone.id,

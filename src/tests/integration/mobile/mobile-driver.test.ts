@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { GET as GET_DELIVERY_POLICY } from "@/app/api/mobile/driver/delivery-policy/route";
 import { GET as GET_FIELD_DEFINITIONS } from "@/app/api/mobile/driver/field-definitions/route";
 import {
   GET as GET_LOCATION,
@@ -6,12 +7,12 @@ import {
 } from "@/app/api/mobile/driver/location/route";
 import { GET as GET_MY_ORDERS } from "@/app/api/mobile/driver/my-orders/route";
 import { GET as GET_MY_ROUTE } from "@/app/api/mobile/driver/my-route/route";
-import { GET as GET_WORKFLOW_STATES } from "@/app/api/mobile/driver/workflow-states/route";
 import { createTestToken } from "../setup/test-auth";
 import {
   buildOptimizationResult,
   createAdmin,
   createCompany,
+  createDeliveryPolicy,
   createDriver,
   createDriverLocation,
   createFieldDefinition,
@@ -20,8 +21,6 @@ import {
   createOrder,
   createRouteStop,
   createVehicle,
-  createWorkflowState,
-  createWorkflowTransition,
 } from "../setup/test-data";
 import { cleanDatabase } from "../setup/test-db";
 import { createTestRequest } from "../setup/test-request";
@@ -194,30 +193,11 @@ describe("Mobile Driver Endpoints", () => {
       position: 3,
     });
 
-    // 7. Workflow states and transitions
-    const statePending = await createWorkflowState({
+    // 7. Delivery policy with photo + signature required on completion
+    await createDeliveryPolicy({
       companyId: company.id,
-      code: "WF_PENDING",
-      label: "Pendiente",
-      systemState: "PENDING",
-      position: 0,
-      isTerminal: false,
-      requiresPhoto: false,
-    });
-    const stateCompleted = await createWorkflowState({
-      companyId: company.id,
-      code: "WF_COMPLETED",
-      label: "Completado",
-      systemState: "COMPLETED",
-      position: 1,
-      isTerminal: true,
-      requiresPhoto: true,
-      requiresSignature: true,
-    });
-    await createWorkflowTransition({
-      companyId: company.id,
-      fromStateId: statePending.id,
-      toStateId: stateCompleted.id,
+      completedRequiresPhoto: true,
+      completedRequiresSignature: true,
     });
   });
 
@@ -500,40 +480,33 @@ describe("Mobile Driver Endpoints", () => {
   });
 
   // -----------------------------------------------------------------------
-  // GET /api/mobile/driver/workflow-states
+  // GET /api/mobile/driver/delivery-policy
   // -----------------------------------------------------------------------
-  describe("GET /workflow-states", () => {
-    test("returns states with transition map", async () => {
+  describe("GET /delivery-policy", () => {
+    test("returns the policy + crystalized state machine", async () => {
       const req = await createTestRequest(
-        "/api/mobile/driver/workflow-states",
+        "/api/mobile/driver/delivery-policy",
         {
           token: driverToken,
           companyId: company.id,
           userId: driver.id,
         },
       );
-      const res = await GET_WORKFLOW_STATES(req);
+      const res = await GET_DELIVERY_POLICY(req);
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      expect(body.data.length).toBeGreaterThanOrEqual(2);
+      expect(body.data.policy).toBeDefined();
+      expect(body.data.policy.completedRequiresPhoto).toBe(true);
+      expect(body.data.policy.completedRequiresSignature).toBe(true);
 
-      // Find the completed state — should have transitionsFrom containing the pending state
-      const completedState = body.data.find(
-        (s: { code: string }) => s.code === "WF_COMPLETED",
+      // State machine is the same shape on every install
+      expect(body.data.stateMachine.states).toContain("PENDING");
+      expect(body.data.stateMachine.states).toContain("COMPLETED");
+      expect(body.data.stateMachine.transitions.PENDING).toContain(
+        "IN_PROGRESS",
       );
-      expect(completedState).toBeDefined();
-      expect(completedState.isTerminal).toBe(true);
-      expect(completedState.requiresPhoto).toBe(true);
-      expect(completedState.requiresSignature).toBe(true);
-      expect(completedState.transitionsFrom.length).toBeGreaterThanOrEqual(1);
-
-      // Pending state should have empty transitionsFrom (nothing transitions TO it in our setup)
-      const pendingState = body.data.find(
-        (s: { code: string }) => s.code === "WF_PENDING",
-      );
-      expect(pendingState).toBeDefined();
-      expect(pendingState.transitionsFrom).toHaveLength(0);
+      expect(body.data.stateMachine.transitions.COMPLETED).toEqual([]);
     });
   });
 

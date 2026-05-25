@@ -139,15 +139,15 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    // Seed default workflow states for the new company
+    // Seed the default delivery policy row for the new company
     try {
-      const { seedDefaultWorkflowStates } = await import(
+      const { seedDefaultDeliveryPolicy } = await import(
         "@/lib/workflow/seed-defaults"
       );
-      await seedDefaultWorkflowStates(newCompany.id);
+      await seedDefaultDeliveryPolicy(newCompany.id);
     } catch (error) {
       console.error(
-        "Warning: Failed to seed workflow states for new company:",
+        "Warning: Failed to seed delivery policy for new company:",
         error,
       );
     }

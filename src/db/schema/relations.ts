@@ -31,16 +31,28 @@ import {
 } from "./tracking";
 import { userAvailability, userDriverStatusHistory, users } from "./users";
 import { vehicleStatusHistory, vehicles } from "./vehicles";
-import { companyWorkflowStates, companyWorkflowTransitions } from "./workflow";
+import { companyDeliveryPolicy } from "./workflow";
 import { zones, zoneVehicles } from "./zones";
 
-export const companiesRelations = relations(companies, ({ many }) => ({
+export const companiesRelations = relations(companies, ({ one, many }) => ({
   users: many(users),
   fleets: many(fleets),
-  workflowStates: many(companyWorkflowStates),
-  workflowTransitions: many(companyWorkflowTransitions),
+  deliveryPolicy: one(companyDeliveryPolicy, {
+    fields: [companies.id],
+    references: [companyDeliveryPolicy.companyId],
+  }),
   fieldDefinitions: many(companyFieldDefinitions),
 }));
+
+export const companyDeliveryPolicyRelations = relations(
+  companyDeliveryPolicy,
+  ({ one }) => ({
+    company: one(companies, {
+      fields: [companyDeliveryPolicy.companyId],
+      references: [companies.id],
+    }),
+  }),
+);
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   company: one(companies, {
@@ -363,10 +375,6 @@ export const routeStopsRelations = relations(routeStops, ({ one, many }) => ({
     fields: [routeStops.zoneId],
     references: [zones.id],
   }),
-  workflowState: one(companyWorkflowStates, {
-    fields: [routeStops.workflowStateId],
-    references: [companyWorkflowStates.id],
-  }),
   history: many(routeStopHistory),
 }));
 
@@ -557,42 +565,6 @@ export const companyFieldDefinitionsRelations = relations(
   }),
 );
 
-export const companyWorkflowStatesRelations = relations(
-  companyWorkflowStates,
-  ({ one, many }) => ({
-    company: one(companies, {
-      fields: [companyWorkflowStates.companyId],
-      references: [companies.id],
-    }),
-    transitionsFrom: many(companyWorkflowTransitions, {
-      relationName: "fromState",
-    }),
-    transitionsTo: many(companyWorkflowTransitions, {
-      relationName: "toState",
-    }),
-    routeStops: many(routeStops),
-  }),
-);
-
-export const companyWorkflowTransitionsRelations = relations(
-  companyWorkflowTransitions,
-  ({ one }) => ({
-    company: one(companies, {
-      fields: [companyWorkflowTransitions.companyId],
-      references: [companies.id],
-    }),
-    fromState: one(companyWorkflowStates, {
-      fields: [companyWorkflowTransitions.fromStateId],
-      references: [companyWorkflowStates.id],
-      relationName: "fromState",
-    }),
-    toState: one(companyWorkflowStates, {
-      fields: [companyWorkflowTransitions.toStateId],
-      references: [companyWorkflowStates.id],
-      relationName: "toState",
-    }),
-  }),
-);
 
 export const trackingTokensRelations = relations(trackingTokens, ({ one }) => ({
   company: one(companies, {

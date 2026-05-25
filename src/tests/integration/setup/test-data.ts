@@ -8,10 +8,9 @@
 import bcrypt from "bcryptjs";
 import {
   companies,
+  companyDeliveryPolicy,
   companyFieldDefinitions,
   companyOptimizationProfiles,
-  companyWorkflowStates,
-  companyWorkflowTransitions,
   csvColumnMappingTemplates,
   driverLocations,
   fleets,
@@ -433,50 +432,19 @@ export async function createZoneVehicle(
 }
 
 // ---------------------------------------------------------------------------
-// Workflow States
+// Delivery Policy (per-company)
 // ---------------------------------------------------------------------------
-export async function createWorkflowState(
-  overrides: Partial<typeof companyWorkflowStates.$inferInsert> & {
+export async function createDeliveryPolicy(
+  overrides: Partial<typeof companyDeliveryPolicy.$inferInsert> & {
     companyId: string;
   },
 ) {
-  const ts = Date.now();
   const [record] = await testDb
-    .insert(companyWorkflowStates)
-    .values({
-      code: `STATE_${ts}`,
-      label: `State ${ts}`,
-      systemState: "PENDING",
-      color: "#6B7280",
-      position: 0,
-      requiresReason: false,
-      requiresPhoto: false,
-      requiresSignature: false,
-      requiresNotes: false,
-      isTerminal: false,
-      isDefault: false,
-      active: true,
-      ...overrides,
-    })
-    .returning();
-  return record;
-}
-
-// ---------------------------------------------------------------------------
-// Workflow Transitions
-// ---------------------------------------------------------------------------
-export async function createWorkflowTransition(
-  overrides: Partial<typeof companyWorkflowTransitions.$inferInsert> & {
-    companyId: string;
-    fromStateId: string;
-    toStateId: string;
-  },
-) {
-  const [record] = await testDb
-    .insert(companyWorkflowTransitions)
-    .values({
-      active: true,
-      ...overrides,
+    .insert(companyDeliveryPolicy)
+    .values(overrides)
+    .onConflictDoUpdate({
+      target: companyDeliveryPolicy.companyId,
+      set: overrides,
     })
     .returning();
   return record;

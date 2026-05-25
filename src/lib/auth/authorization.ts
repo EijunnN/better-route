@@ -127,7 +127,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     `${EntityType.ROUTE}:${Action.UPDATE}`,
     `${EntityType.ROUTE}:${Action.DELETE}`,
     `${EntityType.TIME_WINDOW_PRESET}:${Action.READ}`,
-    // Company-level configuration (workflow states, custom field definitions,
+    // Company-level configuration (delivery policy, custom field definitions,
     // optimization presets) lives behind company:read/update by convention.
     // The cross-tenant "Empresas" admin page is gated separately via
     // company:create in the sidebar — only ADMIN_SISTEMA (wildcard) has that.

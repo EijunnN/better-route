@@ -8,8 +8,11 @@ import {
   useEffect,
   useState,
 } from "react";
+import type { companyDeliveryPolicy } from "@/db/schema";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
+
+export type DeliveryPolicy = typeof companyDeliveryPolicy.$inferSelect;
 
 export interface CompanyProfile {
   id?: string;
@@ -54,12 +57,13 @@ export interface TrackingSettings {
  * button commits every dirty section in order. Dropped the old separate
  * `hasChanges` + `trackingHasChanges` flags — one dirty registry per page.
  */
-export type DirtySection = "profile" | "tracking";
+export type DirtySection = "profile" | "tracking" | "deliveryPolicy";
 
 export interface ConfiguracionState {
   profile: CompanyProfile | null;
   templates: ProfileTemplate[];
   tracking: TrackingSettings | null;
+  deliveryPolicy: DeliveryPolicy | null;
   isLoading: boolean;
   isSaving: boolean;
   isDefault: boolean;
@@ -71,6 +75,8 @@ export interface ConfiguracionActions {
   updateProfile: (partial: Partial<CompanyProfile>) => void;
   /** Merge a partial tracking settings object and mark `tracking` dirty. */
   updateTracking: (partial: Partial<TrackingSettings>) => void;
+  /** Merge a partial delivery policy and mark `deliveryPolicy` dirty. */
+  updateDeliveryPolicy: (partial: Partial<DeliveryPolicy>) => void;
   /** Apply a server-provided template as a full profile replacement. */
   applyTemplate: (templateId: string) => void;
   /** Toggle one of the 4 capacity dimensions. */
@@ -131,6 +137,9 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [templates, setTemplates] = useState<ProfileTemplate[]>([]);
   const [tracking, setTracking] = useState<TrackingSettings | null>(null);
+  const [deliveryPolicy, setDeliveryPolicy] = useState<DeliveryPolicy | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDefault, setIsDefault] = useState(true);
@@ -184,11 +193,26 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     }
   }, [companyId, isReady]);
 
+  const fetchDeliveryPolicy = useCallback(async () => {
+    if (!companyId || !isReady) return;
+    try {
+      const response = await fetch(
+        `/api/companies/${companyId}/delivery-policy`,
+        { headers: { "x-company-id": companyId } },
+      );
+      const data = await response.json();
+      if (data.data) setDeliveryPolicy(data.data);
+    } catch (error) {
+      console.error("Error fetching delivery policy:", error);
+    }
+  }, [companyId, isReady]);
+
   useEffect(() => {
     fetchProfile();
     fetchTracking();
+    fetchDeliveryPolicy();
     clearDirty();
-  }, [clearDirty, fetchProfile, fetchTracking]);
+  }, [clearDirty, fetchProfile, fetchTracking, fetchDeliveryPolicy]);
 
   const updateProfile = (partial: Partial<CompanyProfile>) => {
     setProfile((prev) => (prev ? { ...prev, ...partial } : prev));
@@ -198,6 +222,11 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
   const updateTracking = (partial: Partial<TrackingSettings>) => {
     setTracking((prev) => (prev ? { ...prev, ...partial } : prev));
     markDirty("tracking");
+  };
+
+  const updateDeliveryPolicy = (partial: Partial<DeliveryPolicy>) => {
+    setDeliveryPolicy((prev) => (prev ? { ...prev, ...partial } : prev));
+    markDirty("deliveryPolicy");
   };
 
   const toggleDimension = (
@@ -284,14 +313,29 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      if (dirty.has("deliveryPolicy") && deliveryPolicy) {
+        const r = await fetch(`/api/companies/${companyId}/delivery-policy`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": companyId,
+          },
+          body: JSON.stringify(deliveryPolicy),
+        });
+        if (r.ok) {
+          savedSections.push("deliveryPolicy");
+          const data = await r.json();
+          if (data.data) setDeliveryPolicy(data.data);
+        } else {
+          throw new Error(
+            `Error ${r.status} al guardar la política de entrega`,
+          );
+        }
+      }
+
       toast({
         title: "Cambios guardados",
-        description:
-          savedSections.length === 2
-            ? "Perfil y seguimiento actualizados"
-            : savedSections[0] === "profile"
-              ? "Perfil actualizado"
-              : "Seguimiento actualizado",
+        description: `${savedSections.length} sección${savedSections.length === 1 ? "" : "es"} actualizada${savedSections.length === 1 ? "" : "s"}.`,
       });
       clearDirty();
       fetchProfile();
@@ -360,6 +404,7 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     profile,
     templates,
     tracking,
+    deliveryPolicy,
     isLoading,
     isSaving,
     isDefault,
@@ -368,6 +413,7 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
   const actions: ConfiguracionActions = {
     updateProfile,
     updateTracking,
+    updateDeliveryPolicy,
     applyTemplate,
     toggleDimension,
     saveAll,

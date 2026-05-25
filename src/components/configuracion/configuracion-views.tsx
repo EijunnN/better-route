@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CapacityDimensionsCard } from "./capacity-dimensions-card";
 import { useConfiguracion } from "./configuracion-context";
+import { DeliveryPolicySection } from "./delivery-policy-section";
 import { PrioritySlidersSection } from "./priority-sliders-section";
 import { TrackingSettingsSection } from "./tracking-settings-section";
 
@@ -23,10 +24,11 @@ export function ConfiguracionView() {
   }
 
   return (
-    <div className="flex flex-col">
-      {/* Sticky header. Single save for both sections — honours dirty set. */}
-      <header className="sticky top-0 z-10 border-b bg-background/95 px-6 py-4 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
+      {/* Header — standalone floating card, sticky so save/title stay
+          reachable while the settings panel scrolls underneath. */}
+      <header className="sticky top-0 z-10 rounded-xl border border-foreground/10 bg-muted/60 px-6 py-4 shadow-sm backdrop-blur-md">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-xl font-semibold">
               <Settings className="size-5" />
@@ -74,35 +76,39 @@ export function ConfiguracionView() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-5xl space-y-6 p-6">
-        {!canEdit && (
-          <div className="rounded-md border border-muted-foreground/20 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-            Estás en modo lectura. Necesitas el permiso{" "}
-            <code className="text-xs">company:update</code> para modificar esta
-            página.
-          </div>
-        )}
+      {!canEdit && (
+        <div className="rounded-md border border-foreground/10 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          Estás en modo lectura. Necesitas el permiso{" "}
+          <code className="text-xs">company:update</code> para modificar esta
+          página.
+        </div>
+      )}
 
-        <fieldset disabled={!canEdit} className="space-y-6 disabled:opacity-60">
+      <fieldset disabled={!canEdit} className="disabled:opacity-60">
+        {/* Unified settings panel — four sections sharing one shell,
+            separated by hairline dividers. Each section is a 2-column
+            layout on md+ (title/description left, controls right). */}
+        <div className="overflow-hidden rounded-xl border border-foreground/10 bg-card shadow-sm divide-y divide-foreground/10">
           <CapacityDimensionsCard />
           <PrioritySlidersSection />
+          <DeliveryPolicySection />
           <TrackingSettingsSection />
-        </fieldset>
+        </div>
+      </fieldset>
 
-        {!state.isDefault && canEdit && (
-          <div className="flex justify-end pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={actions.resetProfile}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <RotateCcw className="size-3.5 mr-1.5" />
-              Restablecer perfil a valores predeterminados
-            </Button>
-          </div>
-        )}
-      </div>
+      {!state.isDefault && canEdit && (
+        <div className="flex justify-end pt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={actions.resetProfile}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="size-3.5 mr-1.5" />
+            Restablecer perfil a valores predeterminados
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

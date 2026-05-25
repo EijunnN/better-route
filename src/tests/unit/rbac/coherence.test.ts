@@ -192,13 +192,6 @@ const PAGE_CONTRACTS: PageContract[] = [
     sidebar: "company:update",
     why: "Field definitions are COMPANY config, not order data. All mutations hit /api/companies/[id]/field-definitions which requires company:update. Gating by company:update is honest: users who can read but not update would see the page and fail on save.",
   },
-  {
-    kind: "client",
-    route: "workflow",
-    page: "company:update",
-    sidebar: "company:update",
-    why: "Workflow states are company config. Same reasoning as custom-fields — API mutations require company:update; there's no legit read-only user flow.",
-  },
 ];
 
 /**

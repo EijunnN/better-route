@@ -479,7 +479,7 @@ export function MonitoringDashboardView() {
                           (d) => d.id === state.selectedDriverId,
                         )?.currentLocation
                       }
-                      workflowStates={state.workflowStates}
+                      deliveryPolicy={state.deliveryPolicy}
                       fieldDefinitionLabels={state.fieldDefinitionLabels}
                       customFieldDefinitions={state.routeStopFieldDefinitions}
                     />
@@ -602,13 +602,13 @@ function ToolbarButton({
       className={cn(
         "relative inline-flex items-center justify-center h-8 px-2.5 rounded-sm text-xs font-medium",
         "transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-        active && tone === "default" && "bg-[oklch(0.24_0_0)] text-foreground",
+        active && tone === "default" && "bg-muted text-foreground",
         active &&
           tone === "live" &&
           "bg-[var(--cockpit-live)]/15 text-[var(--cockpit-live)]",
         active && tone === "danger" && "bg-destructive/15 text-destructive",
         !active &&
-          "text-muted-foreground hover:bg-[oklch(0.22_0_0)] hover:text-foreground",
+          "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
       )}
     >
       {children}
@@ -617,7 +617,7 @@ function ToolbarButton({
           className={cn(
             "cockpit-mono ml-1.5 inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded text-[10px] font-semibold tabular-nums",
             tone === "live"
-              ? "bg-[var(--cockpit-live)] text-[oklch(0.16_0_0)]"
+              ? "bg-[var(--cockpit-live)] text-primary-foreground"
               : tone === "danger"
                 ? "bg-destructive text-destructive-foreground"
                 : "bg-foreground/15 text-foreground",

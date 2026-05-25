@@ -9,7 +9,9 @@ import {
 } from "react";
 import useSWR from "swr";
 import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
+import type { companyDeliveryPolicy } from "@/db/schema";
 import { useCompanyContext } from "@/hooks/use-company-context";
+import type { SystemState } from "@/lib/workflow/states";
 import { useMonitoringStream } from "./use-monitoring-stream";
 
 // Safety-net poll. Centrifugo (ADR-0007) delivers transitions in
@@ -23,19 +25,24 @@ const fetcher = async (url: string, companyId: string) => {
   return result.data;
 };
 
-export interface WorkflowState {
-  id: string;
-  code: string;
+/**
+ * Delivery policy row shape — mirrors the DB column types directly.
+ * One row per company, holds labels/colours/evidence-requirements/
+ * failure-reasons.
+ */
+export type DeliveryPolicy = typeof companyDeliveryPolicy.$inferSelect;
+
+/**
+ * Projected workflow state for a single stop. The label/colour come
+ * from the company's delivery policy; the structural fields (system
+ * state, terminal) come from the crystalized state machine in
+ * `src/lib/workflow/states.ts`.
+ */
+export interface ProjectedWorkflowState {
+  systemState: SystemState;
+  code: SystemState;
   label: string;
-  systemState: string;
   color: string;
-  icon: string | null;
-  requiresReason: boolean;
-  requiresPhoto: boolean;
-  requiresSignature: boolean;
-  requiresNotes: boolean;
-  reasonOptions: string[] | null;
-  isTerminal: boolean;
 }
 
 export interface MonitoringData {
@@ -128,13 +135,7 @@ export interface DriverDetailData {
       notes?: string | null;
       timeWindowStart?: string | null;
       timeWindowEnd?: string | null;
-      workflowState?: {
-        id: string;
-        label: string;
-        color: string;
-        code: string;
-        systemState: string;
-      } | null;
+      workflowState?: ProjectedWorkflowState | null;
     }>;
     assignmentQuality?: { score: number; warnings: string[]; errors: string[] };
   } | null;
@@ -164,7 +165,7 @@ export interface MonitoringState {
   error: string | null;
   alertsCount: number;
   lastUpdate: Date;
-  workflowStates: WorkflowState[];
+  deliveryPolicy: DeliveryPolicy | undefined;
   fieldDefinitionLabels: Record<string, string>;
   routeStopFieldDefinitions: FieldDefinition[];
 }
@@ -202,6 +203,48 @@ interface MonitoringContextValue {
 const MonitoringContext = createContext<MonitoringContextValue | undefined>(
   undefined,
 );
+
+const FALLBACK_LABELS: Record<SystemState, string> = {
+  PENDING: "Pendiente",
+  IN_PROGRESS: "En progreso",
+  COMPLETED: "Entregado",
+  FAILED: "No entregado",
+  CANCELLED: "Omitido",
+};
+
+const FALLBACK_COLORS: Record<SystemState, string> = {
+  PENDING: "#6B7280",
+  IN_PROGRESS: "#3B82F6",
+  COMPLETED: "#16A34A",
+  FAILED: "#DC4840",
+  CANCELLED: "#9CA3AF",
+};
+
+/**
+ * Map a `SystemState` value to its label/colour pair pulled from the
+ * company's delivery policy. Falls back to sensible defaults when the
+ * policy hasn't loaded yet.
+ */
+export function policyForState(
+  state: SystemState,
+  policy: DeliveryPolicy | undefined,
+): { label: string; color: string } {
+  if (!policy) {
+    return { label: FALLBACK_LABELS[state], color: FALLBACK_COLORS[state] };
+  }
+  switch (state) {
+    case "PENDING":
+      return { label: policy.labelPending, color: policy.colorPending };
+    case "IN_PROGRESS":
+      return { label: policy.labelInProgress, color: policy.colorInProgress };
+    case "COMPLETED":
+      return { label: policy.labelCompleted, color: policy.colorCompleted };
+    case "FAILED":
+      return { label: policy.labelFailed, color: policy.colorFailed };
+    case "CANCELLED":
+      return { label: policy.labelCancelled, color: policy.colorCancelled };
+  }
+}
 
 export function MonitoringProvider({ children }: { children: ReactNode }) {
   const {
@@ -286,9 +329,9 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     { revalidateOnFocus: false },
   );
 
-  const { data: workflowStates = [] } = useSWR<WorkflowState[]>(
+  const { data: deliveryPolicy } = useSWR<DeliveryPolicy>(
     companyId
-      ? [`/api/companies/${companyId}/workflow-states`, companyId]
+      ? [`/api/companies/${companyId}/delivery-policy`, companyId]
       : null,
     ([url, cId]: [string, string]) => fetcher(url, cId),
     { revalidateOnFocus: false },
@@ -373,13 +416,11 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   const formatLastUpdate = (date: Date) => date.toLocaleTimeString();
 
   const getWorkflowLabel = (systemState: string) => {
-    const wf = workflowStates.find((s) => s.systemState === systemState);
-    return wf?.label || systemState;
+    return policyForState(systemState as SystemState, deliveryPolicy).label;
   };
 
   const getWorkflowColor = (systemState: string) => {
-    const wf = workflowStates.find((s) => s.systemState === systemState);
-    return wf?.color || "#6B7280";
+    return policyForState(systemState as SystemState, deliveryPolicy).color;
   };
 
   const state: MonitoringState = {
@@ -399,7 +440,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     error,
     alertsCount,
     lastUpdate,
-    workflowStates,
+    deliveryPolicy,
     fieldDefinitionLabels,
     routeStopFieldDefinitions,
   };

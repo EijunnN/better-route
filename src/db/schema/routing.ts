@@ -13,7 +13,6 @@ import { optimizationJobs } from "./optimization";
 import { orders } from "./orders";
 import { users } from "./users";
 import { vehicles } from "./vehicles";
-import { companyWorkflowStates } from "./workflow";
 import { zones } from "./zones";
 
 // Stop status types for route execution tracking
@@ -109,17 +108,13 @@ export const routeStops = pgTable(
     completedAt: timestamp("completed_at"),
     // Optional notes for status changes
     notes: text("notes"),
-    // Failure tracking (required when status = FAILED)
-    failureReason: varchar("failure_reason", { length: 50 }).$type<
-      keyof typeof DELIVERY_FAILURE_REASONS
-    >(),
+    // Failure tracking (required when status = FAILED). Free-text now —
+    // the picker options come from `companyDeliveryPolicy.failureReasons`
+    // per company. Legacy `DELIVERY_FAILURE_REASONS` enum keys remain
+    // valid here so historical rows keep rendering correctly.
+    failureReason: varchar("failure_reason", { length: 80 }),
     // Evidence URLs for failed deliveries (photos from driver app)
     evidenceUrls: jsonb("evidence_urls").$type<string[]>(),
-    // Custom workflow state reference
-    workflowStateId: uuid("workflow_state_id").references(
-      () => companyWorkflowStates.id,
-      { onDelete: "set null" },
-    ),
     // Zone this stop was routed through at plan-time. Captured once at
     // confirm and preserved even if the zone is later deleted/renamed —
     // historical plans should keep showing the zone they were run under.

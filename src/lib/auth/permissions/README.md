@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
 **Reglas:**
 - Toda ruta API que muta datos llama a `requireRoutePermission` antes del handler.
 - Para multi-tenant: si la ruta recibe `companyId` por path/body, validá contra
-  el JWT con `assertSameTenant(user, companyId)` (patrón usado en
-  `workflow-states/route.ts`) o usá `extractTenantContextAuthed`.
+  el JWT con `assertSameTenant(user, companyId)` o usá
+  `extractTenantContextAuthed`.
 - **Nunca** uses `setupAuthContext` solo — siempre acompañado de un check de
   permission.
 

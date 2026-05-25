@@ -10,7 +10,6 @@ import {
   ChevronRight,
   ChevronsUpDown,
   Clock,
-  GitBranch,
   History,
   ListChecks,
   LogOut,
@@ -169,12 +168,6 @@ const defaultNavSections: NavSection[] = [
         requiredPermission: "vehicle_skill:read",
       },
       {
-        title: "Estados de entrega",
-        href: "/workflow",
-        icon: GitBranch,
-        requiredPermission: "company:update",
-      },
-      {
         title: "Campos personalizados",
         href: "/custom-fields",
         icon: ListChecks,
@@ -187,16 +180,30 @@ const defaultNavSections: NavSection[] = [
 // Compound Components
 
 function SidebarFrame({ children }: { children: React.ReactNode }) {
-  const { state } = useSidebar();
+  const { state, actions } = useSidebar();
 
   return (
     <aside
       className={cn(
-        "m-3 flex flex-col rounded-xl border border-sidebar-border bg-sidebar shadow-xl transition-[width] duration-300",
+        "relative m-3 flex flex-col rounded-xl border border-sidebar-border bg-sidebar shadow-xl transition-[width] duration-300",
         state.collapsed ? "w-16" : "w-64",
       )}
     >
       {children}
+      {/* Floating collapse handle — anchored to the right edge so it
+          doesn't fight the logo for space in the 64px collapsed header. */}
+      <button
+        type="button"
+        onClick={actions.toggleCollapse}
+        className="absolute -right-3 top-9 z-10 flex size-6 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-md transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        aria-label={state.collapsed ? "Expandir menu" : "Colapsar menu"}
+      >
+        {state.collapsed ? (
+          <ChevronRight className="size-3.5" />
+        ) : (
+          <ChevronLeft className="size-3.5" />
+        )}
+      </button>
     </aside>
   );
 }
@@ -216,36 +223,9 @@ function SidebarLogo() {
   );
 }
 
-function SidebarCollapseButton() {
-  const { state, actions } = useSidebar();
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={actions.toggleCollapse}
-      className="size-7 text-sidebar-foreground hover:bg-sidebar-accent"
-      aria-label={state.collapsed ? "Expandir menu" : "Colapsar menu"}
-    >
-      {state.collapsed ? (
-        <ChevronRight className="size-3.5" />
-      ) : (
-        <ChevronLeft className="size-3.5" />
-      )}
-    </Button>
-  );
-}
-
 function SidebarHeader({ children }: { children: React.ReactNode }) {
-  const { state } = useSidebar();
-
   return (
-    <div
-      className={cn(
-        "flex h-12 items-center border-b border-sidebar-border px-3",
-        state.collapsed ? "justify-center" : "justify-between",
-      )}
-    >
+    <div className="flex h-12 items-center justify-center border-b border-sidebar-border px-3">
       {children}
     </div>
   );
@@ -567,7 +547,6 @@ function SidebarContent() {
     <SidebarFrame>
       <SidebarHeader>
         <SidebarLogo />
-        <SidebarCollapseButton />
       </SidebarHeader>
       <SidebarCompanySwitcher />
       <SidebarNavigation />
@@ -619,7 +598,6 @@ Sidebar.Provider = SidebarProvider;
 Sidebar.Frame = SidebarFrame;
 Sidebar.Header = SidebarHeader;
 Sidebar.Logo = SidebarLogo;
-Sidebar.CollapseButton = SidebarCollapseButton;
 Sidebar.Navigation = SidebarNavigation;
 Sidebar.Section = SidebarSection;
 Sidebar.NavItem = SidebarNavItem;

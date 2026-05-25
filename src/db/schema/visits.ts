@@ -10,7 +10,7 @@ import {
 import { companies } from "./companies";
 import { optimizationJobs } from "./optimization";
 import { orders } from "./orders";
-import { type DELIVERY_FAILURE_REASONS, routeStops } from "./routing";
+import { routeStops } from "./routing";
 import { users } from "./users";
 
 /**
@@ -68,12 +68,11 @@ export const deliveryVisits = pgTable(
       .notNull()
       .$type<keyof typeof VISIT_OUTCOME>(),
     /**
-     * Failure reason category — populated when outcome = FAILURE.
-     * Mirrors `DELIVERY_FAILURE_REASONS` from the routing schema.
+     * Failure reason — free-text now, sourced from the company's
+     * `companyDeliveryPolicy.failureReasons` picker. Legacy enum keys
+     * like `CUSTOMER_ABSENT` are still valid here for historical rows.
      */
-    failureReason: varchar("failure_reason", { length: 50 }).$type<
-      keyof typeof DELIVERY_FAILURE_REASONS
-    >(),
+    failureReason: varchar("failure_reason", { length: 80 }),
     notes: text("notes"),
     /** Photo URLs stored in R2. */
     evidenceUrls: jsonb("evidence_urls").$type<string[]>(),

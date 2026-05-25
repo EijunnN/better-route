@@ -90,7 +90,7 @@ const TRUNCATE_SQL = sql`TRUNCATE TABLE
     alert_notifications, alerts, alert_rules,
     time_window_presets, zones, zone_vehicles,
     optimization_presets, driver_locations,
-    company_workflow_states, company_workflow_transitions,
+    company_delivery_policy,
     company_field_definitions,
     csv_column_mapping_templates, company_optimization_profiles,
     vehicles, fleets, audit_logs, users, companies

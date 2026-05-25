@@ -28,7 +28,8 @@ import {
 import { DELIVERY_FAILURE_LABELS } from "@/db/schema";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { cn } from "@/lib/utils";
-import type { WorkflowState } from "./monitoring-context";
+import type { SystemState } from "@/lib/workflow/states";
+import { type DeliveryPolicy, policyForState } from "./monitoring-context";
 import {
   type StopInfo,
   StopStatusUpdateDialog,
@@ -52,7 +53,6 @@ interface Stop {
   timeWindowStart?: string | null;
   timeWindowEnd?: string | null;
   workflowState?: {
-    id: string;
     label: string;
     color: string;
     code: string;
@@ -133,7 +133,7 @@ interface DriverRouteDetailProps {
   onRefresh?: () => void;
   onChat?: () => void;
   locationData?: LocationData | null;
-  workflowStates?: WorkflowState[];
+  deliveryPolicy?: DeliveryPolicy;
   fieldDefinitionLabels?: FieldDefinitionMap;
   customFieldDefinitions?: FieldDefinition[];
 }
@@ -183,7 +183,7 @@ export function DriverRouteDetail({
   onRefresh,
   onChat,
   locationData,
-  workflowStates = [],
+  deliveryPolicy,
   fieldDefinitionLabels = {},
   customFieldDefinitions = [],
 }: DriverRouteDetailProps) {
@@ -267,13 +267,11 @@ export function DriverRouteDetail({
     stopId: string,
     status: string,
     notes?: string,
-    workflowStateId?: string,
     customFields?: Record<string, unknown>,
     failureReason?: string,
   ) => {
     try {
       const body: Record<string, unknown> = { status, notes };
-      if (workflowStateId) body.workflowStateId = workflowStateId;
       if (customFields) body.customFields = customFields;
       if (failureReason) body.failureReason = failureReason;
 
@@ -339,17 +337,18 @@ export function DriverRouteDetail({
         color: stop.workflowState.color,
       };
     }
-    // 2. Try to find a matching workflow state from context
-    if (workflowStates.length > 0) {
-      const wf = workflowStates.find((s) => s.systemState === stop.status);
-      if (wf) return { label: wf.label, color: wf.color };
+    // 2. Project the system status through the company's delivery
+    //    policy (canonical post-crystallization source).
+    if (stop.status === "SKIPPED") {
+      // Legacy alias for CANCELLED on older route_stops rows.
+      const projected = policyForState("CANCELLED", deliveryPolicy);
+      return { label: projected.label, color: projected.color };
     }
-    // 3. Fallback to hardcoded config
-    const cfg =
-      STOP_STATUS_CONFIG[stop.status as keyof typeof STOP_STATUS_CONFIG];
-    return cfg
-      ? { label: cfg.label, color: undefined }
-      : { label: stop.status, color: undefined };
+    const projected = policyForState(
+      stop.status as SystemState,
+      deliveryPolicy,
+    );
+    return { label: projected.label, color: projected.color };
   };
 
   const completedStops =
@@ -729,7 +728,7 @@ export function DriverRouteDetail({
         onOpenChange={setStatusDialogOpen}
         stop={selectedStop}
         onUpdate={handleStatusUpdate}
-        workflowStates={workflowStates}
+        deliveryPolicy={deliveryPolicy}
         customFieldDefinitions={customFieldDefinitions}
       />
 

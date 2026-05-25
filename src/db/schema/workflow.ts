@@ -1,7 +1,5 @@
 import {
   boolean,
-  index,
-  integer,
   jsonb,
   pgTable,
   timestamp,
@@ -11,59 +9,95 @@ import {
 import { companies } from "./companies";
 
 // ============================================
-// CUSTOM WORKFLOW STATES - Per-company delivery workflow
+// DELIVERY POLICY - Per-company presentation & policy layer.
+// The workflow STRUCTURE (states + transitions) is crystalized in code
+// at `src/lib/workflow/states.ts` — this table only stores the
+// per-company customization that an operator might tweak from the UI:
+// labels, colours, photo/signature/notes requirements, failure reasons.
+// One row per company; auto-seeded with sensible defaults at company
+// creation time.
 // ============================================
 
-export const SYSTEM_STATES = {
-  PENDING: "PENDING",
-  IN_PROGRESS: "IN_PROGRESS",
-  COMPLETED: "COMPLETED",
-  FAILED: "FAILED",
-  CANCELLED: "CANCELLED",
-} as const;
+// Re-export so existing call-sites (`import { SYSTEM_STATES } from
+// "@/db/schema"`) continue to work without a breaking import shuffle.
+export { SYSTEM_STATES, type SystemState } from "@/lib/workflow/states";
 
-export const companyWorkflowStates = pgTable(
-  "company_workflow_states",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    companyId: uuid("company_id")
-      .notNull()
-      .references(() => companies.id, { onDelete: "cascade" }),
-    code: varchar("code", { length: 50 }).notNull(),
-    label: varchar("label", { length: 100 }).notNull(),
-    systemState: varchar("system_state", { length: 20 }).notNull(),
-    color: varchar("color", { length: 7 }).notNull().default("#6B7280"),
-    icon: varchar("icon", { length: 50 }),
-    position: integer("position").notNull().default(0),
-    requiresReason: boolean("requires_reason").notNull().default(false),
-    requiresPhoto: boolean("requires_photo").notNull().default(false),
-    requiresSignature: boolean("requires_signature").notNull().default(false),
-    requiresNotes: boolean("requires_notes").notNull().default(false),
-    reasonOptions: jsonb("reason_options"),
-    isTerminal: boolean("is_terminal").notNull().default(false),
-    isDefault: boolean("is_default").notNull().default(false),
-    active: boolean("active").notNull().default(true),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  },
-  (table) => [index("workflow_states_company_id_idx").on(table.companyId)],
-);
+export const companyDeliveryPolicy = pgTable("company_delivery_policy", {
+  // PK is companyId so we get "one row per company" enforced by the
+  // DB, and so the FK cascade cleans up automatically.
+  companyId: uuid("company_id")
+    .primaryKey()
+    .references(() => companies.id, { onDelete: "cascade" }),
 
-export const companyWorkflowTransitions = pgTable(
-  "company_workflow_transitions",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    companyId: uuid("company_id")
-      .notNull()
-      .references(() => companies.id, { onDelete: "cascade" }),
-    fromStateId: uuid("from_state_id")
-      .notNull()
-      .references(() => companyWorkflowStates.id, { onDelete: "cascade" }),
-    toStateId: uuid("to_state_id")
-      .notNull()
-      .references(() => companyWorkflowStates.id, { onDelete: "cascade" }),
-    active: boolean("active").notNull().default(true),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-  },
-  (table) => [index("workflow_transitions_company_id_idx").on(table.companyId)],
-);
+  // Branding / i18n — one label and one colour per system state.
+  labelPending: varchar("label_pending", { length: 100 })
+    .notNull()
+    .default("Pendiente"),
+  labelInProgress: varchar("label_in_progress", { length: 100 })
+    .notNull()
+    .default("En progreso"),
+  labelCompleted: varchar("label_completed", { length: 100 })
+    .notNull()
+    .default("Entregado"),
+  labelFailed: varchar("label_failed", { length: 100 })
+    .notNull()
+    .default("No entregado"),
+  labelCancelled: varchar("label_cancelled", { length: 100 })
+    .notNull()
+    .default("Omitido"),
+
+  colorPending: varchar("color_pending", { length: 7 })
+    .notNull()
+    .default("#6B7280"),
+  colorInProgress: varchar("color_in_progress", { length: 7 })
+    .notNull()
+    .default("#3B82F6"),
+  colorCompleted: varchar("color_completed", { length: 7 })
+    .notNull()
+    .default("#16A34A"),
+  colorFailed: varchar("color_failed", { length: 7 })
+    .notNull()
+    .default("#DC4840"),
+  colorCancelled: varchar("color_cancelled", { length: 7 })
+    .notNull()
+    .default("#9CA3AF"),
+
+  // Policy on the COMPLETED transition — what evidence the driver
+  // must submit to mark a stop as successfully delivered.
+  completedRequiresPhoto: boolean("completed_requires_photo")
+    .notNull()
+    .default(true),
+  completedRequiresSignature: boolean("completed_requires_signature")
+    .notNull()
+    .default(false),
+  completedRequiresNotes: boolean("completed_requires_notes")
+    .notNull()
+    .default(false),
+
+  // Policy on the FAILED transition — a reason is always required;
+  // photo is optional (some operators want it, some don't).
+  failedRequiresPhoto: boolean("failed_requires_photo")
+    .notNull()
+    .default(false),
+  failedRequiresNotes: boolean("failed_requires_notes")
+    .notNull()
+    .default(true),
+
+  // Closed list of reason strings the driver picks from when failing
+  // a stop. Stored as JSONB array; the UI presents it as a tags input.
+  failureReasons: jsonb("failure_reasons")
+    .$type<string[]>()
+    .notNull()
+    .default([
+      "Cliente ausente",
+      "Dirección incorrecta",
+      "Paquete dañado",
+      "Cliente rechazó",
+      "Zona insegura",
+      "Reprogramado",
+      "Otro",
+    ]),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

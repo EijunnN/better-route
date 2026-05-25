@@ -2,8 +2,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
-  companyWorkflowStates,
-  companyWorkflowTransitions,
   DELIVERY_FAILURE_LABELS,
   DELIVERY_FAILURE_REASONS,
   deliveryVisits,
@@ -131,7 +129,6 @@ export async function PATCH(
 
     const body = await request.json();
     const {
-      workflowStateId,
       notes,
       failureReason,
       evidenceUrls,
@@ -139,7 +136,7 @@ export async function PATCH(
       gpsLatitude,
       gpsLongitude,
     } = body;
-    let { status } = body;
+    const { status } = body;
     const hasCustomFieldsUpdate =
       customFieldsInput &&
       typeof customFieldsInput === "object" &&
@@ -171,54 +168,9 @@ export async function PATCH(
       }
     }
 
-    // If workflowStateId is provided, use custom workflow logic
-    if (workflowStateId) {
-      // Look up the workflow state
-      const workflowState = await db.query.companyWorkflowStates.findFirst({
-        where: and(
-          eq(companyWorkflowStates.id, workflowStateId),
-          eq(companyWorkflowStates.companyId, tenantCtx.companyId),
-          eq(companyWorkflowStates.active, true),
-        ),
-      });
-
-      if (!workflowState) {
-        return NextResponse.json(
-          { error: "Workflow state not found" },
-          { status: 400 },
-        );
-      }
-
-      // If the stop currently has a workflowStateId, validate the transition is allowed
-      if (currentStop.workflowStateId) {
-        const allowedTransition =
-          await db.query.companyWorkflowTransitions.findFirst({
-            where: and(
-              eq(companyWorkflowTransitions.companyId, tenantCtx.companyId),
-              eq(
-                companyWorkflowTransitions.fromStateId,
-                currentStop.workflowStateId,
-              ),
-              eq(companyWorkflowTransitions.toStateId, workflowStateId),
-              eq(companyWorkflowTransitions.active, true),
-            ),
-          });
-
-        if (!allowedTransition) {
-          return NextResponse.json(
-            { error: "Workflow transition not allowed" },
-            { status: 400 },
-          );
-        }
-      }
-
-      // Derive status from the workflow state's systemState
-      status = workflowState.systemState;
-    }
-
     if (!status && !hasCustomFieldsUpdate) {
       return NextResponse.json(
-        { error: "Status, workflowStateId, or customFields is required" },
+        { error: "status or customFields is required" },
         { status: 400 },
       );
     }
@@ -269,23 +221,15 @@ export async function PATCH(
       return NextResponse.json({ data: updated });
     }
 
-    // Validate failureReason is required when status is FAILED (only for legacy flow without workflow)
-    if (status === "FAILED" && !workflowStateId) {
-      if (!failureReason) {
+    // Failure reason is required text when transitioning to FAILED. The
+    // accepted values are defined per-company in `companyDeliveryPolicy
+    // .failureReasons`; enforcing the exact membership here would couple
+    // every install to a fixed enum, so we just require a non-empty
+    // string and trust the UI to pick from the policy.
+    if (status === "FAILED") {
+      if (!failureReason || typeof failureReason !== "string") {
         return NextResponse.json(
-          {
-            error: "failureReason is required when status is FAILED",
-            validReasons: Object.keys(DELIVERY_FAILURE_REASONS),
-          },
-          { status: 400 },
-        );
-      }
-      if (!Object.keys(DELIVERY_FAILURE_REASONS).includes(failureReason)) {
-        return NextResponse.json(
-          {
-            error: `Invalid failureReason: ${failureReason}`,
-            validReasons: Object.keys(DELIVERY_FAILURE_REASONS),
-          },
+          { error: "failureReason is required when status is FAILED" },
           { status: 400 },
         );
       }
@@ -299,24 +243,22 @@ export async function PATCH(
       );
     }
 
-    // Validate status transition (legacy path - skip if using workflow)
-    if (!workflowStateId) {
-      const validTransitions =
-        STOP_STATUS_TRANSITIONS[
-          currentStop.status as keyof typeof STOP_STATUS_TRANSITIONS
-        ] || [];
-      if (
-        status !== currentStop.status &&
-        !(validTransitions as string[]).includes(status)
-      ) {
-        return NextResponse.json(
-          {
-            error: `Invalid status transition from ${currentStop.status} to ${status}`,
-            validTransitions,
-          },
-          { status: 400 },
-        );
-      }
+    // Validate status transition against the crystalized state machine
+    const validTransitions =
+      STOP_STATUS_TRANSITIONS[
+        currentStop.status as keyof typeof STOP_STATUS_TRANSITIONS
+      ] || [];
+    if (
+      status !== currentStop.status &&
+      !(validTransitions as string[]).includes(status)
+    ) {
+      return NextResponse.json(
+        {
+          error: `Invalid status transition from ${currentStop.status} to ${status}`,
+          validTransitions,
+        },
+        { status: 400 },
+      );
     }
 
     // Calculate timestamps based on status
@@ -326,11 +268,6 @@ export async function PATCH(
       notes: notes || null,
       updatedAt: now,
     };
-
-    // Set workflowStateId if provided
-    if (workflowStateId) {
-      updateData.workflowStateId = workflowStateId;
-    }
 
     // Persist customFields alongside the status change
     if (normalizedCustomFields !== null) {
