@@ -46,7 +46,7 @@ export function CompaniesListView() {
   }
 
   return (
-    <div className="flex-1 bg-background p-8">
+    <div className="flex-1 p-8">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -198,7 +198,7 @@ export function CompaniesFormView() {
   const { state, actions } = useCompanies();
 
   return (
-    <div className="flex-1 bg-background p-8">
+    <div className="flex-1 p-8">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-foreground">

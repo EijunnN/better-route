@@ -224,7 +224,7 @@ export function ChatThread() {
                     "px-3 py-2 text-sm whitespace-pre-wrap break-words rounded-md border",
                     outbound
                       ? "bg-[var(--cockpit-live)]/10 border-[var(--cockpit-live)]/30 text-foreground"
-                      : "bg-[oklch(0.22_0_0)] border-border/60 text-foreground",
+                      : "bg-muted border-border/60 text-foreground",
                     isBroadcast && "bg-amber-500/10 border-amber-500/30",
                   )}
                 >

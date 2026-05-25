@@ -113,7 +113,7 @@ export function CustomFieldsDashboardView() {
 
   if (!meta.isReady || state.isLoading) {
     return (
-      <div className="flex-1 bg-background p-8">
+      <div className="flex-1 p-8">
         <div className="mx-auto max-w-5xl flex justify-center py-12">
           <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
         </div>
@@ -123,7 +123,7 @@ export function CustomFieldsDashboardView() {
 
   if (state.error) {
     return (
-      <div className="flex-1 bg-background p-8">
+      <div className="flex-1 p-8">
         <div className="mx-auto max-w-5xl">
           <ErrorState
             title="Error al cargar campos personalizados"
@@ -145,7 +145,7 @@ export function CustomFieldsDashboardView() {
   // same content via the "¿Cómo funciona?" button.
   if (!hasAnyDefinitions) {
     return (
-      <div className="flex-1 bg-background p-8">
+      <div className="flex-1 p-8">
         <div className="mx-auto max-w-5xl space-y-6">
           <header className="flex items-start justify-between gap-4">
             <div>
@@ -172,7 +172,7 @@ export function CustomFieldsDashboardView() {
   }
 
   return (
-    <div className="flex-1 bg-background p-8">
+    <div className="flex-1 p-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex items-start justify-between gap-4">
           <div>

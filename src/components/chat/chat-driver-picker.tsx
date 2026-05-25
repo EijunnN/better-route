@@ -59,7 +59,7 @@ export function ChatDriverPicker() {
     >
       <DialogContent
         data-cockpit
-        className="max-w-md p-0 gap-0 overflow-hidden border-border/60 bg-[oklch(0.16_0_0)]"
+        className="max-w-md p-0 gap-0 overflow-hidden border-border/60 bg-card"
       >
         <DialogHeader className="px-5 pt-5 pb-3 space-y-1.5">
           <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export function ChatDriverPicker() {
                       onClick={() => handlePick(driver.id)}
                       className={cn(
                         "w-full text-left flex items-center gap-3 px-5 py-3",
-                        "hover:bg-[oklch(0.21_0_0)] focus:bg-[oklch(0.21_0_0)] focus:outline-none transition-colors",
+                        "hover:bg-muted/60 focus:bg-muted/60 focus:outline-none transition-colors",
                       )}
                     >
                       <span

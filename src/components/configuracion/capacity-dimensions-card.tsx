@@ -1,13 +1,6 @@
 "use client";
 
 import { Box, Package, Scale, Tag, Weight } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -64,61 +57,67 @@ export function CapacityDimensionsCard() {
   if (!profile) return null;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-        <div>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Scale className="size-4" />
-            Dimensiones de capacidad
-          </CardTitle>
-          <CardDescription className="mt-1">
-            Qué restricciones aplican a vehículos y pedidos durante la
-            optimización.
-          </CardDescription>
-        </div>
+    <section className="grid gap-6 px-6 py-8 md:grid-cols-[260px_1fr] md:gap-10 md:px-8 md:py-10">
+      <header>
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <Scale className="size-4 text-muted-foreground" />
+          Dimensiones de capacidad
+        </h2>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Qué restricciones aplican a vehículos y pedidos durante la
+          optimización.
+        </p>
+      </header>
+
+      <div className="space-y-4">
         {state.templates.length > 0 && (
-          <div className="w-60">
-            <Label className="text-xs text-muted-foreground">
-              Plantilla rápida
-            </Label>
-            <Select
-              value=""
-              onValueChange={(v) => v && actions.applyTemplate(v)}
-            >
-              <SelectTrigger className="mt-1 h-9">
-                <SelectValue placeholder="Aplicar plantilla..." />
-              </SelectTrigger>
-              <SelectContent>
-                {state.templates.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    <div className="flex flex-col">
-                      <span>{t.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {TEMPLATE_META[t.id] || ""}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-end justify-end">
+            <div className="w-full sm:w-64">
+              <Label className="text-xs text-muted-foreground">
+                Plantilla rápida
+              </Label>
+              <Select
+                value=""
+                onValueChange={(v) => v && actions.applyTemplate(v)}
+              >
+                <SelectTrigger className="mt-1 h-9">
+                  <SelectValue placeholder="Aplicar plantilla..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {state.templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      <div className="flex flex-col">
+                        <span>{t.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {TEMPLATE_META[t.id] || ""}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
-      </CardHeader>
-      <CardContent>
-        <div className="divide-y rounded-md border">
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {DIMENSIONS.map((d) => {
             const Icon = d.icon;
             const enabled = profile[d.key];
             return (
               <div
                 key={d.key}
-                className="flex items-center justify-between gap-4 px-4 py-3"
+                className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2.5 transition-colors ${
+                  enabled
+                    ? "border-primary/30 bg-primary/5"
+                    : "border-foreground/10 bg-background/40"
+                }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className={`flex size-8 items-center justify-center rounded-md ${
+                    className={`flex size-8 items-center justify-center rounded-md shrink-0 ${
                       enabled
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary/15 text-primary"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
@@ -126,7 +125,7 @@ export function CapacityDimensionsCard() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{d.label}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground line-clamp-1">
                       {d.description}
                     </p>
                   </div>
@@ -140,7 +139,7 @@ export function CapacityDimensionsCard() {
             );
           })}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

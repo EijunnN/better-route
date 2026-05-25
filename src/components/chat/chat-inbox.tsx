@@ -71,9 +71,9 @@ export function ChatInbox() {
             onClick={() => actions.openConversation(conv.driverId)}
             className={cn(
               "cockpit-enter w-full text-left px-3.5 py-3 transition-colors relative",
-              "hover:bg-[oklch(0.21_0_0)] focus:bg-[oklch(0.21_0_0)] focus:outline-none",
-              isSelected && "bg-[oklch(0.22_0_0)]",
-              hasUnread && "bg-[oklch(0.19_0_0)]",
+              "hover:bg-muted/60 focus:bg-muted/60 focus:outline-none",
+              isSelected && "bg-muted",
+              hasUnread && "bg-muted/30",
             )}
           >
             {hasUnread && (
@@ -96,7 +96,7 @@ export function ChatInbox() {
                   {relativeTime(conv.lastMessageAt)}
                 </span>
                 {hasUnread && (
-                  <span className="cockpit-mono inline-flex h-[18px] min-w-[18px] items-center justify-center px-1 text-[10px] font-semibold rounded-full bg-[var(--cockpit-live)] text-[oklch(0.16_0_0)]">
+                  <span className="cockpit-mono inline-flex h-[18px] min-w-[18px] items-center justify-center px-1 text-[10px] font-semibold rounded-full bg-[var(--cockpit-live)] text-primary-foreground">
                     {conv.unreadForDispatch}
                   </span>
                 )}

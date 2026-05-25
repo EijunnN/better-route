@@ -132,15 +132,15 @@ export const DriverListItem = memo(function DriverListItem({
         className={cn(
           "group relative border-l-2 transition-colors",
           isSelected
-            ? "bg-[oklch(0.22_0_0)] border-l-[var(--cockpit-live)]"
-            : "border-l-transparent hover:bg-[oklch(0.2_0_0)]",
+            ? "bg-muted border-l-[var(--cockpit-live)]"
+            : "border-l-transparent hover:bg-muted/60",
         )}
       >
         <button
           type="button"
           onClick={onClick}
           aria-label={name}
-          className="w-full text-left px-2.5 py-2 focus:outline-none focus-visible:bg-[oklch(0.22_0_0)]"
+          className="w-full text-left px-2.5 py-2 focus:outline-none focus-visible:bg-muted"
         >
           <div className="flex items-center gap-2.5 pr-7">
             <span

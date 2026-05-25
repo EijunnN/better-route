@@ -77,9 +77,9 @@ export function ZonesListView() {
   const { state, actions, derived } = useZones();
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="border-b bg-background px-6 py-4">
+      <div className="border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Zonas de Entrega</h1>
@@ -115,7 +115,7 @@ export function ZonesListView() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left panel - Zone list */}
-        <div className="w-[420px] border-r bg-background overflow-y-auto">
+        <div className="w-[420px] border-r overflow-y-auto">
           {/* Search */}
           <div className="p-4 border-b">
             <div className="relative">
@@ -176,7 +176,7 @@ export function ZonesListView() {
         </div>
 
         {/* Right panel - Map & Details */}
-        <div className="flex-1 flex flex-col bg-muted/30">
+        <div className="flex-1 flex flex-col">
           <div className="flex-1 relative">
             <ZonePreviewMap
               zones={state.zones}
@@ -283,7 +283,7 @@ function ZoneDetails() {
   if (!zone) return null;
 
   return (
-    <div className="border-t bg-background p-4">
+    <div className="border-t p-4">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
           <div
@@ -409,9 +409,9 @@ export function ZonesFormView() {
   const { state, actions, derived } = useZones();
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="border-b bg-background px-6 py-4">
+      <div className="border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" onClick={actions.cancelForm}>
@@ -490,8 +490,8 @@ export function ZonesFormView() {
         </div>
 
         {/* Right column - Map preview */}
-        <div className="flex-1 flex flex-col bg-muted/30 min-w-[800px]">
-          <div className="p-4 border-b bg-background">
+        <div className="flex-1 flex flex-col min-w-[800px]">
+          <div className="p-4 border-b">
             <h3 className="font-medium text-sm">Vista Previa del Área</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               El área se mostrará en el mapa durante la optimización
@@ -507,7 +507,7 @@ export function ZonesFormView() {
 
           {/* Quick stats when editing */}
           {state.editingZone && (
-            <div className="p-4 border-t bg-background">
+            <div className="p-4 border-t">
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2 text-muted-foreground text-xs">
@@ -557,7 +557,7 @@ export function ZonesMapEditorView() {
 
   return (
     <div className="h-screen flex flex-col">
-      <div className="border-b bg-background px-6 py-4 shrink-0">
+      <div className="border-b px-6 py-4 shrink-0">
         <h1 className="text-xl font-semibold">Dibujar Área de Zona</h1>
         <p className="text-sm text-muted-foreground">
           Haz clic en el mapa para agregar puntos. Cierra el polígono cerca del

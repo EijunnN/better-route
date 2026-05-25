@@ -68,7 +68,7 @@ export function ChatBroadcastDialog() {
     >
       <DialogContent
         data-cockpit
-        className="max-w-md p-0 gap-0 overflow-hidden border-border/60 bg-[oklch(0.16_0_0)]"
+        className="max-w-md p-0 gap-0 overflow-hidden border-border/60 bg-card"
       >
         <DialogHeader className="px-5 pt-5 pb-3 space-y-1.5">
           <div className="flex items-center gap-2">

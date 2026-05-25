@@ -1,13 +1,6 @@
 "use client";
 
 import { Truck } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -58,19 +51,20 @@ export function PrioritySlidersSection() {
   if (!profile) return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Truck className="size-4" />
+    <section className="grid gap-6 px-6 py-8 md:grid-cols-[260px_1fr] md:gap-10 md:px-8 md:py-10">
+      <header>
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <Truck className="size-4 text-muted-foreground" />
           Priorización por tipo de pedido
-        </CardTitle>
-        <CardDescription>
+        </h2>
+        <p className="mt-1.5 text-sm text-muted-foreground">
           Cuanto mayor el valor, más temprano se ubica el pedido en la ruta
           optimizada.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-between gap-4 rounded-md border px-4 py-3">
+        </p>
+      </header>
+
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-foreground/10 bg-background/40 px-4 py-3">
           <div>
             <p className="text-sm font-medium">Habilitar tipos de pedido</p>
             <p className="text-xs text-muted-foreground">
@@ -87,11 +81,14 @@ export function PrioritySlidersSection() {
         </div>
 
         {profile.enableOrderType && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {PRIORITY_TYPES.map((pt) => {
               const value = profile.priorityMapping[pt.key];
               return (
-                <div key={pt.key} className="space-y-3">
+                <div
+                  key={pt.key}
+                  className="space-y-3 rounded-md border border-foreground/10 bg-background/40 p-4"
+                >
                   <div>
                     <Label className="text-sm font-medium">{pt.label}</Label>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -126,7 +123,7 @@ export function PrioritySlidersSection() {
             })}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

@@ -9,13 +9,6 @@ import {
   MapPin,
   User,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -81,18 +74,19 @@ export function TrackingSettingsSection() {
   if (!tracking) return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Globe className="size-4" />
+    <section className="grid gap-6 px-6 py-8 md:grid-cols-[260px_1fr] md:gap-10 md:px-8 md:py-10">
+      <header>
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <Globe className="size-4 text-muted-foreground" />
           Seguimiento público
-        </CardTitle>
-        <CardDescription>
+        </h2>
+        <p className="mt-1.5 text-sm text-muted-foreground">
           Genera enlaces para que tus clientes vean el estado de sus pedidos.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-between gap-4 rounded-md border px-4 py-3">
+        </p>
+      </header>
+
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-foreground/10 bg-background/40 px-4 py-3">
           <div>
             <p className="text-sm font-medium">Habilitar seguimiento público</p>
             <p className="text-xs text-muted-foreground">
@@ -114,7 +108,7 @@ export function TrackingSettingsSection() {
               <p className="text-sm font-medium mb-3">
                 Información visible para el cliente
               </p>
-              <div className="divide-y rounded-md border">
+              <div className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-background/40">
                 {VISIBILITY_TOGGLES.map((t) => {
                   const Icon = t.icon;
                   return (
@@ -144,7 +138,7 @@ export function TrackingSettingsSection() {
               </div>
             </div>
 
-            <div className="border-t pt-6">
+            <div className="border-t border-foreground/10 pt-6">
               <p className="text-sm font-medium mb-3">Personalización</p>
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(280px,380px)] gap-6">
                 <div className="space-y-4">
@@ -206,7 +200,7 @@ export function TrackingSettingsSection() {
               </div>
             </div>
 
-            <div className="border-t pt-6">
+            <div className="border-t border-foreground/10 pt-6">
               <p className="text-sm font-medium mb-3">
                 Configuración de enlaces
               </p>
@@ -235,7 +229,7 @@ export function TrackingSettingsSection() {
                     .
                   </p>
                 </div>
-                <div className="flex items-center justify-between gap-4 rounded-md border px-4 py-3">
+                <div className="flex items-center justify-between gap-4 rounded-md border border-foreground/10 bg-background/40 px-4 py-3">
                   <div>
                     <p className="text-sm font-medium">Auto-generar enlaces</p>
                     <p className="text-xs text-muted-foreground">
@@ -254,8 +248,8 @@ export function TrackingSettingsSection() {
             </div>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 

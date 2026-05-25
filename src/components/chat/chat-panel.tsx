@@ -64,7 +64,7 @@ function ChatPanelInner() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="h-9 justify-start gap-2 text-xs font-medium border border-border/60 hover:bg-[oklch(0.22_0_0)]"
+                  className="h-9 justify-start gap-2 text-xs font-medium border border-border/60 hover:bg-muted"
                   onClick={actions.openPicker}
                 >
                   <MessageSquarePlus className="size-3.5 text-[var(--cockpit-live)]" />

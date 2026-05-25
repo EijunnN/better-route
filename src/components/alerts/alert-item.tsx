@@ -153,7 +153,7 @@ export function AlertItem({
         className={cn(
           "cockpit-enter relative px-3 py-2.5 transition-colors",
           onClick &&
-            "cursor-pointer hover:bg-[oklch(0.21_0_0)] focus-within:bg-[oklch(0.21_0_0)]",
+            "cursor-pointer hover:bg-muted/60 focus-within:bg-muted/60",
           !isActive && "opacity-70",
         )}
         onClick={onClick}
