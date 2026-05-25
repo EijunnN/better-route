@@ -12,4 +12,3 @@ export {
 } from "./custom-fields-context";
 export { CustomFieldsDashboardView } from "./custom-fields-views";
 export { DynamicFieldRenderer } from "./dynamic-field-renderer";
-export { FieldDefinitionDialog } from "./field-definition-dialog";

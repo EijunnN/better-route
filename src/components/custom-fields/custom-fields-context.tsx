@@ -73,10 +73,10 @@ interface CustomFieldsState {
   isLoading: boolean;
   error: string | null;
   isSubmitting: boolean;
-  selectedDefinition: FieldDefinition | null;
-  showDialog: boolean;
-  dialogMode: "create" | "edit";
-  /** Pre-selected entity when opening the dialog in create mode from a tab. */
+  /**
+   * Carried by FlowDashboard so the wizard can seed its origin step
+   * with a sensible default (currently always "orders").
+   */
   defaultEntity: FieldEntity;
 }
 
@@ -89,9 +89,6 @@ interface CustomFieldsActions {
     definition: FieldDefinition,
     direction: "up" | "down",
   ) => Promise<void>;
-  openCreateDialog: (defaultEntity?: FieldEntity) => void;
-  openEditDialog: (definition: FieldDefinition) => void;
-  closeDialog: () => void;
   refreshDefinitions: () => void;
 }
 
@@ -114,11 +111,6 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
   const { toast } = useToast();
 
-  const [selectedDefinition, setSelectedDefinition] =
-    useState<FieldDefinition | null>(null);
-  const [showDialog, setShowDialog] = useState(false);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
-  const [defaultEntity, setDefaultEntity] = useState<FieldEntity>("orders");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const definitionsUrl = companyId
@@ -288,24 +280,6 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
     await mutateDefinitions();
   };
 
-  const openCreateDialog = (entity?: FieldEntity) => {
-    setSelectedDefinition(null);
-    setDefaultEntity(entity ?? "orders");
-    setDialogMode("create");
-    setShowDialog(true);
-  };
-
-  const openEditDialog = (definition: FieldDefinition) => {
-    setSelectedDefinition(definition);
-    setDialogMode("edit");
-    setShowDialog(true);
-  };
-
-  const closeDialog = () => {
-    setShowDialog(false);
-    setSelectedDefinition(null);
-  };
-
   const refreshDefinitions = () => {
     mutateDefinitions();
   };
@@ -321,10 +295,7 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
         : "Error al cargar campos personalizados"
       : null,
     isSubmitting,
-    selectedDefinition,
-    showDialog,
-    dialogMode,
-    defaultEntity,
+    defaultEntity: "orders",
   };
 
   const contextActions: CustomFieldsActions = {
@@ -333,9 +304,6 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
     deleteDefinition,
     toggleActive,
     reorder,
-    openCreateDialog,
-    openEditDialog,
-    closeDialog,
     refreshDefinitions,
   };
 
