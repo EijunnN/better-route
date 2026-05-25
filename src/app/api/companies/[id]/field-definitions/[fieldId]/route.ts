@@ -57,7 +57,7 @@ export async function GET(
       return notFoundResponse("Field definition");
     }
 
-    return NextResponse.json(definition);
+    return NextResponse.json({ data: definition });
   } catch (error) {
     return handleError(error, "fetching field definition");
   }
@@ -131,7 +131,7 @@ export async function PATCH(
       .where(eq(companyFieldDefinitions.id, fieldId))
       .returning();
 
-    return NextResponse.json(updated);
+    return NextResponse.json({ data: updated });
   } catch (error) {
     return handleError(error, "updating field definition");
   }
@@ -185,7 +185,7 @@ export async function DELETE(
       .where(eq(companyFieldDefinitions.id, fieldId))
       .returning();
 
-    return NextResponse.json(deleted);
+    return NextResponse.json({ data: deleted });
   } catch (error) {
     return handleError(error, "deleting field definition");
   }

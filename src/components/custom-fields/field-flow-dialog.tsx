@@ -222,8 +222,8 @@ export function FieldFlowDialog({
           <section className="space-y-2">
             <h3 className="text-sm font-medium">Dónde aparece</h3>
             <div className="space-y-2">
-              {surfaces.map((surface, idx) => (
-                <SurfaceRow key={idx} surface={surface} />
+              {surfaces.map((surface) => (
+                <SurfaceRow key={surface.title} surface={surface} />
               ))}
             </div>
           </section>

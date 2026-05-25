@@ -54,7 +54,10 @@ export async function GET(
       .select()
       .from(companyFieldDefinitions)
       .where(and(...conditions))
-      .orderBy(asc(companyFieldDefinitions.position));
+      .orderBy(
+        asc(companyFieldDefinitions.position),
+        asc(companyFieldDefinitions.createdAt),
+      );
 
     return NextResponse.json({ data });
   } catch (error) {
@@ -144,7 +147,7 @@ export async function POST(
       })
       .returning();
 
-    return NextResponse.json(newDefinition, { status: 201 });
+    return NextResponse.json({ data: newDefinition }, { status: 201 });
   } catch (error) {
     return handleError(error, "creating field definition");
   }

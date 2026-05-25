@@ -4,7 +4,6 @@ import { Camera, FileSignature, GitBranch, StickyNote, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { SYSTEM_STATE_ORDER, type SystemState } from "@/lib/workflow/states";
 import { type DeliveryPolicy, useConfiguracion } from "./configuracion-context";
@@ -314,9 +313,6 @@ function FailureReasonsBlock({ policy, onChange }: BlockProps) {
           fallos.
         </p>
       )}
-      <p className="sr-only">
-        <Label htmlFor="hidden-label">Lista de motivos</Label>
-      </p>
     </div>
   );
 }

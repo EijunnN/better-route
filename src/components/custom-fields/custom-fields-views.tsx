@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   Hash,
   HelpCircle,
+  Info,
   List,
   Loader2,
   Mail,
@@ -25,6 +26,7 @@ import {
   Type,
   Workflow,
 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Can } from "@/components/auth/can";
 import {
@@ -244,13 +246,19 @@ export function CustomFieldsDashboardView() {
                     className="h-8 w-56 pl-8 text-sm"
                   />
                 </div>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Switch
+                    id="show-archived-fields"
                     checked={showArchived}
                     onCheckedChange={setShowArchived}
                   />
-                  Ver archivados
-                </label>
+                  <label
+                    htmlFor="show-archived-fields"
+                    className="cursor-pointer"
+                  >
+                    Ver archivados
+                  </label>
+                </div>
               </div>
             )}
           </div>
@@ -295,10 +303,10 @@ const ENTITY_EXAMPLES: Record<FieldEntity, ExampleChip[]> = {
     { icon: Phone, label: "Teléfono de contacto" },
   ],
   route_stops: [
-    { icon: ToggleLeft, label: "Firma recibida" },
-    { icon: Type, label: "Número de recibido" },
-    { icon: List, label: "Motivo de no entrega" },
-    { icon: Calendar, label: "Hora de llegada" },
+    { icon: Type, label: "DNI del receptor" },
+    { icon: Type, label: "Nombre de quién recibió" },
+    { icon: Hash, label: "Bultos entregados" },
+    { icon: ToggleLeft, label: "Producto en buen estado" },
   ],
 };
 
@@ -378,6 +386,8 @@ function EntityPanel({
 
   return (
     <div className="space-y-6">
+      <EntityOrientationBanner entity={entity} />
+
       <DefinitionsTable
         definitions={active}
         kind="active"
@@ -736,6 +746,44 @@ function VisibilityIcons({ definition }: { definition: FieldDefinition }) {
           </span>
         );
       })}
+    </div>
+  );
+}
+
+function EntityOrientationBanner({ entity }: { entity: FieldEntity }) {
+  if (entity === "orders") {
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-foreground/10 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <Info className="size-3.5 mt-0.5 shrink-0" />
+        <p>
+          Lo básico del pedido (peso, volumen, valor, tipo) se configura en{" "}
+          <Link
+            href="/configuracion"
+            className="text-foreground underline underline-offset-2 hover:text-primary"
+          >
+            Configuración
+          </Link>
+          . Acá agregás columnas extra de tu operación (referencias del cliente,
+          OC, número de visita, instrucciones).
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-start gap-2 rounded-md border border-foreground/10 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+      <Info className="size-3.5 mt-0.5 shrink-0" />
+      <p>
+        Para <strong className="text-foreground">foto, firma, notas</strong> y{" "}
+        <strong className="text-foreground">motivos de no-entrega</strong> usá{" "}
+        <Link
+          href="/configuracion"
+          className="text-foreground underline underline-offset-2 hover:text-primary"
+        >
+          Política de entrega
+        </Link>
+        . Acá sólo agregás datos específicos que no están cubiertos ahí (ej: DNI
+        del receptor, bultos entregados).
+      </p>
     </div>
   );
 }

@@ -519,7 +519,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(201);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.code).toBe("detail_ref");
     expect(data.label).toBe("Detail Reference");
     expect(data.fieldType).toBe("text");
@@ -562,7 +562,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(201);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.fieldType).toBe("select");
     expect(data.options).toEqual(["low", "medium", "high"]);
   });
@@ -595,7 +595,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(201);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.fieldType).toBe("number");
     expect(data.validationRules).toEqual({ min: 0, max: 500 });
   });
@@ -627,7 +627,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(201);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.fieldType).toBe("boolean");
     expect(data.defaultValue).toBe("false");
   });
@@ -657,7 +657,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(201);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.fieldType).toBe("text");
   });
 
@@ -861,7 +861,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.id).toBe(field.id);
     expect(data.code).toBe("get_by_id");
     expect(data.label).toBe("Get By ID");
@@ -953,7 +953,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.label).toBe("Updated Label");
     expect(data.required).toBe(true);
     expect(data.code).toBe("patch_label");
@@ -986,7 +986,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.options).toEqual(["a", "b", "c", "d"]);
   });
 
@@ -1024,7 +1024,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.position).toBe(10);
     expect(data.showInList).toBe(true);
     expect(data.showInMobile).toBe(false);
@@ -1058,7 +1058,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.placeholder).toBe("new placeholder");
     expect(data.defaultValue).toBe("new default");
   });
@@ -1130,7 +1130,7 @@ describe("Company Detail, Profiles & Field Definitions", () => {
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.active).toBe(false);
 
     // Verify in DB

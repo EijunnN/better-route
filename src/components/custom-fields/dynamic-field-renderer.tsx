@@ -42,7 +42,7 @@ export function DynamicFieldRenderer({
               onChange(e.target.value ? Number(e.target.value) : null)
             }
             placeholder={definition.placeholder ?? undefined}
-            step="1"
+            step="any"
           />
         );
 

@@ -67,7 +67,7 @@ describe("Field Definitions CRUD", () => {
     });
     expect(response.status).toBe(201);
 
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.code).toBe("customer_ref");
     expect(data.label).toBe("Customer Reference");
     expect(data.fieldType).toBe("text");
@@ -105,7 +105,7 @@ describe("Field Definitions CRUD", () => {
     });
     expect(response.status).toBe(201);
 
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.fieldType).toBe("number");
     expect(data.validationRules).toEqual({ min: 0, max: 1000 });
   });
@@ -132,7 +132,7 @@ describe("Field Definitions CRUD", () => {
     });
     expect(response.status).toBe(201);
 
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.fieldType).toBe("select");
     expect(data.options).toEqual(["low", "medium", "high", "urgent"]);
   });
@@ -159,7 +159,7 @@ describe("Field Definitions CRUD", () => {
     });
     expect(response.status).toBe(201);
 
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.fieldType).toBe("boolean");
     expect(data.defaultValue).toBe("true");
   });
@@ -189,7 +189,7 @@ describe("Field Definitions CRUD", () => {
       params: Promise.resolve({ id: company.id }),
     });
     expect(dateRes.status).toBe(201);
-    const dateData = await dateRes.json();
+    const { data: dateData } = await dateRes.json();
     expect(dateData.fieldType).toBe("date");
 
     const currencyBody = {
@@ -213,7 +213,7 @@ describe("Field Definitions CRUD", () => {
       params: Promise.resolve({ id: company.id }),
     });
     expect(currRes.status).toBe(201);
-    const currData = await currRes.json();
+    const { data: currData } = await currRes.json();
     expect(currData.fieldType).toBe("currency");
   });
 
@@ -242,7 +242,7 @@ describe("Field Definitions CRUD", () => {
       params: Promise.resolve({ id: company.id }),
     });
     expect(phoneRes.status).toBe(201);
-    const phoneData = await phoneRes.json();
+    const { data: phoneData } = await phoneRes.json();
     expect(phoneData.fieldType).toBe("phone");
 
     const emailBody = {
@@ -266,7 +266,7 @@ describe("Field Definitions CRUD", () => {
       params: Promise.resolve({ id: company.id }),
     });
     expect(emailRes.status).toBe(201);
-    const emailData = await emailRes.json();
+    const { data: emailData } = await emailRes.json();
     expect(emailData.fieldType).toBe("email");
   });
 
@@ -459,7 +459,7 @@ describe("Field Definitions CRUD", () => {
       params: Promise.resolve({ id: company.id, fieldId: field.id }),
     });
     expect(res1.status).toBe(200);
-    const data = await res1.json();
+    const { data } = await res1.json();
     expect(data.id).toBe(field.id);
     expect(data.code).toBe("get_one_test");
 
@@ -512,7 +512,7 @@ describe("Field Definitions CRUD", () => {
     });
     expect(response.status).toBe(200);
 
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.label).toBe("Updated Label");
     expect(data.required).toBe(true);
     expect(data.options).toEqual(["a", "b", "c"]);
@@ -541,7 +541,7 @@ describe("Field Definitions CRUD", () => {
     });
     expect(response.status).toBe(200);
 
-    const data = await response.json();
+    const { data } = await response.json();
     expect(data.active).toBe(false);
 
     // Verify in DB

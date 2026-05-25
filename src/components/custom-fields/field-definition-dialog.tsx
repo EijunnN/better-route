@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertCircle,
   ArrowLeft,
   Calendar,
   DollarSign,
@@ -17,6 +18,7 @@ import {
   ToggleLeft,
   Type,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +51,47 @@ function labelToCode(label: string): string {
 
 function isValidCode(code: string): boolean {
   return /^[a-z][a-z0-9_]*$/.test(code);
+}
+
+/**
+ * Concepts that already live in Pol\u00edtica de entrega. Creating a custom
+ * field with one of these keywords usually means the operator is about
+ * to duplicate something the policy already handles. We don't block \u2014
+ * just warn \u2014 so the niche cases that legitimately need a separate
+ * custom field still work.
+ */
+const POLICY_OVERLAP_KEYWORDS = [
+  "motivo",
+  "motivo_fallo",
+  "motivo_no_entrega",
+  "failure",
+  "failure_reason",
+  "foto",
+  "photo",
+  "firma",
+  "signature",
+  "nota",
+  "notas",
+  "notes",
+  "observacion",
+  "observaciones",
+  "observations",
+  "estado",
+  "status",
+];
+
+function detectPolicyOverlap(code: string, label: string): string | null {
+  const normalize = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  const normCode = normalize(code);
+  const normLabel = normalize(label);
+  const hit = POLICY_OVERLAP_KEYWORDS.find(
+    (kw) => normCode.includes(kw) || normLabel.includes(kw),
+  );
+  return hit ?? null;
 }
 
 interface FieldTypeOption {
@@ -234,6 +277,13 @@ export function FieldDefinitionDialog() {
   const [error, setError] = useState<string | null>(null);
   const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
   const [previewValue, setPreviewValue] = useState<unknown>(null);
+  // Last value of the orders-only toggles. We snapshot them when switching
+  // away to route_stops so the user doesn't lose their selection if they
+  // toggle the entity back.
+  const [ordersVisibilitySnapshot, setOrdersVisibilitySnapshot] = useState<{
+    showInList: boolean;
+    showInCsv: boolean;
+  }>({ showInList: false, showInCsv: true });
 
   useEffect(() => {
     if (showDialog) {
@@ -489,14 +539,24 @@ export function FieldDefinitionDialog() {
                   disabled={isSubmitting}
                   className="h-8 text-sm"
                 />
+                {!isEdit && (
+                  <PolicyOverlapWarning
+                    code={formData.code}
+                    label={formData.label}
+                  />
+                )}
               </div>
 
-              {/* Code */}
+              {/* Code — immutable once the field exists. CSV imports, mobile
+                  app and reports key off this string, so renaming would
+                  silently break references. */}
               <div className="space-y-1">
                 <Label className="text-xs">
                   Código{" "}
                   <span className="text-muted-foreground font-normal">
-                    (auto-generado si se deja vacío)
+                    {isEdit
+                      ? "(no editable)"
+                      : "(auto-generado si se deja vacío)"}
                   </span>
                 </Label>
                 <Input
@@ -505,9 +565,15 @@ export function FieldDefinitionDialog() {
                   placeholder={
                     labelToCode(formData.label) || "referencia_cliente"
                   }
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isEdit}
                   className="h-8 text-sm font-mono"
                 />
+                {isEdit && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Para cambiar el código tenés que archivar este campo y crear
+                    uno nuevo. Esto evita romper referencias en CSV y en la app.
+                  </p>
+                )}
               </div>
 
               {/* Entity - visual selector. Switching entity also resets the
@@ -524,17 +590,31 @@ export function FieldDefinitionDialog() {
                         key={ent.value}
                         type="button"
                         onClick={() =>
-                          setFormData((p) => ({
-                            ...p,
-                            entity: ent.value,
-                            // showInList and showInCsv only apply to orders;
-                            // route_stops doesn't render a list column or
-                            // participate in CSV import.
-                            showInList:
-                              ent.value === "orders" ? p.showInList : false,
-                            showInCsv:
-                              ent.value === "orders" ? p.showInCsv : false,
-                          }))
+                          setFormData((p) => {
+                            const goingToStops = ent.value === "route_stops";
+                            // Snapshot orders toggles before zeroing them so
+                            // we can restore on the way back.
+                            if (goingToStops && p.entity === "orders") {
+                              setOrdersVisibilitySnapshot({
+                                showInList: p.showInList,
+                                showInCsv: p.showInCsv,
+                              });
+                            }
+                            return {
+                              ...p,
+                              entity: ent.value,
+                              // showInList/showInCsv only apply to orders;
+                              // route_stops never renders a list column nor
+                              // participates in CSV import. Restore the
+                              // snapshot when returning to orders.
+                              showInList: goingToStops
+                                ? false
+                                : ordersVisibilitySnapshot.showInList,
+                              showInCsv: goingToStops
+                                ? false
+                                : ordersVisibilitySnapshot.showInCsv,
+                            };
+                          })
                         }
                         disabled={isSubmitting}
                         className={`flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors ${
@@ -726,5 +806,37 @@ export function FieldDefinitionDialog() {
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PolicyOverlapWarning({
+  code,
+  label,
+}: {
+  code: string;
+  label: string;
+}) {
+  const overlap = detectPolicyOverlap(code, label);
+  if (!overlap) return null;
+  return (
+    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+      <div className="flex items-start gap-1.5">
+        <AlertCircle className="size-3.5 mt-0.5 shrink-0" />
+        <div className="space-y-1">
+          <p>
+            <strong>"{overlap}"</strong> probablemente ya esté cubierto por
+            <strong> Política de entrega</strong> (foto, firma, notas, motivos
+            de fallo). Si lo creás acá vas a tener dos lugares para lo mismo y
+            los reportes pueden quedar inconsistentes.
+          </p>
+          <Link
+            href="/configuracion"
+            className="inline-block underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300"
+          >
+            Ir a Política de entrega →
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }

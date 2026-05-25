@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -6,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -55,5 +57,13 @@ export const companyFieldDefinitions = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [index("field_definitions_company_id_idx").on(table.companyId)],
+  (table) => [
+    index("field_definitions_company_id_idx").on(table.companyId),
+    // Prevents two active rows from sharing the same (company, entity, code).
+    // Archived rows are excluded so a user can re-create a code after
+    // archiving the old one without colliding.
+    uniqueIndex("field_definitions_company_entity_code_active_uniq")
+      .on(table.companyId, table.entity, table.code)
+      .where(sql`${table.active} = true`),
+  ],
 );
