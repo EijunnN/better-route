@@ -10,7 +10,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -112,6 +112,7 @@ export function EditSheet({ open, field, onClose }: EditSheetProps) {
       }}
     >
       <DialogContent className="max-h-[calc(100vh-60px)] max-w-[560px] overflow-y-auto p-0">
+        <DialogTitle className="sr-only">Editar {data.label}</DialogTitle>
         <div className="p-5">
           <div className="mb-4">
             <div className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground">

@@ -26,7 +26,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -193,6 +193,7 @@ export function CreationWizard({
       }}
     >
       <DialogContent className="grid max-h-[calc(100vh-60px)] max-w-[920px] grid-cols-[1fr_320px] gap-0 overflow-hidden p-0">
+        <DialogTitle className="sr-only">Nuevo campo personalizado</DialogTitle>
         {/* LEFT — wizard. Built-in DialogContent close button sits
             top-right; we don't render our own. */}
         <div className="flex min-h-[540px] flex-col overflow-y-auto p-7">
