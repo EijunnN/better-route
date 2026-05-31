@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { roles, userRoles, users } from "@/db/schema";
-import { clearUserPermissionCache } from "@/lib/auth/authorization";
+import { clearUserPermissionCache, isAdmin } from "@/lib/auth/authorization";
 import { Action, EntityType } from "@/lib/auth/permissions";
 import {
   checkPermissionOrError,
@@ -87,8 +87,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const permError = await checkPermissionOrError(
       authResult.user,
-      EntityType.USER,
-      Action.UPDATE,
+      EntityType.ROLE,
+      Action.ASSIGN,
     );
     if (permError) return permError;
 
@@ -133,6 +133,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!role) {
       return notFoundResponse("Rol");
+    }
+
+    if (role.code === "ADMIN_SISTEMA" && !isAdmin(authResult.user)) {
+      return NextResponse.json(
+        { error: "No autorizado para asignar el rol ADMIN_SISTEMA" },
+        { status: 403 },
+      );
     }
 
     // Check if user already has this role
@@ -209,8 +216,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const permError = await checkPermissionOrError(
       authResult.user,
-      EntityType.USER,
-      Action.UPDATE,
+      EntityType.ROLE,
+      Action.ASSIGN,
     );
     if (permError) return permError;
 

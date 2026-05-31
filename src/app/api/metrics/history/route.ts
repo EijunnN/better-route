@@ -1,11 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getTenantContext } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   getHistoricalMetrics,
   getMetricsSummaryStats,
 } from "@/lib/optimization/plan-metrics";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
  * GET /api/metrics/history
@@ -21,15 +22,9 @@ export async function GET(request: NextRequest) {
       Action.READ,
     );
     if (authResult instanceof NextResponse) return authResult;
-
-    const tenantContext = getTenantContext();
-
-    if (!tenantContext.companyId) {
-      return NextResponse.json(
-        { error: "Company context required" },
-        { status: 400 },
-      );
-    }
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
@@ -43,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     // Get historical metrics
     const historical = await getHistoricalMetrics(
-      tenantContext.companyId,
+      tenantCtx.companyId,
       safeLimit,
       safeOffset,
     );
@@ -63,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     // Optionally include summary statistics
     if (includeSummary) {
-      const summary = await getMetricsSummaryStats(tenantContext.companyId);
+      const summary = await getMetricsSummaryStats(tenantCtx.companyId);
       response.summary = summary;
     }
 

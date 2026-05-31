@@ -1,6 +1,14 @@
+import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { users } from "@/db/schema";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
-import { Action, authorize, EntityType } from "@/lib/auth/authorization";
+import {
+  Action,
+  authorize,
+  EntityType,
+  isAdmin,
+} from "@/lib/auth/authorization";
 import { getUserSessions, invalidateUserSessions } from "@/lib/auth/session";
 
 interface RouteContext {
@@ -26,6 +34,24 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     if (!canView) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    // Cross-tenant guard: a non-self requester (who passed the permission
+    // check above) may still only view sessions of users in their own
+    // company, unless they are a system admin.
+    if (user.userId !== userId && !isAdmin(user)) {
+      if (!user.companyId) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      }
+      const [targetUser] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.id, userId), eq(users.companyId, user.companyId)))
+        .limit(1);
+
+      if (!targetUser) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      }
     }
 
     const sessions = await getUserSessions(userId);
@@ -68,6 +94,24 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     if (!canInvalidate) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    // Cross-tenant guard: a non-self requester (who passed the permission
+    // check above) may still only invalidate sessions of users in their own
+    // company, unless they are a system admin.
+    if (user.userId !== userId && !isAdmin(user)) {
+      if (!user.companyId) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      }
+      const [targetUser] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.id, userId), eq(users.companyId, user.companyId)))
+        .limit(1);
+
+      if (!targetUser) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      }
     }
 
     await invalidateUserSessions(userId);

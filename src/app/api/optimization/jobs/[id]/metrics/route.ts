@@ -1,12 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getTenantContext } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   getHistoricalMetrics,
   getMetricsSummaryStats,
   getPlanMetrics,
 } from "@/lib/optimization/plan-metrics";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
  * GET /api/optimization/jobs/[id]/metrics
@@ -24,16 +25,11 @@ export async function GET(
       Action.READ,
     );
     if (authResult instanceof NextResponse) return authResult;
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
+    setTenantContext(tenantCtx);
 
     const { id: jobId } = await params;
-    const tenantContext = getTenantContext();
-
-    if (!tenantContext.companyId) {
-      return NextResponse.json(
-        { error: "Company context required" },
-        { status: 400 },
-      );
-    }
 
     // Get query parameters for historical data
     const { searchParams } = new URL(request.url);
@@ -45,7 +41,7 @@ export async function GET(
     const includeSummary = searchParams.get("includeSummary") === "true";
 
     // Get plan metrics for this job
-    const metrics = await getPlanMetrics(tenantContext.companyId, jobId);
+    const metrics = await getPlanMetrics(tenantCtx.companyId, jobId);
 
     if (!metrics) {
       return NextResponse.json(
@@ -65,7 +61,7 @@ export async function GET(
     // Optionally include historical metrics
     if (includeHistorical) {
       const historical = await getHistoricalMetrics(
-        tenantContext.companyId,
+        tenantCtx.companyId,
         historicalLimit,
       );
       response.historical = historical;
@@ -73,7 +69,7 @@ export async function GET(
 
     // Optionally include summary statistics
     if (includeSummary) {
-      const summary = await getMetricsSummaryStats(tenantContext.companyId);
+      const summary = await getMetricsSummaryStats(tenantCtx.companyId);
       response.summary = summary;
     }
 

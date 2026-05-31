@@ -4,7 +4,7 @@ import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { fleets, users } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { Action, EntityType } from "@/lib/auth/authorization";
+import { Action, EntityType, isAdmin } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
@@ -104,6 +104,13 @@ export async function PUT(
     const body = await request.json();
 
     const validatedData = updateUserSchema.parse({ ...body, id });
+
+    if (validatedData.role === "ADMIN_SISTEMA" && !isAdmin(authResult)) {
+      return NextResponse.json(
+        { error: "No autorizado para asignar el rol ADMIN_SISTEMA" },
+        { status: 403 },
+      );
+    }
 
     // Check if user exists
     const whereClause = withTenantFilter(

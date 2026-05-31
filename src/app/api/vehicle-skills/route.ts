@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
     const whereClause = withTenantFilter(
       vehicleSkills,
       conditions.filter(Boolean),
+      tenantCtx.companyId,
     );
 
     const [data, [{ count: total }]] = await Promise.all([

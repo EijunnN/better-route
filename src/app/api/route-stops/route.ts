@@ -1,7 +1,7 @@
-import { and, eq, type SQL, sql } from "drizzle-orm";
+import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { routeStops } from "@/db/schema";
+import { orders, routeStops, users, vehicles } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
@@ -54,8 +54,85 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate that every referenced resource belongs to this tenant.
+    // routeId is a varchar identifier from the optimization result (no
+    // routes table to validate against), so only the FK-backed,
+    // tenant-scoped resources are checked here.
+    const orderIds = [...new Set(stops.map((s) => s.orderId as string))];
+    const vehicleIds = [...new Set(stops.map((s) => s.vehicleId as string))];
+    const userIds = [
+      ...new Set(stops.map((s) => (s.driverId || s.userId) as string)),
+    ];
+
+    const ownershipChecks: {
+      ids: string[];
+      found: Promise<{ id: string }[]>;
+    }[] = [];
+    if (orderIds.length > 0) {
+      ownershipChecks.push({
+        ids: orderIds,
+        found: db
+          .select({ id: orders.id })
+          .from(orders)
+          .where(
+            and(
+              inArray(orders.id, orderIds),
+              eq(orders.companyId, tenantCtx.companyId),
+            ),
+          ),
+      });
+    }
+    if (vehicleIds.length > 0) {
+      ownershipChecks.push({
+        ids: vehicleIds,
+        found: db
+          .select({ id: vehicles.id })
+          .from(vehicles)
+          .where(
+            and(
+              inArray(vehicles.id, vehicleIds),
+              eq(vehicles.companyId, tenantCtx.companyId),
+            ),
+          ),
+      });
+    }
+    if (userIds.length > 0) {
+      ownershipChecks.push({
+        ids: userIds,
+        found: db
+          .select({ id: users.id })
+          .from(users)
+          .where(
+            and(
+              inArray(users.id, userIds),
+              eq(users.companyId, tenantCtx.companyId),
+            ),
+          ),
+      });
+    }
+
+    for (const check of ownershipChecks) {
+      const found = await check.found;
+      const foundIds = new Set(found.map((row) => row.id));
+      if (check.ids.some((referencedId) => !foundIds.has(referencedId))) {
+        return NextResponse.json(
+          {
+            error: "Una o más paradas referencian recursos de otra empresa",
+          },
+          { status: 403 },
+        );
+      }
+    }
+
     // Delete existing stops for this job (if recreating)
-    await db.delete(routeStops).where(eq(routeStops.jobId, jobId));
+    await db
+      .delete(routeStops)
+      .where(
+        and(
+          eq(routeStops.jobId, jobId),
+          eq(routeStops.companyId, tenantCtx.companyId),
+        ),
+      );
 
     // Insert new stops
     const insertedStops = await db
