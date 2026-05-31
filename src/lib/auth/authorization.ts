@@ -82,7 +82,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     `${EntityType.VEHICLE}:${Action.READ}`,
     `${EntityType.ROUTE}:${Action.READ}`,
     `${EntityType.ROUTE_STOP}:${Action.READ}`,
-    `${EntityType.ROUTE_STOP}:${Action.UPDATE}`, // Marcar paradas como FAILED/SKIPPED desde web
+    `${EntityType.ROUTE_STOP}:${Action.UPDATE}`, // Marcar paradas como FAILED desde web
     `${EntityType.ROUTE_STOP}:${Action.CHANGE_STATUS}`,
     `${EntityType.ALERT}:${Action.READ}`,
     `${EntityType.ALERT}:${Action.ACKNOWLEDGE}`,
@@ -307,6 +307,12 @@ const ENTITY_NORMALIZATION: Record<string, string> = {
   // Presets
   optimization_presets: "optimization_preset",
   time_window_presets: "time_window_preset",
+  presets: "optimization_preset", // legacy catalog label
+  // Company config — settings/custom_fields/optimization are all enforced
+  // under the company:* or the split optimization_* entities.
+  settings: "company",
+  custom_fields: "company",
+  optimization: "optimization_job", // fallback; catalog splits into job/config/plan
   // Other
   metrics: "metrics",
   monitoring: "vehicle", // monitoring maps to vehicle
@@ -330,6 +336,10 @@ const ACTION_NORMALIZATION: Record<string, string> = {
   CANCEL: "cancel",
   ACKNOWLEDGE: "acknowledge",
   DISMISS: "dismiss",
+  MONITOR: "monitor",
+  VALIDATE: "validate",
+  REASSIGN: "reassign",
+  CHANGE_STATUS: "change_status",
 };
 
 /**
