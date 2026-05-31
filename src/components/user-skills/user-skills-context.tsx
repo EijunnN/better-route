@@ -8,6 +8,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useUserList, useVehicleSkillList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { UserSkillInput } from "@/lib/validations/user-skill";
@@ -125,8 +126,6 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   const [userSkills, setUserSkills] = useState<UserSkill[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [skills, setSkills] = useState<VehicleSkill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingUserSkill, setEditingUserSkill] = useState<UserSkill | null>(
@@ -137,6 +136,26 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [filterExpiry, setFilterExpiry] = useState<string>("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const { data: rawUsers = [] } = useUserList({ active: true });
+  const users: User[] = rawUsers
+    .filter((u) => u.role === "CONDUCTOR")
+    .map((u) => ({
+      id: u.id,
+      name: u.name,
+      identification: u.identification ?? null,
+      role: u.role,
+    }));
+
+  const { data: rawSkills = [] } = useVehicleSkillList();
+  const skills: VehicleSkill[] = rawSkills.map((s) => ({
+    id: s.id,
+    code: s.code,
+    name: s.name,
+    category: s.category,
+    description: s.description ?? undefined,
+    active: true,
+  }));
 
   const fetchUserSkills = useCallback(async () => {
     if (!companyId) return;
@@ -166,40 +185,9 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
     }
   }, [companyId, filterUser, filterStatus, filterExpiry, toast]);
 
-  const fetchUsers = useCallback(async () => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/users?active=true", {
-        headers: { "x-company-id": companyId },
-      });
-      const data = await response.json();
-      const conductors = (data.data || []).filter(
-        (u: User) => u.role === "CONDUCTOR",
-      );
-      setUsers(conductors);
-    } catch (error) {
-      console.error("Error al cargar usuarios:", error);
-    }
-  }, [companyId]);
-
-  const fetchSkills = useCallback(async () => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/vehicle-skills?active=true", {
-        headers: { "x-company-id": companyId },
-      });
-      const data = await response.json();
-      setSkills(data.data || []);
-    } catch (error) {
-      console.error("Error al cargar habilidades:", error);
-    }
-  }, [companyId]);
-
   useEffect(() => {
     fetchUserSkills();
-    fetchUsers();
-    fetchSkills();
-  }, [fetchSkills, fetchUserSkills, fetchUsers]);
+  }, [fetchUserSkills]);
 
   const handleCreate = async (data: UserSkillInput) => {
     if (!companyId) return;

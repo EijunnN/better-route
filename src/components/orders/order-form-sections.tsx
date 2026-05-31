@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRestrictedZones } from "@/hooks/use-restricted-zones";
+import { useRestrictedZones } from "@/hooks/queries";
 import { useOrderForm } from "./order-form-context";
 
 export function OrderFormBasicInfo() {

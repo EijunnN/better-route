@@ -8,6 +8,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useApiData } from "@/hooks/use-api";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -105,9 +106,16 @@ export function RolesProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId, isSystemAdmin, isReady } = useCompanyContext();
   const { toast } = useToast();
 
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: roles = [],
+    isLoading,
+    error: rolesError,
+    mutate: mutateRoles,
+  } = useApiData<Role[]>(
+    effectiveCompanyId ? "/api/roles" : null,
+    effectiveCompanyId,
+  );
+
   const [showForm, setShowForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [rolePermissions, setRolePermissions] =
@@ -119,21 +127,8 @@ export function RolesProvider({ children }: { children: ReactNode }) {
   const [formError, setFormError] = useState("");
 
   const fetchRoles = useCallback(async () => {
-    if (!effectiveCompanyId) return;
-    try {
-      const response = await fetch("/api/roles", {
-        headers: { "x-company-id": effectiveCompanyId },
-      });
-      const data = await response.json();
-      setRoles(data.data || []);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching roles:", err);
-      setError(err instanceof Error ? err.message : "Error al cargar roles");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [effectiveCompanyId]);
+    await mutateRoles();
+  }, [mutateRoles]);
 
   const fetchRolePermissions = useCallback(
     async (roleId: string) => {
@@ -154,15 +149,15 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     [effectiveCompanyId],
   );
 
+  // Reset selected role and permissions when the company context switches so
+  // stale per-company selections don't bleed into the new workspace.
   useEffect(() => {
-    if (effectiveCompanyId) {
-      setIsLoading(true);
-      setSelectedRole(null);
-      setRolePermissions(null);
-      fetchRoles();
-    }
-  }, [effectiveCompanyId, fetchRoles]);
+    void effectiveCompanyId;
+    setSelectedRole(null);
+    setRolePermissions(null);
+  }, [effectiveCompanyId]);
 
+  // Load per-role permissions whenever the user selects a role (detail on demand).
   useEffect(() => {
     if (selectedRole) {
       fetchRolePermissions(selectedRole.id);
@@ -276,8 +271,8 @@ export function RolesProvider({ children }: { children: ReactNode }) {
           }
           return updated;
         });
-        setRoles((prev) =>
-          prev.map((r) =>
+        await mutateRoles(
+          roles.map((r) =>
             r.id === selectedRole.id
               ? {
                   ...r,
@@ -286,6 +281,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
                 }
               : r,
           ),
+          { revalidate: false },
         );
       }
     } catch (error) {
@@ -324,8 +320,8 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     });
 
     const countDelta = enable ? updates.length : -updates.length;
-    setRoles((prev) =>
-      prev.map((r) =>
+    await mutateRoles(
+      roles.map((r) =>
         r.id === selectedRole.id
           ? {
               ...r,
@@ -333,6 +329,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
             }
           : r,
       ),
+      { revalidate: false },
     );
 
     try {
@@ -363,6 +360,12 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     setFormData({ name: "", description: "" });
     setFormError("");
   };
+
+  const error = rolesError
+    ? rolesError instanceof Error
+      ? rolesError.message
+      : "Error al cargar roles"
+    : null;
 
   const state: RolesState = {
     roles,

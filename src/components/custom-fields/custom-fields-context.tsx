@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, use, useState } from "react";
-import { useApiData } from "@/hooks/use-api";
+import { useFieldDefinitionList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -113,16 +113,12 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const definitionsUrl = companyId
-    ? `/api/companies/${companyId}/field-definitions`
-    : null;
-
   const {
     data: definitions = [],
     isLoading,
     error: definitionsError,
     mutate: mutateDefinitions,
-  } = useApiData<FieldDefinition[]>(definitionsUrl, companyId);
+  } = useFieldDefinitionList();
 
   const createDefinition = async (data: FieldDefinitionInput) => {
     if (!companyId || isSubmitting) return;

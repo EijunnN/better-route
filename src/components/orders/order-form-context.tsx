@@ -1,8 +1,19 @@
 "use client";
 
-import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { FieldDefinition } from "@/components/custom-fields";
-import { useCompanyContext } from "@/hooks/use-company-context";
+import {
+  useCompanyProfile,
+  useFieldDefinitionList,
+  useTimeWindowPresetList,
+} from "@/hooks/queries";
 import type {
   ORDER_STATUS,
   TIME_WINDOW_STRICTNESS,
@@ -42,6 +53,14 @@ export interface CompanyProfile {
   enableUnits: boolean;
   enableOrderType: boolean;
 }
+
+const DEFAULT_COMPANY_PROFILE: CompanyProfile = {
+  enableWeight: false,
+  enableVolume: false,
+  enableOrderValue: false,
+  enableUnits: false,
+  enableOrderType: false,
+};
 
 export interface TimeWindowPreset {
   id: string;
@@ -192,74 +211,27 @@ export function OrderFormProvider({
   submitLabel = "Crear Pedido",
   onCancel,
 }: OrderFormProviderProps) {
-  const { effectiveCompanyId: companyId } = useCompanyContext();
   const [formData, setFormData] = useState<OrderFormData>(defaultFormData);
-  const [timeWindowPresets, setTimeWindowPresets] = useState<
-    TimeWindowPreset[]
-  >([]);
   const [selectedPreset, setSelectedPreset] = useState<TimeWindowPreset | null>(
     null,
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingPresets, setIsLoadingPresets] = useState(true);
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
-    enableWeight: false,
-    enableVolume: false,
-    enableOrderValue: false,
-    enableUnits: false,
-    enableOrderType: false,
-  });
-  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>(
-    [],
+
+  const { data: timeWindowPresets = [], isLoading: isLoadingPresets } =
+    useTimeWindowPresetList();
+
+  const { profile, defaults } = useCompanyProfile();
+  const companyProfile = profile ?? defaults ?? DEFAULT_COMPANY_PROFILE;
+
+  const { data: rawFieldDefinitions = [] } = useFieldDefinitionList();
+  const fieldDefinitions = useMemo(
+    () =>
+      rawFieldDefinitions
+        .filter((d) => d.entity === "orders" && d.active)
+        .sort((a, b) => a.position - b.position),
+    [rawFieldDefinitions],
   );
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!companyId) {
-        setIsLoadingPresets(false);
-        return;
-      }
-      try {
-        const presetsResponse = await fetch("/api/time-window-presets", {
-          headers: { "x-company-id": companyId },
-        });
-        const presetsResult = await presetsResponse.json();
-        setTimeWindowPresets(presetsResult.data || []);
-
-        const profileResponse = await fetch("/api/company-profiles", {
-          headers: { "x-company-id": companyId },
-        });
-        const profileResult = await profileResponse.json();
-        if (profileResult.data?.profile) {
-          setCompanyProfile(profileResult.data.profile);
-        } else if (profileResult.data?.defaults) {
-          setCompanyProfile(profileResult.data.defaults);
-        }
-
-        const fieldsResponse = await fetch(
-          `/api/companies/${companyId}/field-definitions`,
-          {
-            headers: { "x-company-id": companyId },
-          },
-        );
-        const fieldsResult = await fieldsResponse.json();
-        const defs = (fieldsResult.data ?? fieldsResult) as FieldDefinition[];
-        setFieldDefinitions(
-          Array.isArray(defs)
-            ? defs
-                .filter((d) => d.entity === "orders" && d.active)
-                .sort((a, b) => a.position - b.position)
-            : [],
-        );
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-      } finally {
-        setIsLoadingPresets(false);
-      }
-    };
-    fetchData();
-  }, [companyId]);
 
   // Hydrate form once per `initialData` change. Previously this also
   // depended on `timeWindowPresets` so the user's mid-edit input got

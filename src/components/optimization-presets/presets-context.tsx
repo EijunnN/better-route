@@ -5,9 +5,9 @@ import {
   type ReactNode,
   use,
   useCallback,
-  useEffect,
   useState,
 } from "react";
+import { useOptimizationPresetList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -122,39 +122,21 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
   } = useCompanyContext();
   const { toast } = useToast();
 
-  const [presets, setPresets] = useState<OptimizationPreset[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: presets = [],
+    isLoading,
+    error: presetsError,
+    mutate: mutatePresets,
+  } = useOptimizationPresetList();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPreset, setEditingPreset] =
     useState<Partial<OptimizationPreset> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchPresets = useCallback(async () => {
-    if (!companyId || !isReady) return;
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/optimization-presets", {
-        headers: { "x-company-id": companyId },
-      });
-      const data = await response.json();
-      setPresets(data.data || []);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching presets:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Error al cargar presets de optimización",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [companyId, isReady]);
-
-  useEffect(() => {
-    void fetchPresets();
-  }, [fetchPresets]);
+    await mutatePresets();
+  }, [mutatePresets]);
 
   const handleCreate = () => {
     setEditingPreset({ ...DEFAULT_PRESET });
@@ -276,6 +258,12 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
   const updateEditingPreset = (updates: Partial<OptimizationPreset>) => {
     setEditingPreset((prev) => (prev ? { ...prev, ...updates } : null));
   };
+
+  const error = presetsError
+    ? presetsError instanceof Error
+      ? presetsError.message
+      : "Error al cargar presets de optimización"
+    : null;
 
   const state: PresetsState = {
     presets,

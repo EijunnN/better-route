@@ -5,9 +5,10 @@ import {
   type ReactNode,
   use,
   useCallback,
-  useEffect,
+  useMemo,
   useState,
 } from "react";
+import { useFleetList, useRoleList, useUserList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { CreateUserInput } from "@/lib/validations/user";
@@ -141,17 +142,37 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId, isSystemAdmin, isReady } = useCompanyContext();
   const { toast } = useToast();
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [fleets, setFleets] = useState<Fleet[]>([]);
-  const [roles, setRoles] = useState<CustomRole[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingUserRoleIds, setEditingUserRoleIds] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const {
+    data: users = [],
+    isLoading,
+    error: usersError,
+    mutate: mutateUsers,
+  } = useUserList(activeTab === "all" ? undefined : { role: activeTab });
+
+  const { data: rawFleets = [], mutate: mutateFleets } = useFleetList();
+  const { data: roles = [], mutate: mutateRoles } = useRoleList();
+
+  const fleets = useMemo<Fleet[]>(
+    () => rawFleets.map((f) => ({ id: f.id, name: f.name })),
+    [rawFleets],
+  );
+
+  const error = usersError
+    ? usersError instanceof Error
+      ? usersError.message
+      : "Error al cargar usuarios"
+    : null;
+
+  const refetch = useCallback(async () => {
+    await Promise.all([mutateUsers(), mutateFleets(), mutateRoles()]);
+  }, [mutateUsers, mutateFleets, mutateRoles]);
 
   const getApiErrorMessage = (
     error: ApiErrorResponse,
@@ -168,51 +189,6 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     return error.error || fallback;
   };
 
-  const fetchUsers = useCallback(async () => {
-    if (!effectiveCompanyId) return;
-    try {
-      const url =
-        activeTab === "all" ? "/api/users" : `/api/users?role=${activeTab}`;
-      const response = await fetch(url, {
-        headers: { "x-company-id": effectiveCompanyId },
-      });
-      const data = await response.json();
-      setUsers(data.data || []);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching users:", err);
-      setError(err instanceof Error ? err.message : "Error al cargar usuarios");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [effectiveCompanyId, activeTab]);
-
-  const fetchFleets = async () => {
-    if (!effectiveCompanyId) return;
-    try {
-      const response = await fetch("/api/fleets", {
-        headers: { "x-company-id": effectiveCompanyId },
-      });
-      const data = await response.json();
-      setFleets(data.data || []);
-    } catch (error) {
-      console.error("Error fetching fleets:", error);
-    }
-  };
-
-  const fetchRoles = async () => {
-    if (!effectiveCompanyId) return;
-    try {
-      const response = await fetch("/api/roles", {
-        headers: { "x-company-id": effectiveCompanyId },
-      });
-      const data = await response.json();
-      setRoles(data.data || []);
-    } catch (error) {
-      console.error("Error fetching roles:", error);
-    }
-  };
-
   const fetchUserRoles = async (userId: string) => {
     if (!effectiveCompanyId) return [];
     try {
@@ -221,25 +197,10 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       });
       const data = await response.json();
       return (data.data || []).map((ur: { roleId: string }) => ur.roleId);
-    } catch (error) {
-      console.error("Error fetching user roles:", error);
+    } catch {
       return [];
     }
   };
-
-  // Fetch fleets and roles lazily (only needed for the form)
-  const ensureFormData = async () => {
-    if (fleets.length === 0) fetchFleets();
-    if (roles.length === 0) fetchRoles();
-  };
-
-  // Fetch users when company or tab changes
-  useEffect(() => {
-    if (effectiveCompanyId) {
-      setIsLoading(true);
-      fetchUsers();
-    }
-  }, [effectiveCompanyId, fetchUsers]);
 
   const assignRolesToUser = async (
     userId: string,
@@ -309,7 +270,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         await assignRolesToUser(userId, selectedRoleIds);
       }
 
-      await fetchUsers();
+      await mutateUsers();
       setShowForm(false);
       toast({
         title: "Usuario creado",
@@ -369,7 +330,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         editingUserRoleIds,
       );
 
-      await fetchUsers();
+      await mutateUsers();
       setEditingUser(null);
       setEditingUserRoleIds([]);
       toast({
@@ -411,7 +372,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      await fetchUsers();
+      await mutateUsers();
       toast({
         title: "Usuario desactivado",
         description: user
@@ -431,14 +392,12 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   };
 
   const handleEditUser = async (user: User) => {
-    ensureFormData();
     const userRoleIds = await fetchUserRoles(user.id);
     setEditingUserRoleIds(userRoleIds);
     setEditingUser(user);
   };
 
   const openForm = (show: boolean) => {
-    if (show) ensureFormData();
     setShowForm(show);
   };
 
@@ -448,13 +407,19 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     setEditingUserRoleIds([]);
   };
 
-  // Derived values
-  const filteredUsers = users.filter((user) => {
-    if (activeTab === "all") return true;
-    return user.role === activeTab;
-  });
+  // Derived values. The query already filters by role server-side; we keep the
+  // client filter too so behavior is identical to before (a user could carry a
+  // role that differs from the server's role filter).
+  const filteredUsers = useMemo(
+    () =>
+      users.filter((user) => activeTab === "all" || user.role === activeTab),
+    [users, activeTab],
+  );
 
-  const fleetMap = new Map(fleets.map((f) => [f.id, f.name]));
+  const fleetMap = useMemo(
+    () => new Map(fleets.map((f) => [f.id, f.name])),
+    [fleets],
+  );
 
   const state: UsersState = {
     users,
@@ -471,7 +436,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   };
 
   const actions: UsersActions = {
-    fetchUsers,
+    fetchUsers: refetch,
     handleCreate,
     handleUpdate,
     handleDelete,

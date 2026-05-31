@@ -5,9 +5,10 @@ import {
   type ReactNode,
   use,
   useCallback,
-  useEffect,
+  useMemo,
   useState,
 } from "react";
+import { useVehicleList, useZoneList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { ZoneInput } from "@/lib/validations/zone";
@@ -125,10 +126,6 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
   } = useCompanyContext();
   const { toast } = useToast();
 
-  const [zones, setZones] = useState<Zone[]>([]);
-  const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
   const [editingZoneVehicleIds, setEditingZoneVehicleIds] = useState<string[]>(
@@ -141,50 +138,34 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchZones = useCallback(async () => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/zones", {
-        headers: { "x-company-id": companyId },
-      });
-      const data = await response.json();
-      setZones(data.data || []);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching zones:", err);
-      setError(err instanceof Error ? err.message : "Error al cargar zonas");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [companyId]);
+  const {
+    data: zones = [],
+    isLoading,
+    error: zonesError,
+    mutate: mutateZones,
+  } = useZoneList();
 
-  const fetchVehicles = useCallback(async () => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/vehicles?limit=100", {
-        headers: { "x-company-id": companyId },
-      });
-      const data = await response.json();
-      setVehicles(
-        (data.data || []).map(
-          (v: { id: string; name?: string; plate?: string | null }) => ({
-            id: v.id,
-            name: v.name || v.plate || "Sin nombre",
-            plate: v.plate ?? null,
-          }),
-        ),
-      );
-    } catch (error) {
-      console.error("Error fetching vehicles:", error);
-    }
-  }, [companyId]);
+  const { data: rawVehicles = [] } = useVehicleList({ limit: 100 });
 
-  useEffect(() => {
-    if (companyId) {
-      fetchZones();
-      fetchVehicles();
-    }
-  }, [companyId, fetchVehicles, fetchZones]);
+  const vehicles = useMemo<VehicleOption[]>(
+    () =>
+      rawVehicles.map((v) => ({
+        id: v.id,
+        name: v.name || v.plate || "Sin nombre",
+        plate: v.plate ?? null,
+      })),
+    [rawVehicles],
+  );
+
+  const error = zonesError
+    ? zonesError instanceof Error
+      ? zonesError.message
+      : "Error al cargar zonas"
+    : null;
+
+  const refetch = useCallback(async () => {
+    await mutateZones();
+  }, [mutateZones]);
 
   const handleCreate = async (data: ZoneInput, vehicleIds: string[]) => {
     if (!companyId || isSubmitting) return;
@@ -219,7 +200,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      await fetchZones();
+      await mutateZones();
       setViewMode("list");
       setPendingFormData(null);
       toast({
@@ -269,7 +250,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
         }),
       });
 
-      await fetchZones();
+      await mutateZones();
       setEditingZone(null);
       setEditingZoneVehicleIds([]);
       setViewMode("list");
@@ -308,7 +289,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
       }
 
       if (selectedZoneId === id) setSelectedZoneId(null);
-      await fetchZones();
+      await mutateZones();
       toast({
         title: "Zona desactivada",
         description: zone
@@ -385,13 +366,23 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
   };
 
   // Derived values
-  const filteredZones = zones.filter((zone) => {
-    if (!searchQuery) return true;
-    return zone.name.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredZones = useMemo(
+    () =>
+      zones.filter((zone) => {
+        if (!searchQuery) return true;
+        return zone.name.toLowerCase().includes(searchQuery.toLowerCase());
+      }),
+    [zones, searchQuery],
+  );
 
-  const selectedZone = zones.find((z) => z.id === selectedZoneId);
-  const activeZonesCount = zones.filter((z) => z.active).length;
+  const selectedZone = useMemo(
+    () => zones.find((z) => z.id === selectedZoneId),
+    [zones, selectedZoneId],
+  );
+  const activeZonesCount = useMemo(
+    () => zones.filter((z) => z.active).length,
+    [zones],
+  );
   const currentFormGeometry =
     pendingFormData?.geometry || editingZone?.geometry;
   const currentFormColor =
@@ -413,7 +404,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
   };
 
   const actions: ZonesActions = {
-    fetchZones,
+    fetchZones: refetch,
     handleCreate,
     handleUpdate,
     handleDelete,

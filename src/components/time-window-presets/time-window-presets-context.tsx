@@ -5,9 +5,9 @@ import {
   type ReactNode,
   use,
   useCallback,
-  useEffect,
   useState,
 } from "react";
+import { useTimeWindowPresetList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
@@ -84,9 +84,13 @@ export function TimeWindowPresetsProvider({
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
   const { toast } = useToast();
 
-  const [presets, setPresets] = useState<TimeWindowPreset[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: presets = [],
+    isLoading,
+    error: presetsError,
+    mutate: mutatePresets,
+  } = useTimeWindowPresetList();
+
   const [showForm, setShowForm] = useState(false);
   const [editingPreset, setEditingPreset] = useState<TimeWindowPreset | null>(
     null,
@@ -94,29 +98,8 @@ export function TimeWindowPresetsProvider({
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchPresets = useCallback(async () => {
-    if (!companyId) return;
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/time-window-presets", {
-        headers: { "x-company-id": companyId },
-      });
-      const result = await response.json();
-      setPresets(result.data || []);
-      setError(null);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "No se pudieron cargar los presets",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [companyId]);
-
-  useEffect(() => {
-    fetchPresets();
-  }, [fetchPresets]);
+    await mutatePresets();
+  }, [mutatePresets]);
 
   const handleCreate = async (data: TimeWindowPresetFormData) => {
     if (!companyId) return;
@@ -133,7 +116,7 @@ export function TimeWindowPresetsProvider({
         const error = await response.json();
         throw new Error(error.error || "Error al crear el preset");
       }
-      await fetchPresets();
+      await mutatePresets();
       setShowForm(false);
       toast({
         title: "Preset creado",
@@ -168,7 +151,7 @@ export function TimeWindowPresetsProvider({
         const error = await response.json();
         throw new Error(error.error || "Error al actualizar el preset");
       }
-      await fetchPresets();
+      await mutatePresets();
       setEditingPreset(null);
       setShowForm(false);
       toast({
@@ -204,7 +187,7 @@ export function TimeWindowPresetsProvider({
         const error = await response.json();
         throw new Error(error.error || "Error al eliminar el preset");
       }
-      await fetchPresets();
+      await mutatePresets();
       toast({
         title: "Preset eliminado",
         description: preset
@@ -234,6 +217,12 @@ export function TimeWindowPresetsProvider({
     }
     return `${preset.startTime} - ${preset.endTime}`;
   };
+
+  const error = presetsError
+    ? presetsError instanceof Error
+      ? presetsError.message
+      : "No se pudieron cargar los presets"
+    : null;
 
   const state: TimeWindowPresetsState = {
     presets,

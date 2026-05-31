@@ -5,9 +5,10 @@ import {
   type ReactNode,
   use,
   useCallback,
-  useEffect,
+  useMemo,
   useState,
 } from "react";
+import { useFleetList, useVehicleList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { FleetInput } from "@/lib/validations/fleet";
@@ -80,76 +81,38 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
   } = useCompanyContext();
   const { toast } = useToast();
 
-  const [fleets, setFleets] = useState<Fleet[]>([]);
-  const [vehicles, setVehicles] = useState<VehicleWithFleets[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: fleets = [],
+    isLoading,
+    error: fleetsError,
+    mutate: mutateFleets,
+  } = useFleetList();
+  const { data: rawVehicles = [], mutate: mutateVehicles } = useVehicleList();
+
+  const vehicles = useMemo<VehicleWithFleets[]>(
+    () =>
+      rawVehicles.map((v) => ({
+        id: v.id,
+        name: v.name || v.plate || "Sin nombre",
+        plate: v.plate,
+        fleets: v.fleets ?? [],
+      })),
+    [rawVehicles],
+  );
+
+  const error = fleetsError
+    ? fleetsError instanceof Error
+      ? fleetsError.message
+      : "Error al cargar flotas"
+    : null;
+
+  const refetch = useCallback(async () => {
+    await Promise.all([mutateFleets(), mutateVehicles()]);
+  }, [mutateFleets, mutateVehicles]);
+
   const [showForm, setShowForm] = useState(false);
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const fetchFleets = useCallback(async (signal?: AbortSignal) => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/fleets", {
-        headers: { "x-company-id": companyId },
-        signal,
-      });
-      const data = await response.json();
-      setFleets(data.data || []);
-      setError(null);
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      console.error("Error fetching fleets:", err);
-      setError(err instanceof Error ? err.message : "Error al cargar flotas");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [companyId]);
-
-  const fetchVehicles = useCallback(async (signal?: AbortSignal) => {
-    if (!companyId) return;
-    try {
-      const vehiclesRes = await fetch("/api/vehicles", {
-        headers: { "x-company-id": companyId },
-        signal,
-      });
-      const vehiclesData = await vehiclesRes.json();
-      const vehiclesList = vehiclesData.data || [];
-      const vehiclesWithFleets: VehicleWithFleets[] = vehiclesList.map(
-        (v: {
-          id: string;
-          name?: string;
-          plate?: string;
-          fleets?: Array<{ id: string; name: string }>;
-        }) => ({
-          id: v.id,
-          name: v.name || v.plate || "Sin nombre",
-          plate: v.plate,
-          fleets: v.fleets || [],
-        }),
-      );
-      setVehicles(vehiclesWithFleets);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      console.error("Error fetching vehicles:", error);
-    }
-  }, [companyId]);
-
-  useEffect(() => {
-    if (!companyId) return;
-
-    const controller = new AbortController();
-
-    Promise.all([
-      fetchFleets(controller.signal),
-      fetchVehicles(controller.signal),
-    ]).catch(() => {
-      // Ignore abort errors
-    });
-
-    return () => controller.abort();
-  }, [companyId, fetchFleets, fetchVehicles]);
 
   const handleCreate = async (data: FleetInput) => {
     if (!companyId) return;
@@ -166,7 +129,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
         const error = await response.json();
         throw new Error(error.error || "Error al crear flota");
       }
-      await Promise.all([fetchFleets(), fetchVehicles()]);
+      await refetch();
       setShowForm(false);
       toast({
         title: "Flota creada",
@@ -198,7 +161,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
         const error = await response.json();
         throw new Error(error.error || "Error al actualizar flota");
       }
-      await Promise.all([fetchFleets(), fetchVehicles()]);
+      await refetch();
       setEditingFleet(null);
       toast({
         title: "Flota actualizada",
@@ -230,7 +193,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
           error.error || error.details || "Error al desactivar la flota",
         );
       }
-      await Promise.all([fetchFleets(), fetchVehicles()]);
+      await refetch();
       toast({
         title: "Flota desactivada",
         description: fleet
@@ -264,7 +227,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     deletingId,
   };
   const actions: FleetsActions = {
-    fetchFleets,
+    fetchFleets: refetch,
     handleCreate,
     handleUpdate,
     handleDelete,

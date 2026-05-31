@@ -5,9 +5,16 @@ import {
   type ReactNode,
   use,
   useCallback,
-  useEffect,
+  useMemo,
   useState,
 } from "react";
+import {
+  useCompanyProfile,
+  useDrivers,
+  useFleetList,
+  useVehicleList,
+  useVehicleSkillList,
+} from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { VehicleInput } from "@/lib/validations/vehicle";
@@ -140,16 +147,43 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     authCompanyId,
   } = useCompanyContext();
   const { toast } = useToast();
+  const { drivers } = useDrivers();
+  const {
+    data: rawVehicles = [],
+    isLoading,
+    error: vehiclesError,
+    mutate: mutateVehicles,
+  } = useVehicleList();
+  const { data: fleets = [] } = useFleetList();
+  const { data: availableSkills = [] } = useVehicleSkillList();
+  const { profile } = useCompanyProfile();
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [fleets, setFleets] = useState<Fleet[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(
-    null,
+  const vehicles = useMemo<Vehicle[]>(
+    () =>
+      rawVehicles.map((v) => ({
+        ...v,
+        fleetIds: v.fleets?.map((f) => f.id) ?? [],
+      })),
+    [rawVehicles],
   );
-  const [availableSkills, setAvailableSkills] = useState<VehicleSkill[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const companyProfile = useMemo<CompanyProfile>(
+    () => ({
+      enableOrderValue: profile?.enableOrderValue ?? false,
+      enableUnits: profile?.enableUnits ?? false,
+      enableWeight: profile?.enableWeight ?? true,
+      enableVolume: profile?.enableVolume ?? true,
+    }),
+    [profile],
+  );
+  const error = vehiclesError
+    ? vehiclesError instanceof Error
+      ? vehiclesError.message
+      : "Error al cargar vehículos"
+    : null;
+  const refetchVehicles = useCallback(async () => {
+    await mutateVehicles();
+  }, [mutateVehicles]);
+
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [editingVehicleSkillIds, setEditingVehicleSkillIds] = useState<
@@ -159,108 +193,6 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     null,
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const fetchVehicles = useCallback(async () => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/vehicles", {
-        headers: { "x-company-id": companyId },
-      });
-      const data = await response.json();
-      const vehiclesData = (data.data || []).map(
-        (v: Vehicle & { fleets?: Array<{ id: string; name: string }> }) => ({
-          ...v,
-          fleetIds: v.fleets?.map((f) => f.id) || [],
-        }),
-      );
-      setVehicles(vehiclesData);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching vehicles:", err);
-      setError(
-        err instanceof Error ? err.message : "Error al cargar vehículos",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [companyId]);
-
-  const fetchFleets = useCallback(async () => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/fleets", {
-        headers: { "x-company-id": companyId },
-      });
-      const data = await response.json();
-      setFleets(data.data || []);
-    } catch (error) {
-      console.error("Error fetching fleets:", error);
-    }
-  }, [companyId]);
-
-  const fetchDrivers = useCallback(async () => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/users?role=CONDUCTOR", {
-        headers: { "x-company-id": companyId },
-      });
-      const data = await response.json();
-      setDrivers(
-        (data.data || []).map((d: { id: string; name: string }) => ({
-          id: d.id,
-          name: d.name,
-        })),
-      );
-    } catch (error) {
-      console.error("Error fetching drivers:", error);
-    }
-  }, [companyId]);
-
-  const fetchCompanyProfile = useCallback(async () => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/company-profiles", {
-        headers: { "x-company-id": companyId },
-      });
-      const data = await response.json();
-      if (data.data?.profile) {
-        setCompanyProfile({
-          enableOrderValue: data.data.profile.enableOrderValue ?? false,
-          enableUnits: data.data.profile.enableUnits ?? false,
-          enableWeight: data.data.profile.enableWeight ?? true,
-          enableVolume: data.data.profile.enableVolume ?? true,
-        });
-      } else {
-        setCompanyProfile({
-          enableOrderValue: false,
-          enableUnits: false,
-          enableWeight: true,
-          enableVolume: true,
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching company profile:", error);
-      setCompanyProfile({
-        enableOrderValue: false,
-        enableUnits: false,
-        enableWeight: true,
-        enableVolume: true,
-      });
-    }
-  }, [companyId]);
-
-  const fetchAvailableSkills = useCallback(async () => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/vehicle-skills?active=true", {
-        headers: { "x-company-id": companyId },
-      });
-      const data = await response.json();
-      setAvailableSkills(data.data || []);
-    } catch (error) {
-      console.error("Error fetching vehicle skills:", error);
-    }
-  }, [companyId]);
 
   const fetchVehicleSkills = async (vehicleId: string) => {
     if (!companyId) return [];
@@ -292,20 +224,6 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  useEffect(() => {
-    fetchVehicles();
-    fetchFleets();
-    fetchDrivers();
-    fetchCompanyProfile();
-    fetchAvailableSkills();
-  }, [
-    fetchAvailableSkills,
-    fetchCompanyProfile,
-    fetchDrivers,
-    fetchFleets,
-    fetchVehicles,
-  ]);
-
   const handleCreate = async (data: VehicleInput, skillIds?: string[]) => {
     if (!companyId) return;
     try {
@@ -325,7 +243,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
       if (skillIds && skillIds.length > 0 && result.id) {
         await saveVehicleSkills(result.id, skillIds);
       }
-      await fetchVehicles();
+      await mutateVehicles();
       setShowForm(false);
       toast({
         title: "Vehículo creado",
@@ -360,7 +278,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
       if (skillIds !== undefined) {
         await saveVehicleSkills(editingVehicle.id, skillIds);
       }
-      await fetchVehicles();
+      await mutateVehicles();
       setEditingVehicle(null);
       setEditingVehicleSkillIds([]);
       toast({
@@ -393,7 +311,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
           error.error || error.details || "Error al desactivar el vehículo",
         );
       }
-      await fetchVehicles();
+      await mutateVehicles();
       toast({
         title: "Vehículo desactivado",
         description: vehicle
@@ -435,7 +353,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
       },
     );
     if (!response.ok) throw response;
-    await fetchVehicles();
+    await mutateVehicles();
   };
 
   const cancelForm = () => {
@@ -460,7 +378,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
   };
 
   const actions: VehiclesActions = {
-    fetchVehicles,
+    fetchVehicles: refetchVehicles,
     handleCreate,
     handleUpdate,
     handleDelete,
