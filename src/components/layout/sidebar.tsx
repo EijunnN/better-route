@@ -168,6 +168,12 @@ const defaultNavSections: NavSection[] = [
         requiredPermission: "vehicle_skill:read",
       },
       {
+        title: "Habilidades Conductores",
+        href: "/user-skills",
+        icon: Award,
+        requiredPermission: "driver_skill:read",
+      },
+      {
         title: "Campos personalizados",
         href: "/custom-fields",
         icon: ListChecks,

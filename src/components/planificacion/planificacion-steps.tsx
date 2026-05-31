@@ -736,7 +736,7 @@ export function ConfigStep() {
 
       {/* Action buttons */}
       <div className="p-4 border-t space-y-2">
-        <Can perm="plan:create">
+        <Can allOf={["optimization_config:create", "optimization_job:create"]}>
           <Button
             className="w-full"
             size="lg"

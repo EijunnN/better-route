@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { Can } from "@/components/auth/can";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -201,43 +202,47 @@ function CompactRouteCard({
             </Badge>
           )}
           {otherRoutes.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6"
-                  disabled={isSwapping}
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label="Intercambiar ruta"
-                >
-                  {isSwapping ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <ArrowLeftRight className="size-3.5" />
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Intercambiar ruta con…</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {otherRoutes.map((other) => (
-                  <DropdownMenuItem
-                    key={other.vehicleId}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      swapVehicleRoutes(route.vehicleId, other.vehicleId);
-                    }}
+            <Can perm="plan:update">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6"
+                    disabled={isSwapping}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Intercambiar ruta"
                   >
-                    <Truck className="size-4 mr-2 shrink-0" />
-                    <span className="truncate">{other.vehicleIdentifier}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {other.stops.length} paradas
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    {isSwapping ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <ArrowLeftRight className="size-3.5" />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Intercambiar ruta con…</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {otherRoutes.map((other) => (
+                    <DropdownMenuItem
+                      key={other.vehicleId}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        swapVehicleRoutes(route.vehicleId, other.vehicleId);
+                      }}
+                    >
+                      <Truck className="size-4 mr-2 shrink-0" />
+                      <span className="truncate">
+                        {other.vehicleIdentifier}
+                      </span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {other.stops.length} paradas
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Can>
           )}
           <Button
             variant="ghost"
@@ -534,10 +539,9 @@ function UnassignedOrdersPanel() {
 
 // Dashboard Header
 export function DashboardHeader() {
-  const { state, actions, meta, derived } = useOptimizationDashboard();
+  const { actions, meta } = useOptimizationDashboard();
   const { setConfirmDialogOpen } = actions;
   const { result, isPartial, onReoptimize, onConfirm, onBack, jobId } = meta;
-  const { companyId } = derived;
 
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b bg-background shrink-0">
@@ -655,10 +659,12 @@ export function DashboardHeader() {
           </Button>
         )}
         {onConfirm && jobId && (
-          <Button size="sm" onClick={() => setConfirmDialogOpen(true)}>
-            <CheckCircle2 className="size-4 mr-2" />
-            Confirmar
-          </Button>
+          <Can perm="plan:confirm">
+            <Button size="sm" onClick={() => setConfirmDialogOpen(true)}>
+              <CheckCircle2 className="size-4 mr-2" />
+              Confirmar
+            </Button>
+          </Can>
         )}
       </div>
     </div>
@@ -751,10 +757,12 @@ export function DashboardRoutesPanel() {
                 Limpiar
               </Button>
             </div>
-            <Button size="sm" onClick={openReassignModal}>
-              <ArrowRight className="size-4 mr-2" />
-              Reasignar
-            </Button>
+            <Can perm="plan:update">
+              <Button size="sm" onClick={openReassignModal}>
+                <ArrowRight className="size-4 mr-2" />
+                Reasignar
+              </Button>
+            </Can>
           </div>
         </div>
       )}

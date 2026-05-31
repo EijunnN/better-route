@@ -325,6 +325,8 @@ function OrderRow({
               <Eye className="size-4" />
             </Link>
           </Button>
+        </Can>
+        <Can perm="order:update">
           <Button
             variant="ghost"
             size="sm"
@@ -334,8 +336,6 @@ function OrderRow({
           >
             <Link2 className="size-4" />
           </Button>
-        </Can>
-        <Can perm="order:update">
           <Button
             variant="ghost"
             size="sm"

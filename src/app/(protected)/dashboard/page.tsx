@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -186,7 +187,7 @@ function ActiveDriverItem({
   );
 }
 
-export default async function DashboardPage() {
+async function DashboardContent() {
   const companyId = await getCompanyId();
 
   // Redirect ADMIN_SISTEMA to onboarding if no companies exist
@@ -524,5 +525,13 @@ export default async function DashboardPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default async function DashboardPage() {
+  return (
+    <ProtectedPage requiredPermission="metrics:read">
+      <DashboardContent />
+    </ProtectedPage>
   );
 }
