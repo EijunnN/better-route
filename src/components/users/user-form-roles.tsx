@@ -62,12 +62,20 @@ export function UserFormRoles() {
               return (
                 <div
                   key={role.id}
+                  role="button"
+                  tabIndex={0}
                   className={`rounded-lg border p-2 cursor-pointer transition-colors ${
                     isSelected
                       ? "border-primary bg-primary/5"
                       : "hover:border-muted-foreground/50"
                   }`}
                   onClick={() => handleExpandRole(role.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleExpandRole(role.id);
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-2">
                     <Switch

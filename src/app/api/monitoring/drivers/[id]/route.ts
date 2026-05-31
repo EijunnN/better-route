@@ -391,10 +391,7 @@ export async function GET(
       failureReason: stop.failureReason,
       timeWindowStart: stop.timeWindowStart?.toISOString() || null,
       timeWindowEnd: stop.timeWindowEnd?.toISOString() || null,
-      workflowState: projectWorkflowState(
-        stop.status as SystemState,
-        policy,
-      ),
+      workflowState: projectWorkflowState(stop.status as SystemState, policy),
       zone: stop.zone
         ? {
             id: stop.zone.id,

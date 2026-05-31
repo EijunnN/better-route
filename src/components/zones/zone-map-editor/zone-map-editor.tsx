@@ -89,7 +89,10 @@ export function ZoneMapEditor({
     }
   }, [initialGeometry]);
 
-  // Initialize map
+  // Initialize map. This is an init-once MapLibre setup; re-running on every
+  // prop change would tear down the canvas. Theme changes are handled by the
+  // separate effect below.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only init effect; listed deps would recreate the map and tear down the canvas
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
@@ -137,9 +140,6 @@ export function ZoneMapEditor({
       console.error("Failed to initialize map:", error);
       setIsLoading(false);
     }
-    // biome-ignore lint/correctness/useExhaustiveDependencies: init-once
-    // MapLibre setup; re-running on every prop change would tear down
-    // the canvas. Theme changes are handled by the separate effect below.
   }, []);
 
   // React to theme changes at runtime (skip first run - layers added in "load")

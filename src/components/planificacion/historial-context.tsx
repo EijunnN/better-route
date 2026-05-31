@@ -201,7 +201,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
           },
         ) => {
           // Parse result JSON string from API
-          let parsedResult;
+          let parsedResult: unknown;
           if (job.result) {
             try {
               parsedResult =

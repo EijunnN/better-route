@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import useSWR from "swr";
 
 interface User {
@@ -71,15 +71,15 @@ export function useAuth(): UseAuthReturn {
   });
 
   // Clear refresh timer
-  const clearRefreshTimer = () => {
+  const clearRefreshTimer = useCallback(() => {
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
       refreshTimerRef.current = null;
     }
-  };
+  }, []);
 
   // Refresh the access token
-  const refreshToken = async (): Promise<boolean> => {
+  const refreshToken = useCallback(async (): Promise<boolean> => {
     // Prevent concurrent refresh attempts
     if (isRefreshingRef.current) {
       return true;
@@ -110,10 +110,10 @@ export function useAuth(): UseAuthReturn {
     } finally {
       isRefreshingRef.current = false;
     }
-  };
+  }, []);
 
   // Schedule next token refresh
-  const scheduleRefresh = () => {
+  const scheduleRefresh = useCallback(() => {
     clearRefreshTimer();
 
     // Schedule refresh 2 minutes before token expires
@@ -129,7 +129,7 @@ export function useAuth(): UseAuthReturn {
         window.location.href = "/login";
       }
     }, refreshIn);
-  };
+  }, [clearRefreshTimer, refreshToken]);
 
   // Schedule token refresh when user is loaded
   useEffect(() => {

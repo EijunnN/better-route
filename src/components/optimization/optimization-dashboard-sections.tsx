@@ -153,8 +153,16 @@ function CompactRouteCard({
       }}
     >
       <div
+        role="button"
+        tabIndex={0}
         className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50"
         onClick={handleSelect}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleSelect();
+          }
+        }}
       >
         <div
           className="size-8 rounded-lg flex items-center justify-center shrink-0"
@@ -310,23 +318,31 @@ function CompactRouteCard({
                       const orderId =
                         stop.groupedOrderIds?.[subIndex] || stop.orderId;
                       const selected = isOrderSelected(orderId);
+                      const handleToggle = () =>
+                        toggleOrderSelection(
+                          orderId,
+                          trackingId,
+                          stop.address,
+                          route.vehicleId,
+                          route.vehicleIdentifier,
+                          route.routeId,
+                        );
                       return (
                         <div
                           key={`${stop.orderId}-${subIndex}`}
+                          role="button"
+                          tabIndex={0}
                           className={cn(
                             "flex items-center gap-2 px-2 py-1.5 text-xs group cursor-pointer transition-colors",
                             selected ? "bg-primary/10" : "hover:bg-accent/50",
                           )}
-                          onClick={() =>
-                            toggleOrderSelection(
-                              orderId,
-                              trackingId,
-                              stop.address,
-                              route.vehicleId,
-                              route.vehicleIdentifier,
-                              route.routeId,
-                            )
-                          }
+                          onClick={handleToggle}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleToggle();
+                            }
+                          }}
                         >
                           <div
                             className={cn(
@@ -361,23 +377,31 @@ function CompactRouteCard({
                 }
 
                 const selected = isOrderSelected(stop.orderId);
+                const handleToggle = () =>
+                  toggleOrderSelection(
+                    stop.orderId,
+                    stop.trackingId,
+                    stop.address,
+                    route.vehicleId,
+                    route.vehicleIdentifier,
+                    route.routeId,
+                  );
                 return (
                   <div
                     key={stop.orderId}
+                    role="button"
+                    tabIndex={0}
                     className={cn(
                       "flex items-center gap-2 px-2 py-1.5 text-xs group cursor-pointer transition-colors",
                       selected ? "bg-primary/10" : "hover:bg-accent/50",
                     )}
-                    onClick={() =>
-                      toggleOrderSelection(
-                        stop.orderId,
-                        stop.trackingId,
-                        stop.address,
-                        route.vehicleId,
-                        route.vehicleIdentifier,
-                        route.routeId,
-                      )
-                    }
+                    onClick={handleToggle}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleToggle();
+                      }
+                    }}
                   >
                     <div
                       className={cn(
@@ -430,6 +454,7 @@ function UnassignedOrdersPanel() {
   return (
     <div className="border border-orange-200 dark:border-orange-800/50 rounded-lg bg-orange-50/50 dark:bg-orange-950/20 overflow-hidden">
       <button
+        type="button"
         onClick={() => setUnassignedExpanded(!unassignedExpanded)}
         className="w-full flex items-center justify-between px-3 py-2 hover:bg-orange-100/50 dark:hover:bg-orange-900/30 transition-colors"
       >
@@ -451,25 +476,33 @@ function UnassignedOrdersPanel() {
           <div className="space-y-1 pt-2">
             {orders.map((order) => {
               const selected = isOrderSelected(order.orderId);
+              const handleToggle = () =>
+                toggleOrderSelection(
+                  order.orderId,
+                  order.trackingId,
+                  order.address || "Sin direccion",
+                  null,
+                  null,
+                  null,
+                );
               return (
                 <div
                   key={order.orderId}
+                  role="button"
+                  tabIndex={0}
                   className={cn(
                     "flex items-center gap-2 text-xs py-1.5 px-2 -mx-2 rounded cursor-pointer transition-colors",
                     selected
                       ? "bg-primary/10"
                       : "hover:bg-orange-100/50 dark:hover:bg-orange-900/30",
                   )}
-                  onClick={() =>
-                    toggleOrderSelection(
-                      order.orderId,
-                      order.trackingId,
-                      order.address || "Sin direccion",
-                      null,
-                      null,
-                      null,
-                    )
-                  }
+                  onClick={handleToggle}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleToggle();
+                    }
+                  }}
                 >
                   <div
                     className={cn(
@@ -859,9 +892,9 @@ export function ReassignmentDialog() {
         <div className="space-y-4 overflow-hidden">
           {/* Selected orders list */}
           <div className="space-y-1">
-            <label className="text-sm font-medium text-muted-foreground">
+            <span className="text-sm font-medium text-muted-foreground">
               Pedidos seleccionados:
-            </label>
+            </span>
             <div className="max-h-24 overflow-y-auto border rounded-lg p-2 space-y-1">
               {selectedOrdersForReassign.map((order) => (
                 <div
@@ -882,7 +915,7 @@ export function ReassignmentDialog() {
 
           {/* Vehicle selection */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Reasignar a:</label>
+            <span className="text-sm font-medium">Reasignar a:</span>
             <div className="max-h-48 overflow-y-auto space-y-1 border rounded-lg p-2">
               {availableVehicles.map((vehicle) => (
                 <button

@@ -229,6 +229,8 @@ export function FleetForm({
               filteredVehicles.map((vehicle) => (
                 <div
                   key={vehicle.id}
+                  role="button"
+                  tabIndex={0}
                   className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded cursor-pointer transition-colors ${
                     selectedVehicleIds.includes(vehicle.id)
                       ? "bg-primary/10"
@@ -237,6 +239,12 @@ export function FleetForm({
                   onClick={(e) => {
                     if (!e.nativeEvent.isTrusted) return;
                     toggleVehicleSelection(vehicle.id);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleVehicleSelection(vehicle.id);
+                    }
                   }}
                 >
                   <Checkbox

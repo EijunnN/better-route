@@ -69,6 +69,8 @@ export function RolesListView() {
                   {state.roles.map((role) => (
                     <div
                       key={role.id}
+                      role="button"
+                      tabIndex={0}
                       className={`p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
                         state.selectedRole?.id === role.id ? "bg-muted" : ""
                       }`}

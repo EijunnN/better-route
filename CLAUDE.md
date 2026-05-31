@@ -89,6 +89,38 @@ src/components/<feature>/
 
 ---
 
+## Convenciones de React / hooks
+
+El hilo común: mantener los hooks **estables y honestos**. La mayoría de los
+problemas de `useExhaustiveDependencies` nacen de un effect que no debería
+existir.
+
+- **`useEffect` solo para sincronizar con sistemas externos** (MapLibre,
+  timers, suscripciones, listeners del DOM). Antes de escribir uno:
+  - Data fetching → `useApiData` / SWR (`src/hooks/use-api.ts`), nunca
+    `fetch` dentro de `useEffect`.
+  - Estado derivado de props/state → calcularlo en el render (o `useMemo`),
+    no un effect que llama `setState`.
+  - Reacción a una acción del usuario → en el handler del evento.
+- **Data fetching compartido entre módulos** → hook de dominio sobre
+  `useApiData` en `src/hooks/queries/` (barrel en `index.ts`), p. ej.
+  `useDrivers`, `useVehicleList`, `useCompanyProfile`. Varios consumidores de la
+  misma URL comparten una entrada de caché SWR; los context (`useVehicles`, …)
+  consumen estos hooks en lugar de `fetch` en `useEffect`. Los tipos de dominio
+  aún viven en sus features y se importan con `import type` (sin ciclo runtime).
+- **`useExhaustiveDependencies` se arregla con `useCallback` / `useMemo`**, no
+  con `biome-ignore`. Envolvé el closure con sus deps reales y listalo en el
+  array del effect. Único caso donde `biome-ignore` es legítimo: effects
+  `init-once` (montaje de una librería imperativa como MapLibre), con el
+  comentario justo encima del `useEffect`.
+- **Filas / cards clicables**: `<button type="button">` si no anidan controles
+  interactivos; si anidan (Switch, dropdown, botón de borrar), usar
+  `<div role="button" tabIndex={0} onKeyDown>` espejando el `onClick` en
+  Enter/Espacio. `a11y/useSemanticElements` está desactivada a propósito por
+  este patrón (Radix/shadcn).
+
+---
+
 ## Optimización (VROOM)
 
 - Único solver: VROOM. PyVRP fue removido por timeouts a escala.
@@ -107,6 +139,11 @@ src/components/<feature>/
 - `bun test` — todos los tests.
 - `bun test src/tests/unit` — solo unit tests.
 - `bun run tsc --noEmit` — type check.
-- `bun run lint` — ESLint.
+- `bun run lint` — Biome (`biome check`).
+- `bun run lint:summary` — resumen de lint agrupado por regla y severidad
+  (útil cuando `biome check` trunca la salida a 20 diagnósticos).
 
 Tests integration tocan DB real — requieren Postgres up.
+
+Un hook `Stop` (`.claude/settings.json`) corre `biome check` al terminar cada
+turno y bloquea si hay errores de lint/formato.

@@ -4,6 +4,8 @@ export const LogoAnt = ({ className }: { className?: string }) => {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 100 100"
       fill="none"
+      role="img"
+      aria-label="BetterRoute"
       className={className} // Permite ajustar tamaño con clases de Tailwind (ej: w-12 h-12)
     >
       {/* Patas traseras y delanteras: Usan 'currentColor' o variable foreground */}

@@ -212,7 +212,15 @@ function ZoneListItem({
 }) {
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       className={`p-4 rounded-lg border cursor-pointer transition-colors ${
         isSelected
           ? "border-primary bg-primary/5 shadow-sm"

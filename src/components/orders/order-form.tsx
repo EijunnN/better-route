@@ -3,6 +3,7 @@
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -44,15 +45,16 @@ function OrderFormContent() {
         if (!open) onCancel?.();
       }}
     >
-      <SheetContent
-        side="right"
-        size="lg"
-        className="flex flex-col p-0 gap-0"
-      >
+      <SheetContent side="right" size="lg" className="flex flex-col p-0 gap-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b">
           <SheetTitle>
             {isEditing ? "Editar Pedido" : "Crear Pedido"}
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            {isEditing
+              ? "Formulario para editar los datos del pedido"
+              : "Formulario para registrar un nuevo pedido"}
+          </SheetDescription>
         </SheetHeader>
 
         <form

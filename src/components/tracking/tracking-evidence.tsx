@@ -64,7 +64,7 @@ export function TrackingEvidence({
             <div className="grid grid-cols-3 gap-2">
               {evidenceUrls.map((url, idx) => (
                 <button
-                  key={idx}
+                  key={url}
                   type="button"
                   onClick={() => setActiveIndex(idx)}
                   className="block aspect-square overflow-hidden rounded-lg border border-border/60 transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"

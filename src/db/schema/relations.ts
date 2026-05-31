@@ -565,7 +565,6 @@ export const companyFieldDefinitionsRelations = relations(
   }),
 );
 
-
 export const trackingTokensRelations = relations(trackingTokens, ({ one }) => ({
   company: one(companies, {
     fields: [trackingTokens.companyId],

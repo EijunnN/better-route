@@ -92,11 +92,11 @@ export function TimePicker({
       <PopoverContent className="w-auto p-4" align="start">
         <div className="flex gap-2">
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">
               Hora
-            </label>
+            </span>
             <Select value={selectedHour} onValueChange={handleHourChange}>
-              <SelectTrigger className="w-[70px]">
+              <SelectTrigger className="w-[70px]" aria-label="Hora">
                 <SelectValue placeholder="--" />
               </SelectTrigger>
               <SelectContent>
@@ -109,11 +109,11 @@ export function TimePicker({
             </Select>
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">
               Min
-            </label>
+            </span>
             <Select value={selectedMinute} onValueChange={handleMinuteChange}>
-              <SelectTrigger className="w-[70px]">
+              <SelectTrigger className="w-[70px]" aria-label="Minutos">
                 <SelectValue placeholder="--" />
               </SelectTrigger>
               <SelectContent>

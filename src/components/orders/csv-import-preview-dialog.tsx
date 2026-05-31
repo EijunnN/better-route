@@ -381,8 +381,11 @@ function InvalidTable({ rows }: { rows: PreviewInvalidRow[] }) {
             <Td>{r.row}</Td>
             <Td className="font-mono text-xs">{r.trackingId ?? "—"}</Td>
             <Td className="space-y-0.5">
-              {r.errors.map((e, i) => (
-                <div key={i} className="text-xs text-destructive">
+              {r.errors.map((e) => (
+                <div
+                  key={`${e.field}-${e.message}`}
+                  className="text-xs text-destructive"
+                >
                   <span className="font-medium">{e.field}:</span> {e.message}
                 </div>
               ))}

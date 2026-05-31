@@ -23,7 +23,7 @@ export function FleetsListView() {
   const { state, actions } = useFleets();
 
   return (
-    <div className="flex-1 bg-background p-8">
+    <div className="flex-1 p-8">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -170,7 +170,7 @@ export function FleetsFormView() {
   const { state, actions } = useFleets();
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-background p-4">
+    <div className="flex-1 flex flex-col overflow-hidden p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
           <h1 className="text-lg font-semibold text-foreground">

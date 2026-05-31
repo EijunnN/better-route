@@ -97,10 +97,7 @@ export async function POST(request: NextRequest) {
             .values(presetValues)
             .returning();
         })
-      : await db
-          .insert(optimizationPresets)
-          .values(presetValues)
-          .returning();
+      : await db.insert(optimizationPresets).values(presetValues).returning();
 
     return NextResponse.json({ data: preset }, { status: 201 });
   } catch (error) {

@@ -7,10 +7,7 @@ import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-import {
-  ALLOWED_TRANSITIONS,
-  SYSTEM_STATE_ORDER,
-} from "@/lib/workflow/states";
+import { ALLOWED_TRANSITIONS, SYSTEM_STATE_ORDER } from "@/lib/workflow/states";
 
 /**
  * GET /api/mobile/driver/delivery-policy

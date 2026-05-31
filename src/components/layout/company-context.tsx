@@ -49,7 +49,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
   const isSystemAdmin = user?.role === "ADMIN_SISTEMA";
 
-  const setSelectedCompanyId = (id: string | null) => {
+  const setSelectedCompanyId = useCallback((id: string | null) => {
     setSelectedCompanyIdState(id);
     if (typeof window !== "undefined") {
       if (id) {
@@ -58,7 +58,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
-  };
+  }, []);
 
   const effectiveCompanyId =
     isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;

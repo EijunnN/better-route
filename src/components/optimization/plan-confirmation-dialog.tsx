@@ -8,7 +8,7 @@ import {
   Loader2,
   Upload,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -151,8 +151,11 @@ export function PlanConfirmationDialog({
     Record<string, string>
   >({});
 
-  // Fetch drivers (users with role CONDUCTOR) for the company
-  const fetchDrivers = async () => {
+  // Fetch drivers (users with role CONDUCTOR) for the company.
+  // Wrapped in useCallback so the [open] effect below doesn't re-fire
+  // on every render — without this the dialog hammered both this
+  // endpoint and /validate in an infinite loop.
+  const fetchDrivers = useCallback(async () => {
     try {
       const response = await fetch("/api/users?role=CONDUCTOR&active=true", {
         headers: {
@@ -166,9 +169,9 @@ export function PlanConfirmationDialog({
     } catch (err) {
       console.error("Error fetching drivers:", err);
     }
-  };
+  }, [companyId]);
 
-  const validatePlan = async () => {
+  const validatePlan = useCallback(async () => {
     setIsValidating(true);
     setError(null);
 
@@ -225,7 +228,7 @@ export function PlanConfirmationDialog({
     } finally {
       setIsValidating(false);
     }
-  };
+  }, [companyId, jobId]);
 
   useEffect(() => {
     if (open) {
@@ -477,8 +480,8 @@ export function PlanConfirmationDialog({
                           {validationResult.issues
                             .filter((issue) => issue.severity === "WARNING")
                             .slice(0, 5)
-                            .map((issue, idx) => (
-                              <li key={idx} className="list-disc">
+                            .map((issue) => (
+                              <li key={issue.message} className="list-disc">
                                 {issue.message}
                               </li>
                             ))}

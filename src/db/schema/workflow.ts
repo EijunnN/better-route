@@ -79,9 +79,7 @@ export const companyDeliveryPolicy = pgTable("company_delivery_policy", {
   failedRequiresPhoto: boolean("failed_requires_photo")
     .notNull()
     .default(false),
-  failedRequiresNotes: boolean("failed_requires_notes")
-    .notNull()
-    .default(true),
+  failedRequiresNotes: boolean("failed_requires_notes").notNull().default(true),
 
   // Closed list of reason strings the driver picks from when failing
   // a stop. Stored as JSONB array; the UI presents it as a tags input.

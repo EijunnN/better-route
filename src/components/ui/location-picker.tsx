@@ -2,7 +2,7 @@
 
 import { MapPin, Search } from "lucide-react";
 import maplibregl, { type Map as MapLibreMap, type Marker } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useTheme } from "@/components/layout/theme-context";
 import { getMapStyle } from "@/lib/map-styles";
@@ -36,7 +36,33 @@ export function LocationPicker({
   const [isSearching, setIsSearching] = useState(false);
   const { isDark } = useTheme();
 
-  // Initialize map
+  const addMarker = useCallback((lng: number, lat: number) => {
+    if (!map.current) return;
+
+    // Remove existing marker
+    if (marker.current) {
+      marker.current.remove();
+    }
+
+    // Create custom marker element
+    const el = document.createElement("div");
+    el.className = "location-marker";
+    el.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+        <circle cx="12" cy="10" r="3" fill="#ef4444"/>
+      </svg>
+    `;
+
+    marker.current = new maplibregl.Marker({ element: el, anchor: "bottom" })
+      .setLngLat([lng, lat])
+      .addTo(map.current);
+  }, []);
+
+  // Initialize map. Mount-only MapLibre setup — re-running on every prop
+  // change would tear down and rebuild the instance. The "Update marker when
+  // value changes" effect below handles prop reactivity.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only init effect; listed deps would tear down and rebuild the map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
@@ -94,11 +120,6 @@ export function LocationPicker({
         map.current = null;
       }
     };
-    // biome-ignore lint/correctness/useExhaustiveDependencies: init-once
-    // map setup — re-running on every prop change would tear down and
-    // rebuild the MapLibre instance, which is what we explicitly do not
-    // want. The "Update marker when value changes" effect below
-    // handles prop reactivity.
   }, []);
 
   // Update marker when value changes externally
@@ -113,33 +134,7 @@ export function LocationPicker({
         map.current.flyTo({ center: [lng, lat], zoom: 15 });
       }
     }
-    // biome-ignore lint/correctness/useExhaustiveDependencies: addMarker
-    // is a stable local closure over refs only; including it in deps
-    // creates a use-before-declaration loop.
-  }, [value?.lat, value?.lng, isLoading]);
-
-  const addMarker = (lng: number, lat: number) => {
-    if (!map.current) return;
-
-    // Remove existing marker
-    if (marker.current) {
-      marker.current.remove();
-    }
-
-    // Create custom marker element
-    const el = document.createElement("div");
-    el.className = "location-marker";
-    el.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
-        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-        <circle cx="12" cy="10" r="3" fill="#ef4444"/>
-      </svg>
-    `;
-
-    marker.current = new maplibregl.Marker({ element: el, anchor: "bottom" })
-      .setLngLat([lng, lat])
-      .addTo(map.current);
-  };
+  }, [value?.lat, value?.lng, isLoading, addMarker]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || isSearching) return;

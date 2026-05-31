@@ -1,9 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import {
-  GET,
-  PUT,
-} from "@/app/api/companies/[id]/delivery-policy/route";
+import { GET, PUT } from "@/app/api/companies/[id]/delivery-policy/route";
 import { companyDeliveryPolicy } from "@/db/schema";
 import { seedDefaultDeliveryPolicy } from "@/lib/workflow/seed-defaults";
 import { createTestToken } from "../setup/test-auth";

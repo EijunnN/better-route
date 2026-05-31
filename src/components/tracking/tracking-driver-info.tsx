@@ -96,8 +96,7 @@ function DriverActionButton({
       <span
         className={`${className} cursor-not-allowed opacity-40`}
         style={style}
-        aria-label={label}
-        aria-disabled="true"
+        aria-hidden="true"
       >
         {icon}
       </span>

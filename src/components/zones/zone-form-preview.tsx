@@ -1,9 +1,9 @@
 "use client";
 
 import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Map, PenTool } from "lucide-react";
+import { Map as MapIcon, PenTool } from "lucide-react";
 import { useTheme } from "@/components/layout/theme-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +33,7 @@ export function ZoneFormPreview({
   const themeInitRef = useRef(false);
 
   // Parse geometry — accept string or already-parsed object
-  const parsedGeometry = (() => {
+  const parsedGeometry = useMemo(() => {
     if (!geometry) return null;
     try {
       const parsed =
@@ -45,43 +45,46 @@ export function ZoneFormPreview({
     } catch {
       return null;
     }
-  })();
+  }, [geometry]);
 
   // Helper to add zone source/layer
-  const addZoneLayer = (mapInstance: MapLibreMap) => {
-    if (!parsedGeometry?.coordinates?.[0]) return;
+  const addZoneLayer = useCallback(
+    (mapInstance: MapLibreMap) => {
+      if (!parsedGeometry?.coordinates?.[0]) return;
 
-    setHasGeometry(true);
+      setHasGeometry(true);
 
-    mapInstance.addSource("zone", {
-      type: "geojson",
-      data: {
-        type: "Feature",
-        properties: {},
-        geometry: parsedGeometry,
-      },
-    });
+      mapInstance.addSource("zone", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: parsedGeometry,
+        },
+      });
 
-    mapInstance.addLayer({
-      id: "zone-fill",
-      type: "fill",
-      source: "zone",
-      paint: {
-        "fill-color": color,
-        "fill-opacity": 0.3,
-      },
-    });
+      mapInstance.addLayer({
+        id: "zone-fill",
+        type: "fill",
+        source: "zone",
+        paint: {
+          "fill-color": color,
+          "fill-opacity": 0.3,
+        },
+      });
 
-    mapInstance.addLayer({
-      id: "zone-outline",
-      type: "line",
-      source: "zone",
-      paint: {
-        "line-color": color,
-        "line-width": 2,
-      },
-    });
-  };
+      mapInstance.addLayer({
+        id: "zone-outline",
+        type: "line",
+        source: "zone",
+        paint: {
+          "line-color": color,
+          "line-width": 2,
+        },
+      });
+    },
+    [parsedGeometry, color],
+  );
 
   // Initialize map
   useEffect(() => {
@@ -136,7 +139,7 @@ export function ZoneFormPreview({
       console.error("Failed to initialize map:", error);
       setIsLoading(false);
     }
-  }, [addZoneLayer, isDark, parsedGeometry.coordinates[0]]);
+  }, [addZoneLayer, isDark, parsedGeometry]);
 
   // Handle runtime theme changes (skip first run - layers added in "load")
   // In MapLibre v5 diff mode, style.load fires synchronously during setStyle(),
@@ -188,7 +191,7 @@ export function ZoneFormPreview({
             className="size-16 rounded-full flex items-center justify-center mb-4"
             style={{ backgroundColor: `${color}20` }}
           >
-            <Map className="size-8" style={{ color }} />
+            <MapIcon className="size-8" style={{ color }} />
           </div>
           <p className="text-sm text-muted-foreground mb-4 text-center px-4">
             No hay área definida.

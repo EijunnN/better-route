@@ -179,6 +179,8 @@ export function UserImportDialog({
 
           {/* File upload area */}
           <div
+            role="button"
+            tabIndex={-1}
             className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
               dragActive
                 ? "border-primary bg-primary/5"
@@ -260,8 +262,8 @@ export function UserImportDialog({
                     {result.errors.length > 1 ? "es" : ""}:
                   </p>
                   <ul className="list-disc list-inside text-xs max-h-32 overflow-y-auto">
-                    {result.errors.slice(0, 10).map((err, i) => (
-                      <li key={i}>
+                    {result.errors.slice(0, 10).map((err) => (
+                      <li key={`${err.row}-${err.field}-${err.message}`}>
                         Fila {err.row}: {err.field} - {err.message}
                       </li>
                     ))}

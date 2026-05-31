@@ -189,12 +189,20 @@ export function RecentEventsPanel({
               return (
                 <div
                   key={event.id}
+                  role="button"
+                  tabIndex={0}
                   className={cn(
                     "p-2.5 rounded-lg border cursor-pointer transition-all hover:shadow-sm",
                     event.type === "FAILED" &&
                       "border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20",
                   )}
                   onClick={() => onEventClick?.(event)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onEventClick?.(event);
+                    }
+                  }}
                 >
                   <div className="flex items-start gap-2">
                     {/* Icon */}
