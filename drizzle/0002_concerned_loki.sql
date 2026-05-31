@@ -1,1 +1,0 @@
-ALTER TABLE "optimization_configurations" ADD COLUMN "optimizer_type" varchar(20) DEFAULT 'VROOM' NOT NULL;

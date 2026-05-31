@@ -1,1 +1,0 @@
-ALTER TABLE "optimization_presets" DROP COLUMN "vehicle_recharge_time";
