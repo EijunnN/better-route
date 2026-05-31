@@ -197,6 +197,22 @@ export async function POST(
       );
     }
 
+    // Apply the user's driver dropdown picks BEFORE validation/insert.
+    // The dialog lets the operator reassign drivers per vehicle, but
+    // we'd previously ignored that map and used `route.driverId` from
+    // the optimizer output — so a route that came back with no driver
+    // (or with a different one) silently dropped the operator's pick.
+    // Now we mutate the result in place so both the validation pass
+    // and the routeStops insert see the post-edit assignments.
+    if (data.driverAssignments) {
+      for (const route of result.routes) {
+        const picked = data.driverAssignments[route.vehicleId];
+        if (picked && picked.length > 0) {
+          route.driverId = picked;
+        }
+      }
+    }
+
     // Validate the plan before confirmation
     const validationResult = await validatePlanForConfirmation(
       tenantContext.companyId,

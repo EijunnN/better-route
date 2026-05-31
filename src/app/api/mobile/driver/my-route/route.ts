@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt, notInArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
@@ -361,6 +361,11 @@ export async function GET(request: NextRequest) {
       .map((s) => s.orderId)
       .filter(Boolean) as string[];
     const stopIds = stops.map((s) => s.id);
+    // Use notInArray instead of `!= ALL(${stopIds})` — drizzle's
+    // sql template binds an array as a single string parameter (e.g.
+    // `'uuid-1'` instead of `'{uuid-1}'`), which makes Postgres throw
+    // "malformed array literal" on a single-element list. notInArray
+    // expands to `col NOT IN (...)` and binds each element separately.
     const priorVisitsRaw = stopOrderIds.length
       ? await db
           .select({
@@ -373,7 +378,7 @@ export async function GET(request: NextRequest) {
               eq(deliveryVisits.companyId, tenantCtx.companyId),
               inArray(deliveryVisits.orderId, stopOrderIds),
               stopIds.length > 0
-                ? sql`${deliveryVisits.routeStopId} != ALL(${stopIds})`
+                ? notInArray(deliveryVisits.routeStopId, stopIds)
                 : undefined,
             ),
           )
