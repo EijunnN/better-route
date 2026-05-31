@@ -14,7 +14,6 @@ export type MonitoringEventKind =
   | "stop.started"
   | "stop.completed"
   | "stop.failed"
-  | "stop.skipped"
   | "stop.transitioned"
   | "driver.location";
 
@@ -47,7 +46,6 @@ const STATUS_TO_KIND: Record<string, StopEvent["kind"]> = {
   IN_PROGRESS: "stop.started",
   COMPLETED: "stop.completed",
   FAILED: "stop.failed",
-  SKIPPED: "stop.skipped",
 };
 
 /**

@@ -56,7 +56,7 @@ describe("Visit foundation (issue 001)", () => {
     longitude?: string;
     /** Set to true to leave the Stop in PENDING; default IN_PROGRESS so
      *  COMPLETED/FAILED transitions are valid (PENDING can only transition
-     *  to IN_PROGRESS, FAILED, or SKIPPED). */
+     *  to IN_PROGRESS or FAILED). */
     keepPending?: boolean;
   }) {
     const order = await createOrder({ companyId: company.id });

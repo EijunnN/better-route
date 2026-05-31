@@ -6,7 +6,6 @@ import {
   Clock,
   Loader2,
   MapPin,
-  SkipForward,
   XCircle,
 } from "lucide-react";
 import { useState } from "react";
@@ -46,7 +45,7 @@ export interface StopInfo {
   trackingId: string;
   sequence: number;
   address: string;
-  status: SystemState | "SKIPPED";
+  status: SystemState;
   estimatedArrival?: string | null;
   timeWindowStart?: string | null;
   timeWindowEnd?: string | null;
@@ -73,7 +72,6 @@ const STATUS_ICONS: Record<SystemState, typeof Clock> = {
   IN_PROGRESS: Loader2,
   COMPLETED: CheckCircle2,
   FAILED: XCircle,
-  CANCELLED: SkipForward,
 };
 
 /**
@@ -81,14 +79,11 @@ const STATUS_ICONS: Record<SystemState, typeof Clock> = {
  * stop's current status. Includes the current status itself so the
  * UI shows it as "Actual" (disabled) for context.
  */
-function nextStatesFor(current: SystemState | "SKIPPED"): SystemState[] {
-  // `SKIPPED` is a legacy alias of CANCELLED used in older route_stops
-  // rows — treat it the same here for transition purposes.
-  const normalized: SystemState = current === "SKIPPED" ? "CANCELLED" : current;
-  const next = ALLOWED_TRANSITIONS[normalized];
+function nextStatesFor(current: SystemState): SystemState[] {
+  const next = ALLOWED_TRANSITIONS[current];
   // Include the current state at the head so the UI can mark it
   // "Actual" without a separate code path.
-  return [normalized, ...next.filter((s) => s !== normalized)];
+  return [current, ...next.filter((s) => s !== current)];
 }
 
 export function StopStatusUpdateDialog({
@@ -426,9 +421,7 @@ export function StopStatusUpdateDialog({
                   <p className="mt-1">
                     {willFailStop
                       ? "Esta parada será marcada como fallida y se creará una alerta. Puedes reintentar esta parada más tarde cambiando su estado a Pendiente."
-                      : selectedStatus === "CANCELLED"
-                        ? "Esta parada será marcada como omitida y se creará una alerta."
-                        : "Esta parada quedará cerrada — no podrá volver a cambiar de estado."}
+                      : "Esta parada quedará cerrada — no podrá volver a cambiar de estado."}
                   </p>
                 </div>
               </div>

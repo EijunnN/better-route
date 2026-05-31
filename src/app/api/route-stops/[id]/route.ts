@@ -2,8 +2,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
-  DELIVERY_FAILURE_LABELS,
-  DELIVERY_FAILURE_REASONS,
   deliveryVisits,
   orders,
   routeStopHistory,
@@ -29,7 +27,6 @@ const STOP_TO_ORDER_STATUS: Record<string, string> = {
   IN_PROGRESS: "IN_PROGRESS", // Order is in progress
   COMPLETED: "COMPLETED", // Order was completed
   FAILED: "FAILED", // Order delivery failed
-  SKIPPED: "FAILED", // Order was skipped (treat as failed)
 };
 
 // GET - Get a single route stop with details
@@ -442,19 +439,17 @@ export async function PATCH(
       throw txError;
     }
 
-    // If stop was failed or skipped, create an alert
-    if (status === "FAILED" || status === "SKIPPED") {
+    // If stop was failed, create an alert
+    if (status === "FAILED") {
       // Import alerts dynamically to avoid circular dependency
       const { createAlert } = await import("@/lib/alerts/engine");
-      const alertType = status === "FAILED" ? "STOP_FAILED" : "STOP_SKIPPED";
+      const alertType = "STOP_FAILED";
 
-      // Get failure reason label for alert description
+      // failureReason is an opaque, human-readable Spanish string drawn
+      // from the company's delivery policy (companyDeliveryPolicy.failureReasons),
+      // not a code. Use it verbatim in the alert description.
       const failureLabel =
-        status === "FAILED" && failureReason
-          ? DELIVERY_FAILURE_LABELS[
-              failureReason as keyof typeof DELIVERY_FAILURE_LABELS
-            ]
-          : null;
+        status === "FAILED" && failureReason ? failureReason : null;
 
       await createAlert(
         { companyId: tenantCtx.companyId, userId: tenantCtx.userId },

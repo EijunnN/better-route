@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  MapPin,
-  Package,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle, Clock, MapPin, Package, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 interface StopEvent {
   id: string;
-  type: "COMPLETED" | "FAILED" | "STARTED" | "SKIPPED";
+  type: "COMPLETED" | "FAILED" | "STARTED";
   stopId: string;
   trackingId: string;
   address: string;
@@ -56,12 +49,6 @@ const EVENT_CONFIG = {
     color: "text-blue-500",
     bgColor: "bg-blue-500/10",
     label: "Iniciada",
-  },
-  SKIPPED: {
-    icon: AlertTriangle,
-    color: "text-amber-500",
-    bgColor: "bg-amber-500/10",
-    label: "Omitida",
   },
 };
 

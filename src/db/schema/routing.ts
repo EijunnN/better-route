@@ -21,7 +21,6 @@ export const STOP_STATUS = {
   IN_PROGRESS: "IN_PROGRESS",
   COMPLETED: "COMPLETED",
   FAILED: "FAILED",
-  SKIPPED: "SKIPPED",
 } as const;
 
 // Valid stop status transitions
@@ -29,14 +28,20 @@ export const STOP_STATUS_TRANSITIONS: Record<
   keyof typeof STOP_STATUS,
   (keyof typeof STOP_STATUS)[]
 > = {
-  PENDING: ["IN_PROGRESS", "FAILED", "SKIPPED"],
-  IN_PROGRESS: ["COMPLETED", "FAILED", "SKIPPED", "PENDING"],
+  PENDING: ["IN_PROGRESS", "FAILED"],
+  IN_PROGRESS: ["COMPLETED", "FAILED", "PENDING"],
   COMPLETED: [], // Terminal state - no transitions allowed
-  FAILED: ["PENDING", "SKIPPED"], // Can retry or skip
-  SKIPPED: [], // Terminal state - no transitions allowed
+  FAILED: ["PENDING"], // Can retry
 };
 
-// Delivery failure reasons - required when marking a stop as FAILED
+// LEGACY failure-reason vocabulary. NOT authoritative: the canonical
+// taxonomy is the per-company free-text Spanish string list in
+// `companyDeliveryPolicy.failureReasons`, exposed via
+// GET /api/mobile/driver/delivery-policy. `route_stops.failureReason`
+// stores that exact policy string verbatim (free text), never a code.
+// These enum/label maps are retained only so legacy/test rendering
+// paths (e.g. visit-timeline) keep compiling — do not use them to
+// interpret incoming reasons.
 export const DELIVERY_FAILURE_REASONS = {
   CUSTOMER_ABSENT: "CUSTOMER_ABSENT", // Cliente ausente
   CUSTOMER_REFUSED: "CUSTOMER_REFUSED", // Cliente rechazó la entrega
@@ -108,10 +113,11 @@ export const routeStops = pgTable(
     completedAt: timestamp("completed_at"),
     // Optional notes for status changes
     notes: text("notes"),
-    // Failure tracking (required when status = FAILED). Free-text now —
-    // the picker options come from `companyDeliveryPolicy.failureReasons`
-    // per company. Legacy `DELIVERY_FAILURE_REASONS` enum keys remain
-    // valid here so historical rows keep rendering correctly.
+    // Failure tracking (required when status = FAILED). Stores the exact
+    // free-text Spanish string the driver picked from
+    // `companyDeliveryPolicy.failureReasons` (the canonical per-company
+    // taxonomy), never a code. Treated as an opaque human-readable string
+    // by the alert engine and read back verbatim.
     failureReason: varchar("failure_reason", { length: 80 }),
     // Evidence URLs for failed deliveries (photos from driver app)
     evidenceUrls: jsonb("evidence_urls").$type<string[]>(),

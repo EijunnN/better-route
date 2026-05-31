@@ -42,9 +42,6 @@ export const companyDeliveryPolicy = pgTable("company_delivery_policy", {
   labelFailed: varchar("label_failed", { length: 100 })
     .notNull()
     .default("No entregado"),
-  labelCancelled: varchar("label_cancelled", { length: 100 })
-    .notNull()
-    .default("Omitido"),
 
   colorPending: varchar("color_pending", { length: 7 })
     .notNull()
@@ -58,9 +55,6 @@ export const companyDeliveryPolicy = pgTable("company_delivery_policy", {
   colorFailed: varchar("color_failed", { length: 7 })
     .notNull()
     .default("#DC4840"),
-  colorCancelled: varchar("color_cancelled", { length: 7 })
-    .notNull()
-    .default("#9CA3AF"),
 
   // Policy on the COMPLETED transition — what evidence the driver
   // must submit to mark a stop as successfully delivered.

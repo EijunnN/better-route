@@ -11,7 +11,7 @@ import { type DeliveryPolicy, useConfiguracion } from "./configuracion-context";
 /**
  * Map a `SystemState` to the policy field names that hold its label
  * and colour. Keeps the form schema-driven without hardcoding the
- * five system states three times.
+ * four system states three times.
  */
 const STATE_FIELDS: Record<
   SystemState,
@@ -21,7 +21,6 @@ const STATE_FIELDS: Record<
   IN_PROGRESS: { label: "labelInProgress", color: "colorInProgress" },
   COMPLETED: { label: "labelCompleted", color: "colorCompleted" },
   FAILED: { label: "labelFailed", color: "colorFailed" },
-  CANCELLED: { label: "labelCancelled", color: "colorCancelled" },
 };
 
 const STATE_DESCRIPTIONS: Record<SystemState, string> = {
@@ -29,7 +28,6 @@ const STATE_DESCRIPTIONS: Record<SystemState, string> = {
   IN_PROGRESS: "El conductor abrió la parada y va en camino",
   COMPLETED: "Entrega cerrada con éxito (terminal)",
   FAILED: "Entrega fallida con motivo (terminal)",
-  CANCELLED: "Parada omitida sin intento (terminal)",
 };
 
 export function DeliveryPolicySection() {
@@ -61,7 +59,7 @@ export function DeliveryPolicySection() {
           Política de entrega
         </h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Cómo los conductores marcan estados de paradas. Los 5 estados y sus
+          Cómo los conductores marcan estados de paradas. Los 4 estados y sus
           transiciones son fijos — acá solo configurás cómo se ven y qué
           evidencia exigen.
         </p>

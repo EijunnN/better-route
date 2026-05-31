@@ -53,11 +53,6 @@ function projectWorkflowState(
       color: policy.colorFailed,
       code: "FAILED",
     },
-    CANCELLED: {
-      label: policy.labelCancelled,
-      color: policy.colorCancelled,
-      code: "CANCELLED",
-    },
   };
   return { ...map[status], systemState: status };
 }

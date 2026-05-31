@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     const recentStops = await db.query.routeStops.findMany({
       where: and(
         eq(routeStops.jobId, confirmedJob.id),
-        inArray(routeStops.status, ["COMPLETED", "FAILED", "SKIPPED"]),
+        inArray(routeStops.status, ["COMPLETED", "FAILED"]),
         gte(routeStops.updatedAt, twentyFourHoursAgo),
       ),
       columns: {
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     // Transform to event format
     const events = recentStops.map((stop) => ({
       id: stop.id,
-      type: stop.status as "COMPLETED" | "FAILED" | "SKIPPED",
+      type: stop.status as "COMPLETED" | "FAILED",
       stopId: stop.id,
       trackingId: stop.order?.trackingId || "N/A",
       address: stop.address,

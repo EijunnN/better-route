@@ -31,7 +31,7 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
   // Helper: create a fresh route stop with a new order for each test
   async function freshStop(
     overrides: {
-      status?: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED" | "SKIPPED";
+      status?: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
       userId?: string;
       failureReason?: string;
       evidenceUrls?: string[];
@@ -170,24 +170,6 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
   });
 
   // -----------------------------------------------------------------------
-  // 4. IN_PROGRESS → SKIPPED marks order as FAILED
-  // -----------------------------------------------------------------------
-  test("IN_PROGRESS → SKIPPED marks order as FAILED", async () => {
-    const { stop, order } = await freshStop({ status: "IN_PROGRESS" });
-
-    const res = await patchStop(stop.id, { status: "SKIPPED" });
-    expect(res.status).toBe(200);
-
-    const body = await res.json();
-    expect(body.data.status).toBe("SKIPPED");
-
-    const dbOrder = await testDb.query.orders.findFirst({
-      where: eq(orders.id, order.id),
-    });
-    expect(dbOrder?.status).toBe("FAILED");
-  });
-
-  // -----------------------------------------------------------------------
   // 5. FAILED → PENDING (retry) clears failureReason and evidenceUrls
   // -----------------------------------------------------------------------
   test("FAILED → PENDING (retry) clears failureReason and evidenceUrls", async () => {
@@ -228,19 +210,6 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
     const { stop } = await freshStop({ status: "COMPLETED" });
 
     const res = await patchStop(stop.id, { status: "IN_PROGRESS" });
-    expect(res.status).toBe(400);
-
-    const body = await res.json();
-    expect(body.error).toMatch(/invalid status transition/i);
-  });
-
-  // -----------------------------------------------------------------------
-  // 8. SKIPPED → anything returns 400 (terminal state)
-  // -----------------------------------------------------------------------
-  test("SKIPPED → PENDING returns 400 (terminal state)", async () => {
-    const { stop } = await freshStop({ status: "SKIPPED" });
-
-    const res = await patchStop(stop.id, { status: "PENDING" });
     expect(res.status).toBe(400);
 
     const body = await res.json();

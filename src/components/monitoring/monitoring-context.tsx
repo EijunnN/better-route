@@ -209,7 +209,6 @@ const FALLBACK_LABELS: Record<SystemState, string> = {
   IN_PROGRESS: "En progreso",
   COMPLETED: "Entregado",
   FAILED: "No entregado",
-  CANCELLED: "Omitido",
 };
 
 const FALLBACK_COLORS: Record<SystemState, string> = {
@@ -217,7 +216,6 @@ const FALLBACK_COLORS: Record<SystemState, string> = {
   IN_PROGRESS: "#3B82F6",
   COMPLETED: "#16A34A",
   FAILED: "#DC4840",
-  CANCELLED: "#9CA3AF",
 };
 
 /**
@@ -241,8 +239,6 @@ export function policyForState(
       return { label: policy.labelCompleted, color: policy.colorCompleted };
     case "FAILED":
       return { label: policy.labelFailed, color: policy.colorFailed };
-    case "CANCELLED":
-      return { label: policy.labelCancelled, color: policy.colorCancelled };
   }
 }
 

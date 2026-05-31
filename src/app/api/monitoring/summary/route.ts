@@ -145,10 +145,10 @@ export async function GET(request: NextRequest) {
       totalStops = dbStops.length;
       completedStops = dbStops.filter((s) => s.status === "COMPLETED").length;
 
-      // Count delayed stops (completed after time window or failed/skipped)
+      // Count delayed stops (completed after time window or failed)
       const now = new Date();
       delayedStops = dbStops.filter((s) => {
-        if (s.status === "FAILED" || s.status === "SKIPPED") return true;
+        if (s.status === "FAILED") return true;
         if (s.status === "COMPLETED" && s.completedAt && s.timeWindowEnd) {
           return s.completedAt > s.timeWindowEnd;
         }

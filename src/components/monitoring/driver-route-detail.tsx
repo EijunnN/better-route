@@ -167,13 +167,6 @@ const STOP_STATUS_CONFIG = {
     bgColor: "bg-red-500/10",
     borderColor: "border-red-500/30",
   },
-  SKIPPED: {
-    label: "Omitida",
-    icon: XCircle,
-    color: "text-gray-400",
-    bgColor: "bg-gray-400/10",
-    borderColor: "border-gray-400/30",
-  },
 };
 
 export function DriverRouteDetail({
@@ -314,12 +307,7 @@ export function DriverRouteDetail({
       trackingId: stop.trackingId,
       sequence: stop.sequence,
       address: stop.address,
-      status: stop.status as
-        | "PENDING"
-        | "IN_PROGRESS"
-        | "COMPLETED"
-        | "FAILED"
-        | "SKIPPED",
+      status: stop.status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED",
       estimatedArrival: stop.estimatedArrival,
       timeWindowStart: stop.timeWindowStart,
       timeWindowEnd: stop.timeWindowEnd,
@@ -339,11 +327,6 @@ export function DriverRouteDetail({
     }
     // 2. Project the system status through the company's delivery
     //    policy (canonical post-crystallization source).
-    if (stop.status === "SKIPPED") {
-      // Legacy alias for CANCELLED on older route_stops rows.
-      const projected = policyForState("CANCELLED", deliveryPolicy);
-      return { label: projected.label, color: projected.color };
-    }
     const projected = policyForState(
       stop.status as SystemState,
       deliveryPolicy,

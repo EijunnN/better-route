@@ -284,7 +284,6 @@ export async function GET(request: NextRequest) {
       (s) => s.status === "IN_PROGRESS",
     ).length;
     const failedStops = stops.filter((s) => s.status === "FAILED").length;
-    const skippedStops = stops.filter((s) => s.status === "SKIPPED").length;
 
     // Calcular metricas de distancia y duracion desde el resultado del job
     let totalDistance = 0;
@@ -478,7 +477,6 @@ export async function GET(request: NextRequest) {
           pendingStops,
           inProgressStops,
           failedStops,
-          skippedStops,
           progressPercentage:
             stops.length > 0
               ? Math.round((completedStops / stops.length) * 100)

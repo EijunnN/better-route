@@ -84,7 +84,7 @@ export async function POST(
           and(
             eq(routeStops.vehicleId, id),
             eq(routeStops.companyId, tenantCtx.companyId),
-            notInArray(routeStops.status, ["COMPLETED", "FAILED", "SKIPPED"]),
+            notInArray(routeStops.status, ["COMPLETED", "FAILED"]),
           ),
         )
         .limit(1);

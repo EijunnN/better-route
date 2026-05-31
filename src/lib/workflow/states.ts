@@ -1,7 +1,7 @@
 /**
  * Crystalized stop-status workflow.
  *
- * The five SYSTEM_STATES are the canonical workflow for every install,
+ * The four SYSTEM_STATES are the canonical workflow for every install,
  * for every company within an install. Transitions are a fixed graph
  * derived from the semantics of last-mile delivery — they're not
  * configurable per-tenant by design.
@@ -21,7 +21,6 @@ export const SYSTEM_STATES = {
   IN_PROGRESS: "IN_PROGRESS",
   COMPLETED: "COMPLETED",
   FAILED: "FAILED",
-  CANCELLED: "CANCELLED",
 } as const;
 
 export type SystemState = keyof typeof SYSTEM_STATES;
@@ -31,7 +30,6 @@ export const SYSTEM_STATE_ORDER: SystemState[] = [
   "IN_PROGRESS",
   "COMPLETED",
   "FAILED",
-  "CANCELLED",
 ];
 
 /**
@@ -41,17 +39,15 @@ export const SYSTEM_STATE_ORDER: SystemState[] = [
  * `FAILED → PENDING` is allowed so a stop can be retried.
  */
 export const ALLOWED_TRANSITIONS: Record<SystemState, SystemState[]> = {
-  PENDING: ["IN_PROGRESS", "FAILED", "CANCELLED"],
-  IN_PROGRESS: ["COMPLETED", "FAILED", "CANCELLED", "PENDING"],
+  PENDING: ["IN_PROGRESS", "FAILED"],
+  IN_PROGRESS: ["COMPLETED", "FAILED", "PENDING"],
   COMPLETED: [],
-  FAILED: ["PENDING", "CANCELLED"],
-  CANCELLED: [],
+  FAILED: ["PENDING"],
 };
 
 export const TERMINAL_STATES: ReadonlySet<SystemState> = new Set([
   "COMPLETED",
   "FAILED",
-  "CANCELLED",
 ]);
 
 export function isTerminal(state: SystemState): boolean {
@@ -72,7 +68,6 @@ export const DEFAULT_STATE_LABELS: Record<SystemState, string> = {
   IN_PROGRESS: "En progreso",
   COMPLETED: "Entregado",
   FAILED: "No entregado",
-  CANCELLED: "Omitido",
 };
 
 export const DEFAULT_STATE_COLORS: Record<SystemState, string> = {
@@ -80,7 +75,6 @@ export const DEFAULT_STATE_COLORS: Record<SystemState, string> = {
   IN_PROGRESS: "#3B82F6",
   COMPLETED: "#16A34A",
   FAILED: "#DC4840",
-  CANCELLED: "#9CA3AF",
 };
 
 export const DEFAULT_FAILURE_REASONS: readonly string[] = [
