@@ -12,6 +12,7 @@ import {
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { parseRequiredSkills } from "@/lib/orders/required-skills";
 import { DEFAULT_ASSIGNMENT_CONFIG } from "@/lib/routing/driver-assignment";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
@@ -80,17 +81,11 @@ export async function POST(request: NextRequest) {
       ),
     });
 
-    // Collect required skills
+    // Collect required skill codes (CSV in `required_skills`, not JSON).
     const requiredSkills = new Set<string>();
     for (const order of ordersList) {
-      if (order.requiredSkills) {
-        const skills =
-          typeof order.requiredSkills === "string"
-            ? JSON.parse(order.requiredSkills)
-            : order.requiredSkills;
-        for (const skill of skills as string[]) {
-          requiredSkills.add(skill);
-        }
+      for (const skill of parseRequiredSkills(order.requiredSkills)) {
+        requiredSkills.add(skill);
       }
     }
 
@@ -166,11 +161,14 @@ export async function POST(request: NextRequest) {
         continue; // Skip expired licenses
       }
 
-      // Calculate skills match
-      const driverSkillIds = new Set(driver.userSkills.map((ds) => ds.skillId));
+      // Calculate skills match. `requiredSkills` are codes — compare against
+      // the driver's skill codes, not the UUID skillIds.
+      const driverSkillCodes = new Set(
+        driver.userSkills.map((ds) => ds.skill.code.trim()).filter(Boolean),
+      );
 
-      const matchedSkills = Array.from(requiredSkills).filter((skillId) =>
-        driverSkillIds.has(skillId),
+      const matchedSkills = Array.from(requiredSkills).filter((skillCode) =>
+        driverSkillCodes.has(skillCode),
       );
 
       const skillsMatch =

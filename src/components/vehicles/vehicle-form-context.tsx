@@ -88,7 +88,7 @@ export function VehicleFormProvider({
     plate: initialData?.plate ?? "",
     brand: initialData?.brand ?? "",
     model: initialData?.model ?? "",
-    maxOrders: initialData?.maxOrders ?? 20,
+    maxOrders: initialData?.maxOrders,
     weightCapacity: initialData?.weightCapacity ?? null,
     volumeCapacity: initialData?.volumeCapacity ?? null,
     maxValueCapacity: initialData?.maxValueCapacity ?? null,
@@ -160,6 +160,8 @@ export function VehicleFormProvider({
     if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
     if (!formData.useNameAsPlate && !formData.plate?.trim())
       validationErrors.plate = "Placa es requerida";
+    if (formData.maxOrders == null || formData.maxOrders < 1)
+      validationErrors.maxOrders = "Capacidad máx. de pedidos es requerida";
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;

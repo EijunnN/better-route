@@ -98,6 +98,17 @@ export async function GET(
       where: eq(companyTrackingSettings.companyId, tokenRecord.companyId),
     });
 
+    // Master privacy switch: public tracking must be explicitly enabled
+    // by the company. When it isn't, respond with the exact same 404 as
+    // an unknown/inactive token so we never reveal that the token (and
+    // therefore the order) exists.
+    if (settings?.trackingEnabled !== true) {
+      return NextResponse.json(
+        { error: "Enlace de seguimiento no encontrado o inactivo" },
+        { status: 404 },
+      );
+    }
+
     // Default settings if none configured
     const effectiveSettings = {
       showMap: settings?.showMap ?? true,
@@ -109,19 +120,23 @@ export async function GET(
       showTimeline: settings?.showTimeline ?? true,
     };
 
-    // 5. Load the route stop for this order. When an order has been
-    // reassigned the same orderId can have multiple `routeStops` rows
-    // — the newest is the active assignment but it has no evidence,
-    // while the older COMPLETED stop holds the photos and notes the
-    // customer expects to see. Prefer the terminal stop when one
-    // exists; otherwise fall back to the most recent.
+    // 5. Load the route stop to show. Pick the attempt that matches the
+    // order's lifecycle: a reactivated/reverted order (now PENDING/ASSIGNED)
+    // must NOT keep surfacing an old FAILED/COMPLETED attempt. Terminal orders
+    // show their terminal stop (with evidence/reason); a non-terminal order
+    // shows its active attempt, or nothing until the next plan creates one.
     const stops = await db.query.routeStops.findMany({
       where: eq(routeStops.orderId, tokenRecord.orderId),
-      orderBy: [desc(routeStops.createdAt)],
+      orderBy: [desc(routeStops.attemptNumber), desc(routeStops.createdAt)],
     });
     const stop =
-      stops.find((s) => s.status === "COMPLETED" || s.status === "FAILED") ??
-      stops[0];
+      order.status === "COMPLETED"
+        ? (stops.find((s) => s.status === "COMPLETED") ?? stops[0] ?? null)
+        : order.status === "FAILED"
+          ? (stops.find((s) => s.status === "FAILED") ?? stops[0] ?? null)
+          : (stops.find(
+              (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+            ) ?? null);
 
     // 6. Load driver info and location if applicable
     let driverData: {

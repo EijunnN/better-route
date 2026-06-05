@@ -7,7 +7,7 @@ import type { ProfileSchema } from "./types";
 
 const UTF8_BOM = "\uFEFF";
 
-function defaultExample(example: string, kind: string): string {
+export function defaultExample(example: string, kind: string): string {
   if (example) return example;
   switch (kind) {
     case "number":

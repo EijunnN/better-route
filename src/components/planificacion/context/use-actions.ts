@@ -54,6 +54,7 @@ export function usePlanificacionActions(
     setShowCsvPreviewDialog,
     setCsvCustomFieldMappings,
     setDeletingOrderId,
+    setIsDiscardingPending,
     setOrders,
     setIsSubmitting,
     setEditingOrder,
@@ -174,6 +175,43 @@ export function usePlanificacionActions(
     }
   };
 
+  /**
+   * Discard the whole uncommitted draft pool: soft-deletes every PENDING order
+   * for the tenant. Assigned/in-progress orders (already committed to a plan)
+   * are untouched. Frees their trackingIds for re-import.
+   */
+  const discardPendingOrders = async () => {
+    if (!companyId) return;
+    setIsDiscardingPending(true);
+    try {
+      const res = await fetch("/api/orders/batch/delete?status=PENDING", {
+        method: "DELETE",
+        headers: { "x-company-id": companyId },
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(json?.error || "No se pudieron descartar los pedidos");
+      }
+      setSelectedOrderIds([]);
+      await loadOrders();
+      toast({
+        title: "Pedidos pendientes descartados",
+        description: `${json?.deleted ?? 0} pedido(s) eliminados del borrador.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error al descartar pedidos",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDiscardingPending(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!companyId) return;
     if (selectedVehicleIds.length === 0) {
@@ -291,7 +329,14 @@ export function usePlanificacionActions(
       const bytes = new Uint8Array(buffer);
 
       let text: string;
-      if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+      // .xlsx is a zip archive (magic bytes "PK"). Convert it to CSV with
+      // SheetJS (lazy-loaded) so the rest of the pipeline stays CSV-only.
+      if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+        const XLSX = await import("xlsx");
+        const wb = XLSX.read(bytes, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        text = XLSX.utils.sheet_to_csv(sheet, { FS: ";" });
+      } else if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
         text = new TextDecoder("utf-8").decode(buffer);
       } else if (bytes[0] === 0xff && bytes[1] === 0xfe) {
         text = new TextDecoder("utf-16le").decode(buffer);
@@ -400,6 +445,8 @@ export function usePlanificacionActions(
     return json.data as {
       inserted: number;
       reactivated: number;
+      failed?: number;
+      errors?: string[];
       raceConditions: Array<{
         existingOrderId: string;
         trackingId: string;
@@ -557,6 +604,7 @@ export function usePlanificacionActions(
     toggleOrder,
     selectAllOrders,
     deleteOrder,
+    discardPendingOrders,
     setPlanName,
     setPlanDate,
     setPlanTime,

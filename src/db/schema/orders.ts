@@ -155,6 +155,72 @@ export const orders = pgTable(
   ],
 );
 
+/**
+ * Order-status sources — which flow produced a transition. Lets the
+ * append-only history answer "who moved this order from X to Y, when,
+ * and why" for every reversion/cancellation.
+ */
+export const ORDER_STATUS_SOURCES = {
+  driver_sync: "driver_sync",
+  reopen: "reopen",
+  reactivate: "reactivate",
+  cancel: "cancel",
+  unassign: "unassign",
+  revert: "revert",
+} as const;
+
+export type OrderStatusSource = keyof typeof ORDER_STATUS_SOURCES;
+
+/**
+ * `order_status_history` — append-only audit trail of every Order.status
+ * transition. The mirror of `route_stop_history` for orders. Written
+ * INSIDE the same transaction as the status UPDATE (never best-effort via
+ * `after()`), so a reversion can never persist without its trace.
+ */
+export const orderStatusHistory = pgTable(
+  "order_status_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "restrict" }),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    previousStatus: varchar("previous_status", { length: 50 })
+      .notNull()
+      .$type<keyof typeof ORDER_STATUS>(),
+    newStatus: varchar("new_status", { length: 50 })
+      .notNull()
+      .$type<keyof typeof ORDER_STATUS>(),
+    source: varchar("source", { length: 30 })
+      .notNull()
+      .$type<OrderStatusSource>(),
+    reason: text("reason"),
+    reasonCategory: varchar("reason_category", { length: 30 }),
+    // No FK on the actor: this is an immutable log and the actor may be
+    // deleted later — we keep the id for forensics, not referential joins.
+    actorUserId: uuid("actor_user_id"),
+    // Idempotency key — a retry carrying the same correlationId is a no-op.
+    correlationId: uuid("correlation_id"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("order_status_history_company_order_idx").on(
+      table.companyId,
+      table.orderId,
+      table.createdAt,
+    ),
+    uniqueIndex("order_status_history_correlation_unique")
+      .on(table.correlationId)
+      .where(sql`${table.correlationId} is not null`),
+  ],
+);
+
+export type OrderStatusHistory = typeof orderStatusHistory.$inferSelect;
+export type NewOrderStatusHistory = typeof orderStatusHistory.$inferInsert;
+
 // CSV column mapping templates for reusable import configurations
 export const csvColumnMappingTemplates = pgTable(
   "csv_column_mapping_templates",

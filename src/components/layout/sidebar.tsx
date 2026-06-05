@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   Clock,
+  FlaskConical,
   History,
   ListChecks,
   LogOut,
@@ -44,6 +45,21 @@ import {
   useSidebar,
 } from "./sidebar-context";
 import { useTheme } from "./theme-context";
+
+// Dev-only "Playground" entry. Inlined at build time, so when the flag is off
+// the item never ships (and the page itself renders "No disponible").
+const PLAYGROUND_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PLAYGROUND === "true";
+
+const playgroundNavItems: NavItem[] = PLAYGROUND_ENABLED
+  ? [
+      {
+        title: "Playground",
+        href: "/playground",
+        icon: FlaskConical,
+        requiredPermission: "company:create",
+      },
+    ]
+  : [];
 
 // Default navigation sections with permission requirements
 // Permissions use format "entity:action" matching authorization.ts EntityType and Action enums
@@ -138,6 +154,7 @@ const defaultNavSections: NavSection[] = [
         icon: Building2,
         requiredPermission: "company:create",
       },
+      ...playgroundNavItems,
     ],
   },
   {

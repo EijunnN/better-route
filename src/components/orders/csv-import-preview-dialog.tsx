@@ -63,6 +63,8 @@ export interface CsvImportPreview {
 export interface ConfirmResultData {
   inserted: number;
   reactivated: number;
+  failed?: number;
+  errors?: string[];
   raceConditions: Array<{
     existingOrderId: string;
     trackingId: string;
@@ -146,9 +148,16 @@ export function CsvImportPreviewDialog({
           parts.push(
             `${result.raceConditions.length} omitidos por cambios concurrentes`,
           );
+        const hadFailures = (result.failed ?? 0) > 0;
+        if (hadFailures) parts.push(`${result.failed} fallaron`);
         toast({
-          title: "Importación aplicada",
-          description: parts.join(" · ") || "Sin cambios",
+          title: hadFailures
+            ? "Importación aplicada parcialmente"
+            : "Importación aplicada",
+          description: hadFailures
+            ? `${parts.join(" · ")}${result.errors?.[0] ? ` — ${result.errors[0]}` : ""}`
+            : parts.join(" · ") || "Sin cambios",
+          variant: hadFailures ? "destructive" : undefined,
         });
         onDone();
       }

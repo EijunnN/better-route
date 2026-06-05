@@ -303,6 +303,7 @@ export function createVroomVehicle(
     openStart?: boolean; // Don't set start location
     openEnd?: boolean; // Don't set end location
     // Break / lunch configuration
+    hasBreakTime?: boolean;
     breakDuration?: number; // minutes
     breakTimeStart?: string; // HH:MM or HH:MM:SS
     breakTimeEnd?: string; // HH:MM or HH:MM:SS
@@ -357,8 +358,12 @@ export function createVroomVehicle(
     }
   }
 
-  // Add break/lunch if configured
+  // Add break/lunch only when the vehicle has it enabled and a complete,
+  // well-formed window. `hasBreakTime === false` explicitly suppresses the
+  // break even if stale window fields linger; undefined stays backward
+  // compatible (e.g. callers/tests that don't pass the flag).
   if (
+    options?.hasBreakTime !== false &&
     options?.breakDuration &&
     options?.breakTimeStart &&
     options?.breakTimeEnd

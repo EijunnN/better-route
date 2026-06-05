@@ -9,6 +9,7 @@ import {
   CancelOrderDialog,
   type CancelOrderPayload,
 } from "@/components/orders/cancel-order-dialog";
+import { ReasonDialog } from "@/components/orders/reason-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,6 +69,8 @@ function OrderDetailContent() {
   const [reopenOpen, setReopenOpen] = useState(false);
   const [reactivateOpen, setReactivateOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [unassignOpen, setUnassignOpen] = useState(false);
+  const [revertOpen, setRevertOpen] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const { toast } = useToast();
 
@@ -169,6 +172,48 @@ function OrderDetailContent() {
     toast({
       title: "Pedido cancelado",
       description: "El pedido se marcó como CANCELLED definitivamente.",
+    });
+    refresh();
+  };
+
+  const handleUnassignSubmit = async (reason: string) => {
+    if (!order || !companyId) return;
+    const res = await fetch(`/api/orders/${order.id}/unassign`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": companyId,
+      },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err.error || "No se pudo sacar el pedido del plan");
+    }
+    toast({
+      title: "Pedido desasignado",
+      description: "Volvió a Pendiente para replanificarse.",
+    });
+    refresh();
+  };
+
+  const handleRevertSubmit = async (reason: string) => {
+    if (!order || !companyId) return;
+    const res = await fetch(`/api/orders/${order.id}/revert`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-company-id": companyId,
+      },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err.error || "No se pudo revertir el pedido");
+    }
+    toast({
+      title: "Entrega revertida",
+      description: "El pedido volvió a Pendiente.",
     });
     refresh();
   };
@@ -333,7 +378,7 @@ function OrderDetailContent() {
       )}
 
       {!isTerminal && (
-        <Can perm="order:update">
+        <Can perm="order:cancel">
           <div className="flex justify-end">
             <Button
               variant="ghost"
@@ -341,6 +386,26 @@ function OrderDetailContent() {
               onClick={() => setCancelOpen(true)}
             >
               Cancelar definitivamente
+            </Button>
+          </div>
+        </Can>
+      )}
+
+      {order.status === "ASSIGNED" && (
+        <Can perm="order:revert">
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setUnassignOpen(true)}>
+              Sacar del plan
+            </Button>
+          </div>
+        </Can>
+      )}
+
+      {order.status === "COMPLETED" && (
+        <Can perm="order:revert">
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setRevertOpen(true)}>
+              Revertir entrega
             </Button>
           </div>
         </Can>
@@ -379,6 +444,24 @@ function OrderDetailContent() {
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         onConfirm={handleCancelSubmit}
+      />
+
+      <ReasonDialog
+        open={unassignOpen}
+        onOpenChange={setUnassignOpen}
+        title="Sacar del plan"
+        description="El pedido volverá a Pendiente y se quitará de la ruta planificada. Entrará en el próximo plan disponible."
+        confirmLabel="Desasignar"
+        onConfirm={handleUnassignSubmit}
+      />
+
+      <ReasonDialog
+        open={revertOpen}
+        onOpenChange={setRevertOpen}
+        title="Revertir entrega"
+        description="El pedido entregado volverá a Pendiente para reprocesarse. El historial de la entrega se conserva intacto."
+        confirmLabel="Revertir"
+        onConfirm={handleRevertSubmit}
       />
     </div>
   );

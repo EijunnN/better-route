@@ -24,7 +24,7 @@ export function CsvUploadDialog() {
     <Dialog open={state.showCsvUpload} onOpenChange={actions.setShowCsvUpload}>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Subir pedidos desde CSV</DialogTitle>
+          <DialogTitle>Subir pedidos desde CSV o Excel</DialogTitle>
           <DialogDescription>
             Revisa el esquema esperado antes de subir el archivo. Las columnas
             se validan en vivo al seleccionar el CSV.
@@ -45,11 +45,11 @@ export function CsvUploadDialog() {
 
           {/* File input */}
           <div className="space-y-2">
-            <Label htmlFor="csv-file">Archivo CSV</Label>
+            <Label htmlFor="csv-file">Archivo CSV o Excel (.xlsx)</Label>
             <Input
               id="csv-file"
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx"
               onChange={actions.handleCsvFileChange}
               className="border border-input rounded-md bg-background px-3 py-2 file:mr-3 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1 file:text-sm file:font-medium hover:border-ring focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 cursor-pointer"
             />

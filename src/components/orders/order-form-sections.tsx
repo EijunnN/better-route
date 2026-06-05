@@ -18,36 +18,20 @@ export function OrderFormBasicInfo() {
     <div className="border-b pb-4">
       <h3 className="font-medium mb-3">Información del Pedido</h3>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="trackingId">ID de Seguimiento *</Label>
-          <Input
-            id="trackingId"
-            value={formData.trackingId}
-            onChange={(e) => handleChange("trackingId", e.target.value)}
-            placeholder="Ej: ORD-001"
-          />
-          {errors.trackingId && (
-            <p className="text-sm text-destructive mt-1">{errors.trackingId}</p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="status">Status</Label>
-          <select
-            id="status"
-            value={formData.status}
-            onChange={(e) => handleChange("status", e.target.value)}
-            className="w-full px-3 py-2 border rounded-md bg-background"
-          >
-            <option value="PENDING">Pendiente</option>
-            <option value="ASSIGNED">Asignado</option>
-            <option value="IN_PROGRESS">En Progreso</option>
-            <option value="COMPLETED">Completado</option>
-            <option value="FAILED">Fallido</option>
-            <option value="CANCELLED">Cancelado</option>
-          </select>
-        </div>
+      {/* El estado del pedido no se edita a mano: lo gobiernan los endpoints
+          de transición (confirm/cancel/reactivate/reopen/unassign/revert)
+          para que la máquina de estados y el historial nunca se salteen. */}
+      <div>
+        <Label htmlFor="trackingId">ID de Seguimiento *</Label>
+        <Input
+          id="trackingId"
+          value={formData.trackingId}
+          onChange={(e) => handleChange("trackingId", e.target.value)}
+          placeholder="Ej: ORD-001"
+        />
+        {errors.trackingId && (
+          <p className="text-sm text-destructive mt-1">{errors.trackingId}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4 mt-3">

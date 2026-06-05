@@ -9,7 +9,7 @@ import {
   vehicleSkills,
   vehicles,
 } from "@/db/schema";
-import { safeParseJson } from "@/lib/utils/safe-json";
+import { parseRequiredSkills } from "@/lib/orders/required-skills";
 import { calculateRouteDistance } from "../../geo/geospatial";
 import { getAffectedRoutesForAbsentDriver } from "./affected-routes";
 import type { ReassignmentImpact } from "./types";
@@ -254,29 +254,31 @@ export async function calculateReassignmentImpact(
     }),
   ]);
 
-  const skillNameMap = new Map(allSkills.map((s) => [s.id, s.name]));
+  // `required_skills` and driver/vehicle skills are matched by code; map codes
+  // to display names for the missing-skills surface.
+  const skillNameMap = new Map(allSkills.map((s) => [s.code, s.name]));
 
-  // Calculate skills match with missing skill names
+  // Calculate skills match with missing skill names. `required_skills` is a
+  // CSV of codes — parse it the same way the solver does, never JSON.parse.
   const requiredSkillsSet = new Set<string>();
   for (const order of ordersList) {
-    if (order.requiredSkills) {
-      const skills = safeParseJson<string[]>(order.requiredSkills);
-      skills.forEach((skill: string) => {
-        requiredSkillsSet.add(skill);
-      });
+    for (const skill of parseRequiredSkills(order.requiredSkills)) {
+      requiredSkillsSet.add(skill);
     }
   }
 
-  const driverSkillIds = new Set(
-    replacementDriver.userSkills.map((ds) => ds.skillId),
+  const driverSkillCodes = new Set(
+    replacementDriver.userSkills
+      .map((ds) => ds.skill.code.trim())
+      .filter(Boolean),
   );
 
   const requiredSkills = Array.from(requiredSkillsSet);
-  const matchedSkills = requiredSkills.filter((skillId) =>
-    driverSkillIds.has(skillId),
+  const matchedSkills = requiredSkills.filter((skillCode) =>
+    driverSkillCodes.has(skillCode),
   );
   const missingSkills = requiredSkills.filter(
-    (skillId) => !driverSkillIds.has(skillId),
+    (skillCode) => !driverSkillCodes.has(skillCode),
   );
 
   const skillsMatchPct =
@@ -418,7 +420,7 @@ export async function calculateReassignmentImpact(
     },
     skillsMatch: {
       percentage: skillsMatchPct,
-      missing: missingSkills.map((id) => skillNameMap.get(id) || id),
+      missing: missingSkills.map((code) => skillNameMap.get(code) || code),
     },
     availabilityStatus: {
       isAvailable: isAvailableStatus,

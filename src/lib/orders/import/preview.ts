@@ -11,6 +11,7 @@ import {
 } from "@/lib/orders/profile-schema";
 import { calculateErrorSummary, createValidationError } from "./errors";
 import { decodeCsvBase64, detectCSVDelimiter, parseCSV } from "./parse";
+import { resolvePresetsInPlace } from "./resolve-presets";
 import {
   type CSVValidationError,
   type CsvImportRequest,
@@ -186,6 +187,17 @@ export async function previewCsvImport(
         e.message,
         "critical",
         ERROR_TYPES.VALIDATION,
+      ),
+    );
+
+    // Resolve preset name → UUID (mutates normalized). A name like "Turno 3"
+    // that doesn't exist becomes a critical row error here instead of failing
+    // the batch insert silently at confirm time.
+    rowErrors.push(
+      ...resolvePresetsInPlace(
+        result.normalized,
+        rowIndex,
+        schema.timeWindowPresets,
       ),
     );
 

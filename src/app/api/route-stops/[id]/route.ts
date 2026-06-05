@@ -2,7 +2,10 @@ import { and, eq, sql } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  companyDeliveryPolicy,
   deliveryVisits,
+  type ORDER_STATUS,
+  orderStatusHistory,
   orders,
   routeStopHistory,
   routeStops,
@@ -20,6 +23,39 @@ import {
   loadStopFieldDefinitions,
   validateStopCustomFields,
 } from "@/lib/routing/stop-custom-fields";
+import { DEFAULT_FAILURE_REASONS } from "@/lib/workflow/states";
+
+/**
+ * Loads the per-company delivery policy fields the PATCH guards need.
+ * Read-only direct query (unlike the mobile/company endpoints we do NOT
+ * lazily insert a row here — a stop transition shouldn't have the side
+ * effect of materializing policy). When the row is absent we fall back to
+ * the schema defaults: photo required for COMPLETED, and the canonical
+ * `DEFAULT_FAILURE_REASONS` for FAILED (a reason is required).
+ */
+async function loadDeliveryPolicyGuards(companyId: string): Promise<{
+  completedRequiresPhoto: boolean;
+  failureReasons: string[];
+}> {
+  const policy = await db.query.companyDeliveryPolicy.findFirst({
+    where: eq(companyDeliveryPolicy.companyId, companyId),
+    columns: { completedRequiresPhoto: true, failureReasons: true },
+  });
+
+  if (!policy) {
+    return {
+      completedRequiresPhoto: true,
+      failureReasons: [...DEFAULT_FAILURE_REASONS],
+    };
+  }
+
+  return {
+    completedRequiresPhoto: policy.completedRequiresPhoto,
+    failureReasons: Array.isArray(policy.failureReasons)
+      ? policy.failureReasons
+      : [],
+  };
+}
 
 // Map route_stop status to order status
 const STOP_TO_ORDER_STATUS: Record<string, string> = {
@@ -172,6 +208,18 @@ export async function PATCH(
       );
     }
 
+    // Idempotent re-send guard: the mobile offline outbox retries a close
+    // after a lost ack. If the stop is ALREADY in this terminal status, return
+    // it as-is instead of re-running the transition (which would insert a
+    // duplicate route_stop_history row AND a duplicate delivery_visit).
+    if (
+      status &&
+      status === currentStop.status &&
+      (status === "COMPLETED" || status === "FAILED")
+    ) {
+      return NextResponse.json({ data: currentStop });
+    }
+
     // Validate + normalize customFields. We run this whenever the payload
     // includes customFields OR when transitioning to COMPLETED (to enforce
     // required fields on the completion path even if the driver didn't send
@@ -218,12 +266,45 @@ export async function PATCH(
       return NextResponse.json({ data: updated });
     }
 
-    // Failure reason is required text when transitioning to FAILED. The
-    // accepted values are defined per-company in `companyDeliveryPolicy
-    // .failureReasons`; enforcing the exact membership here would couple
-    // every install to a fixed enum, so we just require a non-empty
-    // string and trust the UI to pick from the policy.
-    if (status === "FAILED") {
+    // Load the per-company delivery policy once for the terminal
+    // transitions whose guards depend on it (COMPLETED needs the photo
+    // requirement, FAILED needs the failure-reason list). Other paths
+    // (IN_PROGRESS, PENDING, status-only without policy needs) never touch it.
+    const deliveryPolicy =
+      status === "COMPLETED" || status === "FAILED"
+        ? await loadDeliveryPolicyGuards(tenantCtx.companyId)
+        : null;
+
+    // Photo evidence is required for COMPLETED when the company policy says
+    // so. Enforced server-side here (the mobile client gates too, but the
+    // API is the authority). Mirrors the customFields-required check above:
+    // both run before the transaction.
+    const hasEvidencePhotos =
+      Array.isArray(evidenceUrls) && evidenceUrls.length > 0;
+    if (
+      status === "COMPLETED" &&
+      deliveryPolicy?.completedRequiresPhoto === true &&
+      !hasEvidencePhotos
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Se requiere al menos una foto de evidencia para completar la entrega",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Failure reason is required text when transitioning to FAILED — but
+    // ONLY when the company actually defines a non-empty `failureReasons`
+    // list. If the operator cleared the list, there's nothing for the
+    // driver to pick, so we allow FAILED without a reason. Membership in
+    // the list is not enforced (the value is an opaque human-readable
+    // Spanish string drawn from the policy; we trust the UI to pick).
+    if (
+      status === "FAILED" &&
+      (deliveryPolicy?.failureReasons.length ?? 0) > 0
+    ) {
       if (!failureReason || typeof failureReason !== "string") {
         return NextResponse.json(
           { error: "failureReason is required when status is FAILED" },
@@ -281,14 +362,11 @@ export async function PATCH(
       updateData.completedAt = now;
     }
 
-    // Clear completedAt if moving away from COMPLETED back to IN_PROGRESS
-    if (status === "IN_PROGRESS" && currentStop.status === "COMPLETED") {
-      updateData.completedAt = null;
-    }
-
-    // Set failure reason and evidence when FAILED
+    // Set failure reason and evidence when FAILED. The reason can be null
+    // when the company's policy defines no failure reasons (guard above
+    // skips the requirement in that case).
     if (status === "FAILED") {
-      updateData.failureReason = failureReason;
+      updateData.failureReason = failureReason ?? null;
       updateData.evidenceUrls = evidenceUrls || null;
       updateData.completedAt = now; // Mark as completed (with failure)
     }
@@ -351,9 +429,17 @@ export async function PATCH(
           throw new Error("CONFLICT");
         }
 
-        // Sync order status if the stop has an associated order
+        // Sync order status if the stop has an associated order. A FAILED
+        // stop reset to PENDING drives the order back to PENDING (matching
+        // /reopen) rather than ASSIGNED — FAILED→ASSIGNED is an illegal order
+        // transition. Every real change is recorded append-only with the
+        // `driver_sync` source so order_status_history stays complete.
         if (currentStop.orderId && STOP_TO_ORDER_STATUS[status]) {
-          const newOrderStatus = STOP_TO_ORDER_STATUS[status];
+          const newOrderStatus = (
+            currentStop.status === "FAILED" && status === "PENDING"
+              ? "PENDING"
+              : STOP_TO_ORDER_STATUS[status]
+          ) as keyof typeof ORDER_STATUS;
 
           // Check current order status - don't overwrite CANCELLED orders
           const [currentOrder] = await tx
@@ -362,11 +448,15 @@ export async function PATCH(
             .where(eq(orders.id, currentStop.orderId))
             .limit(1);
 
-          if (currentOrder && currentOrder.status !== "CANCELLED") {
+          if (
+            currentOrder &&
+            currentOrder.status !== "CANCELLED" &&
+            currentOrder.status !== newOrderStatus
+          ) {
             await tx
               .update(orders)
               .set({
-                status: newOrderStatus as typeof orders.$inferInsert.status,
+                status: newOrderStatus,
                 updatedAt: now,
               })
               .where(
@@ -376,6 +466,16 @@ export async function PATCH(
                   sql`${orders.status} != 'CANCELLED'`,
                 ),
               );
+
+            await tx.insert(orderStatusHistory).values({
+              companyId: tenantCtx.companyId,
+              orderId: currentStop.orderId,
+              previousStatus: currentOrder.status,
+              newStatus: newOrderStatus,
+              source: "driver_sync",
+              actorUserId: tenantCtx.userId || null,
+              metadata: { routeStopId: stopId, stopStatus: status },
+            });
           }
         }
 

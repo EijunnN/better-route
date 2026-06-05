@@ -20,13 +20,25 @@ import {
   RefreshCw,
   Ruler,
   Scale,
+  Trash2,
   TrendingUp,
   Truck,
   User,
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { Can } from "@/components/auth/can";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -704,9 +716,11 @@ export function DashboardMobileKpiStrip() {
 // Routes Panel
 export function DashboardRoutesPanel() {
   const { state, actions, meta } = useOptimizationDashboard();
-  const { selectedOrdersForReassign } = state;
-  const { clearSelection, openReassignModal } = actions;
+  const { selectedOrdersForReassign, isDeletingOrders } = state;
+  const { clearSelection, openReassignModal, handleDeleteSelectedOrders } =
+    actions;
   const { result } = meta;
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   return (
     <div className="w-96 lg:w-[450px] xl:w-[500px] border-r flex flex-col shrink-0">
@@ -757,15 +771,59 @@ export function DashboardRoutesPanel() {
                 Limpiar
               </Button>
             </div>
-            <Can perm="plan:update">
-              <Button size="sm" onClick={openReassignModal}>
-                <ArrowRight className="size-4 mr-2" />
-                Reasignar
-              </Button>
-            </Can>
+            <div className="flex items-center gap-2">
+              <Can perm="order:bulk_delete">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-red-600 hover:bg-destructive hover:text-destructive-foreground"
+                  disabled={isDeletingOrders}
+                  onClick={() => setConfirmDeleteOpen(true)}
+                >
+                  {isDeletingOrders ? (
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-4 mr-2" />
+                  )}
+                  Eliminar
+                </Button>
+              </Can>
+              <Can perm="plan:update">
+                <Button size="sm" onClick={openReassignModal}>
+                  <ArrowRight className="size-4 mr-2" />
+                  Reasignar
+                </Button>
+              </Can>
+            </div>
           </div>
         </div>
       )}
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              ¿Eliminar {selectedOrdersForReassign.length} pedido
+              {selectedOrdersForReassign.length === 1 ? "" : "s"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Los pedidos seleccionados se quitarán de la planificación. Las
+              rutas no se recalculan todavía: podés seguir eliminando y, cuando
+              termines, usar <strong>Reoptimizar</strong>. Sus códigos quedan
+              libres para volver a importar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => handleDeleteSelectedOrders()}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

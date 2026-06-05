@@ -1,638 +1,390 @@
 # BetterRoute
 
-**Sistema de Optimizacion de Rutas y Gestion de Entregas**
+**Plataforma de optimización de rutas y operación de entregas de última milla.**
 
-Una alternativa open-source a SimpliRoute, OptimoRoute y LogiNext — sin costos por conductor.
+Planifica rutas óptimas sobre la red vial real, despacha a tus conductores,
+sigue cada entrega en vivo y dale visibilidad al cliente final — todo
+autohospedado, en tu propia infraestructura y siendo dueño de tus datos.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![Bun](https://img.shields.io/badge/Bun-1.x-000?logo=bun)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
-![VROOM](https://img.shields.io/badge/VROOM-1.14-green)
+![VROOM](https://img.shields.io/badge/VROOM-routing-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow?logo=opensourceinitiative)
 
 ---
 
-## Tabla de Contenidos
+## Tabla de contenidos
 
-- [Por que BetterRoute?](#por-que-betterroute)
-- [Caracteristicas](#caracteristicas)
+- [¿Por qué BetterRoute?](#por-qué-betterroute)
+- [Funcionalidades destacadas](#funcionalidades-destacadas)
 - [Arquitectura](#arquitectura)
+- [Stack tecnológico](#stack-tecnológico)
 - [Requisitos](#requisitos)
-- [Instalacion](#instalacion)
-- [Configuracion](#configuracion)
-- [Uso](#uso)
-- [Estructura del Proyecto](#estructura-del-proyecto)
-- [Base de Datos](#base-de-datos)
-- [API Reference](#api-reference)
-- [App Movil](#app-movil)
+- [Cómo levantar el proyecto](#cómo-levantar-el-proyecto)
+- [Variables de entorno](#variables-de-entorno)
+- [Roles y permisos (RBAC)](#roles-y-permisos-rbac)
+- [App móvil del conductor](#app-móvil-del-conductor)
+- [Internacionalización (i18n)](#internacionalización-i18n)
 - [Roadmap](#roadmap)
-- [Contribuir](#contribuir)
 - [Licencia](#licencia)
 
 ---
 
-## Por que BetterRoute?
+## ¿Por qué BetterRoute?
 
-### El Problema
+Operar entregas de última milla a escala es difícil: hay que **planificar**
+rutas que respeten capacidad, ventanas horarias, habilidades y jornada de cada
+conductor; **despachar** y reasignar sobre la marcha; **acompañar** al conductor
+en la calle; y **dar visibilidad** al cliente final — sin perder el control de
+los datos ni de los costos.
 
-Las empresas de logistica y distribucion enfrentan un problema critico: las soluciones SaaS de optimizacion de rutas como **SimpliRoute**, **OptimoRoute** o **LogiNext** cobran **por conductor activo**, lo que resulta en costos prohibitivos:
+La mayoría de las herramientas para esto son servicios cerrados: tus datos
+viven en infraestructura ajena y el costo crece con cada conductor que sumas.
 
-| Solucion | Precio por conductor/mes | 50 conductores/mes |
-|----------|--------------------------|-------------------|
-| SimpliRoute | ~$35-50 USD | **$1,750 - $2,500** |
-| OptimoRoute | ~$40-60 USD | **$2,000 - $3,000** |
-| LogiNext | ~$50-80 USD | **$2,500 - $4,000** |
-| **BetterRoute** | $0 (self-hosted) | **$0 + hosting** |
+**BetterRoute nació para resolver eso de raíz:** una plataforma completa que
+hace **optimización + despacho + app del conductor + seguimiento al cliente**
+en un solo lugar, pensada para **autohospedarse**. La corres en tu propio
+servidor, los datos son tuyos, y el costo no depende de cuántos conductores
+tengas.
 
-### La Solucion
+Principios de diseño que guían el proyecto:
 
-**BetterRoute** es un sistema completo de optimizacion de rutas que puedes hospedar en tu propia infraestructura. Pagas solo por el servidor (desde ~$20/mes en un VPS) sin importar cuantos conductores tengas.
-
-**Ahorro potencial:** Una empresa con 50 conductores puede ahorrar **$24,000 - $48,000 USD al ano**.
+- **Real, no aproximado.** Las distancias y tiempos salen de la red vial
+  (OSRM), no de la línea recta.
+- **Cristalizar antes que configurar.** El flujo de entrega es un contrato
+  fijo y predecible (4 estados); lo que cambia por empresa son las *políticas*
+  (etiquetas, motivos de fallo, requisitos de foto) y los *campos
+  personalizados*, no la máquina de estados. Menos sorpresas en producción.
+- **Determinista y verificable.** Cada plan pasa por un *verifier*
+  independiente del solver que confirma que se cumplen las restricciones antes
+  de confirmarlo.
+- **Dueño de tus datos.** Single-tenant por instalación: una empresa, su
+  propio despliegue, su propia base de datos.
 
 ---
 
-## Caracteristicas
+## Funcionalidades destacadas
 
-### Optimizacion de Rutas
-- **Motor VROOM + OSRM** — Rapido y escalable, ideal para operaciones de ultima milla con 1000+ paradas por plan
-- **Distancias reales** — Calculo basado en red vial via OSRM, no linea recta
-- **Zonas con isolation hard** — La planificacion se particiona por zona (`createZoneBatches`) para que un vehiculo no cruce limites de servicio
-- **Verifier independiente del solver** — Capa de validacion HARD/SOFT/INFO que confirma que las rutas cumplen las restricciones antes de confirmarse
-- **Presets de optimizacion** — Configuraciones reutilizables (factor de trafico, distancia maxima, ventanas flexibles, rutas abiertas, balance de carga, etc.)
-- **Intercambio de vehiculos** — Swap completo de rutas entre vehiculos con reoptimizacion automatica
-- **Restricciones avanzadas:**
-  - Capacidad de vehiculos (peso, volumen, bultos)
-  - Ventanas horarias de entrega (con tolerancia flexible configurable)
-  - Habilidades requeridas (cadena de frio, carga pesada, etc.)
-  - Horarios de trabajo de conductores
-  - Zonas de servicio
-  - Distancia maxima por ruta
-  - Factor de trafico configurable (0-100%)
-  - Rutas abiertas (sin retorno a origen)
-  - Minimizacion de vehiculos basada en capacidad real
+### Optimización de rutas (motor VROOM + OSRM)
+- **Escala real:** 1000+ paradas por plan, con batching por zona
+  (`createZoneBatches`) para que un vehículo no cruce sus límites de servicio.
+- **Distancias de red vial** vía OSRM (matriz de tiempos/distancias reales).
+- **Restricciones avanzadas:** capacidad (peso / volumen / unidades / valor),
+  ventanas horarias (con tolerancia flexible), **habilidades requeridas**
+  (ej. refrigerado, carga pesada), **jornada laboral del vehículo** con
+  **descanso/almuerzo como ventana flexible** (VROOM coloca el descanso donde
+  mejor encaje), distancia máxima por ruta y factor de tráfico.
+- **Verifier independiente del solver:** valida violaciones HARD / SOFT / INFO
+  (ventanas, jornada, descanso, habilidades, capacidad) y explica el *porqué*
+  de cada pedido que no se pudo asignar.
+- **Presets de optimización** reutilizables (tráfico, distancia máxima,
+  ventanas flexibles, rutas abiertas, balance de carga, minimización de
+  vehículos).
+- **Swap de vehículos** entre rutas con reoptimización automática.
 
-### Gestion de Pedidos
-- Importacion masiva desde CSV/Excel
-- Geocodificacion automatica de direcciones
-- Estados de entrega en tiempo real
-- Evidencia fotografica de entregas
-- Motivos de no entrega configurables
+### Gestión de pedidos
+- Importación masiva por **CSV/Excel** con mapeo de columnas reutilizable.
+- **Reversión de pedidos** con máquina de estados explícita y auditada:
+  desasignar de un plan, reabrir una parada, reactivar un fallido o revertir
+  una entrega (con permiso elevado) — todo transaccional, con *optimistic
+  locking* e historial append-only (`order_status_history`).
+- Cancelación definitiva con categoría y motivo.
+- Evidencia fotográfica y captura de GPS en cada visita.
 
-### Gestion de Flotas
-- Vehiculos con capacidades y restricciones
-- Asignacion de conductores
-- Historial de mantenimiento
-- Seguimiento GPS en tiempo real
+### Planificación y despacho
+- Asignación de conductores **manual** o por **sugerencia** (scoring por
+  habilidades, licencia, flota, carga).
+- **Reasignación** de paradas entre conductores.
+- Confirmación de planes que materializa las `route_stops` para la app.
 
-### Campos Personalizados (Custom Fields)
-- Cada empresa define sus propios campos en pedidos sin cambios de codigo
-- Tipos: `text`, `number`, `select`, `date`, `currency`, `phone`, `email`, `boolean`
-- Configurables por visibilidad: tabla, app movil, CSV import
-- Validacion automatica (min/max, required, pattern)
-- Renderizado dinamico en formularios, tablas, CSV import y app movil
+### Monitoreo en vivo
+- Mapa con **posición GPS de los conductores** y trazado de rutas.
+- Panel de eventos y **alertas** configurables.
+- **Tiempo real** vía Centrifugo (WebSocket): los cambios de estado de parada
+  se reflejan al instante en el dashboard.
+- Aislamiento multi-tenant verificado en cada endpoint.
 
-### Workflow States Custom
-- Cada empresa define sus propios estados de entrega
-- Transiciones configurables entre estados
-- Requisitos por estado: foto, firma, motivo, notas
-- Colores e iconos personalizables
-- Integrado con app movil Flutter
+### Seguimiento público (tracking)
+- Página pública por **token único**: el cliente final ve el estado de su
+  entrega, el mapa y el conductor — sin cuenta. Controlado por un interruptor
+  de privacidad por empresa (`trackingEnabled`).
 
-### Multi-Empresa (SaaS-ready)
-- Aislamiento completo de datos por empresa (JWT-cross-validated)
-- Sistema RBAC end-to-end con permisos tipados (TypeScript template literal)
-- Roles legacy predefinidos + roles personalizables por empresa via UI `/roles`
-- Perfiles de optimizacion por empresa
+### Chat despacho ↔ conductor
+- Mensajería en tiempo real (Centrifugo) + **notificaciones push** (OneSignal),
+  incluyendo **broadcast de emergencia** a toda la flota.
 
-### RBAC Tipado
-- **Contrato unificado server/cliente** — `EntityType`, `Action` y `Permission` en `src/lib/auth/permissions/` son la unica fuente de verdad
-- **Gating UI declarativo** — `<Can perm="order:update">` esconde botones segun permiso
-- **Fail-closed por defecto** — `<ProtectedPage>` deniega si olvidas declarar `requiredPermission`
-- **Custom roles dinamicos** — Los permisos adicionales asignados via DB se aplican tanto en UI como en enforcement server
-- **Imposible typear mal** — `<Can perm="order:edit">` es error de compilacion (`Action.EDIT` no existe)
+### Personalización por empresa
+- **Campos personalizados** dinámicos (texto, número, select, fecha, moneda,
+  teléfono, email, booleano) — definidos desde la UI, validados server-side y
+  renderizados en formularios, tablas, import CSV y la app móvil.
+- **Política de entrega** por empresa: etiquetas y colores de estado,
+  requisitos de foto/firma/notas, y **lista de motivos de no-entrega** (texto
+  libre que el conductor elige y se guarda verbatim).
 
-### Monitoreo en Tiempo Real
-- Mapa con ubicacion de conductores
-- Estado de entregas actualizado
-- Alertas configurables
-- Dashboard con metricas clave
-
-### App Movil (Flutter)
-- Visualizacion de ruta asignada
-- Navegacion integrada (Google Maps/Waze)
-- Captura de evidencia
-- Envio de ubicacion GPS al servidor
-- Funciona offline (cola de sincronizacion)
+### Multi-tenant + RBAC tipado
+- Aislamiento de datos por empresa (header `x-company-id` validado contra el
+  JWT).
+- **Contrato de permisos tipado** (`EntityType` × `Action`) único entre
+  servidor y cliente: imposible escribir un permiso inválido (error de
+  compilación).
+- Roles legacy + **roles personalizados por empresa** desde `/roles`.
 
 ---
 
 ## Arquitectura
 
 ```
-+------------------------------------------------------------------+
-|                         FRONTEND                                  |
-|  +----------------+  +----------------+  +------------------+     |
-|  |  Next.js Web   |  |  Flutter App   |  |   API Clients    |     |
-|  |   (React 19)   |  |  (Android/iOS) |  |  (Integraciones) |     |
-|  +-------+--------+  +-------+--------+  +--------+---------+     |
-+----------|-------------------|---------------------|---------------+
-           |                   |                     |
-           v                   v                     v
-+------------------------------------------------------------------+
-|                         BACKEND                                   |
-|  +--------------------------------------------------------------+ |
-|  |                    Next.js API Routes                        | |
-|  |  * /api/auth/*           * /api/orders/*                     | |
-|  |  * /api/optimization/*   * /api/mobile/driver/*              | |
-|  |  * /api/monitoring/*     * /api/vehicles/*                   | |
-|  +--------------------------------------------------------------+ |
-|                              |                                    |
-|              +---------------+---------------+                    |
-|              v               v               v                    |
-|  +-------------+ +-------------+ +------------------+             |
-|  | PostgreSQL  | |    Redis    | |  Cloudflare R2   |             |
-|  |  (Drizzle)  | |  (Upstash)  | |   (S3 Storage)   |             |
-|  +-------------+ +-------------+ +------------------+             |
-+------------------------------------------------------------------+
-           |
-           v
-+------------------------------------------------------------------+
-|                    ROUTING ENGINES                                |
-|  +-------------------------------+  +--------------------------+ |
-|  |            VROOM              |  |           OSRM           | |
-|  |  (Fast VRP, zone-batched,     |  |  (Road network distance  | |
-|  |   1000+ orders per plan)      |  |   and duration matrix)   | |
-|  +-------------------------------+  +--------------------------+ |
-+------------------------------------------------------------------+
+┌──────────────────────────────────────────────────────────────────┐
+│                            CLIENTES                                │
+│   Web (Next.js / React 19)   ·   App Flutter   ·   Tracking público │
+└───────────────┬───────────────────┬───────────────────┬───────────┘
+                │                   │                   │
+                ▼                   ▼                   ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                     BACKEND — Next.js API Routes                   │
+│   /api/auth · /api/orders · /api/optimization · /api/route-stops   │
+│   /api/monitoring · /api/mobile/driver · /api/chat · /api/tracking │
+└───────────────┬───────────────────┬──────────────┬────────────────┘
+                │                   │              │
+        ┌───────┴──────┐   ┌────────┴──────┐  ┌────┴───────────┐
+        │  PostgreSQL  │   │ Upstash Redis │  │ Cloudflare R2  │
+        │  (Drizzle)   │   │    (cache)    │  │   (evidencia)  │
+        └──────────────┘   └───────────────┘  └────────────────┘
+                │
+   ┌────────────┼─────────────┬──────────────────┐
+   ▼            ▼             ▼                  ▼
+┌──────┐   ┌────────┐   ┌────────────┐   ┌──────────────┐
+│ VROOM│   │  OSRM  │   │ Centrifugo │   │  OneSignal   │
+│ (VRP)│   │ (red   │   │ (realtime  │   │   (push)     │
+│      │   │  vial) │   │  WebSocket)│   │              │
+└──────┘   └────────┘   └────────────┘   └──────────────┘
 ```
+
+**Patrón de la app web** — *compound components*:
+`Provider > State / Actions / Derived / Meta`, con barrels (`index.ts`) por
+feature. **Cadena de layout:** `AppShell > ThemeProvider > PermissionsProvider
+> CompanyProvider > LayoutProvider`.
+
+---
+
+## Stack tecnológico
+
+| Capa | Tecnología |
+|------|------------|
+| Web | Next.js 16 (App Router, Turbopack), React 19, TailwindCSS, shadcn/ui |
+| Estado / datos | SWR + hooks de dominio sobre `useApiData` |
+| Mapas | MapLibre GL |
+| Backend | Next.js API Routes (Bun) |
+| Base de datos | PostgreSQL (Neon) + Drizzle ORM |
+| Cache | Upstash Redis |
+| Almacenamiento | Cloudflare R2 (S3-compatible) |
+| Auth | JWT (cookies) |
+| Optimización | VROOM (solver VRP) + OSRM (red vial) |
+| Tiempo real | Centrifugo (WebSocket) |
+| Push | OneSignal |
+| App móvil | Flutter + Riverpod |
+| Tests / lint | Bun Test (integración) · Biome |
 
 ---
 
 ## Requisitos
 
-### Minimos (Desarrollo)
-- **Bun** 1.0+ (recomendado) o **Node.js** 20+
+**Desarrollo**
+- **Bun** 1.x
 - **PostgreSQL** 15+
-- **Docker** (para VROOM + OSRM)
-- 4GB RAM, 2 CPU cores
+- **Docker** (para VROOM + OSRM + Centrifugo)
+- ~4 GB RAM, 2 vCPU
 
-### Recomendados (Produccion)
-- **VPS** con 8GB RAM, 4 CPU cores
-- **SSD** 50GB+ (para mapas OSRM)
-- **Redis** (Upstash o self-hosted)
-- **S3-compatible storage** (Cloudflare R2, MinIO)
+**Producción (referencia)**
+- VPS con 8 GB RAM, 4 vCPU
+- SSD 50 GB+ (los mapas de OSRM ocupan espacio)
+- Redis (Upstash o self-hosted)
+- Almacenamiento S3-compatible (Cloudflare R2 / MinIO)
 
 ---
 
-## Instalacion
+## Cómo levantar el proyecto
 
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/tu-usuario/betterroute.git
-cd betterroute
-```
-
-### 2. Instalar dependencias
+### 1. Dependencias
 
 ```bash
-# Con Bun (recomendado)
 bun install
-
-# O con npm
-npm install
 ```
 
-### 3. Configurar variables de entorno
+### 2. Variables de entorno
 
 ```bash
 cp .env.example .env
+# Edita .env con tus valores (ver "Variables de entorno" más abajo)
 ```
 
-Edita `.env` con tus valores:
+### 3. Datos de OSRM (red vial)
 
-```env
-# Base de datos PostgreSQL
-DATABASE_URL=postgresql://user:password@localhost:5432/betterroute
-
-# JWT Secret (genera uno seguro para produccion)
-JWT_SECRET=tu-secreto-super-seguro-minimo-32-caracteres
-
-# Redis para cache (opcional pero recomendado)
-UPSTASH_REDIS_REST_URL=https://tu-instancia.upstash.io
-UPSTASH_REDIS_REST_TOKEN=tu-token
-
-# Motores de rutas
-VROOM_URL=http://localhost:5000
-OSRM_URL=http://localhost:5001
-
-# Cloudflare R2 para almacenamiento (fotos de evidencia)
-R2_ACCOUNT_ID=tu-account-id
-R2_ACCESS_KEY_ID=tu-access-key
-R2_SECRET_ACCESS_KEY=tu-secret-key
-R2_BUCKET_NAME=betterroute-files
-R2_PUBLIC_URL=https://tu-bucket.tu-dominio.com
-```
-
-### 4. Configurar OSRM (Motor de rutas)
-
-Descarga los datos de tu pais/region:
+Descarga el mapa de tu país/región (ejemplo: Perú) y procésalo una vez:
 
 ```bash
-# Crear directorio para datos
-mkdir -p docker/osrm
-cd docker/osrm
-
-# Descargar mapa (ejemplo: Peru)
+mkdir -p docker/osrm && cd docker/osrm
 wget https://download.geofabrik.de/south-america/peru-latest.osm.pbf
 
-# Procesar mapa (puede tardar 10-30 minutos)
-docker run -t -v $(pwd):/data osrm/osrm-backend osrm-extract -p /opt/car.lua /data/peru-latest.osm.pbf
-docker run -t -v $(pwd):/data osrm/osrm-backend osrm-partition /data/peru-latest.osrm
-docker run -t -v $(pwd):/data osrm/osrm-backend osrm-customize /data/peru-latest.osrm
-
+docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-extract  -p /opt/car.lua /data/peru-latest.osm.pbf
+docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-partition  /data/peru-latest.osrm
+docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-customize  /data/peru-latest.osrm
 cd ../..
 ```
 
-**Mapas disponibles:** https://download.geofabrik.de/
+> Otros mapas: <https://download.geofabrik.de/>
 
-### 5. Iniciar servicios de routing
-
-```bash
-docker compose --profile routing up -d
-```
-
-Esto inicia:
-- **OSRM** en `http://localhost:5001` — calculo de distancias/tiempos
-- **VROOM** en `http://localhost:5000` — optimizacion de rutas
-
-### 6. Configurar base de datos
+### 4. Servicios en Docker (routing + realtime)
 
 ```bash
-# Ejecutar migraciones
-bun run db:migrate
-
-# Cargar datos de ejemplo (opcional)
-bun run db:seed
+docker compose --profile routing up -d   # OSRM (5001) + VROOM (5000)
+docker compose up -d centrifugo           # Centrifugo (8000)
 ```
 
-### 7. Iniciar la aplicacion
+### 5. Base de datos
+
+> **Importante:** se usa `db:generate` + `db:migrate`. **Nunca `db:push`.**
 
 ```bash
-# Desarrollo
-bun run dev
-
-# Produccion
-bun run build
-bun run start
+bun run db:migrate     # aplica las migraciones
+bun run db:seed        # (opcional) catálogo RBAC + datos de ejemplo
 ```
 
-La aplicacion estara disponible en `http://localhost:3000`
-
-### 8. Credenciales por defecto
-
-Despues de `bun run db:seed`:
-
-| Rol | Email | Contrasena |
-|-----|-------|------------|
-| Admin Sistema | `admin@planeamiento.com` | `admin123` |
-
-Para crear un set completo de usuarios de prueba (uno por rol legacy,
-todos sobre una empresa `TestCo RBAC`), usa el script de verificacion:
+Para generar una migración nueva tras cambiar el schema:
 
 ```bash
-bun run scripts/create-test-users.ts
+bun run db:generate    # crea el SQL en drizzle/
+bun run db:migrate     # lo aplica
 ```
 
-Eso provisiona:
-
-| Rol | Email | Contrasena |
-|-----|-------|------------|
-| ADMIN_SISTEMA | `admin@test.local` | `test123` |
-| ADMIN_FLOTA | `adminflota@test.local` | `test123` |
-| PLANIFICADOR | `planificador@test.local` | `test123` |
-| MONITOR | `monitor@test.local` | `test123` |
-| CONDUCTOR | `conductor@test.local` | `test123` |
-
-Para verificar que el camino de custom roles (roles dinamicos via DB)
-funciona correctamente end-to-end:
+### 6. Levantar la app
 
 ```bash
-bun run scripts/verify-custom-role.ts
+bun run dev            # http://localhost:3000  (Turbopack)
+# Producción:
+bun run build && bun run start
 ```
 
-> **Importante:** Cambia estas contrasenas en produccion.
+### 7. Primer ingreso
 
----
+El **onboarding** crea la primera empresa + sus roles. Si cargaste el seed, hay
+un administrador del sistema de ejemplo (revisa `src/db/seed.ts` para las
+credenciales por defecto) — **cámbialo en producción**.
 
-## Configuracion
+### Comandos útiles
 
-### Perfiles de Empresa
-
-Cada empresa puede configurar:
-
-- **Campos de pedido** — Que columnas mostrar en CSV
-- **Restricciones de vehiculos** — Capacidad, peso maximo, etc.
-- **Parametros de optimizacion** — Balance velocidad/calidad
-- **Ventanas horarias** — Presets reutilizables
-
-### Roles y Permisos
-
-| Rol | Descripcion |
-|-----|-------------|
-| `ADMIN_SISTEMA` | Acceso total (wildcard), gestion multi-empresa |
-| `ADMIN_FLOTA` | Flota, vehiculos, conductores, skills, zonas + configuracion de empresa (workflow, custom fields, presets) |
-| `PLANIFICADOR` | Pedidos (CRUD + import + bulk delete), planes (create/update/confirm/cancel), asignacion de rutas |
-| `MONITOR` | Lectura + accionar alertas + actualizar status de paradas desde la web |
-| `CONDUCTOR` | Solo sus rutas asignadas, update de status de paradas desde la app movil |
-
-Ademas de los roles legacy, cada empresa puede crear **roles personalizados**
-desde `/roles` con permisos toggleables por entidad x accion. Los permisos
-resultantes son la **union** del rol legacy base + los custom roles asignados.
-El enforcement server-side aplica ambos en una sola consulta.
-
-Para el patron completo (como agregar una feature con RBAC, anti-patterns,
-convenciones), ver [`src/lib/auth/permissions/README.md`](./src/lib/auth/permissions/README.md).
-
----
-
-## Estructura del Proyecto
-
-```
-planeamiento/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── (auth)/            # Paginas de autenticacion
-│   │   ├── (protected)/       # Paginas protegidas
-│   │   │   ├── dashboard/
-│   │   │   ├── orders/
-│   │   │   ├── vehicles/
-│   │   │   ├── planificacion/
-│   │   │   ├── monitoring/
-│   │   │   ├── custom-fields/ # Admin campos personalizados
-│   │   │   ├── workflow/      # Config workflow states
-│   │   │   └── ...
-│   │   └── api/               # API Routes (~70 handlers)
-│   │       ├── auth/
-│   │       ├── orders/
-│   │       ├── companies/     # CRUD empresas + field definitions
-│   │       ├── optimization/  # Jobs, config, swap, confirm, reassign
-│   │       ├── mobile/        # APIs para app movil
-│   │       └── monitoring/
-│   ├── components/            # Componentes React
-│   │   ├── ui/               # shadcn/ui components
-│   │   ├── layout/           # AppShell, Sidebar, CompanyProvider
-│   │   ├── custom-fields/    # Admin campos personalizados
-│   │   ├── orders/           # Formularios y tablas de ordenes
-│   │   ├── monitoring/       # Vista monitoreo con mapa
-│   │   └── optimization/     # Dashboard con swap, presets, resultados
-│   ├── db/                    # Drizzle ORM
-│   │   ├── schema.ts         # Definicion de tablas
-│   │   └── seed.ts           # Datos de ejemplo
-│   ├── tests/                 # Tests de integracion
-│   │   └── integration/      # 170+ tests, real PostgreSQL
-│   └── lib/                   # Logica de negocio
-│       ├── auth/             # Autenticacion + RBAC
-│       │   ├── permissions/  # Contrato tipado (EntityType, Action, Permission)
-│       │   └── authorization.ts  # Role permissions matrix + DB checks
-│       ├── optimization/     # VROOM adapter, runner, verifier
-│       ├── orders/           # Profile schema, CSV import pipeline
-│       ├── geo/              # Zone batching, OSRM matrix helpers
-│       ├── custom-fields/    # Validacion y seed de campos custom
-│       ├── workflow/         # Seed de workflow states
-│       ├── infra/            # Infraestructura (cache, tenant, api-middleware)
-│       └── services/         # Servicios externos (VROOM, S3)
-├── scripts/                   # Scripts operativos
-│   ├── create-test-users.ts  # Seed idempotente de users por rol
-│   └── verify-custom-role.ts # E2E verification del merge legacy + custom roles
-├── drizzle/                   # Migraciones SQL
-├── docker/                    # Configuracion Docker
-│   ├── osrm/                 # Datos de mapas
-│   └── vroom/                # Config VROOM
-├── docker-compose.yml
-├── .env.example
-└── package.json
+```bash
+bun test                       # tests (integración → requieren Postgres arriba)
+bun test src/tests/unit        # solo unit tests
+bun run tsc --noEmit           # type-check
+bun run lint                   # Biome
+bun run db:studio              # Drizzle Studio
 ```
 
 ---
 
-## Base de Datos
+## Variables de entorno
 
-### Migraciones
+Todas viven en [`.env.example`](./.env.example). Resumen:
 
-```bash
-# Ver estado de migraciones
-bun run db:studio
+| Variable | Para qué |
+|----------|----------|
+| `DATABASE_URL` | Conexión PostgreSQL |
+| `JWT_SECRET` | Firma de los JWT (cambiar en producción) |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Cache (Upstash Redis) |
+| `VROOM_URL` / `OSRM_URL` / `*_TIMEOUT` | Motores de optimización y red vial |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` / `R2_PUBLIC_URL` | Almacenamiento de evidencia (Cloudflare R2) |
+| `CENTRIFUGO_URL` / `CENTRIFUGO_TOKEN_HMAC_SECRET_KEY` / `CENTRIFUGO_API_KEY` / `CENTRIFUGO_ALLOWED_ORIGIN` | Realtime (servidor) |
+| `NEXT_PUBLIC_CENTRIFUGO_WS_URL` | WebSocket del navegador (en prod se deja vacío: same-origin tras el reverse proxy) |
+| `ONESIGNAL_APP_ID` / `ONESIGNAL_REST_API_KEY` | Push de chat al conductor |
+| `NEXT_PUBLIC_ENABLE_PLAYGROUND` | Playground de datos de prueba (dev). **Nunca en prod.** |
 
-# Generar nueva migracion
-bun run db:generate --name nombre_descriptivo
-
-# Aplicar migraciones pendientes
-bun run db:migrate
-
-# Sincronizar schema (desarrollo)
-bun run db:push
-```
-
-### Tablas Principales
-
-| Tabla | Descripcion |
-|-------|-------------|
-| `companies` | Empresas/tenants |
-| `users` | Usuarios y conductores |
-| `vehicles` | Vehiculos de la flota |
-| `fleets` | Flotas/grupos de vehiculos |
-| `orders` | Pedidos a entregar |
-| `optimization_jobs` | Trabajos de optimizacion |
-| `route_stops` | Paradas de ruta confirmadas |
-| `driver_locations` | Historial de ubicaciones GPS |
-| `company_workflow_states` | Estados de workflow custom por empresa |
-| `company_workflow_transitions` | Transiciones entre estados |
-| `company_field_definitions` | Campos personalizados por empresa |
-| `roles` / `permissions` | Sistema RBAC |
-
-### Historial de Migraciones
-
-| Archivo | Descripcion |
-|---------|-------------|
-| `0000_amused_night_nurse.sql` | Schema inicial completo |
-| `0001_stormy_ironclad.sql` | Ajustes menores |
-| `0002_white_rumiko_fujikawa.sql` | Alertas y notificaciones |
-| `0003_brave_secret_warriors.sql` | Historial de estados |
-| `0004_kind_post.sql` | Campos adicionales |
-| `0005_add-vehicle-skill-assignments.sql` | Habilidades de vehiculos |
-| `0006_add_driver_locations.sql` | Tracking GPS de conductores |
+> Para el despliegue: las notificaciones push solo salen si `ONESIGNAL_APP_ID`
+> coincide con el de la app móvil y `ONESIGNAL_REST_API_KEY` está configurada.
 
 ---
 
-## API Reference
+## Roles y permisos (RBAC)
 
-### Autenticacion
+| Rol | Alcance |
+|-----|---------|
+| `ADMIN_SISTEMA` | Acceso total (wildcard), multi-empresa |
+| `ADMIN_FLOTA` | Flota, vehículos, conductores, habilidades, zonas + configuración de empresa |
+| `PLANIFICADOR` | Pedidos (CRUD + import + bulk delete + cancelar + revertir), planes, asignación de rutas |
+| `MONITOR` | Lectura + accionar alertas + cambiar estado de paradas desde la web |
+| `CONDUCTOR` | Solo sus paradas, actualizadas desde la app móvil |
 
-```bash
-# Login
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "username": "admin",
-  "password": "admin123"
-}
-
-# Response
-{
-  "accessToken": "eyJ...",
-  "refreshToken": "eyJ...",
-  "user": { ... }
-}
-```
-
-### Headers requeridos
-
-```
-Authorization: Bearer <accessToken>
-X-Company-Id: <uuid>  # Para endpoints multi-tenant
-```
-
-### Endpoints principales
-
-| Metodo | Endpoint | Descripcion |
-|--------|----------|-------------|
-| GET | `/api/orders` | Listar pedidos |
-| POST | `/api/orders/import` | Importar CSV |
-| POST | `/api/optimization/configure` | Crear configuracion de optimizacion |
-| POST | `/api/optimization/jobs` | Crear y ejecutar optimizacion |
-| GET | `/api/optimization/jobs/:id` | Estado de optimizacion |
-| POST | `/api/optimization/jobs/:id/confirm` | Confirmar plan |
-| POST | `/api/optimization/jobs/:id/swap-vehicles` | Intercambiar rutas entre vehiculos |
-| GET | `/api/optimization-presets` | Presets de optimizacion |
-| POST | `/api/driver-assignment/manual` | Asignacion manual de conductor |
-| POST | `/api/driver-assignment/suggestions` | Sugerencias de conductor |
-| POST | `/api/reassignment/options` | Opciones de reasignacion |
-| GET | `/api/monitoring/geojson` | GeoJSON para mapa |
-| GET | `/api/monitoring/summary` | Resumen de monitoreo |
-| POST | `/api/mobile/driver/location` | Enviar ubicacion GPS |
-| GET | `/api/mobile/driver/my-route` | Ruta del conductor |
-| PATCH | `/api/route-stops/:id` | Actualizar parada |
-| GET | `/api/companies/:id/field-definitions` | Listar campos custom |
-| GET | `/api/mobile/driver/workflow-states` | Estados de workflow |
-| GET | `/api/tracking/:token` | Tracking publico de pedido |
+Cada empresa puede crear **roles personalizados** desde `/roles`. Los permisos
+efectivos son la unión del rol legacy base + los custom roles, aplicada
+server-side en una sola consulta. El contrato tipado vive en
+[`src/lib/auth/permissions/`](./src/lib/auth/permissions/README.md) — léelo
+antes de tocar cualquier botón mutativo o ruta API.
 
 ---
 
-## App Movil
+## App móvil del conductor
 
-La app movil esta en un repositorio separado: [better-route-mobile](https://github.com/EijunnN/better-route-mobile) (Flutter).
+La app **Flutter** (Android/iOS) es el *cockpit* del conductor: agenda del día,
+navegación, cierre de entregas con evidencia, **cola offline a prueba de zonas
+sin señal**, tracking GPS y chat con despacho. Su documentación y setup están en
+su propio `README.md`. Consume `GET /api/mobile/driver/*` + `PATCH
+/api/route-stops/:id` + `/api/chat/*` + `/api/upload/presigned-url`.
 
-### Caracteristicas
-- Lista de paradas del dia
-- Navegacion a cada parada (Google Maps / Waze)
-- Marcar entregas como completadas
-- Capturar foto de evidencia
-- Registrar motivo de no entrega
-- Envio automatico de ubicacion GPS cada 20 segundos
-- Cola offline para envios fallidos
-- **Workflow states dinamicos** — Botones de accion generados segun la configuracion de la empresa
-- **Campos personalizados** — Muestra campos custom definidos por la empresa en el detalle de cada parada
+---
 
-### Configuracion
+## Internacionalización (i18n)
 
-Editar `lib/core/constants.dart`:
+Hoy la interfaz y los textos de la plataforma están en **español** (mercado
+LATAM). La arquitectura ya facilita la traducción futura: buena parte de los
+textos de cara al cliente (motivos de no-entrega, etiquetas de estado) son
+**datos por empresa** (política de entrega), no strings hardcodeados.
 
-```dart
-class ApiConfig {
-  // Cambiar para produccion
-  static const String baseUrl = 'https://tu-api.com';
-}
+**En el roadmap:** adoptar i18n para poder traducir todo a cualquier idioma.
 
-class AppConstants {
-  // Configuracion de tracking
-  static const int trackingIntervalSeconds = 20;
-  static const int trackingRetryAttempts = 3;
-}
-```
+- **Web:** extraer los strings de UI a catálogos de mensajes (ej. `next-intl`)
+  con detección de locale por usuario/empresa.
+- **App móvil:** `flutter_localizations` + `gen-l10n` con archivos `.arb` por
+  idioma.
+- **Datos por empresa:** mantener etiquetas y motivos traducibles desde la
+  configuración, para que cada operación los muestre en su idioma.
 
-### Compilar
-
-```bash
-flutter pub get
-flutter build apk --release
-```
+El objetivo es que la misma plataforma sirva a operaciones en cualquier región
+sin tocar código.
 
 ---
 
 ## Roadmap
 
-### ~~RBAC tipado end-to-end~~ ✅ Completado
-Sistema de autorizacion con contrato TypeScript unico entre server y cliente. `<Can>` component + `useCan` hook tipados, `<ProtectedPage>` fail-closed, custom roles via DB con merge automatico legacy + dinamico, enforcement server-side garantizado para ambos.
-
-### ~~Personalizacion de pedidos~~ ✅ Completado
-Cada empresa puede definir campos personalizados en sus pedidos desde la UI de admin. Los campos se renderizan dinamicamente en formularios, tablas, CSV import y la app movil.
-
-### ~~Presets de optimizacion~~ ✅ Completado
-Configuraciones reutilizables que fluyen desde la UI hasta el motor VROOM: factor de trafico, distancia maxima, ventanas flexibles, rutas abiertas, balance de carga, minimizacion de vehiculos, etc.
-
-### ~~Intercambio de vehiculos~~ ✅ Completado
-Swap completo de rutas entre vehiculos con reoptimizacion automatica via VROOM desde la interfaz de planificacion.
-
-### ~~Tracking publico~~ ✅ Completado
-Pagina publica de seguimiento de pedidos via token unico. Los clientes finales pueden ver el estado de su entrega sin necesidad de cuenta.
-
-### Proximas mejoras
-- **Reoptimizacion en vivo** — Recalcular rutas automaticamente cuando un conductor reporta un problema
-- **ETA en tiempo real** — Notificaciones al cliente final con hora estimada de llegada actualizada
-- **Reportes y analytics** — Dashboards con KPIs historicos (cumplimiento, tiempos, costos)
-- **Webhooks** — Notificaciones push a sistemas externos en eventos clave
-- **Multi-dia** — Planificacion de rutas que abarcan multiples dias
-
-### App Movil — [better-route-mobile](https://github.com/EijunnN/better-route-mobile)
-Evolucionar la app Flutter con nuevas funcionalidades: tracking GPS en tiempo real (SSE), firma digital de recepcion, modo offline mejorado y notificaciones push.
-
----
-
-## Tecnologias
-
-| Categoria | Tecnologia |
-|-----------|------------|
-| Frontend | Next.js 16, React 19, TailwindCSS 4 |
-| UI Components | shadcn/ui, Radix UI |
-| State | SWR |
-| Maps | MapLibre GL |
-| Backend | Next.js API Routes |
-| Database | PostgreSQL + Drizzle ORM |
-| Cache | Upstash Redis |
-| Storage | Cloudflare R2 (S3) |
-| Auth | JWT (jose) |
-| Routing Engine | VROOM + OSRM |
-| Mobile | Flutter + Riverpod |
-| Testing | Bun Test (integration), Playwright (e2e) |
-| Linting | Biome |
+- ✅ RBAC tipado end-to-end (contrato único server/cliente, custom roles)
+- ✅ Campos personalizados por empresa
+- ✅ Presets de optimización + swap de vehículos
+- ✅ Tracking público por token
+- ✅ Jornada laboral + descansos en el solver (con verifier)
+- ✅ Reversión de pedidos auditada (máquina de estados de orden)
+- ✅ Chat realtime + push, monitoreo en vivo
+- 🔜 Internacionalización (i18n) — UI y datos traducibles a cualquier idioma
+- 🔜 Reoptimización en vivo ante incidentes del conductor
+- 🔜 ETA en tiempo real al cliente final
+- 🔜 Reportes y analytics históricos (cumplimiento, tiempos, costos)
+- 🔜 Debuggabilidad completa de descansos (placement del break en el plan)
 
 ---
 
 ## Agradecimientos
 
-- [VROOM Project](https://github.com/VROOM-Project/vroom) — Motor de optimizacion
-- [OSRM](https://project-osrm.org/) — Calculo de rutas
-- [Next.js](https://nextjs.org/) — Framework web
-- [Drizzle ORM](https://orm.drizzle.team/) — ORM TypeScript
-- [shadcn/ui](https://ui.shadcn.com/) — Componentes UI
-- [MapLibre](https://maplibre.org/) — Mapas open-source
-
----
-
-## Contribuir
-
-Las contribuciones son bienvenidas. Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para conocer las convenciones del proyecto y como enviar tu primer Pull Request.
+- [VROOM](https://github.com/VROOM-Project/vroom) — solver de optimización
+- [OSRM](https://project-osrm.org/) — enrutamiento sobre red vial
+- [Next.js](https://nextjs.org/) · [Drizzle ORM](https://orm.drizzle.team/) ·
+  [shadcn/ui](https://ui.shadcn.com/) · [MapLibre](https://maplibre.org/) ·
+  [Centrifugo](https://centrifugal.dev/)
 
 ---
 
 ## Licencia
 
-Este proyecto esta licenciado bajo la [Licencia MIT](LICENSE).
-
----
+Distribuido bajo la [Licencia MIT](LICENSE).
 
 <div align="center">
 

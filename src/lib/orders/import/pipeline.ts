@@ -8,13 +8,13 @@ import {
 import {
   type ProfileSchema,
   resolveProfileSchema,
-  type TimeWindowPresetRef,
   validateCsvHeaders,
   validateCsvRow,
 } from "@/lib/orders/profile-schema";
 import { safeParseJson } from "@/lib/utils/safe-json";
 import { calculateErrorSummary, createValidationError } from "./errors";
 import { decodeCsvBase64, detectCSVDelimiter, parseCSV } from "./parse";
+import { resolvePresetsInPlace } from "./resolve-presets";
 import {
   type CSVRecordValidationResult,
   type CSVValidationError,
@@ -80,55 +80,6 @@ function remapRow(
     if (value !== undefined) mapped[fieldKey] = value;
   }
   return mapped;
-}
-
-/**
- * Resolve timeWindowPresetId (either a UUID or a preset name) against the
- * schema's bundled presets, in place. No DB call — the schema already carries
- * the presets. Returns any validation errors it encounters.
- */
-function resolvePresetsInPlace(
-  normalized: Record<string, unknown>,
-  rowIndex: number,
-  presets: TimeWindowPresetRef[],
-): CSVValidationError[] {
-  const errors: CSVValidationError[] = [];
-
-  // Direct time windows take precedence.
-  if (normalized.timeWindowStart && normalized.timeWindowEnd) return errors;
-
-  const rawRef = normalized.timeWindowPresetId;
-  if (typeof rawRef !== "string" || rawRef.trim() === "") return errors;
-  const ref = rawRef.trim();
-
-  const preset =
-    presets.find((p) => p.id === ref) ||
-    presets.find((p) => p.name.toUpperCase() === ref.toUpperCase());
-
-  if (!preset) {
-    errors.push(
-      createValidationError(
-        rowIndex,
-        "timeWindowPresetId",
-        `Preset de ventana horaria no encontrado: ${ref}. ` +
-          `Disponibles: ${presets.map((p) => p.name).join(", ") || "(ninguno)"}`,
-        "critical",
-        ERROR_TYPES.REFERENCE,
-        ref,
-      ),
-    );
-    return errors;
-  }
-
-  normalized.timeWindowPresetId = preset.id;
-  if (preset.startTime && preset.endTime) {
-    normalized.timeWindowStart = String(preset.startTime);
-    normalized.timeWindowEnd = String(preset.endTime);
-  }
-  if (!normalized.strictness && preset.strictness) {
-    normalized.strictness = preset.strictness;
-  }
-  return errors;
 }
 
 // ── main pipeline ───────────────────────────────────────────────────────────

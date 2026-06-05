@@ -76,6 +76,16 @@ export async function POST(request: NextRequest) {
       where: eq(companyTrackingSettings.companyId, tenantCtx.companyId),
     });
 
+    // Master privacy switch: refuse to mint active tokens while public
+    // tracking is disabled for the company. Without this a generated link
+    // would 404 on the public endpoint anyway, so fail loud and early.
+    if (!settings?.trackingEnabled) {
+      return NextResponse.json(
+        { error: "El seguimiento público está desactivado para esta empresa" },
+        { status: 409 },
+      );
+    }
+
     const expiryHours = settings?.tokenExpiryHours ?? 48;
 
     // Generate tokens for each order. Each order is independent — fan out

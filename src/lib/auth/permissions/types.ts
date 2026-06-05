@@ -49,6 +49,7 @@ export enum Action {
   LIST = "list",
   CONFIRM = "confirm",
   CANCEL = "cancel",
+  REVERT = "revert",
   EXECUTE = "execute",
   IMPORT = "import",
   EXPORT = "export",

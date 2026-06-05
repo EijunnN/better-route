@@ -21,6 +21,10 @@ export interface ConfirmCsvImportContext {
 export interface ConfirmCsvImportResult {
   inserted: number;
   reactivated: number;
+  /** New rows that failed to insert (partial-failure case). 0 when all clean. */
+  failed: number;
+  /** Human-readable batch insert errors, when a partial failure occurred. */
+  errors?: string[];
   /**
    * Orders that the preview classified as reactivable but, between
    * preview and confirm, transitioned out of FAILED (e.g. someone
@@ -90,6 +94,8 @@ export async function confirmCsvImport(
 
   // ── Inserts ──────────────────────────────────────────────────────────
   let inserted = 0;
+  let failed = 0;
+  const insertErrors: string[] = [];
   if (stored.newRows.length > 0) {
     const payload = stored.newRows.map((r) =>
       buildOrderInsert(r.data, customFieldKeys),
@@ -99,7 +105,23 @@ export async function confirmCsvImport(
       timeout: 300000,
     });
     inserted = result.inserted;
+    failed = stored.newRows.length - result.inserted;
+    insertErrors.push(...result.errors.map((e) => e.error));
     if (result.inserted > 100) await updateTableStatistics("orders");
+
+    // A batch that fully failed must NOT be reported as success — that was the
+    // silent zero-insert bug. Surface the real DB error to the operator.
+    if (result.inserted === 0 && result.errors.length > 0) {
+      return {
+        kind: "error",
+        status: 422,
+        body: {
+          error:
+            "No se pudo insertar ningún pedido. Revisa los datos del archivo.",
+          details: insertErrors.join(" | "),
+        },
+      };
+    }
   }
 
   // ── Reactivations ─────────────────────────────────────────────────────
@@ -181,7 +203,13 @@ export async function confirmCsvImport(
   return {
     kind: "success",
     status: 200,
-    body: { inserted, reactivated, raceConditions },
+    body: {
+      inserted,
+      reactivated,
+      failed,
+      ...(insertErrors.length > 0 ? { errors: insertErrors } : {}),
+      raceConditions,
+    },
   };
 }
 

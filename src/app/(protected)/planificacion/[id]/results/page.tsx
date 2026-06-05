@@ -2,7 +2,7 @@
 
 import { AlertCircle, ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import { useFullScreenLayout } from "@/components/layout";
 import {
@@ -34,7 +34,6 @@ function ResultsPageContent() {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
   const configId = params.id as string;
   const existingJobId = searchParams.get("jobId");
-  const reoptimize = searchParams.get("reoptimize") === "true";
 
   // Use full-screen layout (hide header, remove padding)
   useFullScreenLayout();
@@ -47,133 +46,125 @@ function ResultsPageContent() {
   const [viewMode, setViewMode] = useState<"existing" | "new">(() => {
     return existingJobId ? "existing" : "new";
   });
-
   // Guard against React Strict Mode double-mounting creating duplicate jobs
   const jobStartedRef = useRef(false);
 
-  // Start optimization job when component mounts and companyId is available
-  useEffect(() => {
+  // Kick off a brand-new optimization job for this configuration. Stable across
+  // renders (depends only on the config + tenant) so it can be called both from
+  // the mount effect and imperatively from "Reoptimizar".
+  const startOptimization = useCallback(async () => {
     if (!companyId) return;
+    setIsStartingJob(true);
+    setStartError(null);
 
-    // If viewing an existing job, fetch its data
-    if (existingJobId && viewMode === "existing" && !reoptimize) {
-      const fetchExistingJob = async () => {
-        setIsStartingJob(true);
-        setStartError(null);
+    try {
+      // First, fetch the configuration to get vehicle and driver IDs
+      const configResponse = await fetch(
+        `/api/optimization/configure/${configId}`,
+        { headers: { "x-company-id": companyId } },
+      );
 
-        try {
-          const response = await fetch(
-            `/api/optimization/jobs/${existingJobId}`,
-            {
-              headers: { "x-company-id": companyId },
-            },
-          );
+      if (!configResponse.ok) {
+        throw new Error("Configuration not found");
+      }
 
-          if (!response.ok) {
-            throw new Error("Job not found");
-          }
+      const configData = await configResponse.json();
+      const config = configData.data;
 
-          const data = await response.json();
-          const job = data.data;
+      // Parse the JSON arrays from the configuration
+      const vehicleIds = safeParseJson(config.selectedVehicleIds);
+      const driverIds = safeParseJson(config.selectedDriverIds);
 
-          setJobId(job.id);
-          setJobData(job);
+      // Now start the optimization job
+      const response = await fetch("/api/optimization/jobs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify({
+          configurationId: configId,
+          companyId: companyId,
+          vehicleIds,
+          driverIds,
+        }),
+      });
 
-          // If job has results, load them
-          if (job.result) {
-            setResult(job.result as OptimizationResult);
-          } else if (job.status === "COMPLETED" || job.status === "CANCELLED") {
-            // Job is done but no results - treat as error
-            setStartError("Job completed but no results available");
-          }
-        } catch (err) {
-          setStartError(
-            err instanceof Error ? err.message : "Failed to load job",
-          );
-        } finally {
-          setIsStartingJob(false);
-        }
-      };
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to start optimization");
+      }
 
-      fetchExistingJob();
-      return;
+      const data = await response.json();
+      setJobId(data.data.id);
+      setJobData({
+        id: data.data.id,
+        configurationId: configId,
+        status: "PENDING",
+        progress: 0,
+        startedAt: null,
+        completedAt: null,
+        cancelledAt: null,
+        timeoutMs: 300000,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      setStartError(
+        err instanceof Error ? err.message : "Failed to start optimization",
+      );
+    } finally {
+      setIsStartingJob(false);
     }
+  }, [companyId, configId]);
 
-    // Otherwise, start a new optimization job
-    if (jobStartedRef.current) return;
-    jobStartedRef.current = true;
-
-    const startOptimization = async () => {
+  const fetchExistingJob = useCallback(
+    async (jid: string) => {
+      if (!companyId) return;
       setIsStartingJob(true);
       setStartError(null);
-
       try {
-        // First, fetch the configuration to get vehicle and driver IDs
-        const configResponse = await fetch(
-          `/api/optimization/configure/${configId}`,
-          {
-            headers: {
-              "x-company-id": companyId,
-            },
-          },
-        );
-
-        if (!configResponse.ok) {
-          throw new Error("Configuration not found");
-        }
-
-        const configData = await configResponse.json();
-        const config = configData.data;
-
-        // Parse the JSON arrays from the configuration
-        const vehicleIds = safeParseJson(config.selectedVehicleIds);
-        const driverIds = safeParseJson(config.selectedDriverIds);
-
-        // Now start the optimization job
-        const response = await fetch("/api/optimization/jobs", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": companyId,
-          },
-          body: JSON.stringify({
-            configurationId: configId,
-            companyId: companyId,
-            vehicleIds,
-            driverIds,
-          }),
+        const response = await fetch(`/api/optimization/jobs/${jid}`, {
+          headers: { "x-company-id": companyId },
         });
-
         if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || "Failed to start optimization");
+          throw new Error("Job not found");
         }
-
         const data = await response.json();
-        setJobId(data.data.id);
-        setJobData({
-          id: data.data.id,
-          configurationId: configId,
-          status: "PENDING",
-          progress: 0,
-          startedAt: null,
-          completedAt: null,
-          cancelledAt: null,
-          timeoutMs: 300000,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+        const job = data.data;
+        setJobId(job.id);
+        setJobData(job);
+        if (job.result) {
+          setResult(job.result as OptimizationResult);
+        } else if (job.status === "COMPLETED" || job.status === "CANCELLED") {
+          setStartError("Job completed but no results available");
+        }
       } catch (err) {
         setStartError(
-          err instanceof Error ? err.message : "Failed to start optimization",
+          err instanceof Error ? err.message : "Failed to load job",
         );
       } finally {
         setIsStartingJob(false);
       }
-    };
+    },
+    [companyId],
+  );
 
+  // On mount (and when the target job/config changes): load an existing job or
+  // start the first one. Re-runs after "Reoptimizar" go through the imperative
+  // call below, not this effect.
+  useEffect(() => {
+    if (!companyId) return;
+
+    if (existingJobId && viewMode === "existing") {
+      fetchExistingJob(existingJobId);
+      return;
+    }
+
+    if (jobStartedRef.current) return;
+    jobStartedRef.current = true;
     startOptimization();
-  }, [configId, viewMode, existingJobId, reoptimize, companyId]);
+  }, [companyId, existingJobId, viewMode, fetchExistingJob, startOptimization]);
 
   const handleJobComplete = (jobResult: unknown) => {
     setResult(jobResult as OptimizationResult);
@@ -184,16 +175,17 @@ function ResultsPageContent() {
   };
 
   const handleReoptimize = () => {
-    // Reset state and start new job with same configuration
+    // Reset state and start a fresh job with the same configuration. We call
+    // startOptimization() directly (and claim the guard) so a re-run fires
+    // reliably even when nothing in the URL/deps changed — the old URL-flag
+    // approach no-op'd and left the page blank.
     setResult(null);
     setJobId(null);
     setJobData(null);
     setStartError(null);
     setViewMode("new");
-    jobStartedRef.current = false;
-
-    // Force re-run of the effect by navigating to the same URL without jobId
-    push(`/planificacion/${configId}/results?reoptimize=true`);
+    jobStartedRef.current = true;
+    startOptimization();
   };
 
   const [showPostConfirmDialog, setShowPostConfirmDialog] = useState(false);

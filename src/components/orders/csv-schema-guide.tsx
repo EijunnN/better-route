@@ -95,7 +95,7 @@ export function CsvSchemaGuide({
     );
   }
 
-  const { schema, template } = data;
+  const { schema } = data;
   const required = schema.fields.filter((f) => f.required);
   const optional = schema.fields.filter(
     (f) => !f.required && f.origin === "system",
@@ -126,10 +126,10 @@ export function CsvSchemaGuide({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => downloadTemplate(template)}
+            onClick={() => downloadXlsxTemplate(companyId)}
           >
             <Download className="size-3.5 mr-1.5" />
-            Plantilla
+            Plantilla Excel
           </Button>
         )}
       </div>
@@ -193,12 +193,22 @@ function wrapperClass(className?: string): string {
   return `space-y-3 ${className ?? ""}`.trim();
 }
 
-function downloadTemplate(content: string) {
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+// Downloads the colored .xlsx template from the API (required columns in
+// yellow). xlsx needs server-side styling, so we fetch instead of building it
+// client-side like the old CSV blob did.
+async function downloadXlsxTemplate(companyId: string) {
+  const res = await fetch("/api/orders/csv-template?format=xlsx", {
+    headers: { "x-company-id": companyId },
+  });
+  if (!res.ok) {
+    console.error("No se pudo descargar la plantilla Excel");
+    return;
+  }
+  const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "ordenes_template.csv";
+  a.download = "ordenes_template.xlsx";
   a.click();
   URL.revokeObjectURL(url);
 }

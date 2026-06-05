@@ -263,7 +263,7 @@ function DestinationIcon({ dest }: { dest: DestinationDescriptor }) {
       title={tooltipText}
       className={`relative inline-flex size-[38px] items-center justify-center rounded-lg border ${
         disabled
-          ? "border-dashed border-foreground/15 text-muted-foreground/50"
+          ? "border-dashed border-border text-muted-foreground/70"
           : "border-primary/40 bg-primary/15 text-accent-foreground"
       }`}
     >

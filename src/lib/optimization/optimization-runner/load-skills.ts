@@ -18,17 +18,10 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { vehicleSkillAssignments, vehicleSkills } from "@/db/schema";
 
-/**
- * Split the CSV text stored in `orders.required_skills` into an array of
- * trimmed, uppercased codes. Empty strings/unknown shapes → empty array.
- */
-export function parseRequiredSkills(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+// Single source of truth lives in `@/lib/orders/required-skills` so every
+// reader (driver-assignment, pending-summary, reassignment impact) parses the
+// `orders.required_skills` CSV exactly the way the solver does.
+export { parseRequiredSkills } from "@/lib/orders/required-skills";
 
 /**
  * Fetch active skill codes for a batch of vehicles in a single query.

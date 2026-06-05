@@ -1,12 +1,16 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, routeStopHistory, routeStops } from "@/db/schema";
+import { routeStopHistory, routeStops } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
+import {
+  applyOrderTransition,
+  toOrderTransitionHttp,
+} from "@/lib/orders/transition";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
@@ -209,26 +213,31 @@ export async function POST(
         metadata: { reason, changed, source: "same-day-reopen" },
       });
 
-      // Sync the Order back to PENDING (mirrors the Stop transition).
+      // Sync the Order back to PENDING (mirrors the Stop transition) through
+      // the order state machine, so the move is validated against
+      // ALLOWED_ORDER_TRANSITIONS and recorded in order_status_history within
+      // this same transaction. A terminal (CANCELLED) order rejects the
+      // reopen instead of leaving Order/Stop inconsistent.
       if (currentStop.orderId) {
-        await tx
-          .update(orders)
-          .set({
-            status: "PENDING",
-            ...(orderUpdate ?? {}),
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(orders.id, currentStop.orderId),
-              sql`${orders.status} != 'CANCELLED'`,
-            ),
-          );
+        await applyOrderTransition({
+          tx,
+          orderId: currentStop.orderId,
+          companyId: tenantCtx.companyId,
+          to: "PENDING",
+          source: "reopen",
+          reason,
+          actorUserId: tenantCtx.userId ?? null,
+          statusColumns: orderUpdate ?? undefined,
+        });
       }
 
       return result;
     });
   } catch (txError) {
+    const mapped = toOrderTransitionHttp(txError);
+    if (mapped) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     if (txError instanceof Error) {
       if (txError.message === "NOT_FOUND") {
         return NextResponse.json({ error: "Stop not found" }, { status: 404 });

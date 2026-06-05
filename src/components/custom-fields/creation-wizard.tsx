@@ -281,7 +281,7 @@ function StepOrigin({ data, patch }: StepProps) {
       value: "orders",
       Icon: Users,
       label: "Tu equipo",
-      hint: "Lo cargan en el panel al crear o editar un pedido. Ejemplos: monto a cobrar, OC del cliente, tipo de servicio.",
+      hint: "Lo cargan en el panel al crear o editar un pedido. Ejemplos: OC del cliente, tipo de servicio, instrucciones especiales.",
     },
     {
       value: "route_stops",
@@ -378,10 +378,10 @@ function StepName({
   const suggestions =
     data.entity === "orders"
       ? [
-          "Monto a cobrar",
           "OC del cliente",
-          "Referencia interna",
           "Tipo de servicio",
+          "Referencia interna",
+          "Monto a cobrar",
         ]
       : [
           "DNI del receptor",
@@ -402,7 +402,7 @@ function StepName({
       <Input
         value={data.label}
         onChange={(e) => patch({ label: e.target.value })}
-        placeholder="Ej: Monto a cobrar"
+        placeholder="Ej: OC del cliente"
         className="h-11 text-base"
       />
       {overlap && (

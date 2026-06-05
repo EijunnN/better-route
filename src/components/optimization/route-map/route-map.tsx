@@ -36,6 +36,19 @@ export function RouteMap({
   const [error, setError] = useState<string | null>(null);
   const mapThemeRef = useRef(isDark);
 
+  // The map's imperative click handlers are registered ONCE at init. Route the
+  // selection state + callbacks through refs so those handlers always read the
+  // latest values without forcing a full map re-init — re-initializing would
+  // re-run fitBounds and recenter the map on every route/order click.
+  const selectedRouteIdRef = useRef(selectedRouteId);
+  const onRouteSelectRef = useRef(onRouteSelect);
+  const onMapReadyRef = useRef(onMapReady);
+  useEffect(() => {
+    selectedRouteIdRef.current = selectedRouteId;
+    onRouteSelectRef.current = onRouteSelect;
+    onMapReadyRef.current = onMapReady;
+  }, [selectedRouteId, onRouteSelect, onMapReady]);
+
   // Update route visibility when selection changes
   useRouteSelectionVisibility(map, markersRef, routes, selectedRouteId);
 
@@ -173,8 +186,10 @@ export function RouteMap({
             driverOriginEl.addEventListener("click", (e) => {
               e.stopPropagation();
               marker.togglePopup();
-              onRouteSelect?.(
-                selectedRouteId === route.routeId ? null : route.routeId,
+              onRouteSelectRef.current?.(
+                selectedRouteIdRef.current === route.routeId
+                  ? null
+                  : route.routeId,
               );
             });
 
@@ -249,8 +264,10 @@ export function RouteMap({
               });
 
               map.current.on("click", layerId, () => {
-                onRouteSelect?.(
-                  selectedRouteId === route.routeId ? null : route.routeId,
+                onRouteSelectRef.current?.(
+                  selectedRouteIdRef.current === route.routeId
+                    ? null
+                    : route.routeId,
                 );
               });
 
@@ -391,8 +408,10 @@ export function RouteMap({
                 markerEl.addEventListener("click", (e) => {
                   e.stopPropagation();
                   marker.togglePopup();
-                  onRouteSelect?.(
-                    selectedRouteId === route.routeId ? null : route.routeId,
+                  onRouteSelectRef.current?.(
+                    selectedRouteIdRef.current === route.routeId
+                      ? null
+                      : route.routeId,
                   );
                 });
 
@@ -619,14 +638,14 @@ export function RouteMap({
           setIsLoading(false);
 
           // Notify parent when map is ready
-          if (map.current && onMapReady) {
-            onMapReady(map.current);
+          if (map.current && onMapReadyRef.current) {
+            onMapReadyRef.current(map.current);
           }
         });
 
         // Click on map to deselect
         map.current.on("click", () => {
-          onRouteSelect?.(null);
+          onRouteSelectRef.current?.(null);
         });
 
         map.current.on("error", (e) => {
@@ -651,6 +670,9 @@ export function RouteMap({
       map.current?.remove();
       map.current = null;
     };
+    // Selection state + callbacks are read through refs (see above), so they
+    // are intentionally NOT deps — re-running this effect tears down and
+    // recreates the whole map, which would recenter it on every click.
   }, [
     routes,
     depot,
@@ -658,9 +680,6 @@ export function RouteMap({
     unassignedOrders,
     vehiclesWithoutRoutes,
     isDark,
-    onMapReady,
-    onRouteSelect,
-    selectedRouteId,
   ]);
 
   // React to theme changes
@@ -699,9 +718,10 @@ export function RouteMap({
         )}
         <div ref={mapContainer} className="size-full" />
 
-        {/* Selection hint */}
+        {/* Selection hint — sits below the pencil toggle (top-4 left-4) so the
+            two don't overlap. */}
         {selectedRouteId && (
-          <div className="absolute top-4 left-4 bg-[#1a1a2e]/90 backdrop-blur px-3 py-2 rounded-lg border border-gray-700">
+          <div className="absolute top-16 left-4 bg-[#1a1a2e]/90 backdrop-blur px-3 py-2 rounded-lg border border-gray-700">
             <p className="text-xs text-gray-400">
               Clic en el mapa para ver todas las rutas
             </p>

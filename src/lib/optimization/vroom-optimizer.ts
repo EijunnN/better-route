@@ -132,6 +132,8 @@ export interface OptimizedRoute {
   totalWeight: number;
   totalVolume: number;
   geometry?: string; // Encoded polyline from VROOM/OSRM
+  /** Breaks the solver scheduled on this route (VROOM `type:"break"` steps). */
+  breaks?: Array<{ arrivalTime?: number; durationSeconds: number }>;
 }
 
 export interface OptimizationOutput {
@@ -425,6 +427,7 @@ async function optimizeWithVroom(
         openStart: config.openStart,
         openEnd,
         // Break / lunch configuration
+        hasBreakTime: vehicle.hasBreakTime,
         breakDuration: vehicle.breakDuration,
         breakTimeStart: vehicle.breakTimeStart,
         breakTimeEnd: vehicle.breakTimeEnd,
@@ -645,6 +648,10 @@ function convertVroomResponse(
     if (!vehicle) continue;
 
     const stops: OptimizedStop[] = [];
+    const routeBreaks: Array<{
+      arrivalTime?: number;
+      durationSeconds: number;
+    }> = [];
     let totalWeight = 0;
     let totalVolume = 0;
     let sequence = 1;
@@ -671,6 +678,11 @@ function convertVroomResponse(
 
         totalWeight += order.weightRequired;
         totalVolume += order.volumeRequired;
+      } else if (step.type === "break") {
+        routeBreaks.push({
+          arrivalTime: step.arrival,
+          durationSeconds: step.service ?? 0,
+        });
       }
     }
 
@@ -698,18 +710,44 @@ function convertVroomResponse(
         totalWeight,
         totalVolume,
         geometry: vroomRoute.geometry, // Encoded polyline from OSRM
+        breaks: routeBreaks.length > 0 ? routeBreaks : undefined,
       });
     }
   }
 
-  // Map unassigned
+  // Map unassigned with a CLASSIFIED reason. VROOM doesn't return a per-job
+  // reason, so we infer the dominant cause from fleet coverage: a required
+  // skill no vehicle has, or a capacity no vehicle can hold. If the fleet
+  // covers both, the order is feasible on paper and the cause is the schedule
+  // — time window, vehicle workday, or the break eating into available time.
   const unassigned = (response.unassigned || []).map((u) => {
     const orderId = orderIdToIndex.get(u.id);
     const order = orderId ? orderMap.get(orderId) : undefined;
+
+    let reason =
+      "No se pudo encajar en ninguna ruta (ventana horaria, jornada del vehículo o descanso).";
+    if (order) {
+      const required = order.skillsRequired ?? [];
+      const uncoveredSkill = required.find(
+        (code) => !vehicles.some((v) => (v.skills ?? []).includes(code)),
+      );
+      const fitsCapacity = vehicles.some(
+        (v) =>
+          order.weightRequired <= v.maxWeight &&
+          order.volumeRequired <= v.maxVolume,
+      );
+      if (uncoveredSkill) {
+        reason = `Ninguna unidad posee la habilidad requerida "${uncoveredSkill}".`;
+      } else if (!fitsCapacity) {
+        reason =
+          "El pedido excede la capacidad (peso/volumen) de todas las unidades disponibles.";
+      }
+    }
+
     return {
       orderId: orderId || String(u.id),
       trackingId: order?.trackingId || u.description || "Unknown",
-      reason: "No feasible route found",
+      reason,
     };
   });
 

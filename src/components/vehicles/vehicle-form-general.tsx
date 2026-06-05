@@ -118,13 +118,27 @@ export function VehicleFormGeneral() {
                 id="maxOrders"
                 type="number"
                 min="1"
-                value={formData.maxOrders}
+                value={formData.maxOrders ?? ""}
                 onChange={(e) =>
-                  updateField("maxOrders", parseInt(e.target.value, 10) || 20)
+                  updateField(
+                    "maxOrders",
+                    e.target.value === ""
+                      ? undefined
+                      : parseInt(e.target.value, 10),
+                  )
                 }
                 disabled={isSubmitting}
-                placeholder="20"
+                placeholder="Ej: 20"
+                className={errors.maxOrders ? "border-destructive" : ""}
               />
+              {errors.maxOrders ? (
+                <p className="text-xs text-destructive">{errors.maxOrders}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Cantidad máxima de paradas por ruta para este vehículo
+                  (independiente del peso, volumen o unidades).
+                </p>
+              )}
             </div>
 
             {/* Max Value Capacity */}

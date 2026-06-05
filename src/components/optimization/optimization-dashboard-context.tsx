@@ -69,6 +69,7 @@ export interface DashboardState {
   pencilMode: boolean;
   mapInstance: maplibregl.Map | null;
   isSwapping: boolean;
+  isDeletingOrders: boolean;
 }
 
 export interface DashboardActions {
@@ -93,6 +94,7 @@ export interface DashboardActions {
   setSelectedVehicleForReassign: (vehicleId: string | null) => void;
   handleReassignment: () => Promise<void>;
   handlePencilSelectionComplete: (selectedOrderIds: string[]) => void;
+  handleDeleteSelectedOrders: () => Promise<void>;
   swapVehicleRoutes: (vehicleAId: string, vehicleBId: string) => Promise<void>;
 }
 
@@ -132,6 +134,34 @@ interface DashboardContextValue {
 const DashboardContext = createContext<DashboardContextValue | undefined>(
   undefined,
 );
+
+/**
+ * Return a copy of the plan with the given orders removed from routes and the
+ * unassigned bucket — used for instant feedback after a delete, before any
+ * reoptimization. A grouped stop is dropped only when ALL of its orders are
+ * deleted; partial groups are left as-is (the view is transient anyway).
+ */
+function removeOrdersFromResult(
+  result: OptimizationResult,
+  deleted: Set<string>,
+): OptimizationResult {
+  return {
+    ...result,
+    routes: result.routes.map((route) => ({
+      ...route,
+      stops: route.stops.filter(
+        (stop) =>
+          !(
+            deleted.has(stop.orderId) &&
+            (stop.groupedOrderIds ?? []).every((id) => deleted.has(id))
+          ),
+      ),
+    })),
+    unassignedOrders: result.unassignedOrders.filter(
+      (order) => !deleted.has(order.orderId),
+    ),
+  };
+}
 
 export interface DashboardProviderProps {
   children: ReactNode;
@@ -187,6 +217,9 @@ export function OptimizationDashboardProvider({
 
   // Swap state
   const [isSwapping, setIsSwapping] = useState(false);
+
+  // Delete-selected state
+  const [isDeletingOrders, setIsDeletingOrders] = useState(false);
 
   const loadZones = useCallback(async () => {
     if (!companyId) return;
@@ -428,6 +461,54 @@ export function OptimizationDashboardProvider({
     setPencilMode(false);
   };
 
+  /**
+   * Soft-delete the currently selected orders (from click or pencil lasso).
+   * This does NOT reoptimize — the operator prunes across as many passes as
+   * they want and hits "Reoptimizar" when done. Deleted orders are dropped from
+   * the current view for immediate feedback, and the next optimization run
+   * skips them because the runner only loads active PENDING orders. Their
+   * trackingIds free up for re-import later.
+   */
+  const handleDeleteSelectedOrders = async () => {
+    if (selectedOrdersForReassign.length === 0 || !companyId) return;
+    const deletedIds = selectedOrdersForReassign.map((o) => o.orderId);
+    const count = deletedIds.length;
+    setIsDeletingOrders(true);
+    try {
+      const response = await fetch("/api/orders/batch/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify({ orderIds: deletedIds }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || "Error al eliminar los pedidos");
+      }
+      const data = await response.json().catch(() => null);
+
+      // Drop the deleted orders from the current view so the operator can keep
+      // pruning across passes; routes recalculate only when they reoptimize.
+      onResultUpdate?.(removeOrdersFromResult(result, new Set(deletedIds)));
+      clearSelection();
+      toast({
+        title: "Pedidos eliminados",
+        description: `${data?.deleted ?? count} pedido(s) eliminados. Reoptimizá cuando termines para recalcular las rutas.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error al eliminar pedidos",
+        description:
+          error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingOrders(false);
+    }
+  };
+
   const swapVehicleRoutes = async (vehicleAId: string, vehicleBId: string) => {
     if (!companyId || !jobId) return;
 
@@ -495,6 +576,7 @@ export function OptimizationDashboardProvider({
     pencilMode,
     mapInstance,
     isSwapping,
+    isDeletingOrders,
   };
 
   const actions: DashboardActions = {
@@ -512,6 +594,7 @@ export function OptimizationDashboardProvider({
     setSelectedVehicleForReassign,
     handleReassignment,
     handlePencilSelectionComplete,
+    handleDeleteSelectedOrders,
     swapVehicleRoutes,
   };
 

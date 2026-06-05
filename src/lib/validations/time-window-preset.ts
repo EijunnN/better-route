@@ -11,15 +11,15 @@ const baseTimeWindowPresetSchema = {
   }),
   startTime: z
     .string()
-    .regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)")
+    .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Invalid time format (HH:MM)")
     .optional(),
   endTime: z
     .string()
-    .regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)")
+    .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Invalid time format (HH:MM)")
     .optional(),
   exactTime: z
     .string()
-    .regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)")
+    .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Invalid time format (HH:MM)")
     .optional(),
   toleranceMinutes: z.number().int().nonnegative().optional(),
   strictness: z
@@ -102,15 +102,15 @@ export const updateTimeWindowPresetSchema = z
     type: z.enum(TIME_WINDOW_TYPES).optional(),
     startTime: z
       .string()
-      .regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)")
+      .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Invalid time format (HH:MM)")
       .optional(),
     endTime: z
       .string()
-      .regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)")
+      .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Invalid time format (HH:MM)")
       .optional(),
     exactTime: z
       .string()
-      .regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)")
+      .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Invalid time format (HH:MM)")
       .optional(),
     toleranceMinutes: z.number().int().nonnegative().optional(),
     strictness: z.enum(TIME_WINDOW_STRICTNESS).optional(),

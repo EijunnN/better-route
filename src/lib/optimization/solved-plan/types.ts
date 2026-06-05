@@ -71,6 +71,14 @@ export interface SolvedStop {
   groupedTrackingIds?: string[];
 }
 
+/** A break (lunch/rest) the solver scheduled on a route. */
+export interface SolvedBreak {
+  /** Local-time HH:MM the break starts (when the solver placed it). */
+  arrival?: string;
+  /** Break length in seconds. */
+  durationSeconds: number;
+}
+
 // ─── Route (per-route chain) ───────────────────────────────────────────
 
 /**
@@ -111,6 +119,12 @@ export interface RawSolvedRoute {
   timeWindowViolations: number;
   /** Encoded polyline geometry from VROOM/OSRM. Optional. */
   geometry?: string;
+  /**
+   * Breaks the solver scheduled on this route (lunch/rest). Empty/undefined
+   * means no break was placed — for a vehicle with `hasBreakTime`, that's a
+   * signal the verifier (`checkBreakTime`) surfaces.
+   */
+  breaks?: SolvedBreak[];
 }
 
 /**

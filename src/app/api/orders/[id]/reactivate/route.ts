@@ -1,23 +1,26 @@
-import { and, eq } from "drizzle-orm";
-import { after, type NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { orders } from "@/db/schema";
-import { withTenantFilter } from "@/db/tenant-aware";
+import { type NextRequest, NextResponse } from "next/server";
+import type { orders } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
+import {
+  applyOrderTransition,
+  toOrderTransitionHttp,
+} from "@/lib/orders/transition";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
  * POST /api/orders/:id/reactivate — cross-day reactivation of a FAILED Order.
  *
- * Issue 004. Flips Order.status FAILED → PENDING so it joins the next
- * planning batch. Optional overrides patch the Order's
- * address/coordinates/time-window/promised-date/notes columns.
+ * Issue 004. Transitions Order FAILED → PENDING (validated against the order
+ * state machine, optimistically locked, audited in order_status_history) so
+ * the order joins the next planning batch. Optional overrides patch the
+ * Order's address/coordinates/time-window/promised-date/notes columns.
  *
- * No RouteStop is created here — the next optimization run produces it
- * with `attempt_number = priorVisitCount + 1` (issue 001).
+ * No RouteStop is created or deleted here — the next optimization run
+ * produces a fresh stop with `attempt_number = priorVisitCount + 1`
+ * (issue 001). The prior FAILED stop + its delivery_visit stay as immutable
+ * history.
  */
 export async function POST(
   request: NextRequest,
@@ -57,40 +60,19 @@ export async function POST(
     );
   }
 
-  const existing = await db.query.orders.findFirst({
-    where: and(
-      eq(orders.id, orderId),
-      withTenantFilter(orders, [], tenantCtx.companyId),
-    ),
-  });
-  if (!existing) {
-    return NextResponse.json({ error: "Order not found" }, { status: 404 });
-  }
-  if (existing.status !== "FAILED") {
-    return NextResponse.json(
-      {
-        error: `Cannot reactivate an order in status ${existing.status}. Only FAILED orders can be reactivated.`,
-      },
-      { status: 409 },
-    );
-  }
-
+  const statusColumns: Partial<typeof orders.$inferInsert> = {};
   const changed: Record<string, unknown> = {};
-  const update: Partial<typeof orders.$inferInsert> = {
-    status: "PENDING",
-    updatedAt: new Date(),
-  };
 
   if (typeof body.addressOverride === "string" && body.addressOverride) {
-    update.address = body.addressOverride;
+    statusColumns.address = body.addressOverride;
     changed.address = body.addressOverride;
   }
   if (typeof body.latitudeOverride === "string" && body.latitudeOverride) {
-    update.latitude = body.latitudeOverride;
+    statusColumns.latitude = body.latitudeOverride;
     changed.latitude = body.latitudeOverride;
   }
   if (typeof body.longitudeOverride === "string" && body.longitudeOverride) {
-    update.longitude = body.longitudeOverride;
+    statusColumns.longitude = body.longitudeOverride;
     changed.longitude = body.longitudeOverride;
   }
   // Order.timeWindowStart/End are `time` columns — Drizzle accepts an
@@ -99,14 +81,14 @@ export async function POST(
     typeof body.timeWindowStartOverride === "string" &&
     body.timeWindowStartOverride
   ) {
-    update.timeWindowStart = body.timeWindowStartOverride;
+    statusColumns.timeWindowStart = body.timeWindowStartOverride;
     changed.timeWindowStart = body.timeWindowStartOverride;
   }
   if (
     typeof body.timeWindowEndOverride === "string" &&
     body.timeWindowEndOverride
   ) {
-    update.timeWindowEnd = body.timeWindowEndOverride;
+    statusColumns.timeWindowEnd = body.timeWindowEndOverride;
     changed.timeWindowEnd = body.timeWindowEndOverride;
   }
   if (
@@ -120,47 +102,32 @@ export async function POST(
         { status: 400 },
       );
     }
-    update.promisedDate = parsed;
+    statusColumns.promisedDate = parsed;
     changed.promisedDate = body.promisedDateOverride;
   }
   if (typeof body.notesOverride === "string" && body.notesOverride) {
-    update.notes = body.notesOverride;
+    statusColumns.notes = body.notesOverride;
     changed.notes = body.notesOverride;
   }
 
-  const [updated] = await db
-    .update(orders)
-    .set(update)
-    .where(and(eq(orders.id, orderId), eq(orders.status, "FAILED")))
-    .returning();
-
-  if (!updated) {
-    return NextResponse.json(
-      {
-        error:
-          "Order status changed since the reactivation request was prepared. Refresh and try again.",
-      },
-      { status: 409 },
-    );
-  }
-
-  after(async () => {
-    await logUpdate("order", orderId, {
-      action: "reactivate",
+  try {
+    const { order } = await applyOrderTransition({
+      orderId,
+      companyId: tenantCtx.companyId,
+      to: "PENDING",
+      expectedFrom: "FAILED",
+      source: "reactivate",
       reason,
-      changed,
-      previous: {
-        status: existing.status,
-        address: existing.address,
-        latitude: existing.latitude,
-        longitude: existing.longitude,
-        timeWindowStart: existing.timeWindowStart,
-        timeWindowEnd: existing.timeWindowEnd,
-        promisedDate: existing.promisedDate,
-        notes: existing.notes,
-      },
+      actorUserId: tenantCtx.userId ?? null,
+      statusColumns,
+      metadata: { changed },
     });
-  });
-
-  return NextResponse.json({ data: updated });
+    return NextResponse.json({ data: order });
+  } catch (error) {
+    const mapped = toOrderTransitionHttp(error);
+    if (mapped) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
+    throw error;
+  }
 }

@@ -38,6 +38,7 @@ export function usePlanificacionState() {
   const [orderTab, setOrderTab] = useState("todas");
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [isDiscardingPending, setIsDiscardingPending] = useState(false);
 
   // Configuration state
   const [planName, setPlanName] = useState("");
@@ -141,6 +142,8 @@ export function usePlanificacionState() {
     setOrdersLoading,
     deletingOrderId,
     setDeletingOrderId,
+    isDiscardingPending,
+    setIsDiscardingPending,
     // configuration
     planName,
     setPlanName,

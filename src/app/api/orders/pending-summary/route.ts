@@ -6,7 +6,7 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
-
+import { parseRequiredSkills } from "@/lib/orders/required-skills";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // GET - Get summary of pending orders with capacity and skill requirements
@@ -67,25 +67,13 @@ export async function GET(request: NextRequest) {
       ? Math.max(...ordersWithVolume.map((o) => o.volumeRequired || 0))
       : 0;
 
-    // Collect unique required skills
+    // Collect unique required skill codes (CSV in `required_skills`, not JSON).
     const skillCodes = new Set<string>();
-    pendingOrders.forEach((order) => {
-      if (order.requiredSkills) {
-        try {
-          const skills =
-            typeof order.requiredSkills === "string"
-              ? JSON.parse(order.requiredSkills)
-              : order.requiredSkills;
-          if (Array.isArray(skills)) {
-            for (const skill of skills) {
-              skillCodes.add(skill);
-            }
-          }
-        } catch {
-          // Skip invalid JSON
-        }
+    for (const order of pendingOrders) {
+      for (const skill of parseRequiredSkills(order.requiredSkills)) {
+        skillCodes.add(skill);
       }
-    });
+    }
 
     // Fetch skill details for required skills
     let requiredSkillDetails: Array<{

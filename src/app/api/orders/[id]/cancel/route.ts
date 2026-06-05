@@ -1,36 +1,29 @@
 import { and, eq } from "drizzle-orm";
-import { after, type NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   ORDER_CANCELLATION_CATEGORIES,
   type OrderCancellationCategory,
   orders,
-  type USER_ROLES,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
+import {
+  applyOrderTransition,
+  toOrderTransitionHttp,
+} from "@/lib/orders/transition";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
-
-const CANCEL_ROLES = new Set<keyof typeof USER_ROLES>([
-  "PLANIFICADOR",
-  "ADMIN_FLOTA",
-  "ADMIN_SISTEMA",
-]);
-
-const TERMINAL_STATUSES = new Set(["CANCELLED", "COMPLETED"]);
+import { isOrderTerminal } from "@/lib/workflow/order-states";
 
 /**
  * POST /api/orders/:id/cancel — terminal definitive cancellation.
  *
- * Issue 005. CANCELLED is irreversible (per ADR-0005). The CSV import
- * preview categorises CANCELLED orders into the "skipped (cancelled)"
- * bucket so they cannot be reactivated through any flow.
- *
- * Authorization: only PLANIFICADOR / ADMIN_FLOTA / ADMIN_SISTEMA can
- * cancel. Conductores y demás roles reciben 403.
+ * Issue 005. CANCELLED is irreversible (ADR-0005). Gated by the typed
+ * `order:cancel` permission (no more hardcoded role Set). The transition
+ * legality, optimistic lock and append-only audit all live in
+ * `applyOrderTransition`.
  */
 export async function POST(
   request: NextRequest,
@@ -39,19 +32,12 @@ export async function POST(
   const authResult = await requireRoutePermission(
     request,
     EntityType.ORDER,
-    Action.UPDATE,
+    Action.CANCEL,
   );
   if (authResult instanceof NextResponse) return authResult;
   const tenantCtx = extractTenantContextAuthed(request, authResult);
   if (tenantCtx instanceof NextResponse) return tenantCtx;
   setTenantContext(tenantCtx);
-
-  if (!CANCEL_ROLES.has(authResult.role as keyof typeof USER_ROLES)) {
-    return NextResponse.json(
-      { error: "No tienes permiso para cancelar pedidos definitivamente." },
-      { status: 403 },
-    );
-  }
 
   const { id: orderId } = await params;
   const body = (await request.json().catch(() => null)) as {
@@ -84,16 +70,19 @@ export async function POST(
     );
   }
 
+  // Terminal orders (CANCELLED/COMPLETED) cannot be cancelled — 409, matching
+  // the pre-existing contract (the state machine would otherwise 422/no-op).
   const existing = await db.query.orders.findFirst({
     where: and(
       eq(orders.id, orderId),
       withTenantFilter(orders, [], tenantCtx.companyId),
     ),
+    columns: { status: true },
   });
   if (!existing) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
-  if (TERMINAL_STATUSES.has(existing.status)) {
+  if (isOrderTerminal(existing.status)) {
     return NextResponse.json(
       {
         error: `Order is already in terminal state ${existing.status} and cannot be cancelled.`,
@@ -102,37 +91,26 @@ export async function POST(
     );
   }
 
-  const [updated] = await db
-    .update(orders)
-    .set({
-      status: "CANCELLED",
-      cancellationReasonCategory: reasonCategory as OrderCancellationCategory,
-      cancellationReasonNote: reasonNote,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(orders.id, orderId), eq(orders.status, existing.status)))
-    .returning();
-
-  if (!updated) {
-    return NextResponse.json(
-      {
-        error:
-          "Order status changed since the cancellation request was prepared. Refresh and try again.",
-      },
-      { status: 409 },
-    );
-  }
-
-  after(async () => {
-    await logUpdate("order", orderId, {
-      action: "cancel",
+  try {
+    const { order } = await applyOrderTransition({
+      orderId,
+      companyId: tenantCtx.companyId,
+      to: "CANCELLED",
+      source: "cancel",
+      reason: reasonNote,
       reasonCategory,
-      reasonNote,
-      previous: {
-        status: existing.status,
+      actorUserId: tenantCtx.userId ?? null,
+      statusColumns: {
+        cancellationReasonCategory: reasonCategory as OrderCancellationCategory,
+        cancellationReasonNote: reasonNote,
       },
     });
-  });
-
-  return NextResponse.json({ data: updated });
+    return NextResponse.json({ data: order });
+  } catch (error) {
+    const mapped = toOrderTransitionHttp(error);
+    if (mapped) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
+    throw error;
+  }
 }

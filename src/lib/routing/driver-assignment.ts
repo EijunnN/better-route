@@ -9,6 +9,7 @@ import {
   users,
   vehicles,
 } from "@/db/schema";
+import { parseRequiredSkills } from "@/lib/orders/required-skills";
 
 /**
  * Driver assignment quality score
@@ -247,17 +248,12 @@ async function getRequiredSkillsForRoute(
     where: and(eq(orders.companyId, companyId), inArray(orders.id, orderIds)),
   });
 
-  // Collect all required skills from orders
+  // Collect all required skill codes from orders. `required_skills` is a CSV
+  // of codes — parse it the same way the solver does, never JSON.parse.
   const requiredSkills = new Set<string>();
   for (const order of ordersList) {
-    if (order.requiredSkills) {
-      const skills =
-        typeof order.requiredSkills === "string"
-          ? JSON.parse(order.requiredSkills)
-          : order.requiredSkills;
-      skills.forEach((skill: string) => {
-        requiredSkills.add(skill);
-      });
+    for (const skill of parseRequiredSkills(order.requiredSkills)) {
+      requiredSkills.add(skill);
     }
   }
 
@@ -272,7 +268,7 @@ interface DriverForScoring {
   status: string | null;
   fleetId: string | null;
   secondaryFleetIds: string[];
-  skills: Array<{ id: string }>;
+  skills: Array<{ code: string }>;
   driverSkills: Array<{
     expiresAt: Date | string | null;
     skill: { name: string };
@@ -360,12 +356,15 @@ async function calculateDriverScore(
     warnings.push("Driver from different fleet");
   }
 
-  // 4. Check skills matching
+  // 4. Check skills matching. `requiredSkills` are skill CODES (parsed from
+  // the order CSV); compare against the driver's skill codes, not the UUIDs.
   if (requiredSkills.length > 0) {
-    const driverSkillIds = new Set(driver.skills.map((s) => s.id));
+    const driverSkillCodes = new Set(
+      driver.skills.map((s) => s.code.trim()).filter(Boolean),
+    );
 
-    const matchedSkills = requiredSkills.filter((skillId) =>
-      driverSkillIds.has(skillId),
+    const matchedSkills = requiredSkills.filter((skillCode) =>
+      driverSkillCodes.has(skillCode),
     );
 
     factors.skillsMatch = Math.round(
@@ -643,13 +642,16 @@ export async function validateDriverAssignment(
     }
   }
 
-  // Check skills
+  // Check skills. `requiredSkills` are codes — compare against the driver's
+  // skill codes, not the UUID skillIds.
   const requiredSkills = await getRequiredSkillsForRoute(companyId, routeStops);
   if (requiredSkills.length > 0) {
-    const driverSkillIds = new Set(driver.userSkills.map((ds) => ds.skillId));
+    const driverSkillCodes = new Set(
+      driver.userSkills.map((ds) => ds.skill.code.trim()).filter(Boolean),
+    );
 
     const missingSkills = requiredSkills.filter(
-      (skillId) => !driverSkillIds.has(skillId),
+      (skillCode) => !driverSkillCodes.has(skillCode),
     );
 
     if (missingSkills.length > 0) {

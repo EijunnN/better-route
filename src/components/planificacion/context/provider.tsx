@@ -69,6 +69,7 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     orderTab: state.orderTab,
     ordersLoading: state.ordersLoading,
     deletingOrderId: state.deletingOrderId,
+    isDiscardingPending: state.isDiscardingPending,
     planName: state.planName,
     planDate: state.planDate,
     planTime: state.planTime,

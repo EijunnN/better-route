@@ -1,4 +1,4 @@
-import { count } from "drizzle-orm";
+import { count, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companies, permissions, rolePermissions, roles } from "@/db/schema";
@@ -155,6 +155,18 @@ export async function POST(request: NextRequest) {
 
     // Execute everything in a single transaction
     const result = await db.transaction(async (tx) => {
+      // Serialize concurrent onboarding attempts: an advisory xact lock makes a
+      // second submit wait, then observe count>0 and bail — without it two
+      // simultaneous submits with distinct legalNames both pass the outer
+      // check and create two companies (breaking single-tenant).
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext('onboarding'))`,
+      );
+      const [lockedCount] = await tx.select({ count: count() }).from(companies);
+      if (lockedCount.count > 0) {
+        throw new Error("ALREADY_ONBOARDED");
+      }
+
       // 1. Create company
       const [newCompany] = await tx
         .insert(companies)
@@ -231,6 +243,16 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    if (error instanceof Error && error.message === "ALREADY_ONBOARDED") {
+      return NextResponse.json(
+        {
+          error:
+            "Ya existe al menos una empresa. El onboarding ya fue completado.",
+        },
+        { status: 409 },
+      );
     }
 
     return NextResponse.json(

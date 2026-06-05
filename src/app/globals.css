@@ -16,7 +16,11 @@
   --secondary: oklch(0.3717 0.0392 257.287);
   --secondary-foreground: oklch(0.9842 0.0034 247.8575);
   --muted: oklch(0.9683 0.0069 247.8956);
-  --muted-foreground: oklch(0.5544 0.0407 257.4166);
+  /* Darkened from 0.5544 → 0.46 so secondary/muted text clears WCAG AA
+     (~4.5:1) on the near-white light background. At 0.5544 it sat ~4:1,
+     which read as "barely legible" on muted-heavy pages (e.g. the
+     custom-fields "Flujo del dato" dashboard). Dark mode is unaffected. */
+  --muted-foreground: oklch(0.46 0.0407 257.4166);
   --accent: oklch(0.9819 0.0181 155.8263);
   --accent-foreground: oklch(0.4479 0.1083 151.3277);
   --destructive: oklch(0.6368 0.2078 25.3313);

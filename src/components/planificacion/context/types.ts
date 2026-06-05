@@ -29,6 +29,7 @@ export interface PlanificacionState {
   orderTab: string;
   ordersLoading: boolean;
   deletingOrderId: string | null;
+  isDiscardingPending: boolean;
   // Configuration
   planName: string;
   planDate: string;
@@ -86,6 +87,7 @@ export interface PlanificacionActions {
   toggleOrder: (id: string) => void;
   selectAllOrders: () => void;
   deleteOrder: (id: string) => Promise<void>;
+  discardPendingOrders: () => Promise<void>;
   // Configuration
   setPlanName: (name: string) => void;
   setPlanDate: (date: string) => void;

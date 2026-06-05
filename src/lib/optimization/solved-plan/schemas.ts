@@ -79,6 +79,14 @@ export const rawSolvedRouteSchema: z.ZodType<RawSolvedRoute> = z.object({
   utilizationPercentage: z.number().min(0).max(100),
   timeWindowViolations: z.number().int().nonnegative(),
   geometry: z.string().optional(),
+  breaks: z
+    .array(
+      z.object({
+        arrival: z.string().optional(),
+        durationSeconds: z.number().nonnegative(),
+      }),
+    )
+    .optional(),
 });
 
 const assignedSolvedRouteSchema: z.ZodType<AssignedSolvedRoute> = z.object({
@@ -96,6 +104,14 @@ const assignedSolvedRouteSchema: z.ZodType<AssignedSolvedRoute> = z.object({
   utilizationPercentage: z.number().min(0).max(100),
   timeWindowViolations: z.number().int().nonnegative(),
   geometry: z.string().optional(),
+  breaks: z
+    .array(
+      z.object({
+        arrival: z.string().optional(),
+        durationSeconds: z.number().nonnegative(),
+      }),
+    )
+    .optional(),
   // Driver-assignment additions.
   driverId: z.string().min(1),
   driverName: z.string().min(1),

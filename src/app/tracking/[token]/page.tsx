@@ -49,7 +49,7 @@ interface TrackingData {
     failureReason?: string | null;
     evidenceUrls?: string[];
     notes?: string | null;
-  };
+  } | null;
   driver?: {
     name: string;
     photo?: string | null;
@@ -178,8 +178,8 @@ export default function TrackingPage() {
   // info: completion time when delivered, otherwise the last
   // transition we know about.
   const lastUpdate =
-    stop.completedAt ??
-    stop.startedAt ??
+    stop?.completedAt ??
+    stop?.startedAt ??
     timeline.findLast?.((e) => e.timestamp)?.timestamp ??
     null;
 
@@ -213,7 +213,7 @@ export default function TrackingPage() {
                 }
                 showDriverLocation={settings.showDriverLocation}
                 brandColor={brandColor}
-                estimatedArrival={stop.estimatedArrival}
+                estimatedArrival={stop?.estimatedArrival ?? null}
                 status={order.status}
               />
             )}
@@ -227,7 +227,7 @@ export default function TrackingPage() {
               />
             )}
 
-            {order.status === "FAILED" && stop.failureReason && (
+            {order.status === "FAILED" && stop?.failureReason && (
               <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4">
                 <p className="text-sm font-semibold text-destructive">
                   Motivo del fallo
@@ -259,7 +259,7 @@ export default function TrackingPage() {
               promisedDate={order.promisedDate}
               timeWindowStart={order.timeWindowStart}
               timeWindowEnd={order.timeWindowEnd}
-              estimatedArrival={stop.estimatedArrival}
+              estimatedArrival={stop?.estimatedArrival ?? null}
               showEta={settings.showEta}
               brandColor={brandColor}
             />
@@ -272,7 +272,7 @@ export default function TrackingPage() {
               />
             )}
 
-            {settings.showEvidence && stop.status === "COMPLETED" && (
+            {stop && settings.showEvidence && stop.status === "COMPLETED" && (
               <TrackingEvidence
                 evidenceUrls={stop.evidenceUrls || []}
                 completedAt={stop.completedAt}

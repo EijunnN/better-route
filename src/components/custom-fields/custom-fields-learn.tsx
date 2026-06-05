@@ -76,20 +76,20 @@ export function CustomFieldsLearn({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <FlowStep
             number={1}
-            title="Definís el campo"
-            body="Acá. Elegís el tipo (texto, número, moneda, fecha, etc.), si es obligatorio, y dónde se muestra."
+            title="Quién lo escribe"
+            body="Lo más importante: ¿lo carga tu equipo al crear el pedido, o el conductor en la app al cerrar la entrega? Eso define cuándo y dónde se llena."
             tone="primary"
           />
           <FlowStep
             number={2}
-            title="Se llena en su momento"
-            body="Tu equipo lo completa al cargar el pedido, o el conductor lo llena en la app cuando hace la entrega."
+            title="El campo"
+            body="Le ponés un nombre y elegís el tipo (texto, número, moneda, fecha, opciones…). El tipo define cómo se valida y se muestra."
             tone="secondary"
           />
           <FlowStep
             number={3}
-            title="Lo ves donde lo necesites"
-            body="En la tabla de pedidos como columna, en reportes CSV, en el detalle del pedido, en la app del conductor."
+            title="Dónde aparece"
+            body="Elegís en qué pantallas se ve: la tabla de pedidos, la app del conductor y los CSV de importación y exportación."
             tone="success"
           />
         </div>
@@ -139,20 +139,6 @@ export function CustomFieldsLearn({
         <h2 className="text-base font-semibold">Casos reales que resuelve</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <UseCase
-            title="Cobranza contra entrega"
-            problem="Necesito que el conductor cobre $X al entregar y confirme que cobró."
-            solution={[
-              {
-                label: "Campo Pedido",
-                value: 'Tipo: Moneda — "Monto a cobrar"',
-              },
-              {
-                label: "Campo Entrega",
-                value: 'Tipo: Sí/No — "Cobrado", obligatorio',
-              },
-            ]}
-          />
-          <UseCase
             title="Trazabilidad por cliente"
             problem="Cada cliente me da su propio número de orden de compra y necesito mantenerlo."
             solution={[
@@ -181,6 +167,20 @@ export function CustomFieldsLearn({
                 label: "Campo Pedido",
                 value:
                   'Tipo: Selección — "Franja preferida" (mañana/tarde/noche)',
+              },
+            ]}
+          />
+          <UseCase
+            title="Cobranza contra entrega"
+            problem="Necesito que el conductor vea cuánto cobrar y confirme que cobró antes de cerrar."
+            solution={[
+              {
+                label: "Campo Pedido",
+                value: 'Tipo: Moneda — "Monto a cobrar" (el conductor lo ve)',
+              },
+              {
+                label: "Campo Entrega",
+                value: 'Tipo: Sí/No — "Cobrado", obligatorio',
               },
             ]}
           />
@@ -214,7 +214,7 @@ export function CustomFieldsLearn({
           <TypeCard
             icon={DollarSign}
             label="Moneda"
-            description="Montos a cobrar"
+            description="Importes, precios, montos"
           />
           <TypeCard
             icon={Phone}
@@ -248,7 +248,7 @@ export function CustomFieldsLearn({
           <VisibilityRow
             icon={Eye}
             title="Tabla de pedidos"
-            body="Aparece como columna en /pedidos. Útil cuando el dato es relevante de un vistazo (Ej: monto a cobrar, OC del cliente)."
+            body="Aparece como columna en /pedidos. Útil cuando el dato es relevante de un vistazo (Ej: OC del cliente, tipo de servicio)."
           />
           <VisibilityRow
             icon={Smartphone}
@@ -320,7 +320,7 @@ export function CustomFieldsLearn({
             El <strong className="text-foreground">código</strong> del campo
             (ej:{" "}
             <code className="text-[11px] bg-muted px-1 rounded">
-              monto_cobrar
+              oc_cliente
             </code>
             ) es el identificador estable que se usa internamente y en CSV.
             Cambiar la etiqueta visible no cambia el código.
@@ -360,7 +360,7 @@ interface FlowStepProps {
 
 function FlowStep({ number, title, body, tone }: FlowStepProps) {
   const toneClass = {
-    primary: "bg-primary/10 text-primary border-primary/30",
+    primary: "bg-primary/10 text-lime-700 dark:text-lime-400 border-primary/30",
     secondary:
       "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
     success:
@@ -503,7 +503,7 @@ interface VisibilityRowProps {
 function VisibilityRow({ icon: Icon, title, body }: VisibilityRowProps) {
   return (
     <div className="flex items-start gap-3 rounded-md border p-3">
-      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded bg-primary/10 text-lime-700 dark:text-lime-400">
         <Icon className="size-3.5" />
       </div>
       <div className="min-w-0">

@@ -79,7 +79,7 @@ export const vehicleSchema = z
       .number()
       .int("Capacidad debe ser un entero")
       .positive("Capacidad debe ser mayor a 0")
-      .default(20),
+      .optional(),
     weightCapacity: z.number().positive().optional().nullable(),
     volumeCapacity: z.number().positive().optional().nullable(),
     maxValueCapacity: z
@@ -199,6 +199,25 @@ export const vehicleSchema = z
       message:
         "La duración del descanso es requerida si aplica tiempo de descanso",
       path: ["breakDuration"],
+    },
+  )
+  .refine(
+    (data) => {
+      // When a break applies, its window must be complete and well-formed —
+      // otherwise the VROOM payload silently drops the break (it requires
+      // breakTimeStart < breakTimeEnd to emit it).
+      if (data.hasBreakTime) {
+        if (!data.breakTimeStart || !data.breakTimeEnd) return false;
+        const [sh, sm] = data.breakTimeStart.split(":").map(Number);
+        const [eh, em] = data.breakTimeEnd.split(":").map(Number);
+        return sh * 60 + sm < eh * 60 + em;
+      }
+      return true;
+    },
+    {
+      message:
+        "Si aplica descanso, la ventana (inicio y fin, con fin posterior al inicio) es requerida",
+      path: ["breakTimeStart"],
     },
   )
   .refine(

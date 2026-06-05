@@ -41,7 +41,6 @@ export interface OrderFormData {
   timeWindowEnd?: string;
   requiredSkills?: string;
   notes?: string;
-  status?: (typeof ORDER_STATUS)[number];
   active?: boolean;
   customFields?: Record<string, unknown>;
 }
@@ -191,7 +190,6 @@ const defaultFormData: OrderFormData = {
   volumeRequired: undefined,
   requiredSkills: "",
   notes: "",
-  status: "PENDING",
   active: true,
   customFields: {},
 };
@@ -266,7 +264,6 @@ export function OrderFormProvider({
       requiredSkills: initialData.requiredSkills || "",
       notes: initialData.notes || "",
       customFields: (initialData.customFields as Record<string, unknown>) || {},
-      status: initialData.status,
       active: initialData.active,
     });
   }, [initialData]);

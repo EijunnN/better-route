@@ -1,10 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, vehicles } from "@/db/schema";
+import { optimizationJobs, routeStops, vehicles } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { logCreate } from "@/lib/infra/audit";
+import { logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { safeParseJson } from "@/lib/utils/safe-json";
@@ -60,14 +60,52 @@ export async function DELETE(
       );
     }
 
-    // Get previous driver info for audit log
+    if (!job.result) {
+      return NextResponse.json(
+        { error: "Route/job has no result to modify" },
+        { status: 409 },
+      );
+    }
+
     let previousDriverId: string | null = null;
     let previousDriverName: string | null = null;
+    try {
+      await db.transaction(async (tx) => {
+        // Lock the job row for the duration of the tx so concurrent removes
+        // serialize (read-modify-write of the result blob) instead of
+        // clobbering each other with a last-write-wins.
+        const [locked] = await tx
+          .select()
+          .from(optimizationJobs)
+          .where(
+            and(
+              eq(optimizationJobs.id, routeId),
+              eq(optimizationJobs.companyId, tenantCtx.companyId),
+            ),
+          )
+          .for("update")
+          .limit(1);
+        if (!locked || !locked.result) throw new Error("NO_RESULT");
 
-    // Update the job result to remove the driver assignment
-    let updatedResult = null;
-    if (job.result) {
-      try {
+        // Once a plan is confirmed it materializes into route_stops, which
+        // become the execution source of truth (the driver app reads those,
+        // not this blob). Editing the blob then would silently diverge from
+        // what the driver sees — force the reassignment flow instead.
+        const [materialized] = await tx
+          .select({ id: routeStops.id })
+          .from(routeStops)
+          .where(
+            and(
+              eq(routeStops.jobId, routeId),
+              eq(routeStops.vehicleId, vehicleId),
+              eq(routeStops.companyId, tenantCtx.companyId),
+            ),
+          )
+          .limit(1);
+        if (materialized) throw new Error("MATERIALIZED");
+
+        // Detach the driver from this vehicle's route inside the FRESH blob
+        // (read under the row lock above, never the stale outer read).
         const result = safeParseJson<{
           routes?: Array<{
             vehicleId?: string;
@@ -78,16 +116,12 @@ export async function DELETE(
             assignmentValidation?: unknown;
             stops?: Array<{ orderId?: string }>;
           }>;
-        }>(job.result);
-        // Find the route for this vehicle and remove driver assignment
+        }>(locked.result);
         if (result.routes) {
           for (const route of result.routes) {
             if (route.vehicleId === vehicleId) {
-              // Store previous assignment for audit
               previousDriverId = route.driverId || null;
               previousDriverName = route.driverName || null;
-
-              // Remove driver assignment
               route.driverId = null;
               route.driverName = null;
               route.isManualOverride = false;
@@ -98,32 +132,39 @@ export async function DELETE(
           }
         }
 
-        updatedResult = result;
-
-        // Update the job with the new result
-        await db
+        await tx
           .update(optimizationJobs)
-          .set({
-            result: updatedResult,
-            updatedAt: new Date(),
-          })
+          .set({ result, updatedAt: new Date() })
           .where(eq(optimizationJobs.id, routeId));
-      } catch (e) {
-        console.error("Error updating job result:", e);
+      });
+    } catch (txError) {
+      if (txError instanceof Error && txError.message === "MATERIALIZED") {
         return NextResponse.json(
-          { error: "Failed to remove assignment" },
-          { status: 500 },
+          {
+            error:
+              "El plan ya fue confirmado. Usa la reasignación de conductores para cambiar la asignación de esta ruta.",
+          },
+          { status: 409 },
         );
       }
+      if (txError instanceof Error && txError.message === "NO_RESULT") {
+        return NextResponse.json(
+          { error: "Route/job has no result to modify" },
+          { status: 409 },
+        );
+      }
+      console.error("Error updating job result:", txError);
+      return NextResponse.json(
+        { error: "Failed to remove assignment" },
+        { status: 500 },
+      );
     }
 
-    // Create audit log entry
-    await logCreate("DRIVER_ASSIGNMENT", routeId, {
-      action: "REMOVE_ASSIGNMENT",
+    await logUpdate("optimization_job", routeId, {
+      action: "remove_driver_assignment",
       previousDriverId,
       previousDriverName,
       vehicleId,
-      reason: "Driver assignment removed for reassignment",
     });
 
     return NextResponse.json({

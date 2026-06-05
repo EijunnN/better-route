@@ -192,6 +192,12 @@ const PAGE_CONTRACTS: PageContract[] = [
     sidebar: "company:update",
     why: "Field definitions are COMPANY config, not order data. All mutations hit /api/companies/[id]/field-definitions which requires company:update. Gating by company:update is honest: users who can read but not update would see the page and fail on save.",
   },
+  {
+    kind: "client",
+    route: "playground",
+    page: "company:create",
+    why: "Dev-only test-data generator (bulk fleets/vehicles/drivers to exercise the optimizer at scale). Triple-gated: NEXT_PUBLIC_ENABLE_PLAYGROUND is off by default (page renders a 'No disponible' card, API returns 404), and when enabled it's ADMIN_SISTEMA-only via company:create — the wildcard-only permission, same as /companies. No sidebar item: reached by direct URL in dev only.",
+  },
 ];
 
 /**

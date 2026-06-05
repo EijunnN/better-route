@@ -44,6 +44,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     `${EntityType.ORDER}:${Action.UPDATE}`,
     `${EntityType.ORDER}:${Action.DELETE}`,
     `${EntityType.ORDER}:${Action.BULK_DELETE}`,
+    `${EntityType.ORDER}:${Action.CANCEL}`,
+    `${EntityType.ORDER}:${Action.REVERT}`,
     `${EntityType.ORDER}:${Action.VALIDATE}`,
     `${EntityType.ORDER}:${Action.IMPORT}`,
     // Optimization
@@ -110,11 +112,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     `${EntityType.VEHICLE_SKILL}:${Action.CREATE}`,
     `${EntityType.VEHICLE_SKILL}:${Action.UPDATE}`,
     `${EntityType.VEHICLE_SKILL}:${Action.DELETE}`,
-    `${EntityType.DRIVER}:${Action.CREATE}`,
+    // A driver is a USER with role CONDUCTOR; its lifecycle is governed by
+    // user:* (no driver:* mutation permission is checked by any route).
     `${EntityType.DRIVER}:${Action.READ}`,
-    `${EntityType.DRIVER}:${Action.UPDATE}`,
-    `${EntityType.DRIVER}:${Action.DELETE}`,
-    `${EntityType.DRIVER}:${Action.CHANGE_STATUS}`,
     // Driver skills — full CRUD + assignment
     `${EntityType.DRIVER_SKILL}:${Action.READ}`,
     `${EntityType.DRIVER_SKILL}:${Action.CREATE}`,
@@ -334,6 +334,7 @@ const ACTION_NORMALIZATION: Record<string, string> = {
   EXECUTE: "execute",
   CONFIRM: "confirm",
   CANCEL: "cancel",
+  REVERT: "revert",
   ACKNOWLEDGE: "acknowledge",
   DISMISS: "dismiss",
   MONITOR: "monitor",

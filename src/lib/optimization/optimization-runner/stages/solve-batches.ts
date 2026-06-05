@@ -298,6 +298,7 @@ interface BuildRouteArgs {
     totalWeight: number;
     totalVolume: number;
     geometry?: string;
+    breaks?: Array<{ arrivalTime?: number; durationSeconds: number }>;
   };
   zoneId?: string;
   helpers: BuildStopHelpers;
@@ -332,6 +333,10 @@ function buildRawSolvedRoute({
     ),
     timeWindowViolations: 0,
     geometry: vroomRoute.geometry,
+    breaks: vroomRoute.breaks?.map((b) => ({
+      arrival: b.arrivalTime ? formatArrivalTime(b.arrivalTime) : undefined,
+      durationSeconds: b.durationSeconds,
+    })),
   };
 }
 

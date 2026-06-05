@@ -1,7 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, USER_ROLES, users, vehicles } from "@/db/schema";
+import {
+  optimizationJobs,
+  routeStops as routeStopsTable,
+  USER_ROLES,
+  users,
+  vehicles,
+} from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
@@ -150,49 +156,82 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update the job result with the manual assignment
-    let updatedResult = null;
+    // Update the job result with the manual assignment — atomic + row-locked,
+    // so a concurrent assign/remove can't clobber the blob, and a confirmed
+    // plan (already materialized into route_stops) can't be silently diverged.
     if (job.result) {
       try {
-        const result = safeParseJson<{
-          routes?: Array<{
-            vehicleId?: string;
-            driverId?: string;
-            driverName?: string;
-            isManualOverride?: boolean;
-            manualAssignmentReason?: string;
-            assignmentValidation?: unknown;
-          }>;
-        }>(job.result);
-        if (result.routes) {
-          for (const route of result.routes) {
-            if (route.vehicleId === data.vehicleId) {
-              // Update driver assignment
-              route.driverId = data.driverId;
-              route.driverName = driver.name;
-              route.isManualOverride = true;
-              route.manualAssignmentReason = data.reason;
-              route.assignmentValidation = {
-                isValid: validation.isValid,
-                errors: validation.errors,
-                warnings: validation.warnings,
-              };
-              break;
+        await db.transaction(async (tx) => {
+          const [locked] = await tx
+            .select()
+            .from(optimizationJobs)
+            .where(
+              and(
+                eq(optimizationJobs.id, data.routeId),
+                eq(optimizationJobs.companyId, tenantCtx.companyId),
+              ),
+            )
+            .for("update")
+            .limit(1);
+          if (!locked || !locked.result) throw new Error("NO_RESULT");
+
+          // Once the route is materialized into route_stops it is in execution
+          // (the driver app reads those, not this blob) — force reassignment.
+          const [materialized] = await tx
+            .select({ id: routeStopsTable.id })
+            .from(routeStopsTable)
+            .where(
+              and(
+                eq(routeStopsTable.jobId, data.routeId),
+                eq(routeStopsTable.vehicleId, data.vehicleId),
+                eq(routeStopsTable.companyId, tenantCtx.companyId),
+              ),
+            )
+            .limit(1);
+          if (materialized) throw new Error("MATERIALIZED");
+
+          const result = safeParseJson<{
+            routes?: Array<{
+              vehicleId?: string;
+              driverId?: string;
+              driverName?: string;
+              isManualOverride?: boolean;
+              manualAssignmentReason?: string;
+              assignmentValidation?: unknown;
+            }>;
+          }>(locked.result);
+          if (result.routes) {
+            for (const route of result.routes) {
+              if (route.vehicleId === data.vehicleId) {
+                route.driverId = data.driverId;
+                route.driverName = driver.name;
+                route.isManualOverride = true;
+                route.manualAssignmentReason = data.reason;
+                route.assignmentValidation = {
+                  isValid: validation.isValid,
+                  errors: validation.errors,
+                  warnings: validation.warnings,
+                };
+                break;
+              }
             }
           }
-        }
 
-        updatedResult = result;
-
-        // Update the job with the new result
-        await db
-          .update(optimizationJobs)
-          .set({
-            result: updatedResult,
-            updatedAt: new Date(),
-          })
-          .where(eq(optimizationJobs.id, data.routeId));
+          await tx
+            .update(optimizationJobs)
+            .set({ result, updatedAt: new Date() })
+            .where(eq(optimizationJobs.id, data.routeId));
+        });
       } catch (e) {
+        if (e instanceof Error && e.message === "MATERIALIZED") {
+          return NextResponse.json(
+            {
+              error:
+                "El plan ya fue confirmado. Usa la reasignación de conductores para cambiar la asignación de esta ruta.",
+            },
+            { status: 409 },
+          );
+        }
         console.error("Error updating job result:", e);
         return NextResponse.json(
           { error: "Failed to update assignment" },

@@ -179,11 +179,28 @@ async function seed() {
         },
         {
           entity: "orders",
-          action: "EXPORT",
-          name: "Exportar pedidos",
-          description: "Exportar pedidos a CSV",
+          action: "BULK_DELETE",
+          name: "Eliminar pedidos en lote",
+          description: "Eliminar varios pedidos a la vez",
           category: "ORDERS",
           displayOrder: 6,
+        },
+        {
+          entity: "orders",
+          action: "CANCEL",
+          name: "Cancelar pedidos",
+          description: "Cancelar definitivamente un pedido (irreversible)",
+          category: "ORDERS",
+          displayOrder: 7,
+        },
+        {
+          entity: "orders",
+          action: "REVERT",
+          name: "Revertir pedidos",
+          description:
+            "Revertir un pedido entregado o sacarlo de un plan confirmado",
+          category: "ORDERS",
+          displayOrder: 8,
         },
         // VEHICLES
         {
@@ -220,9 +237,10 @@ async function seed() {
         },
         {
           entity: "vehicles",
-          action: "ASSIGN",
-          name: "Asignar vehículos",
-          description: "Asignar conductores a vehículos",
+          action: "CHANGE_STATUS",
+          name: "Cambiar estado de vehículos",
+          description:
+            "Activar, desactivar o poner en mantenimiento un vehículo",
           category: "VEHICLES",
           displayOrder: 5,
         },
@@ -235,38 +253,9 @@ async function seed() {
           category: "DRIVERS",
           displayOrder: 1,
         },
-        {
-          entity: "drivers",
-          action: "CREATE",
-          name: "Crear conductores",
-          description: "Registrar nuevos conductores",
-          category: "DRIVERS",
-          displayOrder: 2,
-        },
-        {
-          entity: "drivers",
-          action: "EDIT",
-          name: "Editar conductores",
-          description: "Modificar conductores existentes",
-          category: "DRIVERS",
-          displayOrder: 3,
-        },
-        {
-          entity: "drivers",
-          action: "DELETE",
-          name: "Eliminar conductores",
-          description: "Eliminar conductores",
-          category: "DRIVERS",
-          displayOrder: 4,
-        },
-        {
-          entity: "drivers",
-          action: "MANAGE",
-          name: "Gestionar estado",
-          description: "Cambiar estado de conductores",
-          category: "DRIVERS",
-          displayOrder: 5,
-        },
+        // Driver create/edit/delete/status are governed by users:* (a driver
+        // is a USER with role CONDUCTOR). No driver:* mutation permission is
+        // ever checked by a route, so only "Ver conductores" lives here.
         // FLEETS
         {
           entity: "fleets",
@@ -441,11 +430,19 @@ async function seed() {
         },
         {
           entity: "alert",
-          action: "MANAGE",
-          name: "Gestionar alertas",
-          description: "Reconocer y descartar alertas",
+          action: "ACKNOWLEDGE",
+          name: "Reconocer alertas",
+          description: "Marcar alertas como reconocidas",
           category: "ALERTS",
           displayOrder: 2,
+        },
+        {
+          entity: "alert",
+          action: "DISMISS",
+          name: "Descartar alertas",
+          description: "Descartar alertas del panel",
+          category: "ALERTS",
+          displayOrder: 3,
         },
         {
           entity: "alert_rule",
@@ -522,11 +519,27 @@ async function seed() {
         },
         {
           entity: "roles",
-          action: "MANAGE",
-          name: "Gestionar roles",
-          description: "Crear, editar y eliminar roles",
+          action: "CREATE",
+          name: "Crear roles",
+          description: "Crear nuevos roles personalizados",
           category: "USERS",
           displayOrder: 6,
+        },
+        {
+          entity: "roles",
+          action: "EDIT",
+          name: "Editar roles",
+          description: "Modificar los permisos de un rol",
+          category: "USERS",
+          displayOrder: 7,
+        },
+        {
+          entity: "roles",
+          action: "DELETE",
+          name: "Eliminar roles",
+          description: "Eliminar roles personalizados",
+          category: "USERS",
+          displayOrder: 8,
         },
         {
           entity: "role",
@@ -534,7 +547,7 @@ async function seed() {
           name: "Asignar roles",
           description: "Asignar y quitar roles a usuarios",
           category: "USERS",
-          displayOrder: 7,
+          displayOrder: 9,
         },
         // SETTINGS — company config (delivery policy, tracking, custom fields),
         // zones (modeled as route), optimization presets and time-window presets.

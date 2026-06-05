@@ -6,6 +6,7 @@ import {
   generateCsvTemplate,
   resolveProfileSchema,
 } from "@/lib/orders/profile-schema";
+import { generateXlsxTemplate } from "@/lib/orders/profile-schema/template-xlsx";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // GET - Download CSV template based on company profile
@@ -47,6 +48,19 @@ export async function GET(request: NextRequest) {
             name: p.name,
             type: p.type,
           })),
+        },
+      });
+    }
+
+    if (format === "xlsx") {
+      // Excel template with required columns highlighted in yellow.
+      const buffer = await generateXlsxTemplate(schema, { locale });
+      return new NextResponse(buffer, {
+        status: 200,
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="ordenes_template.xlsx"`,
         },
       });
     }

@@ -1,4 +1,5 @@
 import type { VerificationReport } from "../solved-plan";
+import { checkBreakTime } from "./check-break-time";
 import { checkCapacity } from "./check-capacity";
 import { checkIntegrity } from "./check-integrity";
 import { checkPriority } from "./check-priority";
@@ -11,6 +12,7 @@ import type { VerifierInput, Violation } from "./types";
 const ALL_CHECKS = [
   checkIntegrity,
   checkTimeWindows,
+  checkBreakTime,
   checkSkills,
   checkCapacity,
   checkPriority,

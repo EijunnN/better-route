@@ -1,4 +1,5 @@
 import { resolveProfileSchema } from "@/lib/orders/profile-schema";
+import { parseRequiredSkills } from "@/lib/orders/required-skills";
 import { type DayOfWeek, getDayOfWeek } from "../../geo/zone-utils";
 import { updateJobProgress } from "../optimization-job";
 import type {
@@ -492,6 +493,7 @@ export async function runOptimization(
       timeWindowStart: o.timeWindowStart ?? null,
       timeWindowEnd: o.timeWindowEnd ?? null,
       serviceTime: o.serviceTime,
+      skillsRequired: parseRequiredSkills(o.requiredSkills),
     })),
     vehicles: selectedVehicles.map((v) => ({
       id: v.id,
@@ -503,7 +505,7 @@ export async function runOptimization(
       maxOrders: v.maxOrders,
       originLatitude: v.originLatitude,
       originLongitude: v.originLongitude,
-      skills: [],
+      skills: vehicleSkillsMap.get(v.id) ?? [],
       workdayStart: v.workdayStart ?? null,
       workdayEnd: v.workdayEnd ?? null,
       hasBreakTime: v.hasBreakTime,

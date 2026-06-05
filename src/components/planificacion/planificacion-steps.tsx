@@ -21,6 +21,16 @@ import {
 } from "lucide-react";
 import { useState as useLocalState, useMemo } from "react";
 import { Can } from "@/components/auth/can";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -311,27 +321,78 @@ export function VehicleStep() {
 
 export function OrderStep() {
   const { state, actions, derived } = usePlanificacion();
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useLocalState(false);
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {/* Header with upload button */}
+        {/* Header with upload + discard buttons */}
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-muted-foreground">
             Pedidos pendientes
           </h3>
-          <Can perm="order:import">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => actions.setShowCsvUpload(true)}
-            >
-              <Upload className="size-3.5 mr-1.5" />
-              CSV
-            </Button>
-          </Can>
+          <div className="flex items-center gap-1.5">
+            {state.orders.length > 0 && (
+              <Can perm="order:bulk_delete">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-red-500 hover:bg-destructive hover:text-destructive-foreground"
+                  disabled={state.isDiscardingPending}
+                  onClick={() => setConfirmDiscardOpen(true)}
+                  title="Descartar todos los pedidos pendientes"
+                >
+                  {state.isDiscardingPending ? (
+                    <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-3.5 mr-1.5" />
+                  )}
+                  Descartar
+                </Button>
+              </Can>
+            )}
+            <Can perm="order:import">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => actions.setShowCsvUpload(true)}
+              >
+                <Upload className="size-3.5 mr-1.5" />
+                CSV
+              </Button>
+            </Can>
+          </div>
         </div>
+
+        <AlertDialog
+          open={confirmDiscardOpen}
+          onOpenChange={setConfirmDiscardOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                ¿Descartar {state.orders.length} pedido
+                {state.orders.length === 1 ? "" : "s"} pendiente
+                {state.orders.length === 1 ? "" : "s"}?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Se eliminarán del borrador todos los pedidos que aún no están en
+                un plan confirmado. Los pedidos ya asignados a una ruta no se
+                tocan. Podrás volver a importar esos códigos cuando quieras.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => actions.discardPendingOrders()}
+              >
+                Descartar pendientes
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Tabs */}
         <Tabs value={state.orderTab} onValueChange={actions.setOrderTab}>

@@ -199,7 +199,10 @@ export const updateOrderSchema = z.object({
   requiredSkills: z.string().optional(),
   notes: z.string().optional(),
   customFields: z.record(z.string(), z.unknown()).optional(),
-  status: z.enum(ORDER_STATUS).optional(),
+  // `status` is intentionally NOT updatable through the generic PATCH.
+  // State changes flow exclusively through the dedicated, validated
+  // transition endpoints (confirm/cancel/reactivate/reopen/unassign/revert)
+  // so the order state machine + append-only history are never bypassed.
   active: z.boolean().optional(),
 });
 

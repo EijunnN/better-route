@@ -171,17 +171,20 @@ export async function broadcastChatMessage(input: {
   const preview = input.body.slice(0, PREVIEW_MAX);
   const sentAt = new Date();
 
-  await db.transaction(async (tx) => {
-    await tx.insert(chatMessages).values(
-      drivers.map((d) => ({
-        companyId: input.companyId,
-        driverId: d.id,
-        senderId: input.senderId,
-        direction: CHAT_DIRECTION.TO_DRIVER,
-        kind: CHAT_MESSAGE_KIND.BROADCAST,
-        body: input.body,
-      })),
-    );
+  const rows = await db.transaction(async (tx) => {
+    const inserted = await tx
+      .insert(chatMessages)
+      .values(
+        drivers.map((d) => ({
+          companyId: input.companyId,
+          driverId: d.id,
+          senderId: input.senderId,
+          direction: CHAT_DIRECTION.TO_DRIVER,
+          kind: CHAT_MESSAGE_KIND.BROADCAST,
+          body: input.body,
+        })),
+      )
+      .returning();
 
     await tx
       .insert(chatConversations)
@@ -201,7 +204,23 @@ export async function broadcastChatMessage(input: {
           updatedAt: sql`now()`,
         },
       });
+
+    return inserted;
   });
+
+  // Live fan-out per driver: publish each row to the driver's OWN channel as
+  // a regular `chat.message`, so the app surfaces the broadcast in-thread the
+  // same way it handles 1:1 messages (its `chat.broadcast` branch is a no-op).
+  // The broadcast-channel publish below stays for dispatcher/aggregate
+  // consumers; the driver app simply ignores it.
+  await Promise.all(
+    rows.map((row) =>
+      centrifugoPublish(
+        centrifugoChannels.driverChat(input.companyId, row.driverId),
+        { kind: "chat.message", message: row },
+      ),
+    ),
+  );
 
   await centrifugoPublish(centrifugoChannels.broadcast(input.companyId), {
     kind: "chat.broadcast",
