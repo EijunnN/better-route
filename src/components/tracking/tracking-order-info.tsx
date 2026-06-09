@@ -1,8 +1,9 @@
 "use client";
 
-import { Calendar, Check, Clock, Copy, MapPin } from "lucide-react";
+import { Calendar, Check, Clock, Copy, MapPin, Navigation } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { DEFAULT_BRAND_ACCENT, TERMINAL_STATUSES } from "./constants";
 
 interface TrackingOrderInfoProps {
   trackingId: string;
@@ -13,6 +14,8 @@ interface TrackingOrderInfoProps {
   timeWindowStart?: string | null;
   timeWindowEnd?: string | null;
   estimatedArrival?: string | null;
+  /** true cuando estimatedArrival viene del recálculo en vivo (no del plan). */
+  etaIsLive?: boolean;
   showEta: boolean;
   brandColor?: string | null;
 }
@@ -62,6 +65,9 @@ export function TrackingOrderInfo({
   promisedDate,
   timeWindowStart,
   timeWindowEnd,
+  estimatedArrival,
+  etaIsLive = false,
+  showEta,
   brandColor,
 }: TrackingOrderInfoProps) {
   const [copied, setCopied] = useState(false);
@@ -69,7 +75,7 @@ export function TrackingOrderInfo({
     label: status,
     tone: "muted" as const,
   };
-  const accent = brandColor ?? "#4AB855";
+  const accent = brandColor ?? DEFAULT_BRAND_ACCENT;
   const isLive = pill.tone === "live";
 
   const copyTracking = async () => {
@@ -91,7 +97,7 @@ export function TrackingOrderInfo({
             "rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
             pill.tone === "danger" && "bg-destructive/15 text-destructive",
             pill.tone === "muted" && "bg-muted text-muted-foreground",
-            pill.tone === "info" && "bg-blue-500/15 text-blue-400",
+            pill.tone === "info" && "bg-chart-2/15 text-chart-2",
           )}
           style={
             isLive
@@ -114,7 +120,7 @@ export function TrackingOrderInfo({
               className="text-muted-foreground transition-colors hover:text-foreground"
             >
               {copied ? (
-                <Check className="size-3.5 text-green-500" />
+                <Check className="size-3.5 text-chart-3" />
               ) : (
                 <Copy className="size-3.5" />
               )}
@@ -147,6 +153,29 @@ export function TrackingOrderInfo({
                 : timeWindowStart
                   ? `Desde ${formatTime(timeWindowStart)}`
                   : `Hasta ${formatTime(timeWindowEnd!)}`}
+            </span>
+          </Field>
+        )}
+
+        {showEta && estimatedArrival && !TERMINAL_STATUSES.includes(status) && (
+          <Field
+            label="Llegada estimada"
+            icon={<Navigation className="size-3.5" />}
+          >
+            <span className="flex items-center gap-2 font-medium">
+              {formatTime(estimatedArrival)}
+              {etaIsLive && (
+                <span
+                  className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                  style={{ backgroundColor: `${accent}26`, color: accent }}
+                >
+                  <span
+                    className="inline-block size-1.5 animate-pulse rounded-full"
+                    style={{ backgroundColor: accent }}
+                  />
+                  En vivo
+                </span>
+              )}
             </span>
           </Field>
         )}

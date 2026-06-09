@@ -1,5 +1,7 @@
 "use client";
 
+import { DEFAULT_BRAND_ACCENT } from "./constants";
+
 interface TrackingHeaderProps {
   companyName: string;
   logoUrl?: string | null;
@@ -25,7 +27,7 @@ export function TrackingHeader({
         ) : (
           <div
             className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-white"
-            style={{ backgroundColor: brandColor ?? "#4AB855" }}
+            style={{ backgroundColor: brandColor ?? DEFAULT_BRAND_ACCENT }}
           >
             {companyName.charAt(0).toUpperCase()}
           </div>

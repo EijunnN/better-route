@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { DEFAULT_BRAND_ACCENT } from "./constants";
 
 interface TimelineEvent {
   status: string;
@@ -100,7 +101,7 @@ export function TrackingTimeline({
   collapsible = true,
 }: TrackingTimelineProps) {
   const [open, setOpen] = useState(true);
-  const accent = brandColor ?? "#4AB855";
+  const accent = brandColor ?? DEFAULT_BRAND_ACCENT;
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card/80">
@@ -139,7 +140,7 @@ export function TrackingTimeline({
               ? "var(--destructive)"
               : state === "completed" || state === "current"
                 ? isTerminalCurrent
-                  ? "#3B82F6"
+                  ? "var(--chart-3)"
                   : accent
                 : undefined;
 

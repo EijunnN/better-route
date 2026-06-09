@@ -4,6 +4,7 @@ import { Clock, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getMapStyle } from "@/lib/map-styles";
+import { DEFAULT_BRAND_ACCENT } from "./constants";
 
 interface TrackingMapProps {
   deliveryLat: number;
@@ -16,6 +17,9 @@ interface TrackingMapProps {
   showDriverLocation: boolean;
   brandColor?: string | null;
   estimatedArrival?: string | null;
+  /** true cuando estimatedArrival viene del recálculo en vivo (no del plan). */
+  etaIsLive?: boolean;
+  etaComputedAt?: string | null;
   status: string;
 }
 
@@ -26,6 +30,8 @@ export function TrackingMap({
   showDriverLocation,
   brandColor,
   estimatedArrival,
+  etaIsLive = false,
+  etaComputedAt = null,
   status,
 }: TrackingMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -34,7 +40,7 @@ export function TrackingMap({
   const driverMarker = useRef<maplibregl.Marker | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const accent = brandColor || "#4AB855";
+  const accent = brandColor || DEFAULT_BRAND_ACCENT;
 
   const isDark =
     typeof document !== "undefined"
@@ -137,17 +143,17 @@ export function TrackingMap({
             <div style="
               position: absolute; inset: -8px;
               border-radius: 50%;
-              background: #3B82F6;
+              background: ${accent};
               opacity: 0.4;
               animation: pulse-driver 2s infinite;
             "></div>
             <div style="
               position: relative;
               width: 28px; height: 28px;
-              background: #3B82F6;
+              background: ${accent};
               border: 3px solid white;
               border-radius: 50%;
-              box-shadow: 0 4px 12px rgba(59,130,246,0.55);
+              box-shadow: 0 4px 12px ${accent}8c;
             "></div>
           </div>`;
         driverMarker.current = new maplibregl.Marker({ element: driverEl })
@@ -171,7 +177,7 @@ export function TrackingMap({
     return () => {
       cancelled = true;
     };
-  }, [driverLocation, showDriverLocation, deliveryLat, deliveryLng]);
+  }, [driverLocation, showDriverLocation, deliveryLat, deliveryLng, accent]);
 
   return (
     <div className="relative h-72 w-full overflow-hidden rounded-2xl border border-border/60 sm:h-96">
@@ -188,8 +194,20 @@ export function TrackingMap({
         estimatedArrival &&
         (status === "IN_PROGRESS" || status === "ASSIGNED") && (
           <div className="absolute left-4 top-4 max-w-[60%] rounded-xl border border-border/60 bg-card/95 px-4 py-3 shadow-lg backdrop-blur-md">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <p className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
               Entrega estimada
+              {etaIsLive && (
+                <span
+                  className="flex items-center gap-1 font-semibold normal-case tracking-normal"
+                  style={{ color: accent }}
+                >
+                  <span
+                    className="inline-block size-1.5 animate-pulse rounded-full"
+                    style={{ backgroundColor: accent }}
+                  />
+                  En vivo
+                </span>
+              )}
             </p>
             <div className="mt-1 flex items-center gap-2">
               <Clock className="size-4" style={{ color: accent }} />
@@ -198,7 +216,9 @@ export function TrackingMap({
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              {formatEtaDay(estimatedArrival)}
+              {etaIsLive && etaComputedAt
+                ? `Actualizado ${formatRelative(etaComputedAt)}`
+                : formatEtaDay(estimatedArrival)}
             </p>
           </div>
         )}
@@ -212,6 +232,15 @@ export function TrackingMap({
       `}</style>
     </div>
   );
+}
+
+function formatRelative(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "ahora";
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 45) return "hace unos segundos";
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  return `hace ${minutes} min`;
 }
 
 function formatEta(iso: string): string {

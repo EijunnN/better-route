@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight, Headphones } from "lucide-react";
+import { DEFAULT_BRAND_ACCENT } from "./constants";
 
 interface TrackingHelpProps {
   supportUrl?: string | null;
@@ -8,7 +9,7 @@ interface TrackingHelpProps {
 }
 
 export function TrackingHelp({ supportUrl, brandColor }: TrackingHelpProps) {
-  const accent = brandColor ?? "#4AB855";
+  const accent = brandColor ?? DEFAULT_BRAND_ACCENT;
   const href = supportUrl ?? "mailto:soporte@betterroute.io";
 
   return (

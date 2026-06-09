@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageCircle, Phone, User } from "lucide-react";
+import { DEFAULT_BRAND_ACCENT } from "./constants";
 
 interface TrackingDriverInfoProps {
   name: string;
@@ -15,7 +16,7 @@ export function TrackingDriverInfo({
   phone,
   brandColor,
 }: TrackingDriverInfoProps) {
-  const accent = brandColor ?? "#4AB855";
+  const accent = brandColor ?? DEFAULT_BRAND_ACCENT;
   const callHref = phone ? `tel:${phone}` : null;
   const smsHref = phone ? `sms:${phone}` : null;
 

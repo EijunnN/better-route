@@ -9,11 +9,18 @@ import {
   MapPin,
   User,
 } from "lucide-react";
+import {
+  DEFAULT_BRAND_ACCENT,
+  TrackingHeader,
+  TrackingHero,
+  TrackingOrderInfo,
+} from "@/components/tracking";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { TrackingSettings } from "./configuracion-context";
 import { useConfiguracion } from "./configuracion-context";
+import { TrackingFullPreview } from "./tracking-full-preview";
 
 const VISIBILITY_TOGGLES: Array<{
   key: keyof Pick<
@@ -72,6 +79,10 @@ export function TrackingSettingsSection() {
   const tracking = state.tracking;
 
   if (!tracking) return null;
+
+  const companyName =
+    meta.companies.find((c) => c.id === meta.companyId)?.commercialName ??
+    "Tu empresa";
 
   return (
     <section className="grid gap-6 px-6 py-8 md:grid-cols-[260px_1fr] md:gap-10 md:px-8 md:py-10">
@@ -139,7 +150,13 @@ export function TrackingSettingsSection() {
             </div>
 
             <div className="border-t border-foreground/10 pt-6">
-              <p className="text-sm font-medium mb-3">Personalización</p>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">Personalización</p>
+                <TrackingFullPreview
+                  tracking={tracking}
+                  companyName={companyName}
+                />
+              </div>
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(280px,380px)] gap-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -148,7 +165,7 @@ export function TrackingSettingsSection() {
                       <input
                         id="brand-color"
                         type="color"
-                        value={tracking.brandColor || "#3B82F6"}
+                        value={tracking.brandColor || DEFAULT_BRAND_ACCENT}
                         onChange={(e) =>
                           actions.updateTracking({ brandColor: e.target.value })
                         }
@@ -156,7 +173,7 @@ export function TrackingSettingsSection() {
                         aria-label="Selector de color de marca"
                       />
                       <Input
-                        value={tracking.brandColor || "#3B82F6"}
+                        value={tracking.brandColor || DEFAULT_BRAND_ACCENT}
                         onChange={(e) =>
                           actions.updateTracking({ brandColor: e.target.value })
                         }
@@ -190,12 +207,9 @@ export function TrackingSettingsSection() {
                   </div>
                 </div>
                 <BrandPreviewCard
-                  brandColor={tracking.brandColor || "#3B82F6"}
+                  brandColor={tracking.brandColor || DEFAULT_BRAND_ACCENT}
                   customMessage={tracking.customMessage}
-                  companyName={
-                    meta.companies.find((c) => c.id === meta.companyId)
-                      ?.commercialName ?? "Tu empresa"
-                  }
+                  companyName={companyName}
                 />
               </div>
             </div>
@@ -254,10 +268,11 @@ export function TrackingSettingsSection() {
 }
 
 /**
- * Faithful preview of the public tracking page header + order details card.
- * Mirrors src/components/tracking/{tracking-header,tracking-order-info}.tsx
- * so the planner sees exactly how the brand color tints the company name
- * and the "En camino" status badge before saving.
+ * Faithful preview of the public tracking page. Instead of re-implementing the
+ * layout (which silently drifts), it renders the SAME components the customer
+ * sees — TrackingHeader + TrackingHero + TrackingOrderInfo — with sample data,
+ * at phone width. The brand color / message therefore always look exactly like
+ * production.
  */
 function BrandPreviewCard({
   brandColor,
@@ -273,55 +288,30 @@ function BrandPreviewCard({
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
         Vista previa del tracking público
       </p>
-      <div className="overflow-hidden rounded-lg border bg-background shadow-sm">
-        {/* Header — mirrors TrackingHeader */}
-        <div className="border-b px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div
-              className="flex size-7 items-center justify-center rounded text-xs font-bold text-white"
-              style={{ backgroundColor: brandColor }}
-              aria-hidden="true"
-            >
-              {companyName.charAt(0).toUpperCase()}
-            </div>
-            <h1
-              className="text-sm font-semibold truncate"
-              style={{ color: brandColor }}
-            >
-              {companyName}
-            </h1>
-          </div>
-          {customMessage && (
-            <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">
-              {customMessage}
-            </p>
-          )}
-        </div>
-
-        {/* Order card — mirrors TrackingOrderInfo */}
-        <div className="p-3">
-          <div className="rounded-md border p-3 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium">Detalles del pedido</span>
-              <span
-                className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
-                style={{ backgroundColor: brandColor, borderColor: brandColor }}
-              >
-                En camino
-              </span>
-            </div>
-            <div className="space-y-1 text-[11px] text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <span className="font-mono text-foreground">#TRK-28431</span>
-                <span>·</span>
-                <span>Juan Pérez</span>
-              </div>
-              <p className="truncate">Av. Javier Prado 1580, San Isidro</p>
-              <p className="text-foreground/80">
-                Llegada estimada: <span className="font-medium">15:42</span>
-              </p>
-            </div>
-          </div>
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-background">
+        <TrackingHeader
+          companyName={companyName}
+          brandColor={brandColor}
+          customMessage={customMessage}
+        />
+        <div className="space-y-4 p-4">
+          <TrackingHero
+            status="IN_PROGRESS"
+            lastUpdate={null}
+            brandColor={brandColor}
+          />
+          <TrackingOrderInfo
+            trackingId="TRK-28431"
+            status="IN_PROGRESS"
+            address="Av. Javier Prado 1580, San Isidro"
+            customerName="Juan Pérez"
+            promisedDate={null}
+            timeWindowStart="13:00"
+            timeWindowEnd="15:00"
+            estimatedArrival={null}
+            showEta
+            brandColor={brandColor}
+          />
         </div>
       </div>
     </div>

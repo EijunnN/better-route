@@ -2,6 +2,7 @@
 
 import { Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DEFAULT_BRAND_ACCENT } from "./constants";
 
 interface TrackingHeroProps {
   status: string;
@@ -70,7 +71,7 @@ export function TrackingHero({
     tone: "muted" as const,
   };
   const isLive = copy.tone === "live";
-  const accent = brandColor ?? "#4AB855";
+  const accent = brandColor ?? DEFAULT_BRAND_ACCENT;
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm">
@@ -118,7 +119,7 @@ export function TrackingHero({
               "rounded-full px-3 py-1 text-xs font-semibold",
               copy.tone === "danger" && "bg-destructive/15 text-destructive",
               copy.tone === "muted" && "bg-muted text-muted-foreground",
-              copy.tone === "info" && "bg-blue-500/15 text-blue-400",
+              copy.tone === "info" && "bg-chart-2/15 text-chart-2",
             )}
             style={
               isLive
