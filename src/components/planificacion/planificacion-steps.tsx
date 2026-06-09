@@ -2,8 +2,10 @@
 
 import {
   AlertTriangle,
+  CalendarDays,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ChevronUp,
   Clock,
@@ -13,7 +15,6 @@ import {
   Pencil,
   Route,
   Search,
-  Settings2,
   Trash2,
   Truck,
   Upload,
@@ -50,22 +51,60 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlanificacion } from "./planificacion-context";
 import { OBJECTIVES, type StepId } from "./planificacion-types";
 
-const STEPS: Array<{ id: StepId; label: string; icon: React.ElementType }> = [
-  { id: "vehiculos", label: "Vehículos", icon: Truck },
-  { id: "visitas", label: "Visitas", icon: Package },
-  { id: "configuracion", label: "Configuración", icon: Settings2 },
+const STEPS: Array<{ id: StepId; label: string }> = [
+  { id: "vehiculos", label: "Vehículos" },
+  { id: "visitas", label: "Visitas" },
+  { id: "configuracion", label: "Configuración" },
 ];
 
+function formatShortDate(isoDate: string): string {
+  const [, m, d] = isoDate.split("-");
+  return d && m ? `${d}/${m}` : isoDate;
+}
+
+function formatFullDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split("-");
+  return d && m && y ? `${d}/${m}/${y}` : isoDate;
+}
+
 export function PlanificacionHeader() {
-  const { state, actions } = usePlanificacion();
+  const { state, actions, derived } = usePlanificacion();
+
+  const vehicleCount = state.selectedVehicleIds.length;
+  const orderCount = state.selectedOrderIds.length;
+
+  const subtitles: Record<StepId, string> = {
+    vehiculos:
+      vehicleCount > 0
+        ? `${vehicleCount} seleccionado${vehicleCount === 1 ? "" : "s"}`
+        : "Elige tu flota",
+    visitas:
+      orderCount > 0
+        ? `${orderCount} visita${orderCount === 1 ? "" : "s"}`
+        : "Elige las entregas",
+    configuracion: `${formatShortDate(state.planDate)} · ${state.planTime}`,
+  };
+
+  const validity: Record<StepId, boolean> = {
+    vehiculos: derived.canProceedFromVehiculos,
+    visitas: derived.canProceedFromVisitas,
+    configuracion: false,
+  };
+
+  const reachable: Record<StepId, boolean> = {
+    vehiculos: true,
+    visitas: derived.canProceedFromVehiculos,
+    configuracion:
+      derived.canProceedFromVehiculos && derived.canProceedFromVisitas,
+  };
 
   return (
     <div className="border-b px-6 py-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Planificación de Rutas</h1>
           <p className="text-sm text-muted-foreground">
@@ -73,40 +112,72 @@ export function PlanificacionHeader() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <ol className="flex items-center" aria-label="Pasos de planificación">
           {STEPS.map((step, index) => {
             const isActive = step.id === state.currentStep;
-            const isCompleted = state.completedSteps.has(step.id);
-            const StepIcon = step.icon;
+            const isCompleted =
+              state.completedSteps.has(step.id) && validity[step.id];
+            const isReachable = reachable[step.id];
 
             return (
-              <button
-                key={step.id}
-                type="button"
-                onClick={() => actions.goToStep(step.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : isCompleted
-                      ? "bg-primary/10 text-primary hover:bg-primary/20"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {isCompleted && !isActive ? (
-                    <Check className="size-4" />
-                  ) : (
-                    <StepIcon className="size-4" />
-                  )}
-                  <span className="font-medium">{step.label}</span>
-                </div>
+              <li key={step.id} className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => actions.goToStep(step.id)}
+                  disabled={!isReachable}
+                  aria-current={isActive ? "step" : undefined}
+                  className={`flex items-center gap-2.5 pl-2.5 pr-4 py-1.5 rounded-lg transition-colors ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : isCompleted
+                        ? "bg-primary/10 text-primary hover:bg-primary/20"
+                        : isReachable
+                          ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                          : "bg-muted/40 text-muted-foreground/50 cursor-not-allowed"
+                  }`}
+                >
+                  <span
+                    className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                      isActive
+                        ? "bg-primary-foreground/25 text-primary-foreground"
+                        : isCompleted
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-foreground/10"
+                    }`}
+                  >
+                    {isCompleted && !isActive ? (
+                      <Check className="size-3.5" />
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  <span className="text-left leading-tight">
+                    <span className="block text-sm font-medium">
+                      {step.label}
+                    </span>
+                    <span
+                      className={`block text-[11px] ${
+                        isActive
+                          ? "text-primary-foreground/75"
+                          : isReachable
+                            ? "text-muted-foreground"
+                            : "text-muted-foreground/50"
+                      }`}
+                    >
+                      {subtitles[step.id]}
+                    </span>
+                  </span>
+                </button>
                 {index < STEPS.length - 1 && (
-                  <ChevronRight className="size-4 ml-2 text-muted-foreground" />
+                  <ChevronRight
+                    className="size-4 mx-1 text-muted-foreground/50"
+                    aria-hidden="true"
+                  />
                 )}
-              </button>
+              </li>
             );
           })}
-        </div>
+        </ol>
       </div>
     </div>
   );
@@ -114,6 +185,9 @@ export function PlanificacionHeader() {
 
 export function VehicleStep() {
   const { state, actions, derived } = usePlanificacion();
+
+  const selectedCount = state.selectedVehicleIds.length;
+  const hasFilters = state.vehicleSearch !== "" || state.fleetFilter !== "ALL";
 
   return (
     <div className="h-full flex flex-col">
@@ -173,7 +247,7 @@ export function VehicleStep() {
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar..."
+              placeholder="Buscar placa, conductor..."
               value={state.vehicleSearch}
               onChange={(e) => actions.setVehicleSearch(e.target.value)}
               className="pl-8 h-9"
@@ -209,92 +283,138 @@ export function VehicleStep() {
         {/* Vehicle list */}
         <div className="space-y-1.5">
           {state.vehiclesLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="size-5 animate-spin" />
-            </div>
+            [0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-16 rounded-md border border-border/60 bg-muted/40 animate-pulse"
+              />
+            ))
           ) : derived.filteredVehicles.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground">
-              <Truck className="size-10 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No hay vehículos disponibles</p>
+            <div className="text-center py-10 text-muted-foreground">
+              <Truck className="size-10 mx-auto mb-3 opacity-40" />
+              {hasFilters ? (
+                <>
+                  <p className="text-sm font-medium">Sin resultados</p>
+                  <p className="text-xs mt-1">
+                    Ningún vehículo coincide con los filtros
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                      actions.setVehicleSearch("");
+                      actions.setFleetFilter("ALL");
+                    }}
+                  >
+                    Limpiar filtros
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium">
+                    No hay vehículos disponibles
+                  </p>
+                  <p className="text-xs mt-1">
+                    Registra vehículos en Recursos para poder planificar
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             derived.filteredVehicles.map((vehicle) => {
               const hasActivePlan = (vehicle.activeStopsCount ?? 0) > 0;
+              const isSelected = derived.selectedVehicleIdsSet.has(vehicle.id);
+              const capacities: string[] = [];
+              if (
+                state.companyProfile?.enableUnits &&
+                vehicle.maxUnitsCapacity
+              ) {
+                capacities.push(`${vehicle.maxUnitsCapacity} uds`);
+              }
+              if (state.companyProfile?.enableWeight && vehicle.weightCapacity)
+                capacities.push(`${vehicle.weightCapacity} kg`);
+              if (state.companyProfile?.enableVolume && vehicle.volumeCapacity)
+                capacities.push(`${vehicle.volumeCapacity} L`);
+              if (
+                state.companyProfile?.enableOrderValue &&
+                vehicle.maxValueCapacity
+              ) {
+                capacities.push(`S/ ${vehicle.maxValueCapacity}`);
+              }
+              if (vehicle.maxOrders)
+                capacities.push(`máx ${vehicle.maxOrders} ped.`);
+
               return (
                 <label
                   key={vehicle.id}
                   htmlFor={`vehicle-${vehicle.id}`}
-                  className={`block p-2 rounded-md border transition-colors ${
+                  className={`block p-2.5 rounded-md border transition-colors ${
                     hasActivePlan
                       ? "border-orange-300 bg-orange-50/50 dark:bg-orange-950/10 cursor-not-allowed opacity-70"
-                      : derived.selectedVehicleIdsSet.has(vehicle.id)
+                      : isSelected
                         ? "border-primary bg-primary/5 cursor-pointer"
                         : "border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer"
                   }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-start gap-2.5">
                     <Checkbox
                       id={`vehicle-${vehicle.id}`}
-                      checked={derived.selectedVehicleIdsSet.has(vehicle.id)}
+                      className="mt-0.5"
+                      checked={isSelected}
                       onCheckedChange={() =>
                         !hasActivePlan && actions.toggleVehicle(vehicle.id)
                       }
                       disabled={hasActivePlan}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-medium text-sm">
                           {vehicle.plate || vehicle.name}
                         </span>
-                        {hasActivePlan && (
-                          <Badge className="text-[10px] px-1.5 py-0 bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20">
-                            En ruta ({vehicle.activeStopsCount} paradas)
-                          </Badge>
-                        )}
                         {(vehicle.brand || vehicle.model) && (
                           <Badge
                             variant="outline"
-                            className="text-[10px] px-1.5 py-0"
+                            className="text-[10px] px-1.5 py-0 font-normal"
                           >
                             {[vehicle.brand, vehicle.model]
                               .filter(Boolean)
                               .join(" ")}
                           </Badge>
                         )}
-                        {vehicle.assignedDriver && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        {hasActivePlan && (
+                          <Badge className="text-[10px] px-1.5 py-0 bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20">
+                            En ruta · {vehicle.activeStopsCount} paradas
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap mt-1 text-[11px] text-muted-foreground">
+                        {vehicle.assignedDriver ? (
+                          <span className="flex items-center gap-1">
                             <User className="size-3" />
                             {vehicle.assignedDriver.name}
                           </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
+                            <User className="size-3" />
+                            Sin conductor
+                          </span>
                         )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                        {state.companyProfile?.enableWeight &&
-                          vehicle.weightCapacity && (
-                            <span>{vehicle.weightCapacity}kg</span>
-                          )}
-                        {state.companyProfile?.enableVolume &&
-                          vehicle.volumeCapacity && (
-                            <span>{vehicle.volumeCapacity}L</span>
-                          )}
-                        {state.companyProfile?.enableUnits &&
-                          vehicle.maxUnitsCapacity && (
-                            <span>{vehicle.maxUnitsCapacity} uds</span>
-                          )}
-                        {state.companyProfile?.enableOrderValue &&
-                          vehicle.maxValueCapacity && (
-                            <span>S/{vehicle.maxValueCapacity}</span>
-                          )}
-                        {vehicle.maxOrders && (
-                          <span>Max {vehicle.maxOrders} ped.</span>
-                        )}
-                        {vehicle.originAddress && (
-                          <span className="truncate flex items-center gap-1">
-                            <MapPin className="size-3 shrink-0" />
-                            {vehicle.originAddress}
+                        {capacities.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Package className="size-3" />
+                            {capacities.join(" · ")}
                           </span>
                         )}
                       </div>
+                      {vehicle.originAddress && (
+                        <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground">
+                          <MapPin className="size-3 shrink-0" />
+                          <span className="truncate">
+                            {vehicle.originAddress}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </label>
@@ -305,15 +425,22 @@ export function VehicleStep() {
       </div>
 
       {/* Next button */}
-      <div className="p-4 border-t">
+      <div className="p-4 border-t space-y-2">
         <Button
           className="w-full"
           onClick={actions.nextStep}
           disabled={!derived.canProceedFromVehiculos}
         >
-          Continuar a Visitas
+          {selectedCount > 0
+            ? `Continuar con ${selectedCount} vehículo${selectedCount === 1 ? "" : "s"}`
+            : "Continuar a Visitas"}
           <ChevronRight className="size-4 ml-2" />
         </Button>
+        {!derived.canProceedFromVehiculos && !state.vehiclesLoading && (
+          <p className="text-xs text-muted-foreground text-center">
+            Selecciona al menos un vehículo para continuar
+          </p>
+        )}
       </div>
     </div>
   );
@@ -322,6 +449,14 @@ export function VehicleStep() {
 export function OrderStep() {
   const { state, actions, derived } = usePlanificacion();
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useLocalState(false);
+
+  const selectedCount = state.selectedOrderIds.length;
+  const scheduledCount = state.orders.filter(
+    (o) => o.timeWindowPresetId,
+  ).length;
+  const selectedWithoutCoords = derived.selectedOrders.filter(
+    (o) => !o.latitude || !o.longitude,
+  ).length;
 
   return (
     <div className="h-full flex flex-col">
@@ -400,25 +535,29 @@ export function OrderStep() {
             <TabsTrigger value="todas" className="flex-1 text-xs h-7">
               Todas ({state.orders.length})
             </TabsTrigger>
-            <TabsTrigger value="alertas" className="flex-1 text-xs h-7">
-              <AlertTriangle className="size-3 mr-1" />(
-              {derived.ordersWithIssues.length})
+            <TabsTrigger
+              value="alertas"
+              className={`flex-1 text-xs h-7 ${
+                derived.ordersWithIssues.length > 0
+                  ? "text-orange-600 dark:text-orange-400"
+                  : ""
+              }`}
+            >
+              <AlertTriangle className="size-3 mr-1" />
+              Alertas ({derived.ordersWithIssues.length})
             </TabsTrigger>
             <TabsTrigger value="conHorario" className="flex-1 text-xs h-7">
               <Clock className="size-3 mr-1" />
-              Horario
+              Horario ({scheduledCount})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="todas" className="mt-0" />
-          <TabsContent value="alertas" className="mt-0" />
-          <TabsContent value="conHorario" className="mt-0" />
         </Tabs>
 
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar..."
+            placeholder="Buscar código, cliente, dirección..."
             value={state.orderSearch}
             onChange={(e) => actions.setOrderSearch(e.target.value)}
             className="pl-8 h-9"
@@ -452,14 +591,50 @@ export function OrderStep() {
         {/* Order list */}
         <div className="space-y-1">
           {state.ordersLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="size-5 animate-spin" />
-            </div>
+            [0, 1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="h-12 rounded-md border border-border/60 bg-muted/40 animate-pulse"
+              />
+            ))
           ) : derived.filteredOrders.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground">
-              <Package className="size-10 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No hay pedidos pendientes</p>
-            </div>
+            state.orders.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground">
+                <Package className="size-10 mx-auto mb-3 opacity-40" />
+                <p className="text-sm font-medium">No hay pedidos pendientes</p>
+                <p className="text-xs mt-1 mb-3">
+                  Importa tus pedidos desde un archivo CSV o Excel
+                </p>
+                <Can perm="order:import">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => actions.setShowCsvUpload(true)}
+                  >
+                    <Upload className="size-3.5 mr-1.5" />
+                    Importar CSV
+                  </Button>
+                </Can>
+              </div>
+            ) : (
+              <div className="text-center py-10 text-muted-foreground">
+                <Search className="size-10 mx-auto mb-3 opacity-40" />
+                <p className="text-sm font-medium">Sin resultados</p>
+                <p className="text-xs mt-1">
+                  Ningún pedido coincide con el filtro actual
+                </p>
+                {state.orderSearch && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => actions.setOrderSearch("")}
+                  >
+                    Limpiar búsqueda
+                  </Button>
+                )}
+              </div>
+            )
           ) : (
             derived.filteredOrders.map((order) => {
               const hasIssue = !order.latitude || !order.longitude;
@@ -485,14 +660,17 @@ export function OrderStep() {
                           {order.trackingId}
                         </span>
                         {hasIssue && (
-                          <AlertTriangle className="size-3 text-orange-500 shrink-0" />
+                          <Badge className="text-[10px] px-1.5 py-0 h-4 shrink-0 bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20">
+                            <AlertTriangle className="size-2.5 mr-0.5" />
+                            Sin coords
+                          </Badge>
                         )}
                         {order.priority === "HIGH" && (
                           <Badge
                             variant="destructive"
-                            className="text-[10px] px-1 py-0 h-4"
+                            className="text-[10px] px-1.5 py-0 h-4 shrink-0"
                           >
-                            !
+                            Alta
                           </Badge>
                         )}
                       </div>
@@ -504,12 +682,12 @@ export function OrderStep() {
                         <span className="truncate">{order.address}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-0.5 shrink-0">
                       <Can perm="order:update">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="size-6 p-0"
+                          className="size-7 p-0"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -517,14 +695,14 @@ export function OrderStep() {
                           }}
                           title="Editar coordenadas"
                         >
-                          <Pencil className="size-3" />
+                          <Pencil className="size-3.5" />
                         </Button>
                       </Can>
                       <Can perm="order:delete">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="size-6 p-0 text-red-500 hover:bg-destructive hover:text-destructive-foreground"
+                          className="size-7 p-0 text-red-500 hover:bg-destructive hover:text-destructive-foreground"
                           disabled={state.deletingOrderId === order.id}
                           onClick={async (e) => {
                             e.preventDefault();
@@ -550,18 +728,49 @@ export function OrderStep() {
       </div>
 
       {/* Navigation buttons */}
-      <div className="p-4 border-t flex gap-2">
-        <Button variant="outline" onClick={actions.prevStep} className="flex-1">
-          Volver
-        </Button>
-        <Button
-          className="flex-1"
-          onClick={actions.nextStep}
-          disabled={!derived.canProceedFromVisitas}
-        >
-          Continuar
-          <ChevronRight className="size-4 ml-2" />
-        </Button>
+      <div className="border-t">
+        {selectedWithoutCoords > 0 && (
+          <div className="mx-4 mt-3 p-2.5 rounded-md border border-orange-200 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/20 flex items-center gap-2">
+            <AlertTriangle className="size-4 text-orange-600 shrink-0" />
+            <p className="text-xs text-orange-800 dark:text-orange-400 flex-1">
+              {selectedWithoutCoords} visita
+              {selectedWithoutCoords === 1 ? "" : "s"} seleccionada
+              {selectedWithoutCoords === 1 ? "" : "s"} sin coordenadas
+            </p>
+            <button
+              type="button"
+              className="text-xs font-medium text-orange-700 dark:text-orange-400 hover:underline"
+              onClick={() => actions.setOrderTab("alertas")}
+            >
+              Revisar
+            </button>
+          </div>
+        )}
+        <div className="p-4 space-y-2">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={actions.prevStep}
+              className="flex-1"
+            >
+              <ChevronLeft className="size-4 mr-2" />
+              Volver
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={actions.nextStep}
+              disabled={!derived.canProceedFromVisitas}
+            >
+              {selectedCount > 0 ? `Continuar (${selectedCount})` : "Continuar"}
+              <ChevronRight className="size-4 ml-2" />
+            </Button>
+          </div>
+          {!derived.canProceedFromVisitas && !state.ordersLoading && (
+            <p className="text-xs text-muted-foreground text-center">
+              Selecciona al menos una visita para continuar
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -602,6 +811,35 @@ function isOrderInAnyZone(
   );
 }
 
+function SummaryTile({
+  icon: Icon,
+  label,
+  value,
+  onClick,
+  title,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  onClick: () => void;
+  title: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="text-left p-2 rounded-md hover:bg-primary/10 transition-colors"
+    >
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+        <Icon className="size-3" />
+        {label}
+      </p>
+      <p className="font-semibold text-base leading-tight mt-0.5">{value}</p>
+    </button>
+  );
+}
+
 export function ConfigStep() {
   const { state, actions } = usePlanificacion();
   const [showOutsideDetails, setShowOutsideDetails] = useLocalState(false);
@@ -637,20 +875,36 @@ export function ConfigStep() {
 
         {/* Summary */}
         <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="py-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Vehículos</p>
-                <p className="font-semibold text-lg">
-                  {state.selectedVehicleIds.length}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Visitas</p>
-                <p className="font-semibold text-lg">
-                  {state.selectedOrderIds.length}
-                </p>
-              </div>
+          <CardContent className="py-3">
+            <div className="grid grid-cols-2 gap-1">
+              <SummaryTile
+                icon={CalendarDays}
+                label="Fecha"
+                value={formatFullDate(state.planDate)}
+                onClick={() => actions.goToStep("vehiculos")}
+                title="Cambiar fecha"
+              />
+              <SummaryTile
+                icon={Clock}
+                label="Hora inicio"
+                value={state.planTime}
+                onClick={() => actions.goToStep("vehiculos")}
+                title="Cambiar hora de inicio"
+              />
+              <SummaryTile
+                icon={Truck}
+                label="Vehículos"
+                value={String(state.selectedVehicleIds.length)}
+                onClick={() => actions.goToStep("vehiculos")}
+                title="Cambiar vehículos"
+              />
+              <SummaryTile
+                icon={Package}
+                label="Visitas"
+                value={String(state.selectedOrderIds.length)}
+                onClick={() => actions.goToStep("visitas")}
+                title="Cambiar visitas"
+              />
             </div>
           </CardContent>
         </Card>
@@ -666,23 +920,40 @@ export function ConfigStep() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {OBJECTIVES.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => actions.setObjective(opt.value)}
-                className={`w-full p-3 rounded-lg border text-left transition-colors ${
-                  state.objective === opt.value
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <p className="font-medium text-sm">{opt.label}</p>
-                <p className="text-xs text-muted-foreground">
-                  {opt.description}
-                </p>
-              </button>
-            ))}
+            {OBJECTIVES.map((opt) => {
+              const isSelected = state.objective === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => actions.setObjective(opt.value)}
+                  className={`w-full p-3 rounded-lg border text-left transition-colors flex items-center justify-between gap-3 ${
+                    isSelected
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50 hover:bg-muted/30"
+                  }`}
+                >
+                  <div>
+                    <p className="font-medium text-sm">{opt.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {opt.description}
+                    </p>
+                  </div>
+                  <span
+                    className={`size-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                      isSelected
+                        ? "border-primary"
+                        : "border-muted-foreground/40"
+                    }`}
+                  >
+                    {isSelected && (
+                      <span className="size-2 rounded-full bg-primary" />
+                    )}
+                  </span>
+                </button>
+              );
+            })}
           </CardContent>
         </Card>
 
@@ -708,27 +979,44 @@ export function ConfigStep() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {state.availablePresets.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => actions.setOptimizationPresetId(preset.id)}
-                  className={`w-full p-3 rounded-lg border text-left transition-colors ${
-                    state.optimizationPresetId === preset.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm">{preset.name}</p>
-                    {preset.isDefault && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                        por defecto
-                      </span>
-                    )}
-                  </div>
-                </button>
-              ))}
+              {state.availablePresets.map((preset) => {
+                const isSelected = state.optimizationPresetId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => actions.setOptimizationPresetId(preset.id)}
+                    className={`w-full p-3 rounded-lg border text-left transition-colors flex items-center justify-between gap-3 ${
+                      isSelected
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50 hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="font-medium text-sm truncate">
+                        {preset.name}
+                      </p>
+                      {preset.isDefault && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                          por defecto
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={`size-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                        isSelected
+                          ? "border-primary"
+                          : "border-muted-foreground/40"
+                      }`}
+                    >
+                      {isSelected && (
+                        <span className="size-2 rounded-full bg-primary" />
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
             </CardContent>
           </Card>
         )}
@@ -741,7 +1029,7 @@ export function ConfigStep() {
               Tiempo promedio por entrega
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2.5">
             <div className="flex items-center gap-2">
               <Input
                 type="number"
@@ -753,13 +1041,29 @@ export function ConfigStep() {
               />
               <span className="text-sm text-muted-foreground">minutos</span>
             </div>
+            <div className="flex gap-1.5">
+              {[5, 10, 15, 20].map((minutes) => (
+                <button
+                  key={minutes}
+                  type="button"
+                  onClick={() => actions.setServiceTime(minutes)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                    state.serviceTime === minutes
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {minutes} min
+                </button>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Zone Warning */}
       {ordersOutsideZones.length > 0 && (
-        <div className="px-4">
+        <div className="px-4 pb-1">
           <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-900">
             <div className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-orange-600 flex-shrink-0" />
@@ -818,6 +1122,7 @@ export function ConfigStep() {
           </Button>
         </Can>
         <Button variant="outline" onClick={actions.prevStep} className="w-full">
+          <ChevronLeft className="size-4 mr-2" />
           Volver
         </Button>
       </div>

@@ -1,18 +1,177 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useTheme } from "@/components/layout/theme-context";
 import { getMapStyle } from "@/lib/map-styles";
 import { ROUTE_COLORS, UNASSIGNED_COLOR } from "./constants";
 import { decodePolyline } from "./decode-polyline";
-import type { RouteMapProps } from "./types";
+import type { Route, RouteMapProps } from "./types";
 import { useMapThemeSync } from "./use-map-init";
 import { useZoneLayers } from "./use-map-interactions";
 import { useMarkerHighlight } from "./use-markers";
 import { useRouteSelectionVisibility } from "./use-route-layers";
+
+/**
+ * Aclara (pct > 0) u oscurece (pct < 0) un color hex — da volumen a los
+ * markers sin mantener una paleta paralela por ruta.
+ */
+function shadeHex(hex: string, pct: number): string {
+  const raw = hex.replace("#", "");
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw;
+  const num = Number.parseInt(full, 16);
+  const mix = (channel: number) =>
+    Math.round(
+      pct >= 0 ? channel + (255 - channel) * pct : channel * (1 + pct),
+    );
+  const r = mix((num >> 16) & 0xff);
+  const g = mix((num >> 8) & 0xff);
+  const b = mix(num & 0xff);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+}
+
+/** Texto legible sobre un fondo hex: colores claros de la paleta → texto oscuro. */
+function labelColorFor(hex: string): string {
+  const raw = hex.replace("#", "");
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw;
+  const num = Number.parseInt(full, 16);
+  const luminance =
+    0.299 * ((num >> 16) & 0xff) +
+    0.587 * ((num >> 8) & 0xff) +
+    0.114 * (num & 0xff);
+  return luminance > 170 ? "#1f2937" : "#ffffff";
+}
+
+/**
+ * Silueta de van vista desde arriba en el color de la ruta, con el
+ * identificador del vehículo colgando como pill. Misma familia visual que el
+ * marker de vehículos del mapa de planificación.
+ */
+function driverVanHTML(
+  routeId: string,
+  color: string,
+  identifier: string,
+): string {
+  const dark = shadeHex(color, -0.25);
+  return `
+    <div style="position:relative;width:20px;height:40px;cursor:pointer;">
+      <svg width="20" height="40" viewBox="0 0 24 48" style="display:block;overflow:visible;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.45));">
+        <defs>
+          <linearGradient id="rvan-${routeId}" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="${shadeHex(color, 0.35)}"/>
+            <stop offset="0.5" stop-color="${color}"/>
+            <stop offset="1" stop-color="${dark}"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="9.5" width="3.4" height="2.6" rx="1.2" fill="${dark}"/>
+        <rect x="20.6" y="9.5" width="3.4" height="2.6" rx="1.2" fill="${dark}"/>
+        <rect x="2.5" y="1" width="19" height="46" rx="6" fill="url(#rvan-${routeId})" stroke="rgba(255,255,255,0.88)" stroke-width="1.2"/>
+        <path d="M5 4.5 Q12 2.3 19 4.5 L19 7.8 Q12 6.2 5 7.8 Z" fill="rgba(255,255,255,0.25)"/>
+        <path d="M5.2 10.5 Q12 8.4 18.8 10.5 L17.6 15.8 Q12 13.9 6.4 15.8 Z" fill="#0f172a"/>
+        <rect x="5" y="18.5" width="14" height="23.5" rx="2.5" fill="rgba(0,0,0,0.12)"/>
+        <rect x="6" y="43.4" width="12" height="1.8" rx="0.9" fill="#0f172a" opacity="0.55"/>
+      </svg>
+      <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;padding:1.5px 6px;border-radius:999px;background:rgba(17,24,39,0.85);color:#f9fafb;font-size:8.5px;font-weight:600;letter-spacing:0.3px;white-space:nowrap;border:1px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,0.35);font-family:system-ui,-apple-system,sans-serif;">${identifier}</div>
+    </div>
+  `;
+}
+
+/** Cuerpo SVG del pin "lollipop": disco con anillo blanco + tallo a la coordenada. */
+function stopPinSVG(color: string): string {
+  return `
+    <path d="M14 35 L8.6 24 H19.4 Z" fill="${shadeHex(color, -0.18)}" stroke="rgba(255,255,255,0.9)" stroke-width="1" stroke-linejoin="round"/>
+    <circle cx="14" cy="13.5" r="11.5" fill="${color}" stroke="rgba(255,255,255,0.95)" stroke-width="2"/>
+  `;
+}
+
+/**
+ * (Re)añade las líneas de ruta como sources/layers de MapLibre. Idempotente
+ * (salta sources existentes): se invoca en el load inicial y tras cada
+ * setStyle del basemap, que borra todas las capas custom pero conserva los
+ * markers DOM y los listeners delegados por layerId.
+ */
+function addRouteLineLayers(
+  mapInstance: maplibregl.Map,
+  routes: Route[],
+  depot: RouteMapProps["depot"],
+): void {
+  routes.forEach((route, routeIndex) => {
+    const color = ROUTE_COLORS[routeIndex % ROUTE_COLORS.length];
+
+    let coordinates: [number, number][] = [];
+
+    if (route.geometry) {
+      coordinates = decodePolyline(route.geometry);
+    } else {
+      // Fallback: draw straight lines when no VROOM geometry
+      // Use route's driverOrigin if available, otherwise depot
+      const routeOrigin = route.driverOrigin
+        ? {
+            longitude: route.driverOrigin.longitude,
+            latitude: route.driverOrigin.latitude,
+          }
+        : depot;
+
+      if (routeOrigin) {
+        coordinates.push([routeOrigin.longitude, routeOrigin.latitude]);
+      }
+      route.stops
+        .toSorted((a, b) => a.sequence - b.sequence)
+        .forEach((stop) => {
+          coordinates.push([stop.longitude, stop.latitude]);
+        });
+      if (routeOrigin) {
+        coordinates.push([routeOrigin.longitude, routeOrigin.latitude]);
+      }
+    }
+
+    if (coordinates.length < 2) return;
+
+    const sourceId = `route-${route.routeId}`;
+    if (mapInstance.getSource(sourceId)) return;
+
+    mapInstance.addSource(sourceId, {
+      type: "geojson",
+      data: {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "LineString",
+          coordinates,
+        },
+      },
+    });
+
+    mapInstance.addLayer({
+      id: `route-line-${route.routeId}`,
+      type: "line",
+      source: sourceId,
+      layout: {
+        "line-join": "round",
+        "line-cap": "round",
+      },
+      paint: {
+        "line-color": color,
+        "line-width": 3,
+        "line-opacity": 1,
+      },
+    });
+  });
+}
 
 export function RouteMap({
   routes,
@@ -49,8 +208,41 @@ export function RouteMap({
     onMapReadyRef.current = onMapReady;
   }, [selectedRouteId, onRouteSelect, onMapReady]);
 
+  // Se incrementa cuando el sustrato de capas cambia: tras el load inicial y
+  // tras cada setStyle por cambio de tema (que borra las capas custom). Los
+  // effects de líneas, zonas y énfasis de selección dependen de él.
+  const [styleRevision, setStyleRevision] = useState(0);
+  const bumpStyleRevision = useCallback(
+    () => setStyleRevision((v) => v + 1),
+    [],
+  );
+
+  // Re-añade las líneas de ruta tras un swap de basemap. Los markers (DOM) y
+  // los listeners delegados sobreviven a setStyle; solo faltan sources/layers.
+  // Debe declararse ANTES de useRouteSelectionVisibility para que el énfasis
+  // de selección se aplique sobre las capas ya recreadas.
+  // OJO: no usar isStyleLoaded() como guard — tras "style.load" sigue siendo
+  // false mientras cargan tiles/sprites, pero addSource/addLayer ya son
+  // seguros (solo requieren la hoja de estilo parseada).
+  useEffect(() => {
+    const mapInstance = map.current;
+    if (!mapInstance || styleRevision === 0) return;
+    try {
+      addRouteLineLayers(mapInstance, routes, depot);
+    } catch {
+      // Estilo aún parseándose (re-init por cambio de datos): el handler de
+      // "load" añadirá las líneas y volverá a bumpear styleRevision.
+    }
+  }, [styleRevision, routes, depot]);
+
   // Update route visibility when selection changes
-  useRouteSelectionVisibility(map, markersRef, routes, selectedRouteId);
+  useRouteSelectionVisibility(
+    map,
+    markersRef,
+    routes,
+    selectedRouteId,
+    styleRevision,
+  );
 
   // Highlight selected orders (for pencil selection feedback)
   useMarkerHighlight(map, markersRef, highlightedOrderIds);
@@ -81,7 +273,7 @@ export function RouteMap({
           centerLng = avgLng;
         }
 
-        const style = getMapStyle(isDark);
+        const style = getMapStyle(mapThemeRef.current);
         map.current = new maplibregl.Map({
           container: mapContainer.current,
           style: {
@@ -105,17 +297,17 @@ export function RouteMap({
             depotEl.className = "depot-marker";
             depotEl.innerHTML = `
               <div style="
-                width: 36px;
-                height: 36px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                border: 3px solid rgba(255,255,255,0.9);
-                border-radius: 50%;
+                width: 34px;
+                height: 34px;
+                background: #111827;
+                border: 2px solid rgba(255,255,255,0.92);
+                border-radius: 10px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.45);
               ">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                   <polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
@@ -142,26 +334,11 @@ export function RouteMap({
             const color = ROUTE_COLORS[routeIndex % ROUTE_COLORS.length];
             const driverOriginEl = document.createElement("div");
             driverOriginEl.setAttribute("data-route-id", route.routeId);
-            driverOriginEl.innerHTML = `
-              <div style="
-                width: 32px;
-                height: 32px;
-                background: ${color};
-                border: 3px solid rgba(255,255,255,0.9);
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-                cursor: pointer;
-                transition: all 0.2s ease;
-              ">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-                  <circle cx="12" cy="8" r="4"/>
-                  <path d="M20 21a8 8 0 1 0-16 0"/>
-                </svg>
-              </div>
-            `;
+            driverOriginEl.innerHTML = driverVanHTML(
+              route.routeId,
+              color,
+              route.vehicleIdentifier,
+            );
 
             const popup = new maplibregl.Popup({
               offset: 25,
@@ -196,90 +373,32 @@ export function RouteMap({
             markersRef.current.push(marker);
           });
 
-          // Add routes
+          // Add route line sources/layers (idempotente, reutilizado tras
+          // cambios de tema)
+          addRouteLineLayers(map.current, routes, depot);
+
           routes.forEach((route, routeIndex) => {
             if (!map.current) return;
             const color = ROUTE_COLORS[routeIndex % ROUTE_COLORS.length];
+            const layerId = `route-line-${route.routeId}`;
 
-            let coordinates: [number, number][] = [];
+            // Los listeners delegados por layerId viven en el mapa (no en la
+            // capa): sobreviven a setStyle, así que se registran solo aquí.
+            map.current.on("click", layerId, () => {
+              onRouteSelectRef.current?.(
+                selectedRouteIdRef.current === route.routeId
+                  ? null
+                  : route.routeId,
+              );
+            });
 
-            if (route.geometry) {
-              coordinates = decodePolyline(route.geometry);
-            } else {
-              // Fallback: draw straight lines when no VROOM geometry
-              // Use route's driverOrigin if available, otherwise depot
-              const routeOrigin = route.driverOrigin
-                ? {
-                    longitude: route.driverOrigin.longitude,
-                    latitude: route.driverOrigin.latitude,
-                  }
-                : depot;
+            map.current.on("mouseenter", layerId, () => {
+              if (map.current) map.current.getCanvas().style.cursor = "pointer";
+            });
 
-              if (routeOrigin) {
-                coordinates.push([routeOrigin.longitude, routeOrigin.latitude]);
-              }
-              route.stops
-                .toSorted((a, b) => a.sequence - b.sequence)
-                .forEach((stop) => {
-                  coordinates.push([stop.longitude, stop.latitude]);
-                });
-              if (routeOrigin) {
-                coordinates.push([routeOrigin.longitude, routeOrigin.latitude]);
-              }
-            }
-
-            if (coordinates.length >= 2) {
-              const sourceId = `route-${route.routeId}`;
-              const layerId = `route-line-${route.routeId}`;
-
-              if (map.current.getSource(sourceId)) {
-                return;
-              }
-
-              map.current.addSource(sourceId, {
-                type: "geojson",
-                data: {
-                  type: "Feature",
-                  properties: {},
-                  geometry: {
-                    type: "LineString",
-                    coordinates,
-                  },
-                },
-              });
-
-              map.current.addLayer({
-                id: layerId,
-                type: "line",
-                source: sourceId,
-                layout: {
-                  "line-join": "round",
-                  "line-cap": "round",
-                },
-                paint: {
-                  "line-color": color,
-                  "line-width": 3,
-                  "line-opacity": 1,
-                },
-              });
-
-              map.current.on("click", layerId, () => {
-                onRouteSelectRef.current?.(
-                  selectedRouteIdRef.current === route.routeId
-                    ? null
-                    : route.routeId,
-                );
-              });
-
-              map.current.on("mouseenter", layerId, () => {
-                if (map.current)
-                  map.current.getCanvas().style.cursor = "pointer";
-              });
-
-              map.current.on("mouseleave", layerId, () => {
-                if (map.current) map.current.getCanvas().style.cursor = "";
-              });
-            }
+            map.current.on("mouseleave", layerId, () => {
+              if (map.current) map.current.getCanvas().style.cursor = "";
+            });
 
             // Add stop markers - Modern elegant pin style
             route.stops.forEach((stop) => {
@@ -296,37 +415,42 @@ export function RouteMap({
               const orderBadge = hasMultipleOrders
                 ? `<span style="
                     position: absolute;
-                    top: -4px;
-                    right: -4px;
+                    top: -5px;
+                    right: -6px;
                     background: #fff;
-                    color: ${color};
+                    color: ${shadeHex(color, -0.45)};
                     font-size: 9px;
                     font-weight: 700;
-                    padding: 2px 5px;
+                    padding: 1.5px 5px;
                     border-radius: 10px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.35);
                   ">${stop.groupedTrackingIds?.length}</span>`
                 : "";
+              const labelColor = labelColorFor(color);
               markerEl.innerHTML = `
                 <div class="pin-marker" style="
                   position: relative;
                   cursor: pointer;
                   transition: transform 0.15s ease;
+                  transform-origin: bottom center;
                 ">
-                  <svg width="32" height="40" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 0C7.163 0 0 7.163 0 16c0 12 16 24 16 24s16-12 16-24C32 7.163 24.837 0 16 0z" fill="${color}"/>
-                    <path d="M16 1C7.716 1 1 7.716 1 16c0 5.5 4 11 8 15.5 2.5 2.8 5.5 5.5 7 6.8 1.5-1.3 4.5-4 7-6.8 4-4.5 8-10 8-15.5 0-8.284-6.716-15-15-15z" fill="rgba(255,255,255,0.15)"/>
-                    <circle cx="16" cy="14" r="10" fill="rgba(0,0,0,0.2)"/>
+                  <svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,0.4));">
+                    ${stopPinSVG(color)}
                   </svg>
                   <span style="
                     position: absolute;
-                    top: 6px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    font-size: 12px;
+                    top: 2px;
+                    left: 2.5px;
+                    width: 23px;
+                    height: 23px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: ${stop.sequence >= 100 ? "9px" : "11px"};
                     font-weight: 700;
-                    color: white;
-                    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+                    color: ${labelColor};
+                    ${labelColor === "#ffffff" ? "text-shadow: 0 1px 2px rgba(0,0,0,0.35);" : ""}
+                    font-family: system-ui, -apple-system, sans-serif;
                   ">${stop.sequence}</span>
                   ${orderBadge}
                 </div>
@@ -432,20 +556,23 @@ export function RouteMap({
                 position: relative;
                 cursor: pointer;
                 transition: all 0.15s ease;
+                transform-origin: bottom center;
                 opacity: 0.35;
                 filter: saturate(0.5);
               ">
-                <svg width="20" height="25" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M16 0C7.163 0 0 7.163 0 16c0 12 16 24 16 24s16-12 16-24C32 7.163 24.837 0 16 0z" fill="${UNASSIGNED_COLOR}"/>
-                  <path d="M16 1C7.716 1 1 7.716 1 16c0 5.5 4 11 8 15.5 2.5 2.8 5.5 5.5 7 6.8 1.5-1.3 4.5-4 7-6.8 4-4.5 8-10 8-15.5 0-8.284-6.716-15-15-15z" fill="rgba(255,255,255,0.1)"/>
-                  <circle cx="16" cy="14" r="10" fill="rgba(0,0,0,0.2)"/>
+                <svg width="20" height="26" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.4));">
+                  ${stopPinSVG(UNASSIGNED_COLOR)}
                 </svg>
                 <span style="
                   position: absolute;
-                  top: 3px;
-                  left: 50%;
-                  transform: translateX(-50%);
-                  font-size: 8px;
+                  top: 1.5px;
+                  left: 2px;
+                  width: 16px;
+                  height: 16.5px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 9px;
                   font-weight: 700;
                   color: white;
                   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
@@ -518,26 +645,24 @@ export function RouteMap({
                 <div style="
                   position: absolute;
                   inset: 0;
-                  border: 3px dashed #f97316;
-                  border-radius: 8px;
+                  border: 2.5px dashed #f97316;
+                  border-radius: 50%;
                   animation: pulse-vehicle 2s ease-in-out infinite;
                 "></div>
                 <div style="
                   position: absolute;
-                  inset: 3px;
-                  background: ${UNASSIGNED_COLOR};
-                  border-radius: 5px;
+                  inset: 0;
                   display: flex;
                   align-items: center;
                   justify-content: center;
-                  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
                 ">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
-                    <path d="M15 18H9"/>
-                    <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
-                    <circle cx="17" cy="18" r="2"/>
-                    <circle cx="7" cy="18" r="2"/>
+                  <svg width="14" height="28" viewBox="0 0 24 48" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,0.4));">
+                    <rect x="0" y="9.5" width="3.4" height="2.6" rx="1.2" fill="#6b7280"/>
+                    <rect x="20.6" y="9.5" width="3.4" height="2.6" rx="1.2" fill="#6b7280"/>
+                    <rect x="2.5" y="1" width="19" height="46" rx="6" fill="${UNASSIGNED_COLOR}" stroke="rgba(255,255,255,0.85)" stroke-width="1.2"/>
+                    <path d="M5.2 10.5 Q12 8.4 18.8 10.5 L17.6 15.8 Q12 13.9 6.4 15.8 Z" fill="#111827"/>
+                    <rect x="5" y="18.5" width="14" height="23.5" rx="2.5" fill="rgba(0,0,0,0.12)"/>
+                    <rect x="6" y="43.4" width="12" height="1.8" rx="0.9" fill="#111827" opacity="0.55"/>
                   </svg>
                 </div>
               </div>
@@ -637,6 +762,11 @@ export function RouteMap({
 
           setIsLoading(false);
 
+          // Re-dispara los effects de zonas y énfasis de selección sobre el
+          // mapa recién poblado (necesario cuando el init re-corre por cambio
+          // de datos y los demás deps no cambiaron).
+          setStyleRevision((v) => v + 1);
+
           // Notify parent when map is ready
           if (map.current && onMapReadyRef.current) {
             onMapReadyRef.current(map.current);
@@ -673,20 +803,16 @@ export function RouteMap({
     // Selection state + callbacks are read through refs (see above), so they
     // are intentionally NOT deps — re-running this effect tears down and
     // recreates the whole map, which would recenter it on every click.
-  }, [
-    routes,
-    depot,
-    showDepot,
-    unassignedOrders,
-    vehiclesWithoutRoutes,
-    isDark,
-  ]);
+    // El tema TAMPOCO es dep: destruir el mapa al cambiarlo perdía cámara,
+    // zonas y selección; useMapThemeSync lo aplica vía setStyle.
+  }, [routes, depot, showDepot, unassignedOrders, vehiclesWithoutRoutes]);
 
-  // React to theme changes
-  useMapThemeSync(map, mapThemeRef, isDark, isLoading);
+  // React to theme changes; al cargar el nuevo estilo se re-añaden las capas
+  // custom vía styleRevision.
+  useMapThemeSync(map, mapThemeRef, isDark, isLoading, bumpStyleRevision);
 
   // Render zones as polygon layers
-  useZoneLayers(map, zones, isLoading);
+  useZoneLayers(map, zones, isLoading, styleRevision);
 
   if (error) {
     if (variant === "fullscreen") {

@@ -69,10 +69,7 @@ export function usePlanificacionActions(
     objective,
     serviceTime,
     optimizationPresetId,
-    csvPreview,
     csvRawText,
-    fieldDefinitions,
-    companyProfile,
     editingOrder,
     editOrderData,
   } = state;
@@ -83,10 +80,21 @@ export function usePlanificacionActions(
     selectedVehicles,
     selectedVehicleIdsSet,
     selectedOrderIdsSet,
+    canProceedFromVehiculos,
+    canProceedFromVisitas,
   } = derived;
 
   // Actions
   const goToStep = (step: StepId) => {
+    const targetIndex = STEPS.indexOf(step);
+    // Avanzar requiere que cada paso previo sea válido; retroceder siempre se permite.
+    if (targetIndex >= 1 && !canProceedFromVehiculos) return;
+    if (targetIndex >= 2 && !canProceedFromVisitas) return;
+    if (targetIndex > STEPS.indexOf(currentStep)) {
+      setCompletedSteps(
+        (prev) => new Set([...prev, ...STEPS.slice(0, targetIndex)]),
+      );
+    }
     setCurrentStep(step);
   };
 

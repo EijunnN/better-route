@@ -1,5 +1,5 @@
 import type maplibregl from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Check if two line segments intersect and return intersection point
 function lineIntersection(
@@ -120,41 +120,46 @@ export function useFreehandDraw({
     freehandPathRef.current = freehandPath;
   }, [freehandPath]);
 
-  // Add/remove map source and layer for the freehand path visualization
+  // (Re)create the freehand source + layer. Idempotent: a no-op when they
+  // already exist. We call this both on mount AND at the start of every stroke
+  // because the route layers are torn down + redrawn after a deletion, which
+  // wipes this layer — without re-ensuring it, the 2nd lasso would draw
+  // nothing (the reported "no veo mi trazo" bug).
+  const ensureSourceAndLayer = useCallback(() => {
+    if (!map) return;
+    if (!map.getSource(FREEHAND_SOURCE_ID)) {
+      map.addSource(FREEHAND_SOURCE_ID, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+    }
+    if (!map.getLayer(FREEHAND_LAYER_ID)) {
+      map.addLayer({
+        id: FREEHAND_LAYER_ID,
+        type: "line",
+        source: FREEHAND_SOURCE_ID,
+        paint: {
+          "line-color": strokeColor,
+          "line-width": 3,
+          "line-opacity": 0.9,
+        },
+      });
+    }
+  }, [map, strokeColor]);
+
+  // Add/remove map source and layer for the freehand path visualization.
   useEffect(() => {
     if (!map) return;
 
-    const addSourceAndLayer = () => {
-      if (!map.getSource(FREEHAND_SOURCE_ID)) {
-        map.addSource(FREEHAND_SOURCE_ID, {
-          type: "geojson",
-          data: { type: "FeatureCollection", features: [] },
-        });
-      }
-
-      if (!map.getLayer(FREEHAND_LAYER_ID)) {
-        map.addLayer({
-          id: FREEHAND_LAYER_ID,
-          type: "line",
-          source: FREEHAND_SOURCE_ID,
-          paint: {
-            "line-color": strokeColor,
-            "line-width": 3,
-            "line-opacity": 0.9,
-          },
-        });
-      }
-    };
-
-    // Add immediately if map is loaded, otherwise wait
     if (map.isStyleLoaded()) {
-      addSourceAndLayer();
+      ensureSourceAndLayer();
     } else {
-      map.on("load", addSourceAndLayer);
+      map.on("load", ensureSourceAndLayer);
     }
 
     return () => {
       try {
+        map.off("load", ensureSourceAndLayer);
         if (map.getLayer(FREEHAND_LAYER_ID)) {
           map.removeLayer(FREEHAND_LAYER_ID);
         }
@@ -165,7 +170,7 @@ export function useFreehandDraw({
         // Map might be already destroyed
       }
     };
-  }, [map, strokeColor]);
+  }, [map, ensureSourceAndLayer]);
 
   // Update the freehand path visualization
   useEffect(() => {
@@ -197,6 +202,9 @@ export function useFreehandDraw({
     if (!map || !enabled) return;
 
     const handleMouseDown = (e: maplibregl.MapMouseEvent) => {
+      // A prior deletion's route redraw may have removed our layer — re-ensure
+      // it before this stroke so the path is actually visible this round.
+      ensureSourceAndLayer();
       // Start drawing
       map.dragPan.disable();
       setIsDrawing(true);
@@ -259,7 +267,7 @@ export function useFreehandDraw({
       map.dragPan.enable();
       map.getCanvas().style.cursor = "";
     };
-  }, [map, enabled, onPolygonComplete]);
+  }, [map, enabled, onPolygonComplete, ensureSourceAndLayer]);
 
   const startDrawing = () => {
     setIsDrawing(true);

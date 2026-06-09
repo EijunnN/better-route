@@ -13,8 +13,12 @@ export function useZoneLayers(
   map: RefObject<maplibregl.Map | null>,
   zones: Zone[],
   isLoading: boolean,
+  styleRevision: number,
 ) {
   useEffect(() => {
+    // styleRevision se lee para re-añadir las zonas tras cada swap de basemap
+    // (setStyle elimina todas las capas custom del estilo anterior).
+    void styleRevision;
     if (!map.current || isLoading) return;
 
     const mapInstance = map.current;
@@ -181,5 +185,5 @@ export function useZoneLayers(
         // Map might be already destroyed
       }
     };
-  }, [zones, isLoading, map]);
+  }, [zones, isLoading, map, styleRevision]);
 }

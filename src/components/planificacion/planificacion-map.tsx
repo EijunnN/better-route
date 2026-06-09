@@ -108,7 +108,9 @@ export function PlanificacionMapPanel() {
           <div className="flex items-center gap-2">
             <Truck className="size-4 text-primary" />
             <span className="font-medium">
-              {state.selectedVehicleIds.length}
+              {state.currentStep === "vehiculos"
+                ? `${state.selectedVehicleIds.length}/${derived.filteredVehicles.length}`
+                : state.selectedVehicleIds.length}
             </span>
             <span className="text-muted-foreground">vehículos</span>
           </div>

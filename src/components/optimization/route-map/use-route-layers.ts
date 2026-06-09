@@ -17,11 +17,15 @@ export function useRouteSelectionVisibility(
   markersRef: RefObject<maplibregl.Marker[]>,
   routes: Route[],
   selectedRouteId: string | null | undefined,
+  styleRevision: number,
 ) {
   // Note: `hasSelection` uses `!== null` (not `!= null`) to preserve original
   // behavior, where `undefined` is treated as "has selection". This matches
   // the inline effect before refactor.
   useEffect(() => {
+    // styleRevision se lee para re-aplicar el énfasis después de cada swap de
+    // basemap, que recrea las líneas con su paint por defecto.
+    void styleRevision;
     if (!map.current) return;
 
     routes.forEach((route, routeIndex) => {
@@ -66,5 +70,5 @@ export function useRouteSelectionVisibility(
         el.style.filter = "none";
       }
     });
-  }, [selectedRouteId, routes, map, markersRef]);
+  }, [selectedRouteId, routes, map, markersRef, styleRevision]);
 }
