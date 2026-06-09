@@ -11,7 +11,8 @@
  * - Refresh tokens invalidated when session revoked
  */
 
-import { Redis } from "@upstash/redis";
+import type { Redis } from "ioredis";
+import { getRedis } from "@/lib/infra/redis";
 
 // Session configuration
 const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
@@ -20,38 +21,12 @@ const REFRESH_TOKEN_PREFIX = "refresh_token:";
 const USER_SESSIONS_PREFIX = "user_sessions:";
 const ALL_SESSIONS_SET = "all_sessions";
 
-// Redis client singleton
-let redisClient: Redis | null = null;
-let redisUnavailable = false;
-
 /**
- * Get or create Redis client.
- * Returns null if Redis credentials are not configured.
+ * Cliente Redis compartido (src/lib/infra/redis.ts).
+ * Returns null if Redis is not configured — callers fall back to JWT-only.
  */
 function getRedisClient(): Redis | null {
-  if (redisUnavailable) {
-    return null;
-  }
-
-  if (!redisClient) {
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-    if (!url || !token) {
-      console.warn(
-        "[Session] Upstash Redis credentials not configured. Sessions will fall back to JWT-only validation.",
-      );
-      redisUnavailable = true;
-      return null;
-    }
-
-    redisClient = new Redis({
-      url,
-      token,
-    });
-  }
-
-  return redisClient;
+  return getRedis();
 }
 
 /**
@@ -108,14 +83,20 @@ export async function createSession(
 
   try {
     // Store session with TTL
-    await redis.set(`${SESSION_PREFIX}${sessionId}`, JSON.stringify(session), {
-      ex: SESSION_TTL,
-    });
+    await redis.set(
+      `${SESSION_PREFIX}${sessionId}`,
+      JSON.stringify(session),
+      "EX",
+      SESSION_TTL,
+    );
 
     // Map refresh token to session
-    await redis.set(`${REFRESH_TOKEN_PREFIX}${refreshTokenId}`, sessionId, {
-      ex: SESSION_TTL,
-    });
+    await redis.set(
+      `${REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
+      sessionId,
+      "EX",
+      SESSION_TTL,
+    );
 
     // Add to user's sessions list
     await redis.sadd(`${USER_SESSIONS_PREFIX}${sessionData.userId}`, sessionId);
@@ -150,9 +131,7 @@ export async function getSession(
   }
 
   try {
-    const sessionData = await redis.get<string>(
-      `${SESSION_PREFIX}${sessionId}`,
-    );
+    const sessionData = await redis.get(`${SESSION_PREFIX}${sessionId}`);
 
     if (!sessionData) {
       return null;
@@ -210,9 +189,12 @@ export async function updateSessionActivity(sessionId: string): Promise<void> {
     session.lastActivityAt = Date.now();
 
     // Renew session TTL
-    await redis.set(`${SESSION_PREFIX}${sessionId}`, JSON.stringify(session), {
-      ex: SESSION_TTL,
-    });
+    await redis.set(
+      `${SESSION_PREFIX}${sessionId}`,
+      JSON.stringify(session),
+      "EX",
+      SESSION_TTL,
+    );
   } catch (error) {
     console.warn("[Session] Redis error during activity update:", error);
   }
@@ -236,7 +218,7 @@ export async function getSessionByRefreshToken(
   }
 
   try {
-    const sessionId = await redis.get<string>(
+    const sessionId = await redis.get(
       `${REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
     );
 
@@ -303,9 +285,7 @@ export async function invalidateUserSessions(userId: string): Promise<void> {
 
   try {
     // Get all user's session IDs
-    const sessionIds = await redis.smembers<string[]>(
-      `${USER_SESSIONS_PREFIX}${userId}`,
-    );
+    const sessionIds = await redis.smembers(`${USER_SESSIONS_PREFIX}${userId}`);
 
     // Invalidate each session in parallel; entries are independent.
     await Promise.all(
@@ -338,7 +318,7 @@ export async function invalidateAllSessions(): Promise<number> {
 
   try {
     // Get all session IDs
-    const sessionIds = await redis.smembers<string[]>(ALL_SESSIONS_SET);
+    const sessionIds = await redis.smembers(ALL_SESSIONS_SET);
 
     // Invalidate each session in parallel; entries are independent.
     await Promise.all(
@@ -371,9 +351,7 @@ export async function getUserSessions(userId: string): Promise<SessionData[]> {
   }
 
   try {
-    const sessionIds = await redis.smembers<string[]>(
-      `${USER_SESSIONS_PREFIX}${userId}`,
-    );
+    const sessionIds = await redis.smembers(`${USER_SESSIONS_PREFIX}${userId}`);
 
     // Fetch sessions in parallel; each lookup is independent.
     const fetched = await Promise.all(
@@ -407,9 +385,7 @@ export async function getUserSessionCount(userId: string): Promise<number> {
   }
 
   try {
-    const sessionIds = await redis.smembers<string[]>(
-      `${USER_SESSIONS_PREFIX}${userId}`,
-    );
+    const sessionIds = await redis.smembers(`${USER_SESSIONS_PREFIX}${userId}`);
 
     // Filter out expired sessions; check existence in parallel.
     const existsResults = await Promise.all(
@@ -439,7 +415,7 @@ export async function getGlobalSessionCount(): Promise<number> {
   }
 
   try {
-    const sessionIds = await redis.smembers<string[]>(ALL_SESSIONS_SET);
+    const sessionIds = await redis.smembers(ALL_SESSIONS_SET);
 
     // Filter out expired sessions; check existence in parallel.
     const existsResults = await Promise.all(
@@ -470,7 +446,7 @@ export async function cleanupExpiredSessions(): Promise<number> {
   }
 
   try {
-    const sessionIds = await redis.smembers<string[]>(ALL_SESSIONS_SET);
+    const sessionIds = await redis.smembers(ALL_SESSIONS_SET);
 
     // Per-id cleanup is independent: check + srem can run in parallel.
     const cleaned = await Promise.all(
@@ -520,7 +496,7 @@ export async function isRefreshTokenValid(
       return true;
     }
 
-    const sessionId = await redis.get<string>(
+    const sessionId = await redis.get(
       `${REFRESH_TOKEN_PREFIX}${tokenIdentifier}`,
     );
 
@@ -552,7 +528,7 @@ export async function invalidateRefreshToken(
   }
 
   try {
-    const sessionId = await redis.get<string>(
+    const sessionId = await redis.get(
       `${REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
     );
 

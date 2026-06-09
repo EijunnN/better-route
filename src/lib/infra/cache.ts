@@ -11,7 +11,10 @@
  * - Cache metrics monitored for optimization
  */
 
-import { Redis } from "@upstash/redis";
+import type { Redis } from "ioredis";
+import { isRedisAvailable, withRedis } from "./redis";
+
+export { isRedisAvailable };
 
 // ============================================================================
 // Cache Configuration
@@ -65,72 +68,8 @@ const CACHE_PREFIXES = {
 } as const;
 
 // ============================================================================
-// Redis Client
+// Redis Client — singleton compartido en src/lib/infra/redis.ts
 // ============================================================================
-
-let redisClient: Redis | null = null;
-let redisAvailable: boolean = true;
-let reconnectTimeout: NodeJS.Timeout | null = null;
-
-/**
- * Get or create Redis client with failure handling
- */
-function getRedisClient(): Redis {
-  if (!redisClient) {
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-    if (!url || !token) {
-      throw new Error(
-        "Upstash Redis credentials not configured. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.",
-      );
-    }
-
-    redisClient = new Redis({
-      url,
-      token,
-      // Enable automatic retries
-      retry: {
-        retries: 3,
-        backoff: (retryCount) => Math.min(retryCount * 100, 1000),
-      },
-    });
-  }
-
-  return redisClient;
-}
-
-/**
- * Check if Redis is available
- */
-export async function isRedisAvailable(): Promise<boolean> {
-  if (!redisAvailable) {
-    return false;
-  }
-
-  try {
-    const redis = getRedisClient();
-    await redis.ping();
-    redisAvailable = true;
-    return true;
-  } catch (error) {
-    redisAvailable = false;
-    console.warn(
-      "[Cache] Redis unavailable:",
-      error instanceof Error ? error.message : error,
-    );
-
-    // Schedule reconnection attempt
-    if (!reconnectTimeout) {
-      reconnectTimeout = setTimeout(() => {
-        redisAvailable = true;
-        reconnectTimeout = null;
-      }, 30000); // Retry after 30 seconds
-    }
-
-    return false;
-  }
-}
 
 /**
  * Execute Redis operation with fallback
@@ -139,20 +78,11 @@ async function withRedisFallback<T>(
   operation: (redis: Redis) => Promise<T>,
   fallback: () => T,
 ): Promise<T> {
-  try {
-    if (!(await isRedisAvailable())) {
-      return fallback();
-    }
-
-    const redis = getRedisClient();
-    return await operation(redis);
-  } catch (error) {
-    console.warn(
-      "[Cache] Redis operation failed:",
-      error instanceof Error ? error.message : error,
-    );
-    return fallback();
-  }
+  const result = await withRedis<{ value: T } | null>(
+    async (redis) => ({ value: await operation(redis) }),
+    null,
+  );
+  return result ? result.value : fallback();
 }
 
 // ============================================================================
@@ -251,7 +181,7 @@ export function getCacheHitRate(): number {
 export async function cacheGet<T>(key: string): Promise<T | null> {
   return withRedisFallback(
     async (redis) => {
-      const value = await redis.get<string>(key);
+      const value = await redis.get(key);
 
       if (value === null) {
         recordMiss();
@@ -288,7 +218,7 @@ export async function cacheSet<T>(
     async (redis) => {
       const serialized =
         typeof value === "string" ? value : JSON.stringify(value);
-      await redis.set(key, serialized, { ex: ttl });
+      await redis.set(key, serialized, "EX", ttl);
       recordSet();
     },
     () => {
@@ -323,17 +253,20 @@ export async function cacheDeletePattern(pattern: string): Promise<void> {
   return withRedisFallback(
     async (redis) => {
       // Scan for keys matching pattern
-      let cursor: string | number = "0";
+      let cursor = "0";
       const keys: string[] = [];
 
       do {
-        const scanResult = (await redis.scan(cursor, {
-          match: pattern,
-          count: 100,
-        })) as [string | number, string[]];
-        cursor = scanResult[0];
-        keys.push(...(scanResult[1] || []));
-      } while (cursor !== 0);
+        const [nextCursor, batch] = await redis.scan(
+          cursor,
+          "MATCH",
+          pattern,
+          "COUNT",
+          100,
+        );
+        cursor = nextCursor;
+        keys.push(...batch);
+      } while (cursor !== "0");
 
       // Delete all matching keys
       if (keys.length > 0) {

@@ -427,6 +427,7 @@ export async function POST(
       timeWindowStart: Date | null;
       timeWindowEnd: Date | null;
       zoneId: string | null;
+      scheduledDate: string;
       status: "PENDING";
     }> = [];
 
@@ -471,6 +472,7 @@ export async function POST(
             timeWindowStart,
             timeWindowEnd,
             zoneId: route.zoneId ?? null,
+            scheduledDate: planDate,
             status: "PENDING",
           });
         }

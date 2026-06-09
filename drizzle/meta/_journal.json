@@ -15,6 +15,20 @@
       "when": 1780554967369,
       "tag": "0001_confused_santa_claus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780627502388,
+      "tag": "0002_real_tigra",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781046023954,
+      "tag": "0003_overconfident_wonder_man",
+      "breakpoints": true
     }
   ]
 }

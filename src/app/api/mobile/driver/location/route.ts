@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, lt } from "drizzle-orm";
-import { type NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   driverLocations,
@@ -12,6 +12,7 @@ import {
 import { withTenantFilter } from "@/db/tenant-aware";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 import { Action, EntityType } from "@/lib/auth/authorization";
+import { recomputeRouteEtas } from "@/lib/eta";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { publishDriverLocationEvent } from "@/lib/realtime";
@@ -298,6 +299,23 @@ export async function POST(request: NextRequest) {
       speed: speed ? Math.round(speed) : null,
       isMoving,
     });
+
+    // ETA en vivo: recalcular (con throttle interno) desde la nueva posición,
+    // fuera del request para no sumar latencia al ping del driver.
+    if (routeId) {
+      const etaRouteId = routeId;
+      after(() =>
+        recomputeRouteEtas({
+          companyId,
+          driverId,
+          routeId: etaRouteId,
+          latitude: lat,
+          longitude: lng,
+        }).catch((err) =>
+          console.warn("[ETA] recompute tras ping falló:", err),
+        ),
+      );
+    }
 
     return NextResponse.json(
       {

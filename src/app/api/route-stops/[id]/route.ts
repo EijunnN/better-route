@@ -1,9 +1,10 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   companyDeliveryPolicy,
   deliveryVisits,
+  driverLocations,
   type ORDER_STATUS,
   orderStatusHistory,
   orders,
@@ -15,6 +16,7 @@ import {
 import { withTenantFilter } from "@/db/tenant-aware";
 import { getOptionalUser } from "@/lib/auth/auth-api";
 import { Action, EntityType } from "@/lib/auth/authorization";
+import { getRouteEtas, recomputeRouteEtas } from "@/lib/eta";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { publishStopEvent } from "@/lib/realtime";
@@ -357,6 +359,32 @@ export async function PATCH(
       updateData.startedAt = now;
     }
 
+    // Snapshot de calibración ETA: congelar la predicción vigente al momento
+    // del arribo, ANTES de que el recompute post-transición la saque de
+    // Redis. Comparado contra startedAt/completedAt da el error real de
+    // predicción por franja horaria (base del factor de hora punta).
+    const isArrivalTransition =
+      status !== currentStop.status &&
+      (status === "IN_PROGRESS" ||
+        status === "COMPLETED" ||
+        status === "FAILED");
+    if (isArrivalTransition && currentStop.routeId) {
+      // IN_PROGRESS refresca el snapshot (cubre revisitas re-intentadas);
+      // las terminales solo escriben si falta (driver saltó IN_PROGRESS).
+      const shouldSnapshot =
+        status === "IN_PROGRESS" || !currentStop.predictedEtaAt;
+      if (shouldSnapshot) {
+        const routeEtas = await getRouteEtas(currentStop.routeId);
+        if (routeEtas) {
+          const stopEta = routeEtas.stops.find((s) => s.stopId === stopId);
+          if (stopEta) {
+            updateData.predictedEtaAt = new Date(stopEta.etaAt);
+            updateData.etaComputedAt = new Date(routeEtas.computedAt);
+          }
+        }
+      }
+    }
+
     // Set completedAt when moving to COMPLETED
     if (status === "COMPLETED" && !currentStop.completedAt) {
       updateData.completedAt = now;
@@ -587,6 +615,40 @@ export async function PATCH(
         previousStatus: currentStop.status,
         newStatus: status,
       });
+
+      // ETA en vivo: la secuencia restante cambió → recálculo forzado desde
+      // la última posición conocida del driver, fuera del request.
+      const etaRouteId = currentStop.routeId;
+      const etaDriverId = currentStop.userId;
+      const etaCompanyId = tenantCtx.companyId;
+      if (etaRouteId && etaDriverId) {
+        after(async () => {
+          try {
+            const lastLocation = await db.query.driverLocations.findFirst({
+              where: and(
+                eq(driverLocations.companyId, etaCompanyId),
+                eq(driverLocations.driverId, etaDriverId),
+              ),
+              orderBy: desc(driverLocations.recordedAt),
+              columns: { latitude: true, longitude: true },
+            });
+            if (!lastLocation) return;
+            await recomputeRouteEtas({
+              companyId: etaCompanyId,
+              driverId: etaDriverId,
+              routeId: etaRouteId,
+              latitude: Number.parseFloat(lastLocation.latitude),
+              longitude: Number.parseFloat(lastLocation.longitude),
+              force: true,
+            });
+          } catch (err) {
+            console.warn(
+              "[ETA] recompute tras transición de parada falló:",
+              err,
+            );
+          }
+        });
+      }
     }
 
     return NextResponse.json({ data: updatedStop[0] });

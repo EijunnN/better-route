@@ -10,6 +10,7 @@ import {
   trackingTokens,
   users,
 } from "@/db/schema";
+import { getOrderEta } from "@/lib/eta";
 import {
   checkRateLimit,
   getClientIp,
@@ -204,6 +205,21 @@ export async function GET(
       }
     }
 
+    // 6b. ETA en vivo (Redis, alimentado por los pings GPS del driver).
+    // Solo aplica a paradas aún no resueltas; si no hay cálculo vigente el
+    // cliente cae al estimatedArrival planificado de VROOM.
+    let liveEta: { etaAt: string; computedAt: string } | null = null;
+    if (
+      effectiveSettings.showEta &&
+      stop &&
+      (stop.status === "PENDING" || stop.status === "IN_PROGRESS")
+    ) {
+      const orderEta = await getOrderEta(tokenRecord.orderId);
+      if (orderEta) {
+        liveEta = { etaAt: orderEta.etaAt, computedAt: orderEta.computedAt };
+      }
+    }
+
     // 7. Build timeline from stop timestamps
     const timeline: {
       status: string;
@@ -287,6 +303,7 @@ export async function GET(
           }
         : null,
       driver: driverData,
+      liveEta,
       timeline,
     };
 

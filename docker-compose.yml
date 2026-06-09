@@ -52,6 +52,37 @@ services:
     profiles:
       - routing
 
+  # Redis - sesiones, caché y ETAs en vivo. Reemplaza a Upstash (REST) por
+  # una instancia local: en el modelo single-tenant por VPS no hay razón para
+  # pagar por request ni sumar latencia HTTPS.
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    # AOF everysec: las sesiones sobreviven a un restart sin castigar IO.
+    # volatile-lru: todas nuestras keys llevan TTL; ante presión de memoria
+    # se evictan las menos usadas SIN tocar keys persistentes.
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy volatile-lru
+      --requirepass ${REDIS_PASSWORD:-betterroute}
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -a ${REDIS_PASSWORD:-betterroute} ping | grep PONG",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   # PostgreSQL with PostGIS (optional - for production)
   # postgres:
   #   image: postgis/postgis:16-3.4
@@ -66,5 +97,7 @@ services:
   #   volumes:
   #     - postgres_data:/var/lib/postgresql/data
 
+volumes:
+  redis_data:
 # volumes:
 #   postgres_data:

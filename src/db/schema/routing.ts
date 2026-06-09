@@ -1,4 +1,5 @@
 import {
+  date,
   index,
   integer,
   jsonb,
@@ -102,8 +103,20 @@ export const routeStops = pgTable(
     // Time information
     estimatedArrival: timestamp("estimated_arrival"),
     estimatedServiceTime: integer("estimated_service_time"), // seconds
+    // Snapshot de calibración del ETA en vivo: la última llegada predicha
+    // (y cuándo se calculó) congelada al momento del arribo del driver.
+    // Comparada contra startedAt/completedAt da el error real de predicción
+    // por franja horaria — la base empírica del factor de hora punta.
+    predictedEtaAt: timestamp("predicted_eta_at"),
+    etaComputedAt: timestamp("eta_computed_at"),
     timeWindowStart: timestamp("time_window_start"),
     timeWindowEnd: timestamp("time_window_end"),
+    // The delivery date this stop belongs to (the plan's date, stamped at
+    // confirm). Drives the mobile "ruta de hoy": the driver sees the route on
+    // its DELIVERY day, not the day it was confirmed — so a plan made in
+    // advance shows up on the right day. Nullable for legacy rows; my-route
+    // falls back to created_at when it's null.
+    scheduledDate: date("scheduled_date"),
     // Status tracking
     status: varchar("status", { length: 20 })
       .notNull()

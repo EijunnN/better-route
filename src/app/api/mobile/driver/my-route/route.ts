@@ -1,4 +1,15 @@
-import { and, asc, eq, gte, inArray, lt, notInArray, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
@@ -12,6 +23,7 @@ import {
 import { withTenantFilter } from "@/db/tenant-aware";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 import { Action, EntityType } from "@/lib/auth/authorization";
+import { getRouteEtas } from "@/lib/eta";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
@@ -63,6 +75,8 @@ export async function GET(request: NextRequest) {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    // Local calendar date (YYYY-MM-DD) for the scheduled-delivery-date match.
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
     // Fetch driver info, today's stops, and assigned vehicle in parallel
     const [driver, allTodayStops, assignedVehicle] = await Promise.all([
@@ -88,8 +102,17 @@ export async function GET(request: NextRequest) {
         where: and(
           eq(routeStops.companyId, tenantCtx.companyId),
           eq(routeStops.userId, driverId),
-          gte(routeStops.createdAt, today),
-          lt(routeStops.createdAt, tomorrow),
+          // Show the route on its DELIVERY day (plan's date), not the day it
+          // was confirmed. Legacy rows without a scheduled_date fall back to
+          // the old created_at window.
+          or(
+            eq(routeStops.scheduledDate, todayStr),
+            and(
+              isNull(routeStops.scheduledDate),
+              gte(routeStops.createdAt, today),
+              lt(routeStops.createdAt, tomorrow),
+            ),
+          ),
         ),
         orderBy: [asc(routeStops.sequence)],
         with: {
@@ -387,6 +410,14 @@ export async function GET(request: NextRequest) {
       priorVisitsRaw.map((r) => [r.orderId, r.count]),
     );
 
+    // ETA en vivo (Redis, alimentado por los propios pings GPS del driver).
+    // Best-effort: si no hay cálculo vigente, la app cae a estimatedArrival.
+    const routeId = stops[0].routeId;
+    const liveEtas = await getRouteEtas(routeId);
+    const liveEtaByStopId = new Map(
+      (liveEtas?.stops ?? []).map((stopEta) => [stopEta.stopId, stopEta.etaAt]),
+    );
+
     // Construir lista de paradas para la app movil
     const stopsData = stops.map((stop) => {
       const priorVisitsCount = priorVisitsByOrder.get(stop.orderId) ?? 0;
@@ -416,6 +447,8 @@ export async function GET(request: NextRequest) {
         longitude: stop.longitude,
         // Tiempos
         estimatedArrival: stop.estimatedArrival?.toISOString() || null,
+        /** ETA recalculado desde la posición actual del driver (o null). */
+        liveEtaAt: liveEtaByStopId.get(stop.id) ?? null,
         estimatedServiceTime: stop.estimatedServiceTime,
         timeWindow: {
           start:
@@ -457,7 +490,6 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const routeId = stops[0].routeId;
     const allJobIds = [...new Set(stops.map((s) => s.jobId))];
 
     return NextResponse.json({

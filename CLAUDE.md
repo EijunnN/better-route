@@ -1,8 +1,8 @@
 # BetterRoute — Planeamiento
 
 Multi-tenant SaaS de optimización de rutas vehiculares. Next.js 16 (App
-Router) + Bun + Postgres (Neon) + Drizzle + Upstash Redis + VROOM solver +
-OSRM road network.
+Router) + Bun + Postgres (Neon) + Drizzle + Redis (docker-compose, ioredis) +
+VROOM solver + OSRM road network.
 
 ---
 
