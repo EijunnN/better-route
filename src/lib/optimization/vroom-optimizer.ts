@@ -712,6 +712,47 @@ function convertVroomResponse(
         geometry: vroomRoute.geometry, // Encoded polyline from OSRM
         breaks: routeBreaks.length > 0 ? routeBreaks : undefined,
       });
+
+      // DIAGNOSTIC — route geometry/distance mismatch. A route's distance must
+      // be AT LEAST the straight-line span of its stops; when it's far less,
+      // VROOM returned a distance/geometry that doesn't cover all the stops it
+      // assigned (the "N paradas pero 2.2 km / sin línea completa" bug). The
+      // `jobSteps` vs `stops` numbers isolate the culprit: jobSteps === stops
+      // ⇒ VROOM/OSRM under-routed (matrix/coords); jobSteps < stops ⇒ stops got
+      // inflated downstream. Remove once the root cause is fixed.
+      if (stops.length >= 2) {
+        let minLat = Number.POSITIVE_INFINITY;
+        let minLng = Number.POSITIVE_INFINITY;
+        let maxLat = Number.NEGATIVE_INFINITY;
+        let maxLng = Number.NEGATIVE_INFINITY;
+        for (const s of stops) {
+          if (s.latitude < minLat) minLat = s.latitude;
+          if (s.latitude > maxLat) maxLat = s.latitude;
+          if (s.longitude < minLng) minLng = s.longitude;
+          if (s.longitude > maxLng) maxLng = s.longitude;
+        }
+        const toRad = (d: number) => (d * Math.PI) / 180;
+        const dLat = toRad(maxLat - minLat);
+        const dLng = toRad(maxLng - minLng);
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(toRad(minLat)) *
+            Math.cos(toRad(maxLat)) *
+            Math.sin(dLng / 2) ** 2;
+        const stopsSpanKm = 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(a)));
+        const distKm = (vroomRoute.distance || 0) / 1000;
+        if (stopsSpanKm > distKm + 0.5) {
+          const jobSteps = vroomRoute.steps.filter(
+            (st) => st.type === "job",
+          ).length;
+          console.warn(
+            `[route-geom MISMATCH] ${vehicle.plate}: stops=${stops.length} ` +
+              `jobSteps=${jobSteps} distKm=${distKm.toFixed(2)} ` +
+              `stopsSpanKm=${stopsSpanKm.toFixed(2)} ` +
+              `geomChars=${vroomRoute.geometry?.length ?? 0}`,
+          );
+        }
+      }
     }
   }
 
