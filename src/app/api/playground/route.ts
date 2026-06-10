@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
-import { and, eq, like, sql } from "drizzle-orm";
+import { and, eq, inArray, like, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  chatConversations,
+  chatMessages,
   companyOptimizationProfiles,
   fleets,
   users,
@@ -331,6 +333,39 @@ export async function DELETE(request: NextRequest) {
             like(vehicles.name, `${TEST_PREFIX}%`),
           ),
         );
+
+      // Chat referencia users con onDelete: restrict (a propósito, para datos
+      // reales) — borrar mensajes y conversaciones de los drivers TEST antes
+      // que los usuarios. senderId cubre el caso driver→dispatch.
+      const playgroundUserIds = tx
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          and(
+            eq(users.companyId, ctx.companyId),
+            like(users.email, `%@${TEST_EMAIL_DOMAIN}`),
+          ),
+        );
+      await tx
+        .delete(chatMessages)
+        .where(
+          and(
+            eq(chatMessages.companyId, ctx.companyId),
+            or(
+              inArray(chatMessages.driverId, playgroundUserIds),
+              inArray(chatMessages.senderId, playgroundUserIds),
+            ),
+          ),
+        );
+      await tx
+        .delete(chatConversations)
+        .where(
+          and(
+            eq(chatConversations.companyId, ctx.companyId),
+            inArray(chatConversations.driverId, playgroundUserIds),
+          ),
+        );
+
       await tx
         .delete(users)
         .where(
