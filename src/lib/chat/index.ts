@@ -15,6 +15,7 @@ export {
   broadcastChatMessage,
   type ChatMessageRow,
   markConversationRead,
+  markDriverThreadRead,
   type SendChatMessageInput,
   sendChatMessage,
 } from "./service";

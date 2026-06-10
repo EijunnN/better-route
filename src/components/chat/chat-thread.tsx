@@ -239,6 +239,14 @@ export function ChatThread() {
                   <span className="cockpit-mono text-[10px] text-muted-foreground">
                     {messageTime(message.createdAt)}
                   </span>
+                  {outbound && message.readAt && (
+                    <span
+                      className="cockpit-mono text-[10px] text-[var(--cockpit-live)]"
+                      title={`Leído ${messageTime(message.readAt)}`}
+                    >
+                      ✓✓ Leído
+                    </span>
+                  )}
                 </div>
               </div>
             );

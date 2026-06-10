@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { Action, EntityType } from "@/lib/auth/authorization";
-import { isDispatchRole, markConversationRead } from "@/lib/chat";
+import {
+  isDispatchRole,
+  markConversationRead,
+  markDriverThreadRead,
+} from "@/lib/chat";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
@@ -8,9 +12,11 @@ import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 /**
  * POST /api/chat/conversations/:driverId/read
  *
- * Marks the inbound messages of a conversation read and clears the
- * dispatcher unread counter. Dispatch roles only — `unreadForDispatch`
- * is the dispatch desk's counter.
+ * Read receipts en ambos sentidos:
+ * - Dispatch: marca leídos los mensajes driver→despacho y limpia el
+ *   contador `unreadForDispatch` (comportamiento original).
+ * - CONDUCTOR (solo su propio hilo): marca leídos los mensajes
+ *   despacho→driver — la base del "Leído" que ve el despachador.
  */
 export async function POST(
   request: NextRequest,
@@ -23,19 +29,25 @@ export async function POST(
   );
   if (authResult instanceof NextResponse) return authResult;
 
-  if (!isDispatchRole(authResult.role)) {
-    return NextResponse.json(
-      { error: "Forbidden", code: "FORBIDDEN" },
-      { status: 403 },
-    );
-  }
-
   const tenantCtx = extractTenantContextAuthed(request, authResult);
   if (tenantCtx instanceof NextResponse) return tenantCtx;
   setTenantContext(tenantCtx);
 
   const { driverId } = await params;
-  await markConversationRead(tenantCtx.companyId, driverId);
 
-  return NextResponse.json({ ok: true });
+  if (isDispatchRole(authResult.role)) {
+    await markConversationRead(tenantCtx.companyId, driverId);
+    return NextResponse.json({ ok: true });
+  }
+
+  // Driver: solo puede marcar leído SU propio hilo.
+  if (authResult.role === "CONDUCTOR" && driverId === authResult.userId) {
+    await markDriverThreadRead(tenantCtx.companyId, driverId);
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json(
+    { error: "Forbidden", code: "FORBIDDEN" },
+    { status: 403 },
+  );
 }

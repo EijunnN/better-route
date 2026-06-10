@@ -149,6 +149,36 @@ export async function markConversationRead(
 }
 
 /**
+ * Espejo de markConversationRead para el otro sentido: estampa readAt en
+ * los mensajes despacho→driver cuando el DRIVER abre su hilo. Es la base
+ * del "Leído" que ve el despachador en sus propios mensajes. No hay
+ * contador que resetear — la app del driver no lleva unread.
+ */
+export async function markDriverThreadRead(
+  companyId: string,
+  driverId: string,
+): Promise<void> {
+  await db
+    .update(chatMessages)
+    .set({ readAt: sql`now()` })
+    .where(
+      and(
+        eq(chatMessages.companyId, companyId),
+        eq(chatMessages.driverId, driverId),
+        eq(chatMessages.direction, CHAT_DIRECTION.TO_DRIVER),
+        isNull(chatMessages.readAt),
+      ),
+    );
+
+  // Notificar a los despachadores con el hilo abierto para que el
+  // "Leído" aparezca sin esperar al próximo fetch.
+  await centrifugoPublish(centrifugoChannels.chatInbox(companyId), {
+    kind: "chat.read",
+    driverId,
+  });
+}
+
+/**
  * Fan an emergency broadcast out to every driver of a company — one
  * `chat_messages` row per driver so it lands in each thread — and
  * publish once to the company broadcast channel. Returns the count of
