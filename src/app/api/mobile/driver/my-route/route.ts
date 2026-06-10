@@ -311,6 +311,10 @@ export async function GET(request: NextRequest) {
     // Calcular metricas de distancia y duracion desde el resultado del job
     let totalDistance = 0;
     let totalDuration = 0;
+    // Polyline codificado (OSRM vía VROOM, precisión 5) de la ruta de este
+    // vehículo. La app móvil lo decodifica para pintar la ruta real por
+    // calles en vez de unir las paradas con líneas rectas.
+    let routeGeometry: string | null = null;
 
     if (activeJob.result && routeVehicle) {
       try {
@@ -319,6 +323,7 @@ export async function GET(request: NextRequest) {
             vehicleId?: string;
             totalDistance?: number;
             totalDuration?: number;
+            geometry?: string;
           }>;
         }>(activeJob.result);
         const vehicleRoute = parsedResult.routes?.find(
@@ -327,6 +332,7 @@ export async function GET(request: NextRequest) {
         if (vehicleRoute) {
           totalDistance = vehicleRoute.totalDistance || 0;
           totalDuration = vehicleRoute.totalDuration || 0;
+          routeGeometry = vehicleRoute.geometry || null;
         }
       } catch {
         // Ignorar errores de parse
@@ -501,6 +507,8 @@ export async function GET(request: NextRequest) {
           jobId: activeJob.id,
           jobIds: allJobIds,
           jobCreatedAt: activeJob.createdAt.toISOString(),
+          /** Polyline codificado (precisión 5) de la ruta por calles, o null. */
+          geometry: routeGeometry,
           stops: stopsData,
         },
         metrics: {
