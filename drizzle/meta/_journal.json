@@ -29,6 +29,13 @@
       "when": 1781046023954,
       "tag": "0003_overconfident_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781068428086,
+      "tag": "0004_slim_swordsman",
+      "breakpoints": true
     }
   ]
 }

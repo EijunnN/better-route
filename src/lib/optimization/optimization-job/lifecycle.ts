@@ -28,7 +28,7 @@
  * the OptimizationConfiguration / VerifiedPlan domain shapes.
  */
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   optimizationConfigurations,
@@ -234,7 +234,7 @@ export async function createAndExecuteJob(
   // (mobile, scripts, future endpoints) gets the same guard.
   const config = await db.query.optimizationConfigurations.findFirst({
     where: eq(optimizationConfigurations.id, input.configurationId),
-    columns: { status: true },
+    columns: { status: true, selectedOrderIds: true },
   });
   if (!config) {
     throw new Error("Configuration not found");
@@ -246,11 +246,16 @@ export async function createAndExecuteJob(
   }
 
   // Cache lookup — same inputs as a prior COMPLETED job ⇒ reuse it.
+  // Mismo filtro de pedidos que loadInputs: hash y run ven el mismo set.
+  const configOrderIds = config.selectedOrderIds ?? [];
   const pendingOrders = await db.query.orders.findMany({
     where: and(
       eq(orders.companyId, input.companyId),
       eq(orders.status, "PENDING"),
       eq(orders.active, true),
+      configOrderIds.length > 0
+        ? inArray(orders.id, configOrderIds)
+        : undefined,
     ),
   });
   const inputHash = calculateInputHash(

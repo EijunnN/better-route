@@ -59,6 +59,10 @@ export async function loadInputs(
     throw new Error("Configuration not found");
   }
 
+  // Qué visitas entran al plan: la lista explícita del wizard cuando existe
+  // (lo que el operador quitó del plan NO se rutea); NULL = legacy "todos".
+  const selectedOrderIds = config.selectedOrderIds ?? [];
+
   // Most loads are independent — race them. vehicleZoneAssignments depends
   // on selectedVehicles' ids, so it's loaded in a second wave.
   const [
@@ -73,6 +77,9 @@ export async function loadInputs(
         eq(orders.companyId, input.companyId),
         eq(orders.status, "PENDING"),
         eq(orders.active, true),
+        selectedOrderIds.length > 0
+          ? inArray(orders.id, selectedOrderIds)
+          : undefined,
       ),
     }),
     db.query.vehicles.findMany({

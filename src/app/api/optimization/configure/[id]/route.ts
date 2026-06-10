@@ -133,8 +133,13 @@ export async function PATCH(
       );
     }
 
-    // Separate selectedVehicleIds/selectedDriverIds and parse if strings
-    const { selectedVehicleIds, selectedDriverIds, ...restData } = data;
+    // Separate selected*Ids and parse if strings
+    const {
+      selectedVehicleIds,
+      selectedDriverIds,
+      selectedOrderIds,
+      ...restData
+    } = data;
 
     // Update configuration
     const [updated] = await db
@@ -146,6 +151,12 @@ export async function PATCH(
             typeof selectedVehicleIds === "string"
               ? safeParseJson<string[]>(selectedVehicleIds)
               : selectedVehicleIds,
+        }),
+        ...(selectedOrderIds !== undefined && {
+          selectedOrderIds:
+            typeof selectedOrderIds === "string"
+              ? safeParseJson<string[]>(selectedOrderIds)
+              : selectedOrderIds,
         }),
         ...(selectedDriverIds !== undefined && {
           selectedDriverIds:

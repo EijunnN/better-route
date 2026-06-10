@@ -40,6 +40,10 @@ export const optimizationConfigurations = pgTable(
       .notNull()
       .$type<string[]>(),
     selectedDriverIds: jsonb("selected_driver_ids").notNull().$type<string[]>(),
+    // Pedidos elegidos en el wizard (checkboxes/lasso). NULL = legacy
+    // "todos los PENDING activos de la empresa"; con lista, el runner carga
+    // solo esos ids — lo que el operador quitó del plan NO se rutea.
+    selectedOrderIds: jsonb("selected_order_ids").$type<string[]>(),
     // Optimization parameters
     objective: varchar("objective", { length: 20 })
       .notNull()

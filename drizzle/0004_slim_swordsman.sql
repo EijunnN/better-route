@@ -1,0 +1,1 @@
+ALTER TABLE "optimization_configurations" ADD COLUMN "selected_order_ids" jsonb;

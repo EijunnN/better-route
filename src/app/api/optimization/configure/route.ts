@@ -154,6 +154,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Parse selected order IDs (qué visitas entran al plan). Opcional:
+    // vacío/ausente = comportamiento legacy "todos los PENDING activos".
+    let orderIds: string[] = [];
+    if (data.selectedOrderIds) {
+      try {
+        const parsed =
+          typeof data.selectedOrderIds === "string"
+            ? safeParseJson<unknown>(data.selectedOrderIds)
+            : data.selectedOrderIds;
+        if (!Array.isArray(parsed)) {
+          return NextResponse.json(
+            { error: "Invalid order IDs format" },
+            { status: 400 },
+          );
+        }
+        orderIds = parsed.filter((x): x is string => typeof x === "string");
+      } catch {
+        return NextResponse.json(
+          { error: "Invalid order IDs format" },
+          { status: 400 },
+        );
+      }
+    }
+
     // Determine if this is a preset (DRAFT) or full configuration
     const isPreset = data.status === "DRAFT";
 
@@ -314,6 +338,7 @@ export async function POST(request: NextRequest) {
       depotAddress: data.depotAddress || null,
       selectedVehicleIds: vehicleIds,
       selectedDriverIds: driverIds,
+      selectedOrderIds: orderIds.length > 0 ? orderIds : null,
       objective: data.objective,
       workWindowStart: data.workWindowStart,
       workWindowEnd: data.workWindowEnd,
