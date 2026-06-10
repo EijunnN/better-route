@@ -48,11 +48,15 @@ interface PlanningMapProps {
   showVehicleOrigins?: boolean;
   showOrders?: boolean;
   selectedVehicleIds?: string[];
+  /** Visitas capturadas con el lápiz — se pintan con anillo ámbar. */
+  highlightedOrderIds?: string[];
   onOrderDragEnd?: (
     orderId: string,
     latitude: number,
     longitude: number,
   ) => void;
+  /** Entrega la instancia MapLibre al montar (null al desmontar). */
+  onMapReady?: (map: maplibregl.Map | null) => void;
 }
 
 // Popup styles injected into the document
@@ -193,12 +197,23 @@ export function PlanningMap({
   showVehicleOrigins = true,
   showOrders = true,
   selectedVehicleIds,
+  highlightedOrderIds,
   onOrderDragEnd,
+  onMapReady,
 }: PlanningMapProps) {
   const { isDark } = useTheme();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+  // Ref para que el init-once effect entregue la instancia sin re-correr.
+  const onMapReadyRef = useRef(onMapReady);
+  useEffect(() => {
+    onMapReadyRef.current = onMapReady;
+  }, [onMapReady]);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  // Firma del último fitBounds: re-encuadrar solo cuando cambian los puntos
+  // mostrados, no por selección/highlight (eso robaría la cámara al usuario
+  // en pleno lasso o al togglear un vehículo).
+  const lastFitKeyRef = useRef("");
   const [isLoaded, setIsLoaded] = useState(false);
   // Cada setStyle (cambio de tema) borra las capas custom del estilo; este
   // contador re-dispara el effect de zonas cuando el nuevo basemap carga.
@@ -240,9 +255,11 @@ export function PlanningMap({
 
     map.current.on("load", () => {
       setIsLoaded(true);
+      onMapReadyRef.current?.(map.current);
     });
 
     return () => {
+      onMapReadyRef.current?.(null);
       map.current?.remove();
       map.current = null;
     };
@@ -278,6 +295,7 @@ export function PlanningMap({
 
     const bounds = new maplibregl.LngLatBounds();
     let hasPoints = false;
+    const highlightedSet = new Set(highlightedOrderIds ?? []);
 
     // Add vehicle origin markers
     if (showVehicleOrigins) {
@@ -357,8 +375,13 @@ export function PlanningMap({
 
         const isDraggable = !!onOrderDragEnd;
         const stopNumber = index + 1;
+        const isHighlighted = highlightedSet.has(order.id);
+        const baseShadow = isHighlighted
+          ? "0 0 0 3px rgba(245,158,11,0.45), 0 2px 8px rgba(0,0,0,0.4)"
+          : "0 2px 8px rgba(0,0,0,0.4)";
 
         // Punto de visita estilo Uber: disco blanco con número oscuro.
+        // Capturado con el lápiz → anillo ámbar.
         const el = document.createElement("div");
         el.className = "order-marker-wrapper";
         el.innerHTML = `
@@ -366,7 +389,7 @@ export function PlanningMap({
             width: 22px;
             height: 22px;
             background: #ffffff;
-            border: 1px solid rgba(15,23,42,0.3);
+            border: 1px solid ${isHighlighted ? "#f59e0b" : "rgba(15,23,42,0.3)"};
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -375,7 +398,7 @@ export function PlanningMap({
             font-weight: 700;
             color: #0f172a;
             letter-spacing: -0.2px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            box-shadow: ${baseShadow};
             cursor: ${isDraggable ? "grab" : "pointer"};
             transition: transform 0.15s ease, box-shadow 0.15s ease;
             font-family: system-ui, -apple-system, sans-serif;
@@ -386,11 +409,13 @@ export function PlanningMap({
         if (innerDiv) {
           el.addEventListener("mouseenter", () => {
             innerDiv.style.transform = "scale(1.25)";
-            innerDiv.style.boxShadow = "0 4px 14px rgba(0,0,0,0.5)";
+            innerDiv.style.boxShadow = isHighlighted
+              ? "0 0 0 3px rgba(245,158,11,0.45), 0 4px 14px rgba(0,0,0,0.5)"
+              : "0 4px 14px rgba(0,0,0,0.5)";
           });
           el.addEventListener("mouseleave", () => {
             innerDiv.style.transform = "scale(1)";
-            innerDiv.style.boxShadow = "0 2px 8px rgba(0,0,0,0.4)";
+            innerDiv.style.boxShadow = baseShadow;
           });
         }
 
@@ -432,8 +457,13 @@ export function PlanningMap({
       });
     }
 
-    // Fit bounds if we have points
-    if (hasPoints && !bounds.isEmpty()) {
+    // Fit bounds if we have points — solo cuando cambió QUÉ se muestra.
+    const fitKey = [
+      showVehicleOrigins ? vehicles.map((v) => v.id).join(",") : "",
+      showOrders ? orders.map((o) => o.id).join(",") : "",
+    ].join("|");
+    if (hasPoints && !bounds.isEmpty() && fitKey !== lastFitKeyRef.current) {
+      lastFitKeyRef.current = fitKey;
       map.current.fitBounds(bounds, {
         padding: 60,
         maxZoom: 15,
@@ -454,6 +484,7 @@ export function PlanningMap({
     showOrders,
     isLoaded,
     selectedVehicleIds,
+    highlightedOrderIds,
     onOrderDragEnd,
   ]);
 

@@ -86,7 +86,11 @@ export interface PlanificacionActions {
   setOrderTab: (tab: string) => void;
   toggleOrder: (id: string) => void;
   selectAllOrders: () => void;
+  /** Desmarca un grupo de visitas (lasso del mapa) sin tocar la DB. */
+  deselectOrders: (ids: string[]) => void;
   deleteOrder: (id: string) => Promise<void>;
+  /** Soft-delete dirigido de varias visitas (lasso del mapa). */
+  deleteOrdersBulk: (ids: string[]) => Promise<void>;
   discardPendingOrders: () => Promise<void>;
   // Configuration
   setPlanName: (name: string) => void;

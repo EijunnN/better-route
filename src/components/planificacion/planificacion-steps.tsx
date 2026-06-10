@@ -54,6 +54,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlanificacion } from "./planificacion-context";
 import { OBJECTIVES, type StepId } from "./planificacion-types";
+import { pointInPolygon } from "./point-in-polygon";
 
 const STEPS: Array<{ id: StepId; label: string }> = [
   { id: "vehiculos", label: "Vehículos" },
@@ -774,28 +775,6 @@ export function OrderStep() {
       </div>
     </div>
   );
-}
-
-// Ray-casting point-in-polygon check
-function pointInPolygon(
-  lng: number,
-  lat: number,
-  polygon: number[][],
-): boolean {
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i][0],
-      yi = polygon[i][1];
-    const xj = polygon[j][0],
-      yj = polygon[j][1];
-    if (
-      yi > lat !== yj > lat &&
-      lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi
-    ) {
-      inside = !inside;
-    }
-  }
-  return inside;
 }
 
 function isOrderInAnyZone(

@@ -157,6 +157,50 @@ export function usePlanificacionActions(
     }
   };
 
+  const deselectOrders = (ids: string[]) => {
+    const idsSet = new Set(ids);
+    setSelectedOrderIds((prev) => prev.filter((id) => !idsSet.has(id)));
+  };
+
+  /**
+   * Soft-delete dirigido (lasso): POST a /api/orders/batch/delete con ids
+   * explícitos. Quedan inactivos — fuera de la próxima optimización pero
+   * auditables, igual que el "Eliminar seleccionados" de results.
+   */
+  const deleteOrdersBulk = async (ids: string[]) => {
+    if (!companyId || ids.length === 0) return;
+    try {
+      const res = await fetch("/api/orders/batch/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify({ orderIds: ids }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(json?.error || "No se pudieron eliminar los pedidos");
+      }
+      const idsSet = new Set(ids);
+      setOrders((prev) => prev.filter((o) => !idsSet.has(o.id)));
+      setSelectedOrderIds((prev) => prev.filter((id) => !idsSet.has(id)));
+      toast({
+        title: "Pedidos eliminados",
+        description: `${json?.deleted ?? ids.length} pedido(s) fuera de la planificación.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error al eliminar pedidos",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteOrder = async (id: string) => {
     if (!companyId) return;
     setDeletingOrderId(id);
@@ -611,7 +655,9 @@ export function usePlanificacionActions(
     setOrderTab,
     toggleOrder,
     selectAllOrders,
+    deselectOrders,
     deleteOrder,
+    deleteOrdersBulk,
     discardPendingOrders,
     setPlanName,
     setPlanDate,
