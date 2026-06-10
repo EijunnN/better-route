@@ -19,6 +19,7 @@ import { useRef, useState } from "react";
 import { AlertPanel } from "@/components/alerts/alert-panel";
 import { Can } from "@/components/auth/can";
 import { ChatPanel, useChat } from "@/components/chat";
+import { useFullScreenLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function MonitoringDashboardView() {
+  // Full-bleed: sin esto el AppShell envuelve la vista con márgenes + padding
+  // y el `h-screen` de abajo desborda el main → scrollbar vertical fantasma.
+  useFullScreenLayout();
+
   const { state, actions, meta } = useMonitoring();
   const { state: chatState, meta: chatMeta, actions: chatActions } = useChat();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

@@ -8,6 +8,7 @@ import {
   Clock,
   MessageSquare,
   User,
+  WifiOff,
 } from "lucide-react";
 import { memo } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -121,6 +122,9 @@ export const DriverListItem = memo(function DriverListItem({
   const ledStatus = alerts.length > 0 ? "danger" : statusConfig.led;
   const battery = currentLocation?.batteryLevel ?? null;
   const isRecent = currentLocation?.isRecent ?? false;
+  // Con ruta activa y sin ping GPS reciente, el punto del mapa está viejo —
+  // el operador debe saberlo sin abrir el detalle.
+  const gpsStale = hasRoute && !isRecent;
 
   if (compact) {
     // Outer is a passive <div>. Inside are two SIBLING buttons: the
@@ -174,7 +178,7 @@ export const DriverListItem = memo(function DriverListItem({
                 <div className="cockpit-label mt-0.5">{statusConfig.label}</div>
               )}
 
-              {(battery !== null || alerts.length > 0) && (
+              {(battery !== null || alerts.length > 0 || gpsStale) && (
                 <div className="flex items-center gap-2 mt-1.5">
                   {battery !== null && isRecent && (
                     <span
@@ -189,6 +193,15 @@ export const DriverListItem = memo(function DriverListItem({
                     >
                       <Battery className="size-2.5" />
                       {battery}%
+                    </span>
+                  )}
+                  {gpsStale && (
+                    <span
+                      className="cockpit-mono inline-flex items-center gap-0.5 text-[10px] text-muted-foreground"
+                      title="Sin ping GPS reciente — la posición en el mapa puede estar desactualizada"
+                    >
+                      <WifiOff className="size-2.5" />
+                      Sin señal
                     </span>
                   )}
                   {alerts.length > 0 && (

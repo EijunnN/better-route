@@ -442,7 +442,19 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
           const maplibreglModule = await import("maplibre-gl");
           const bounds = new maplibreglModule.LngLatBounds();
 
-          geojson.data.features.forEach((feature: GeoJSON.Feature) => {
+          // Encuadrar el PLAN (rutas/paradas), no los conductores: un GPS
+          // lejano (emulador de la app, driver aún en su casa) estiraría la
+          // cámara hasta verse el continente. Sin features de plan, caer a
+          // todas para no dejar el mapa sin encuadre.
+          const planFeatures = geojson.data.features.filter(
+            (f: GeoJSON.Feature) =>
+              (f.properties as { type?: string } | null)?.type !==
+              "driver_location",
+          );
+          const boundsFeatures =
+            planFeatures.length > 0 ? planFeatures : geojson.data.features;
+
+          boundsFeatures.forEach((feature: GeoJSON.Feature) => {
             if (feature.geometry.type === "Point") {
               bounds.extend(feature.geometry.coordinates as [number, number]);
             } else if (feature.geometry.type === "LineString") {

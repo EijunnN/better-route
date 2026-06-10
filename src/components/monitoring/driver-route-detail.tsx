@@ -46,6 +46,8 @@ interface Stop {
   longitude: string;
   status: string;
   estimatedArrival?: string;
+  /** ETA recalculado desde la posición actual del driver (o null). */
+  liveEtaAt?: string | null;
   completedAt?: string | null;
   startedAt?: string | null;
   notes?: string | null;
@@ -664,8 +666,27 @@ export function DriverRouteDetail({
                           )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-[10px] text-muted-foreground">
-                          {formatTime(stop.estimatedArrival)}
+                        <span
+                          className={cn(
+                            "text-[10px]",
+                            stop.liveEtaAt &&
+                              (stop.status === "PENDING" ||
+                                stop.status === "IN_PROGRESS")
+                              ? "text-[var(--cockpit-live)] font-medium"
+                              : "text-muted-foreground",
+                          )}
+                          title={
+                            stop.liveEtaAt
+                              ? "ETA en vivo (desde la posición actual del conductor)"
+                              : "Horario planificado"
+                          }
+                        >
+                          {formatTime(
+                            stop.status === "PENDING" ||
+                              stop.status === "IN_PROGRESS"
+                              ? (stop.liveEtaAt ?? stop.estimatedArrival)
+                              : stop.estimatedArrival,
+                          )}
                         </span>
                         {stop.id && stop.status === "FAILED" && (
                           <Can perm="route_stop:update">

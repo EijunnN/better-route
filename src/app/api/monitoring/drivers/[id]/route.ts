@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
+import { getRouteEtas } from "@/lib/eta";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
@@ -368,6 +369,13 @@ export async function GET(
       Math.round((stops.length / maxOrders) * 100),
     );
 
+    // ETA en vivo (Redis, alimentado por los pings GPS del driver). Si no hay
+    // cálculo vigente cada parada cae a su estimatedArrival planificado.
+    const liveEtas = await getRouteEtas(stops[0].routeId);
+    const liveEtaByStopId = new Map(
+      (liveEtas?.stops ?? []).map((stopEta) => [stopEta.stopId, stopEta.etaAt]),
+    );
+
     // Build stops list
     const stopsData = stops.map((stop) => ({
       id: stop.id,
@@ -380,6 +388,7 @@ export async function GET(
       longitude: stop.longitude,
       status: stop.status,
       estimatedArrival: stop.estimatedArrival?.toISOString(),
+      liveEtaAt: liveEtaByStopId.get(stop.id) ?? null,
       completedAt: stop.completedAt?.toISOString() || null,
       startedAt: stop.startedAt?.toISOString() || null,
       notes: stop.notes,

@@ -130,6 +130,7 @@ export interface DriverDetailData {
       longitude: string;
       status: string;
       estimatedArrival?: string;
+      liveEtaAt?: string | null;
       completedAt?: string | null;
       startedAt?: string | null;
       notes?: string | null;
