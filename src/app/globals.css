@@ -33,13 +33,15 @@
   --chart-3: oklch(0.7227 0.192 149.5793);
   --chart-4: oklch(0.5544 0.0407 257.4166);
   --chart-5: oklch(0.7107 0.0351 256.7878);
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.2077 0.0398 265.7549);
+  /* Slate sidebar — high-contrast chrome over the light canvas; the lime
+     accent (--sidebar-primary) still marks the active item. */
+  --sidebar: oklch(0.3717 0.0392 257.287);
+  --sidebar-foreground: oklch(0.9842 0.0034 247.8575);
   --sidebar-primary: oklch(0.8871 0.2122 128.5041);
   --sidebar-primary-foreground: oklch(0 0 0);
-  --sidebar-accent: oklch(0.9842 0.0034 247.8575);
-  --sidebar-accent-foreground: oklch(0.2077 0.0398 265.7549);
-  --sidebar-border: oklch(0.9683 0.0069 247.8956);
+  --sidebar-accent: oklch(0.4477 0.0436 257.287);
+  --sidebar-accent-foreground: oklch(0.9842 0.0034 247.8575);
+  --sidebar-border: oklch(0.4477 0.0436 257.287);
   --sidebar-ring: oklch(0.8871 0.2122 128.5041);
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-serif: Georgia, serif;
@@ -98,13 +100,15 @@
   --chart-3: oklch(0.7227 0.192 149.5793);
   --chart-4: oklch(0.6268 0.2325 303.9004);
   --chart-5: oklch(0.7686 0.1647 70.0804);
-  --sidebar: oklch(0.1288 0.0406 264.6952);
+  /* Slate sidebar — one step lighter than the content (card) so it reads
+     as elevated chrome in dark mode. */
+  --sidebar: oklch(0.2795 0.0368 260.031);
   --sidebar-foreground: oklch(0.9842 0.0034 247.8575);
   --sidebar-primary: oklch(0.8871 0.2122 128.5041);
   --sidebar-primary-foreground: oklch(0 0 0);
-  --sidebar-accent: oklch(0.2795 0.0368 260.031);
+  --sidebar-accent: oklch(0.3517 0.04 260.031);
   --sidebar-accent-foreground: oklch(0.9842 0.0034 247.8575);
-  --sidebar-border: oklch(0.2795 0.0368 260.031);
+  --sidebar-border: oklch(0.3517 0.04 260.031);
   --sidebar-ring: oklch(0.8871 0.2122 128.5041);
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-serif: Georgia, serif;
