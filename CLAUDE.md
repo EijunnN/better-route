@@ -147,3 +147,69 @@ Tests integration tocan DB real — requieren Postgres up.
 
 Un hook `Stop` (`.claude/settings.json`) corre `biome check` al terminar cada
 turno y bloquea si hay errores de lint/formato.
+
+---
+
+## Precedencia de fuentes (ante conflicto)
+
+Cuando dos documentos se contradigan, gana en este orden:
+
+**`docs/adr/` (el ADR más reciente) > `docs/CONTEXT.md` > este `CLAUDE.md` > el
+resto de `docs/`.**
+
+Los ADR aceptados son la verdad canónica de las decisiones. Si un doc derivado
+(CONTEXT, README, guías) contradice un ADR, el doc está *stale*: seguí el ADR y
+corregí/anotá el doc.
+
+> **Drift reconciliado (2026-07-01, sesión SOTA):** `CONTEXT.md` fue corregido
+> (Realtime §7 → Centrifugo/OneSignal, estados de Stop sin `SKIPPED`,
+> FailureReason free-text, tenancy con ADR-0008) y los docs stale llevan
+> banner (`SISTEMA_OPTIMIZACION`, `ESTADO_PROYECTO`,
+> `routing-quality-findings`). **Pendiente (Opus):** reescribir o borrar los
+> docs con banner; ADR-0009 (migraciones) y ADR-0010 (RBAC tipado) faltan —
+> su contenido ya vive en este archivo y en `permissions/README.md`.
+
+## Seam con la app móvil
+
+El contrato con la app Flutter del conductor (`../test-mobile/aea`) vive en
+**`docs/API-CONTRACT-MOBILE.md`** (canónico acá, espejo byte-idéntico en
+`aea/docs/`). Tocar cualquiera de estos endpoints exige consultarlo y, si
+cambia un shape, bump de `CONTRACT_VERSION` + actualizar el espejo:
+`src/app/api/mobile/**`, `route-stops/[id]` (+`reopen`), `chat/**`,
+`realtime/token`, `upload/presigned-url`, `auth/{login,refresh,logout}`.
+Los campos "congelados" (§9 del contrato) crashean el parser Dart si
+desaparecen; el rol `CONDUCTOR` debe conservar el capability set del §8.
+
+## Migraciones (Drizzle)
+
+- **`db:generate` + `db:migrate`. NUNCA `db:push`.** `db:push` rompe el historial
+  versionado de migraciones.
+- Flujo tras cambiar un archivo de `src/db/schema/`:
+  1. `bun run db:generate` — genera el SQL en `drizzle/`.
+  2. Revisá el SQL generado.
+  3. `bun run db:migrate` — lo aplica (requiere Postgres **arriba**).
+
+## Capas de testing
+
+| Capa | Comando | Necesita Postgres |
+|---|---|---|
+| Unit | `bun test src/tests/unit` | No |
+| Integration | `bun test src/tests/integration/` | **Sí** (DB real) |
+| Todos | `bun test` | Sí (incluye integration) |
+| Golden routing-quality (28 escenarios) | `bun run src/tests/routing-quality/run.ts` | Según escenario |
+| Routing integration | `bun run src/tests/routing-quality/integration-runner.ts` | Sí |
+
+Los tests de integración tocan la DB real: si Postgres no está arriba, fallan por
+conexión, no por lógica.
+
+## Definition of Done (checklist pre-PR)
+
+El hook `Stop` corre **solo `biome check`** (estilo) — **NO corre `tsc`**. Antes
+de dar una tarea por terminada, además del hook:
+
+1. `bun run tsc --noEmit` — type check (el hook lo excluye a propósito por lento).
+2. `bun run lint` — biome (o dejá que el hook lo haga).
+3. Tests de la capa afectada (unit / integration).
+4. **Checklist de invariantes** → [`docs/REVIEW-RUBRIC.md`](./docs/REVIEW-RUBRIC.md)
+   (aislamiento tenant, RBAC, estados terminales, evidence, history append-only).
+   El hook de biome **no** verifica correctness ni seguridad.

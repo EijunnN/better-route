@@ -1,5 +1,12 @@
 # 📋 Estado del Proyecto - Sistema de Planificación de Rutas
 
+> ⚠️ **CONGELADO EN ENERO 2025 — 18 MESES STALE (marcado 2026-07-01).**
+> Anterior a: Visits (ADR-0005), Centrifugo/OneSignal (ADR-0007), chat,
+> custom roles, pipeline de stages (ADR-0003) y la remoción de PyVRP
+> (ADR-0001). **No usar para razonar sobre el estado del producto.**
+> **Pendiente (Opus):** borrar (el estado real se deriva de CONTEXT.md +
+> ADRs + git log).
+
 > **Última actualización:** Enero 2025
 > **Stack tecnológico:** Next.js 16 + React 19 + Drizzle ORM + PostgreSQL + VROOM
 

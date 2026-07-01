@@ -11,11 +11,16 @@
 
 ## Producto en una frase
 
-BetterRoute es un SaaS multi-tenant de **planeamiento y ejecución de
-rutas de última milla**: una empresa cliente (logística, retail, courier)
-modela su flota, importa órdenes, corre un optimizador para generar
-planes de ruta, los conductores las ejecutan en una app móvil, y los
-clientes finales siguen su entrega vía un link público.
+BetterRoute es un producto de **planeamiento y ejecución de rutas de
+última milla**: una empresa cliente (logística, retail, courier) modela
+su flota, importa órdenes, corre un optimizador para generar planes de
+ruta, los conductores las ejecutan en una app móvil, y los clientes
+finales siguen su entrega vía un link público.
+
+**Modelo de tenancy (ADR-0008)**: el *código* es multi-tenant (toda fila
+lleva `companyId`, RBAC per-company), pero el *deployment* es
+single-tenant: una instalación por empresa cliente en su propio VPS, con
+su propia DB y Redis locales. No hay SaaS público compartido.
 
 ---
 
@@ -49,7 +54,7 @@ considerá si es una traducción legítima o un naming a corregir.
 | Término | Definición |
 |---|---|
 | **Order** | Pedido de entrega. Tiene cliente, dirección georreferenciada, ventana de tiempo, capacidades requeridas, skills requeridos, prioridad. Estado: `PENDING → ASSIGNED → IN_PROGRESS → COMPLETED \| FAILED \| CANCELLED`. |
-| **Stop** | Una `Order` materializada como parada dentro de una ruta optimizada. Vive en `route_stops`. Estado: `PENDING → IN_PROGRESS → COMPLETED \| FAILED \| SKIPPED`. **Una Order puede tener múltiples Stops históricos** (reasignaciones, replanificaciones). |
+| **Stop** | Una `Order` materializada como parada dentro de una ruta optimizada. Vive en `route_stops`. Estado: `PENDING → IN_PROGRESS → COMPLETED \| FAILED` (4 estados — no existe `SKIPPED`). `COMPLETED` es terminal; `FAILED → PENDING` es legal (re-intento same-day disparado por el operador, ADR-0005). **Una Order puede tener múltiples Stops históricos** (reasignaciones, replanificaciones). |
 | **Route** | Secuencia ordenada de `Stops` ejecutada por un `Driver` en un `Vehicle` un día determinado. Se identifica por `routeId` dentro de un `OptimizationJob`. |
 | **OptimizationConfiguration** | Setup de un plan: depot, vehículos seleccionados, drivers seleccionados, objetivo (`DISTANCE \| TIME \| BALANCED`), strictness, ventana de trabajo. Estado: `DRAFT → CONFIGURED → CONFIRMED`. |
 | **OptimizationPreset** | Conjunto de flags y parámetros del solver (`balanceVisits`, `minimizeVehicles`, `openStart`, `flexibleTimeWindows`, `routeEndMode`, etc.). Reutilizable entre planes. Cada empresa tiene un `isDefault=true`. |
@@ -64,7 +69,7 @@ considerá si es una traducción legítima o un naming a corregir.
 |---|---|
 | **TrackingId** | String público corto y único por `Order` activa. Permite que el cliente final acceda a `/tracking/[token]` sin auth. |
 | **Evidence** | Foto subida a R2 al completar o fallar un `Stop`. Almacenada en `RouteStop.evidenceUrls` (jsonb array). |
-| **FailureReason** | Razón categorizada por la cual un `Stop` falló: `CUSTOMER_ABSENT \| CUSTOMER_REFUSED \| ADDRESS_NOT_FOUND \| PACKAGE_DAMAGED \| RESCHEDULE_REQUESTED \| UNSAFE_AREA \| OTHER`. Obligatoria al marcar `FAILED`. |
+| **FailureReason** | Razón por la cual un `Stop` falló. **String libre en español**, elegido verbatim de la lista per-company `companyDeliveryPolicy.failureReasons` (servida al móvil vía `GET /api/mobile/driver/delivery-policy`) y guardado tal cual en `route_stops.failureReason` y `delivery_visits.failure_reason`. Obligatoria al marcar `FAILED` mientras la policy tenga motivos definidos (default: sí). El viejo enum (`CUSTOMER_ABSENT \| ...`) es **legacy** — ver ADR-0011. |
 | **WorkflowState** | Estado custom definido por la empresa que extiende los terminales del sistema (ej. "Reagendado al jueves"). Vive en `company_workflow_states`. Un `Stop` puede llevar `workflowStateId` además del `status`. |
 | **`Visit`** | Un intento físico de entregar una `Order` por parte de un `Driver`. Tiene `outcome: SUCCESS \| FAILURE`, `attempted_at`, `evidence_urls`, ubicación GPS, y en caso de fallo `failure_reason` + notas. Cada Visit referencia el `RouteStop` que la generó. **Inmutable** — los datos del intento no se borran ni sobreescriben. Vive en `delivery_visits`. |
 | **`Revisita`** | Cualquier `Visit` de una `Order` posterior a la primera. Puede ocurrir el mismo día (driver vuelve tras una falla porque el cliente llamó) o en planes posteriores (la Order entra a un nuevo Plan después de un fallo previo). El historial completo de Visits constituye la trazabilidad de entrega — nunca se pierde. |
@@ -223,8 +228,10 @@ la trazabilidad multi-intento de cada Order (Visits y Revisitas).
 `src/components/monitoring/`, app móvil (`test-mobile/aea`).
 **Reglas**:
 - Transiciones de estado validadas por `STOP_STATUS_TRANSITIONS`.
-- `COMPLETED` y `SKIPPED` son terminales.
-- `FAILED` requiere `failureReason`.
+- `COMPLETED` es el único terminal de un Stop; `FAILED → PENDING` existe
+  como re-intento same-day y solo lo dispara el operador (no existe `SKIPPED`).
+- `FAILED` requiere `failureReason` (string libre de la policy — ver
+  Ubiquitous Language).
 - `Evidence` upload a R2 vía presigned URL **debe completarse** antes de cerrar la entrega — si falla, la operación se aborta (no se silencia).
 - `zoneId` se snapshot-ea en `route_stops` al confirmar el plan; preserva history aún si la zona se borra.
 - **Cada intento físico genera una `Visit` inmutable.** Cuando un driver
@@ -273,12 +280,24 @@ la trazabilidad multi-intento de cada Order (Visits y Revisitas).
 - Devuelve la `Stop` más reciente o, si hay una `COMPLETED|FAILED`, esa (para preservar la evidencia tras reasignación).
 
 ### 7. Realtime & Alerts
-**Qué resuelve**: monitoreo en tiempo real de la operación.
-**Código**: `src/lib/realtime/`, `src/lib/alerts/`,
+**Qué resuelve**: monitoreo en tiempo real de la operación y chat
+driver↔despacho.
+**Código**: `src/lib/realtime/`, `src/lib/chat/`,
+`src/lib/notifications/onesignal.ts`, `src/lib/alerts/`,
 `src/components/monitoring/`.
-**Reglas**:
-- SSE para streaming de eventos a la consola de monitoreo.
-- Upstash Redis como pub-sub.
+**Reglas** (ADR-0007):
+- **Centrifugo** (WebSocket, docker-compose) para eventos en vivo. Canales
+  namespaced por tenant (`monitoring:{companyId}`,
+  `chat:{companyId}:driver:{driverId}`, `chat:{companyId}:broadcast`).
+- Token JWT de conexión (HMAC propio, ~15 min) vía `GET /api/realtime/token`;
+  los canales permitidos se derivan del rol (`computeAllowedChannels`).
+- **OneSignal** para push móvil (External ID = `user.id`, sin device tokens
+  en el backend).
+- La telemetría GPS del driver va por HTTP POST, no por el socket.
+- Postgres es la fuente de verdad del chat (`chat_messages`,
+  `chat_conversations`); Centrifugo solo transporta.
+- El contrato exacto de canales/payloads con el móvil vive en
+  `docs/API-CONTRACT-MOBILE.md`.
 
 ### 8. Reporting & Output
 **Qué resuelve**: artefactos generados a partir de planes confirmados.
@@ -303,9 +322,14 @@ Reglas que **siempre** son ciertas. Si tu cambio las viola, está mal.
    nuevo es un bug.
 5. **RESTRICTED gana en zonas overlap.** `getZoneForOrder` chequea
    `RESTRICTED` antes que `DELIVERY`.
-6. **Estados terminales no se reabren.** `COMPLETED` y `SKIPPED` para
-   stops; `COMPLETED`, `FAILED`, `CANCELLED` para órdenes; `COMPLETED`,
-   `FAILED`, `CANCELLED` para optimization jobs.
+6. **Estados terminales no se reabren por el camino normal.**
+   - Stops: `COMPLETED` es terminal. `FAILED` solo lo reabre el operador
+     (re-intento same-day, ADR-0005) — nunca el driver. No existe `SKIPPED`.
+   - Órdenes: `CANCELLED` es terminal definitivo y jamás reactivable
+     (ADR-0006). `FAILED` es reactivable (revisita cross-day). `COMPLETED`
+     solo se revierte por el camino privilegiado `order:revert`, fuera del
+     grafo normal.
+   - Optimization jobs: `COMPLETED`, `FAILED`, `CANCELLED` no transicionan.
 7. **Evidence falla la operación.** Si la subida a R2 falla, la entrega
    no se cierra. El error sube al usuario.
 8. **History es append-only.** `route_stop_history`,
@@ -330,8 +354,10 @@ Reglas que **siempre** son ciertas. Si tu cambio las viola, está mal.
   previo" (Glovo / Rappi / PedidosYa) está fuera de scope.
 - **Notificaciones automáticas a cliente / driver al reabrir o
   reactivar Orders**: la trazabilidad queda registrada (Visit
-  history, audit log) pero no se dispara push / email / SMS. Si el
-  caso real lo demanda, se introducirá con ADR-0007.
+  history, audit log) pero no se dispara push / email / SMS. Nota:
+  ADR-0007 ya introdujo push (OneSignal) para **chat** — las
+  notificaciones de reapertura/reactivación siguen fuera de scope y
+  requerirían su propio ADR.
 
 ---
 
@@ -346,9 +372,12 @@ lugar de mantenerlo. Sin migrations data-rescue todavía.
 ## Referencias rápidas
 
 - `CLAUDE.md` — convenciones operativas (cómo correr, comandos, RBAC flow).
-- `docs/SISTEMA_OPTIMIZACION.md` — detalle del solver y su integración.
 - `docs/ROLES-PERMISSIONS.md` — catálogo completo de permisos y roles.
-- `docs/ESTADO_PROYECTO.md` — estado de features.
+- `docs/API-CONTRACT-MOBILE.md` — contrato del seam con la app móvil
+  (espejado en `aea/docs/`).
+- ~~`docs/SISTEMA_OPTIMIZACION.md`~~ / ~~`docs/ESTADO_PROYECTO.md`~~ —
+  **stale** (describen PyVRP eliminado / congelado en 2025). No usar como
+  referencia; ver banner en cada uno.
 - `docs/adr/` — decisiones arquitectónicas con su motivación:
   - ADR-0001: VROOM como único solver
   - ADR-0002: Canonical SolvedPlan shape (cadena tipada)
@@ -356,3 +385,6 @@ lugar de mantenerlo. Sin migrations data-rescue todavía.
   - ADR-0004: OptimizationJob lifecycle ownership
   - ADR-0005: Visit como entidad de primera clase (trazabilidad multi-intento)
   - ADR-0006: CSV import con preview-and-confirm para colisiones de trackingId
+  - ADR-0007: Realtime vía Centrifugo, push vía OneSignal
+  - ADR-0008: Tenancy — multi-tenant lógico, single-tenant-per-VPS físico
+  - ADR-0011: FailureReason como string libre per-company (enum legacy)

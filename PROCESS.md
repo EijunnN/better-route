@@ -1,4 +1,9 @@
-# PROCESS - Auditoria Full-Stack BetterRoute
+# PROCESS - Auditoria Full-Stack BetterRoute (registro histórico)
+
+> ⚠️ **ARCHIVO HISTÓRICO — no es un proceso vigente.** Es el registro de una
+> auditoría full-stack puntual **ya completada**. No describe el flujo de trabajo
+> actual ni tareas pendientes. Para el trabajo forward-looking del proyecto, ver
+> [`docs/AGENT-UPGRADE-PLAN.md`](./docs/AGENT-UPGRADE-PLAN.md) y `docs/issues/`.
 
 ## Estado: COMPLETADO ✓
 

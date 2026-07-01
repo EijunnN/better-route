@@ -1,5 +1,12 @@
 # Sistema de Planificación y Optimización de Rutas
 
+> ⚠️ **DOC STALE — NO USAR COMO REFERENCIA (marcado 2026-07-01).**
+> Describe PyVRP, `OptimizerFactory` e `IOptimizer` como componentes vivos:
+> **fueron eliminados** (ADR-0001, mayo 2026). La verdad actual vive en
+> `docs/CONTEXT.md §4 Plan Optimization` y `docs/adr/0001..0004`.
+> **Pendiente (Opus):** reescribir desde los ADRs o borrar (pre-deploy:
+> preferimos borrar antes que mantener docs muertos).
+
 ## Tabla de Contenidos
 
 1. [Resumen del Sistema](#resumen-del-sistema)
