@@ -106,7 +106,19 @@ async function main() {
     }
   }
 
-  console.log("\n✓ Verifier integration OK: result.verification is populated.");
+  // Gate on HARD violations, not just presence of the report: a run whose
+  // plan breaks a hard business constraint must fail this check. (Before,
+  // any populated report exited 0 — HARD regressions shipped silently.)
+  if (result.verification.summary.hard > 0) {
+    console.error(
+      `\n❌ Plan has ${result.verification.summary.hard} HARD violation(s) — failing.`,
+    );
+    process.exit(1);
+  }
+
+  console.log(
+    "\n✓ Verifier integration OK: verification populated, 0 HARD violations.",
+  );
   process.exit(0);
 }
 

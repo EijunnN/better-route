@@ -7,6 +7,9 @@
  * @see https://github.com/VROOM-Project/vroom/blob/master/docs/API.md
  */
 
+import { DEFAULT_SERVICE_TIME_SECONDS } from "./constants";
+import { parseTimeWindow } from "./time-window-policy";
+
 // VROOM API types
 export interface VroomLocation {
   id: number;
@@ -45,6 +48,18 @@ export interface VroomVehicle {
   speed_factor?: number; // Multiplier for travel time
   max_tasks?: number; // Maximum number of tasks
   max_travel_time?: number; // Maximum travel time in seconds
+  max_distance?: number; // Maximum distance in meters (VROOM enforces during solve)
+  /**
+   * Cost model per vehicle (VROOM 1.14). The solver minimizes
+   * `fixed + per_hour * duration + per_km * distance` — this is how the
+   * DISTANCE/TIME/BALANCED objective is actually expressed (defaults:
+   * fixed 0, per_hour 3600, per_km 0 = pure duration).
+   */
+  costs?: {
+    fixed?: number;
+    per_hour?: number;
+    per_km?: number;
+  };
 }
 
 export interface VroomShipment {
@@ -63,9 +78,6 @@ export interface VroomRequest {
     g?: boolean; // Return geometry
     c?: boolean; // Return cost matrices
   };
-  // Optimization objectives: "min-cost" (minimize distance) or "min-duration" (minimize time)
-  // Can be combined with weights, e.g., [{"type": "min-cost", "weight": 1}, {"type": "min-duration", "weight": 2}]
-  objectives?: Array<{ type: "min-cost" | "min-duration"; weight?: number }>;
 }
 
 export interface VroomStep {
@@ -140,7 +152,11 @@ export interface VroomResponse {
 
 // Configuration
 const VROOM_URL = process.env.VROOM_URL || "http://localhost:5000";
-const VROOM_TIMEOUT = Number(process.env.VROOM_TIMEOUT) || 60000; // 60 seconds
+// Client timeout must exceed vroom-express's server-side timeout (300s in
+// docker/vroom/config.yml) so the server limit governs. A shorter client
+// timeout aborts large solves the server would have finished — and keeps
+// burning VROOM CPU for the full server window anyway.
+const VROOM_TIMEOUT = Number(process.env.VROOM_TIMEOUT) || 310000;
 
 /**
  * Check if VROOM service is available
@@ -183,17 +199,45 @@ export async function isVroomAvailable(): Promise<boolean> {
 }
 
 /**
- * Solve a Vehicle Routing Problem using VROOM
+ * Solve a Vehicle Routing Problem using VROOM.
+ *
+ * `signal` (optional) is the caller's abort signal — combined with the HTTP
+ * timeout so cancelling the optimization job actually cuts the in-flight
+ * request instead of letting VROOM burn CPU on a result nobody will read.
  */
-export async function solveVRP(request: VroomRequest): Promise<VroomResponse> {
-  const response = await fetch(VROOM_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
-    signal: AbortSignal.timeout(VROOM_TIMEOUT),
-  });
+export async function solveVRP(
+  request: VroomRequest,
+  signal?: AbortSignal,
+): Promise<VroomResponse> {
+  const timeoutSignal = AbortSignal.timeout(VROOM_TIMEOUT);
+  const effectiveSignal = signal
+    ? AbortSignal.any([signal, timeoutSignal])
+    : timeoutSignal;
+
+  let response: Response;
+  try {
+    response = await fetch(VROOM_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+      signal: effectiveSignal,
+    });
+  } catch (error) {
+    if (signal?.aborted) {
+      throw new Error("Optimización cancelada");
+    }
+    if (timeoutSignal.aborted) {
+      throw new Error(
+        `VROOM no respondió dentro del límite de ${Math.round(VROOM_TIMEOUT / 1000)}s. ` +
+          `El problema puede ser demasiado grande o el servicio está sobrecargado.`,
+      );
+    }
+    throw new Error(
+      `No se pudo conectar a VROOM (${VROOM_URL}): ${error instanceof Error ? error.message : "error de red"}`,
+    );
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -222,25 +266,9 @@ export function toVroomTime(date: Date): number {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
-/**
- * Convert time window string (HH:MM) to VROOM format
- * Returns null if the time string is invalid
- */
-export function parseTimeWindow(timeStr: string): number | null {
-  if (!timeStr || timeStr === "Invalid Date") {
-    return null;
-  }
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  // Validate parsed values
-  if (Number.isNaN(hours) || hours < 0 || hours > 23) {
-    return null;
-  }
-  const mins = minutes || 0;
-  if (Number.isNaN(mins) || mins < 0 || mins > 59) {
-    return null;
-  }
-  return hours * 3600 + mins * 60;
-}
+// Window parsing lives in the shared policy module so the verifier applies
+// the exact same "valid window" predicate as this request builder (A7).
+export { parseTimeWindow };
 
 /**
  * Helper to create a basic job from order data
@@ -262,13 +290,17 @@ export function createVroomJob(
   const job: VroomJob = {
     id,
     location: [longitude, latitude],
-    service: options?.service || 300, // Default 5 minutes service time
+    service: options?.service || DEFAULT_SERVICE_TIME_SECONDS,
   };
 
   if (options?.description) job.description = options.description;
   if (options?.delivery) job.delivery = options.delivery;
   if (options?.skills) job.skills = options.skills;
-  if (options?.priority) job.priority = options.priority;
+  // `!== undefined` (not truthy): priority 0 is a valid VROOM value and the
+  // old check silently dropped it. VROOM accepts [0, 100].
+  if (options?.priority !== undefined) {
+    job.priority = Math.max(0, Math.min(100, Math.round(options.priority)));
+  }
 
   if (options?.timeWindowStart && options?.timeWindowEnd) {
     const start = parseTimeWindow(options.timeWindowStart);
@@ -300,6 +332,8 @@ export function createVroomVehicle(
     maxTasks?: number;
     speedFactor?: number;
     maxTravelTime?: number; // Maximum travel time in seconds
+    maxDistanceMeters?: number; // Max route distance — VROOM enforces natively
+    costs?: VroomVehicle["costs"]; // Objective expressed as cost model
     openStart?: boolean; // Don't set start location
     openEnd?: boolean; // Don't set end location
     // Break / lunch configuration
@@ -348,6 +382,10 @@ export function createVroomVehicle(
   if (options?.maxTasks) vehicle.max_tasks = options.maxTasks;
   if (options?.speedFactor) vehicle.speed_factor = options.speedFactor;
   if (options?.maxTravelTime) vehicle.max_travel_time = options.maxTravelTime;
+  if (options?.maxDistanceMeters) {
+    vehicle.max_distance = Math.round(options.maxDistanceMeters);
+  }
+  if (options?.costs) vehicle.costs = options.costs;
 
   if (options?.timeWindowStart && options?.timeWindowEnd) {
     const start = parseTimeWindow(options.timeWindowStart);

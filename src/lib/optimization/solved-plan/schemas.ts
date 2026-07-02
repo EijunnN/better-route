@@ -22,6 +22,7 @@ import type {
   PlanLevelMetrics,
   PlanSummary,
   RawSolvedRoute,
+  SolveBatchTelemetry,
   SolvedStop,
   UnassignedOrderRecord,
   VehicleWithoutRoute,
@@ -174,11 +175,27 @@ const assignmentMetricsSchema: z.ZodType<AssignmentMetrics> = z.object({
   workloadBalance: z.number().min(0).max(100),
 });
 
+const solveBatchTelemetrySchema: z.ZodType<SolveBatchTelemetry> = z.object({
+  zoneId: z.string().optional(),
+  zoneName: z.string().optional(),
+  orders: z.number().int().nonnegative(),
+  vehicles: z.number().int().nonnegative(),
+  computingTimeMs: z.number().nonnegative(),
+  vroomComputingTimes: z
+    .object({
+      loading: z.number().nonnegative().optional(),
+      solving: z.number().nonnegative().optional(),
+      routing: z.number().nonnegative().optional(),
+    })
+    .optional(),
+});
+
 const planSummarySchema: z.ZodType<PlanSummary> = z.object({
   optimizedAt: z.string().min(1),
   objective: z.enum(["DISTANCE", "TIME", "BALANCED"]),
   processingTimeMs: z.number().nonnegative(),
   engineUsed: z.string().optional(),
+  solveTelemetry: z.array(solveBatchTelemetrySchema).optional(),
 });
 
 const aggregatedPlanSchema: z.ZodType<AggregatedPlan> = z.object({

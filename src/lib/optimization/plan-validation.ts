@@ -105,6 +105,29 @@ export async function validatePlanForConfirmation(
     infoCount: 0,
   };
 
+  // Check 0: verifier HARD violations block confirmation. The verifier is
+  // the only component that re-validates solver output (time windows,
+  // capacity, skills, integrity) — confirming a plan with HARD violations
+  // dispatches a plan known to break a business constraint.
+  const hardViolations =
+    result.verification?.violations?.filter((v) => v.severity === "HARD") ?? [];
+  if (hardViolations.length > 0) {
+    const byCode = new Map<string, number>();
+    for (const v of hardViolations) {
+      byCode.set(v.code, (byCode.get(v.code) ?? 0) + 1);
+    }
+    const codeSummary = [...byCode.entries()]
+      .map(([code, count]) => `${code} (${count})`)
+      .join(", ");
+    issues.push({
+      severity: ValidationSeverity.ERROR,
+      category: "verifier_hard_violation",
+      message: `Plan has ${hardViolations.length} HARD constraint violation(s): ${codeSummary}`,
+      resolution:
+        "Re-run the optimization or adjust constraints (time windows, capacities, skills) — a plan with HARD violations must not be dispatched",
+    });
+  }
+
   // Check 1: All routes must have drivers assigned
   const routesWithoutDrivers = routes.filter(
     (r) => !r.driverId || r.driverId === "",

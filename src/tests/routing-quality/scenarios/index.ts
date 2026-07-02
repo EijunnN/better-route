@@ -27,6 +27,7 @@ import { scenario as s25 } from "./25-open-end-mode";
 import { scenario as s26 } from "./26-driver-origin-mode";
 import { scenario as s27 } from "./27-zero-orders";
 import { scenario as s28 } from "./28-unreachable-coords";
+import { scenario as s29 } from "./29-1000-orders-target-scale";
 
 export const SCENARIOS: Scenario[] = [
   s01,
@@ -57,4 +58,5 @@ export const SCENARIOS: Scenario[] = [
   s26,
   s27,
   s28,
+  s29,
 ];

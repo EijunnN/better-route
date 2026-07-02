@@ -74,7 +74,6 @@ mock.module("@/lib/optimization/vroom-optimizer", () => ({
       computingTimeMs: 0,
       balanceScore: 0,
     },
-    usedVroom: true,
   }),
 }));
 

@@ -47,8 +47,10 @@ import {
   unregisterJob,
 } from "@/lib/infra/job-queue";
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { takePartialResult } from "../optimization-runner/partial-results";
 import { runOptimization } from "../optimization-runner/run";
 import type { OptimizationInput } from "../optimization-runner/types";
+import { loadOptimizationPreset } from "../preset-config";
 import { calculateInputHash } from "./input-hash";
 
 export { calculateInputHash };
@@ -86,12 +88,16 @@ export async function getCachedResult(
 
 /**
  * RUNNING → COMPLETED. Persists the full VerifiedPlan in `result`.
+ *
+ * Guarded on status: if the watchdog already marked the job FAILED (or the
+ * user cancelled) while the runner was finishing, the terminal state wins —
+ * COMPLETED must never overwrite it.
  */
 export async function completeJob(
   jobId: string,
   result: unknown,
 ): Promise<void> {
-  await db
+  const updated = await db
     .update(optimizationJobs)
     .set({
       status: "COMPLETED",
@@ -100,12 +106,24 @@ export async function completeJob(
       completedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(eq(optimizationJobs.id, jobId));
+    .where(
+      and(
+        eq(optimizationJobs.id, jobId),
+        eq(optimizationJobs.status, "RUNNING"),
+      ),
+    )
+    .returning({ id: optimizationJobs.id });
+  if (updated.length === 0) {
+    console.warn(
+      `[jobs] completeJob skipped: job ${jobId} is no longer RUNNING (timeout/cancel won the race)`,
+    );
+  }
   unregisterJob(jobId);
 }
 
 /**
- * RUNNING → FAILED. Persists the error message in `error`.
+ * PENDING/RUNNING → FAILED. Persists the error message in `error`.
+ * Guarded on status so a late watchdog can't flip an already-terminal job.
  */
 export async function failJob(jobId: string, error: string): Promise<void> {
   await db
@@ -116,7 +134,12 @@ export async function failJob(jobId: string, error: string): Promise<void> {
       completedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(eq(optimizationJobs.id, jobId));
+    .where(
+      and(
+        eq(optimizationJobs.id, jobId),
+        inArray(optimizationJobs.status, ["PENDING", "RUNNING"]),
+      ),
+    );
   unregisterJob(jobId);
 }
 
@@ -150,7 +173,12 @@ export async function cancelOptimizationJob(
   await db
     .update(optimizationJobs)
     .set(updateData)
-    .where(eq(optimizationJobs.id, jobId));
+    .where(
+      and(
+        eq(optimizationJobs.id, jobId),
+        inArray(optimizationJobs.status, ["PENDING", "RUNNING"]),
+      ),
+    );
 
   unregisterJob(jobId);
   return true;
@@ -234,7 +262,7 @@ export async function createAndExecuteJob(
   // (mobile, scripts, future endpoints) gets the same guard.
   const config = await db.query.optimizationConfigurations.findFirst({
     where: eq(optimizationConfigurations.id, input.configurationId),
-    columns: { status: true, selectedOrderIds: true },
+    columns: { status: true, selectedOrderIds: true, updatedAt: true },
   });
   if (!config) {
     throw new Error("Configuration not found");
@@ -247,6 +275,8 @@ export async function createAndExecuteJob(
 
   // Cache lookup — same inputs as a prior COMPLETED job ⇒ reuse it.
   // Mismo filtro de pedidos que loadInputs: hash y run ven el mismo set.
+  // El hash incluye updatedAt de pedidos/config/preset: editar coordenadas,
+  // ventanas o el preset invalida el caché (antes devolvía planes viejos).
   const configOrderIds = config.selectedOrderIds ?? [];
   const pendingOrders = await db.query.orders.findMany({
     where: and(
@@ -258,11 +288,19 @@ export async function createAndExecuteJob(
         : undefined,
     ),
   });
+  const preset = await loadOptimizationPreset({
+    companyId: input.companyId,
+    configurationId: input.configurationId,
+  });
   const inputHash = calculateInputHash(
     input.configurationId,
     input.vehicleIds,
     input.driverIds,
-    pendingOrders.map((o) => o.id),
+    pendingOrders.map((o) => ({ id: o.id, updatedAt: o.updatedAt })),
+    {
+      configurationUpdatedAt: config.updatedAt,
+      presetUpdatedAt: preset?.updatedAt,
+    },
   );
   const cachedResult = await getCachedResult(inputHash, input.companyId);
   if (cachedResult) {
@@ -348,9 +386,10 @@ export async function createAndExecuteJob(
     } catch (error) {
       releaseCompanyLock(input.companyId, jobId);
       if (isJobAborting(jobId)) {
-        const partialResults = globalThis.__partialOptimizationResult;
+        // Keyed by jobId — the old single global slot could leak another
+        // company's partial routes under concurrent cancellations.
+        const partialResults = takePartialResult(jobId);
         await cancelOptimizationJob(jobId, partialResults);
-        globalThis.__partialOptimizationResult = undefined;
       } else {
         await failJob(
           jobId,

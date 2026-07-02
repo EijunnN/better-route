@@ -15,6 +15,8 @@
  * Pure function: no DB, no throws.
  */
 
+import type { ProfileSchema } from "@/lib/orders/profile-schema";
+import { DEFAULT_SERVICE_TIME_SECONDS } from "../constants";
 import type {
   AggregatedPlan,
   VerificationReport,
@@ -84,6 +86,17 @@ export interface RunnerConfigInput {
   objective: "DISTANCE" | "TIME" | "BALANCED";
   maxDistanceKm?: number | null;
   maxTravelTimeMinutes?: number | null;
+  /**
+   * MUST mirror the solver's setting: when true the solver widened order
+   * windows ±30 min, so the verifier widens by the same tolerance. Omitting
+   * it produced false HARD TIME_WINDOW_VIOLATED on valid plans (A1).
+   */
+  flexibleTimeWindows?: boolean | null;
+  /**
+   * Company profile the solver ran with. checkCapacity only treats the
+   * profile's active dimensions as HARD; inactive ones degrade to INFO (A3).
+   */
+  profile?: ProfileSchema | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -109,7 +122,7 @@ function toOptimizerOrder(o: RunnerOrderInput): OptimizerOrder {
     priority: o.priority ?? undefined,
     timeWindowStart: o.timeWindowStart ?? undefined,
     timeWindowEnd: o.timeWindowEnd ?? undefined,
-    serviceTime: o.serviceTime ?? 300,
+    serviceTime: o.serviceTime ?? DEFAULT_SERVICE_TIME_SECONDS,
     skillsRequired: o.skillsRequired ?? [],
     zoneId: o.zoneId ?? undefined,
   };
@@ -153,6 +166,8 @@ function toOptimizerConfig(c: RunnerConfigInput): OptimizerConfig {
     objective: c.objective,
     maxDistanceKm: c.maxDistanceKm ?? undefined,
     maxTravelTimeMinutes: c.maxTravelTimeMinutes ?? undefined,
+    flexibleTimeWindows: c.flexibleTimeWindows ?? undefined,
+    profile: c.profile ?? undefined,
   };
 }
 
@@ -214,5 +229,44 @@ export function verifyPlan(args: {
     totals: base.totals,
   };
 
-  return { ...args.plan, verification };
+  // Make the time-window metrics honest: the solve stage hardcodes
+  // `timeWindowViolations: 0` per route (it has no verdict yet — SEMANTICS
+  // §2), so the aggregated compliance rate was always 100%. Recompute both
+  // from the verifier's actual findings, attributing each violated stop to
+  // its route via orderId.
+  const orderIdToRouteIndex = new Map<string, number>();
+  args.plan.routes.forEach((route, index) => {
+    for (const stop of route.stops) {
+      orderIdToRouteIndex.set(stop.orderId, index);
+    }
+  });
+  const violationsPerRoute = new Array(args.plan.routes.length).fill(0);
+  const violatedOrderIds = new Set<string>();
+  for (const v of violations) {
+    if (v.code !== "TIME_WINDOW_VIOLATED" || !v.orderId) continue;
+    if (violatedOrderIds.has(v.orderId)) continue; // one stop = one violation
+    violatedOrderIds.add(v.orderId);
+    const routeIndex = orderIdToRouteIndex.get(v.orderId);
+    if (routeIndex !== undefined) violationsPerRoute[routeIndex]++;
+  }
+  const routes = args.plan.routes.map((route, index) =>
+    violationsPerRoute[index] > 0
+      ? { ...route, timeWindowViolations: violationsPerRoute[index] }
+      : route,
+  );
+  const totalStops = args.plan.metrics.totalStops;
+  const timeWindowComplianceRate =
+    totalStops > 0
+      ? Math.max(
+          0,
+          Math.round(((totalStops - violatedOrderIds.size) / totalStops) * 100),
+        )
+      : 100;
+
+  return {
+    ...args.plan,
+    routes,
+    metrics: { ...args.plan.metrics, timeWindowComplianceRate },
+    verification,
+  };
 }

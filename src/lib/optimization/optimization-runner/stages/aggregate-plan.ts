@@ -15,6 +15,7 @@ import {
 import type {
   AggregatedPlan,
   AssignedSolvedRoute,
+  SolveBatchTelemetry,
   UnassignedOrderRecord,
 } from "../../solved-plan";
 
@@ -40,6 +41,8 @@ export interface AggregatePlanArgs {
   warnings: string[];
   startTime: number;
   engineUsed: string;
+  /** Per-VROOM-call telemetry from the solve stage. */
+  solveTelemetry?: SolveBatchTelemetry[];
   objective: "DISTANCE" | "TIME" | "BALANCED";
   depot: { latitude: number; longitude: number };
 }
@@ -154,6 +157,9 @@ export async function aggregatePlan(
       objective: args.objective,
       processingTimeMs: Date.now() - args.startTime,
       engineUsed: args.engineUsed,
+      solveTelemetry: args.solveTelemetry?.length
+        ? args.solveTelemetry
+        : undefined,
     },
     depot: args.depot,
   };

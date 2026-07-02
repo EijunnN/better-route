@@ -1,16 +1,38 @@
-import type { VerifierFn, Violation } from "./types";
+import type { VerifierFn, Violation, ViolationSeverity } from "./types";
 import { orderById, sumBy, vehicleById } from "./utils";
 
 /**
- * For every route, sum demand across its stops per dimension and compare to the
- * assigned vehicle's capacity. Violations are HARD.
+ * For every route, sum demand across its stops per dimension and compare to
+ * the assigned vehicle's capacity.
  *
- * Dimensions checked: weight, volume, value, units. `maxOrders` checked as stop count.
+ * Severity follows the company profile (SEMANTICS A3): dimensions in
+ * `config.profile.activeDimensions` are HARD — the solver constrained them,
+ * so an excess is a real defect. Inactive dimensions degrade to INFO: the
+ * solver never saw them (a VALUE-only company doesn't constrain weight), so
+ * flagging them HARD blocked valid plans — but the physical overload signal
+ * is still worth surfacing.
+ *
+ * `maxOrders` is always HARD; it isn't a profile dimension.
  */
-export const checkCapacity: VerifierFn = ({ orders, vehicles, plan }) => {
+export const checkCapacity: VerifierFn = ({
+  orders,
+  vehicles,
+  config,
+  plan,
+}) => {
   const violations: Violation[] = [];
   const orderMap = orderById(orders);
   const vehicleMap = vehicleById(vehicles);
+
+  // Mirror the solver's safeguard: an empty/missing profile falls back to
+  // DEFAULT_DIMENSIONS = [WEIGHT, VOLUME] (profile-schema/resolve.ts).
+  const activeDimensions = new Set<string>(
+    config.profile?.activeDimensions?.length
+      ? config.profile.activeDimensions
+      : ["WEIGHT", "VOLUME"],
+  );
+  const severityFor = (dimension: string): ViolationSeverity =>
+    activeDimensions.has(dimension) ? "HARD" : "INFO";
 
   for (const route of plan.routes) {
     const vehicle = vehicleMap.get(route.vehicleId);
@@ -29,7 +51,7 @@ export const checkCapacity: VerifierFn = ({ orders, vehicles, plan }) => {
     if (vehicle.maxWeight > 0 && totalWeight > vehicle.maxWeight) {
       violations.push({
         code: "CAPACITY_EXCEEDED_WEIGHT",
-        severity: "HARD",
+        severity: severityFor("WEIGHT"),
         vehicleId: route.vehicleId,
         vehicleIdentifier: route.vehicleIdentifier,
         expected: `<= ${vehicle.maxWeight}`,
@@ -40,7 +62,7 @@ export const checkCapacity: VerifierFn = ({ orders, vehicles, plan }) => {
     if (vehicle.maxVolume > 0 && totalVolume > vehicle.maxVolume) {
       violations.push({
         code: "CAPACITY_EXCEEDED_VOLUME",
-        severity: "HARD",
+        severity: severityFor("VOLUME"),
         vehicleId: route.vehicleId,
         vehicleIdentifier: route.vehicleIdentifier,
         expected: `<= ${vehicle.maxVolume}`,
@@ -55,7 +77,7 @@ export const checkCapacity: VerifierFn = ({ orders, vehicles, plan }) => {
     ) {
       violations.push({
         code: "CAPACITY_EXCEEDED_VALUE",
-        severity: "HARD",
+        severity: severityFor("VALUE"),
         vehicleId: route.vehicleId,
         vehicleIdentifier: route.vehicleIdentifier,
         expected: `<= ${vehicle.maxValueCapacity}`,
@@ -70,7 +92,7 @@ export const checkCapacity: VerifierFn = ({ orders, vehicles, plan }) => {
     ) {
       violations.push({
         code: "CAPACITY_EXCEEDED_UNITS",
-        severity: "HARD",
+        severity: severityFor("UNITS"),
         vehicleId: route.vehicleId,
         vehicleIdentifier: route.vehicleIdentifier,
         expected: `<= ${vehicle.maxUnitsCapacity}`,

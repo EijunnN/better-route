@@ -209,13 +209,39 @@ export interface AssignmentMetrics {
   workloadBalance: number;
 }
 
+/**
+ * Telemetry for one VROOM call (a zone batch or the single global solve).
+ * Persisted with the plan so production can answer "how long do solves
+ * take?" and "which batch was slow?" without reproducing the run.
+ */
+export interface SolveBatchTelemetry {
+  zoneId?: string;
+  zoneName?: string;
+  /** Jobs sent to VROOM (after location grouping). */
+  orders: number;
+  vehicles: number;
+  /** Wall-clock time of the whole optimizeRoutes call, ms. */
+  computingTimeMs: number;
+  /** VROOM's own timing breakdown, ms. */
+  vroomComputingTimes?: {
+    loading?: number;
+    solving?: number;
+    routing?: number;
+  };
+}
+
 export interface PlanSummary {
   /** ISO 8601 — when the plan finished computing. */
   optimizedAt: string;
   objective: OptimizationObjective;
   processingTimeMs: number;
-  /** Optimizer engine that ran. Currently always "VROOM". */
+  /**
+   * Optimizer engine that ran. Always "VROOM" — the silent nearest-neighbor
+   * fallback was removed (SEMANTICS A11); a failed solve fails the job.
+   */
   engineUsed?: string;
+  /** One entry per VROOM call made during the run. */
+  solveTelemetry?: SolveBatchTelemetry[];
 }
 
 /**

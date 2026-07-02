@@ -1,6 +1,7 @@
 import { resolveProfileSchema } from "@/lib/orders/profile-schema";
 import { parseRequiredSkills } from "@/lib/orders/required-skills";
 import { type DayOfWeek, getDayOfWeek } from "../../geo/zone-utils";
+import { DEFAULT_MAX_ORDERS_PER_VEHICLE } from "../constants";
 import { updateJobProgress } from "../optimization-job";
 import type {
   AggregatedPlan,
@@ -18,8 +19,7 @@ import {
   loadTimeWindowPresetsMap,
   resolveTimeWindow,
 } from "./load-time-windows";
-import { parseHHmmToSeconds } from "./postprocess";
-import type { OrderGroupMap } from "./prepare";
+import { setPartialResult } from "./partial-results";
 import { aggregatePlan } from "./stages/aggregate-plan";
 import { assignDrivers } from "./stages/assign-drivers";
 import { loadInputs } from "./stages/load-inputs";
@@ -109,7 +109,7 @@ export async function runOptimization(
       };
       // The cancelled path keeps `verification` undefined; cancelJob treats
       // partials as informational only and never persists them as confirmed.
-      globalThis.__partialOptimizationResult = partialPlan;
+      setPartialResult(jobId || input.configurationId, partialPlan);
       throw new Error("Optimization cancelled by user");
     }
   };
@@ -242,21 +242,10 @@ export async function runOptimization(
     };
   }
 
-  // Helper: calculate waiting time in seconds if vehicle arrives before time window.
-  // Returns undefined when no waiting is needed (vehicle is on time or late).
-  function calculateWaitingSeconds(
-    arrivalSeconds: number,
-    orderId: string,
-  ): number | undefined {
-    const details = orderDetailsMap.get(orderId);
-    if (!details?.timeWindowStart) return undefined;
-    const twStart = parseHHmmToSeconds(String(details.timeWindowStart));
-    if (twStart === null || arrivalSeconds >= twStart) return undefined;
-    return twStart - arrivalSeconds;
-  }
-
   // === Engine ===
-  // VROOM is the only supported engine after the PyVRP removal.
+  // VROOM is the only engine: the silent nearest-neighbor fallback was
+  // removed (SEMANTICS A11) — a failed solve now fails the job loudly, so
+  // this label is honest by construction.
   const engineUsed = "VROOM";
 
   // Prepare vehicles with zone assignments
@@ -268,7 +257,7 @@ export async function runOptimization(
     volumeCapacity: vehicle.volumeCapacity,
     maxValueCapacity: vehicle.maxValueCapacity,
     maxUnitsCapacity: vehicle.maxUnitsCapacity,
-    maxOrders: vehicle.maxOrders ?? 30,
+    maxOrders: vehicle.maxOrders ?? DEFAULT_MAX_ORDERS_PER_VEHICLE,
     originLatitude: vehicle.originLatitude,
     originLongitude: vehicle.originLongitude,
     workdayStart: vehicle.workdayStart,
@@ -338,9 +327,6 @@ export async function runOptimization(
   // Get groupSameLocation setting from preset (preset comes from loadInputs).
   const groupSameLocation = preset?.groupSameLocation ?? true;
 
-  // Global map to track grouped orders for ungrouping later
-  const _globalGroupMap: OrderGroupMap = new Map();
-
   // Load company optimization profile for dynamic capacity mapping
   // Resolve the unified ProfileSchema for this company (capacity dimensions,
   // priority mapping, custom field defs, TW presets — one round trip).
@@ -357,7 +343,9 @@ export async function runOptimization(
     balanceVisits: preset?.balanceVisits ?? false,
     maxDistanceKm: preset?.maxDistanceKm ?? undefined, // undefined = no limit
     maxTravelTimeMinutes: undefined, // reserved for future use
-    trafficFactor: preset?.trafficFactor ?? 1.0,
+    // 0-100 scale, 50 = neutral (speed_factor 1.0). `?? 1.0` here used to
+    // make every travel time ~33% optimistic when the company had no preset.
+    trafficFactor: preset?.trafficFactor ?? 50,
     // Route end configuration
     routeEndMode:
       (preset?.routeEndMode as
@@ -422,7 +410,7 @@ export async function runOptimization(
     oneRoutePerVehicle,
     orderDetailsMap,
     buildTimeWindow,
-    calculateWaitingSeconds,
+    signal,
     onRouteAdded: (allRoutes) => {
       partialRawRoutes = [...allRoutes];
     },
@@ -467,6 +455,7 @@ export async function runOptimization(
     warnings: optimizationWarnings,
     startTime,
     engineUsed,
+    solveTelemetry: solveResult.telemetry,
     objective: config.objective as "DISTANCE" | "TIME" | "BALANCED",
     depot: {
       latitude: parseFloat(config.depotLatitude),
@@ -523,6 +512,11 @@ export async function runOptimization(
       objective: vroomConfig.objective,
       maxDistanceKm: vroomConfig.maxDistanceKm ?? null,
       maxTravelTimeMinutes: vroomConfig.maxTravelTimeMinutes ?? null,
+      // The verifier must judge with the same rules the solver ran with:
+      // flex widens windows ±30 min (SEMANTICS A1) and the profile decides
+      // which capacity dimensions are HARD (SEMANTICS A3).
+      flexibleTimeWindows: vroomConfig.flexibleTimeWindows ?? false,
+      profile: companyProfile,
     },
   });
 

@@ -10,6 +10,9 @@ export type { ViolationSeverity };
 export type ViolationCode =
   | "TIME_WINDOW_VIOLATED"
   | "TIME_WINDOW_MISSING_ON_OUTPUT"
+  // Window the solver DROPPED (single edge, invalid format, start > end) —
+  // never a constraint for VROOM, surfaced as data-quality signal (A7).
+  | "TIME_WINDOW_MALFORMED"
   | "VEHICLE_WORKDAY_EXCEEDED"
   | "SKILL_MISSING"
   | "CAPACITY_EXCEEDED_WEIGHT"

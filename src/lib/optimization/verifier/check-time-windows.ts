@@ -1,22 +1,13 @@
+import { FLEX_TIME_WINDOW_TOLERANCE_SECONDS } from "../constants";
+import { resolveTimeWindowEdges } from "../time-window-policy";
 import type { VerifierFn, Violation } from "./types";
 import {
-  hhmmToSeconds,
   normalizeArrivalSeconds,
   orderById,
   secondsToHHMM,
   stopArrivalSeconds,
   vehicleById,
 } from "./utils";
-
-/**
- * When config.flexibleTimeWindows is true, VROOM widens order time windows
- * by ±30 min before solving. The verifier must match that or it will report
- * false-positive HARD violations for stops the solver correctly placed
- * inside the extended window.
- *
- * Kept in sync with vroom-optimizer.ts (timeWindowTolerance).
- */
-const FLEX_TOLERANCE_SEC = 30 * 60;
 
 /**
  * For each stop with a defined order time-window, verify arrival is inside the window.
@@ -35,12 +26,22 @@ export const checkTimeWindows: VerifierFn = ({
   const violations: Violation[] = [];
   const orderMap = orderById(orders);
   const vehicleMap = vehicleById(vehicles);
-  const flex = config.flexibleTimeWindows ? FLEX_TOLERANCE_SEC : 0;
+  // Same constant the solver used to widen the windows (SEMANTICS A1).
+  const flex = config.flexibleTimeWindows
+    ? FLEX_TIME_WINDOW_TOLERANCE_SECONDS
+    : 0;
 
   for (const route of plan.routes) {
     const vehicle = vehicleMap.get(route.vehicleId);
-    const vWindowStart = hhmmToSeconds(vehicle?.timeWindowStart);
-    const vWindowEnd = hhmmToSeconds(vehicle?.timeWindowEnd);
+    // Same predicate the solver used (resolveTimeWindowEdges, A7): a
+    // malformed workday was never sent to VROOM, so there is nothing to
+    // verify against.
+    const vehicleWindow = resolveTimeWindowEdges(
+      vehicle?.timeWindowStart,
+      vehicle?.timeWindowEnd,
+    );
+    const vWindowStart = vehicleWindow ? vehicleWindow[0] : null;
+    const vWindowEnd = vehicleWindow ? vehicleWindow[1] : null;
 
     for (const stop of route.stops) {
       const order = orderMap.get(stop.orderId);
@@ -75,11 +76,31 @@ export const checkTimeWindows: VerifierFn = ({
       const waiting = stop.waitingTimeSeconds ?? 0;
       const serviceStart = arrival + waiting;
 
-      const orderStartRaw = hhmmToSeconds(order?.timeWindowStart);
-      const orderEndRaw = hhmmToSeconds(order?.timeWindowEnd);
+      // Shared policy with the solver (A7): a window with a single edge,
+      // invalid format ("24:00", garbage) or start > end was DROPPED by
+      // createVroomJob — VROOM never saw the constraint, so flagging a HARD
+      // violation against it is a false positive. Surface it as INFO so the
+      // data-quality problem is still visible.
+      const orderWindow = resolveTimeWindowEdges(
+        order?.timeWindowStart,
+        order?.timeWindowEnd,
+      );
+      if (!orderWindow && (order?.timeWindowStart || order?.timeWindowEnd)) {
+        violations.push({
+          code: "TIME_WINDOW_MALFORMED",
+          severity: "INFO",
+          vehicleId: route.vehicleId,
+          vehicleIdentifier: route.vehicleIdentifier,
+          orderId: stop.orderId,
+          trackingId: stop.trackingId,
+          stopSequence: stop.sequence,
+          actual: `${order?.timeWindowStart ?? "—"}..${order?.timeWindowEnd ?? "—"}`,
+          message: `Order time window is malformed and was not applied by the solver`,
+        });
+      }
       // Widen by flex if the caller asked the solver to accept ±30 min.
-      const orderStart = orderStartRaw !== null ? orderStartRaw - flex : null;
-      const orderEnd = orderEndRaw !== null ? orderEndRaw + flex : null;
+      const orderStart = orderWindow ? orderWindow[0] - flex : null;
+      const orderEnd = orderWindow ? orderWindow[1] + flex : null;
 
       if (orderStart !== null && serviceStart < orderStart - 60) {
         violations.push({

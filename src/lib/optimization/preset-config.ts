@@ -71,7 +71,10 @@ export function buildVroomConfigFromPreset(opts: {
     balanceVisits: preset?.balanceVisits ?? false,
     maxDistanceKm: preset?.maxDistanceKm ?? undefined,
     maxTravelTimeMinutes: undefined,
-    trafficFactor: preset?.trafficFactor ?? 1.0,
+    // trafficFactor is a 0-100 scale (DB default 50 = neutral). The old
+    // `?? 1.0` default produced speed_factor 1.49 (~33% optimistic ETAs)
+    // whenever no preset existed.
+    trafficFactor: preset?.trafficFactor ?? 50,
     routeEndMode:
       (preset?.routeEndMode as OptimizationConfig["routeEndMode"]) ??
       "DRIVER_ORIGIN",

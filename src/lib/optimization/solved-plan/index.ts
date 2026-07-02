@@ -29,6 +29,7 @@ export type {
   PlanLevelMetrics,
   PlanSummary,
   RawSolvedRoute,
+  SolveBatchTelemetry,
   SolvedStop,
   UnassignedOrderRecord,
   VehicleWithoutRoute,

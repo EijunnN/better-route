@@ -32,9 +32,11 @@ services:
       - "5001:5000"
     volumes:
       - ./docker/osrm:/data
-    # --max-table-size: Max coordinates for distance matrix (default ~100)
-    # Set to 1000 to support 300+ delivery points
-    command: osrm-routed --algorithm mld --max-table-size 1000 /data/peru-latest.osrm
+    # --max-table-size: Max coordinates for distance matrix (default ~100).
+    # Must be >= VROOM's maxlocations (docker/vroom/config.yml: 5000) — if OSRM
+    # rejects the table, VROOM returns code 3 and the whole solve fails. A
+    # 1000+ order plan without zones needs the full matrix in one request.
+    command: osrm-routed --algorithm mld --max-table-size 5000 /data/peru-latest.osrm
     profiles:
       - routing
 

@@ -10,13 +10,21 @@
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import type { OrderGroupMap } from "@/lib/optimization/optimization-runner/prepare";
+import { aggregatePlan } from "@/lib/optimization/optimization-runner/stages/aggregate-plan";
+import {
+  type BuildStopHelpers,
+  buildRawSolvedRoute,
+  type VehicleForSolve,
+} from "@/lib/optimization/optimization-runner/stages/solve-batches";
 import type {
-  AggregatedPlan,
   AssignedSolvedRoute,
-  SolvedStop,
   VerificationReport,
 } from "@/lib/optimization/solved-plan";
-import { secondsToHHMM, verify } from "@/lib/optimization/verifier";
+import {
+  type RunnerVehicleInput,
+  verifyPlan,
+} from "@/lib/optimization/verifier";
 import {
   type OrderForOptimization,
   type VehicleForOptimization,
@@ -111,100 +119,68 @@ function toVroomConfig(c: Scenario["config"]): VroomConfig {
   };
 }
 
-// ─── Conversion: VROOM output → AggregatedPlan ─────────────────────────
+// ─── Conversion: VROOM output → VerifiedPlan (production path) ─────────
 
 /**
- * The routing-quality harness doesn't run the full runner pipeline, so
- * driver assignment is a stub: every route gets a synthetic perfect
- * assignment. The verifier only consumes assignmentQuality for the
- * driver-level checks, which the harness deliberately ignores.
+ * Vehicle in the shape `buildRawSolvedRoute` expects (the runner's
+ * VehicleForSolve, which mirrors the DB row).
  */
-function toAssignedRoute(
-  vroomRoute: Awaited<ReturnType<typeof vroomOptimizeRoutes>>["routes"][number],
-): AssignedSolvedRoute {
-  const stops: SolvedStop[] = vroomRoute.stops.map((s) => ({
-    orderId: s.orderId,
-    trackingId: s.trackingId,
-    sequence: s.sequence,
-    address: s.address,
-    latitude: s.latitude,
-    longitude: s.longitude,
-    estimatedArrival:
-      s.arrivalTime !== undefined ? secondsToHHMM(s.arrivalTime) : undefined,
-    waitingTimeSeconds: s.waitingTime,
-  }));
-
+function toVehicleForSolve(v: Scenario["vehicles"][number]): VehicleForSolve {
   return {
-    routeId: `route-${vroomRoute.vehicleId}`,
-    vehicleId: vroomRoute.vehicleId,
-    vehicleIdentifier: vroomRoute.vehiclePlate,
-    stops,
-    totalDistance: vroomRoute.totalDistance,
-    totalDuration: vroomRoute.totalDuration,
-    totalServiceTime: vroomRoute.totalServiceTime,
-    totalTravelTime: vroomRoute.totalTravelTime,
-    capacityUsed: {
-      WEIGHT: vroomRoute.totalWeight,
-      VOLUME: vroomRoute.totalVolume,
-    },
-    utilizationPercentage: 0,
-    timeWindowViolations: 0,
-    geometry: vroomRoute.geometry,
-    driverId: "harness-driver",
-    driverName: "Harness Driver",
-    assignmentQuality: { score: 100, warnings: [], errors: [] },
+    id: v.id,
+    plate: v.identifier,
+    weightCapacity: v.maxWeight,
+    volumeCapacity: v.maxVolume,
+    maxValueCapacity: v.maxValueCapacity ?? null,
+    maxUnitsCapacity: v.maxUnitsCapacity ?? null,
+    maxOrders: v.maxOrders ?? null,
+    originLatitude:
+      v.originLatitude !== undefined ? String(v.originLatitude) : null,
+    originLongitude:
+      v.originLongitude !== undefined ? String(v.originLongitude) : null,
+    workdayStart: v.timeWindowStart ?? null,
+    workdayEnd: v.timeWindowEnd ?? null,
+    hasBreakTime: v.hasBreakTime ?? null,
+    breakDuration: v.breakDuration ?? null,
+    breakTimeStart: v.breakTimeStart ?? null,
+    breakTimeEnd: v.breakTimeEnd ?? null,
   };
 }
 
-function toAggregatedPlan(
-  vroomOutput: Awaited<ReturnType<typeof vroomOptimizeRoutes>>,
-  startedAt: number,
-  config: Scenario["config"],
-): AggregatedPlan {
-  const routes = vroomOutput.routes.map(toAssignedRoute);
-  const totalStops = routes.reduce((s, r) => s + r.stops.length, 0);
+function toRunnerVehicle(v: Scenario["vehicles"][number]): RunnerVehicleInput {
   return {
-    routes,
-    unassignedOrders: vroomOutput.unassigned.map((u) => ({
-      orderId: u.orderId,
-      trackingId: u.trackingId,
-      reason: u.reason,
-    })),
-    driversWithoutRoutes: [],
-    vehiclesWithoutRoutes: [],
-    metrics: {
-      totalRoutes: routes.length,
-      totalStops,
-      totalDistance: vroomOutput.metrics.totalDistance,
-      totalDuration: vroomOutput.metrics.totalDuration,
-      utilizationRate: 0,
-      timeWindowComplianceRate: 100,
-    },
-    assignmentMetrics: {
-      totalAssignments: routes.length,
-      assignmentsWithWarnings: 0,
-      assignmentsWithErrors: 0,
-      averageScore: 100,
-      skillCoverage: 100,
-      licenseCompliance: 100,
-      fleetAlignment: 100,
-      workloadBalance: 100,
-    },
-    summary: {
-      optimizedAt: new Date().toISOString(),
-      objective: config.objective,
-      processingTimeMs: Date.now() - startedAt,
-      engineUsed: SOLVER_NAME,
-    },
-    depot: {
-      latitude: config.depot.latitude,
-      longitude: config.depot.longitude,
-    },
+    id: v.id,
+    plate: v.identifier,
+    maxWeight: v.maxWeight,
+    maxVolume: v.maxVolume,
+    maxValueCapacity: v.maxValueCapacity,
+    maxUnitsCapacity: v.maxUnitsCapacity,
+    maxOrders: v.maxOrders,
+    originLatitude: v.originLatitude,
+    originLongitude: v.originLongitude,
+    skills: v.skills,
+    workdayStart: v.timeWindowStart ?? null,
+    workdayEnd: v.timeWindowEnd ?? null,
+    hasBreakTime: v.hasBreakTime,
+    breakDuration: v.breakDuration,
+    breakTimeStart: v.breakTimeStart,
+    breakTimeEnd: v.breakTimeEnd,
   };
 }
 
 // ─── Scenario runner ──────────────────────────────────────────────────
 
+/**
+ * Runs the scenario through the SAME materialisation + verification code
+ * production uses (SEMANTICS A10): `buildRawSolvedRoute` from solve-batches,
+ * the real `aggregatePlan`, and `verifyPlan` with a RunnerConfigInput built
+ * exactly like optimization-runner/run.ts builds it.
+ *
+ * Deliberate exclusion: driver assignment stays a synthetic stub (the
+ * harness has no drivers), so DRIVER_* checks always see a perfect
+ * assignment. Everything else — arrivals, waiting, breaks, flex windows,
+ * profile dimensions — flows through production code.
+ */
 async function runScenario(scenario: Scenario): Promise<RunEntry> {
   const start = Date.now();
   try {
@@ -213,13 +189,86 @@ async function runScenario(scenario: Scenario): Promise<RunEntry> {
       scenario.vehicles.map(toVroomVehicle),
       toVroomConfig(scenario.config),
     );
-    const plan = toAggregatedPlan(vroomOutput, start, scenario.config);
-    const report = verify({
-      orders: scenario.orders,
-      vehicles: scenario.vehicles,
-      config: scenario.config,
-      plan,
+
+    // Materialise routes with the runner's own builder.
+    const ordersById = new Map(scenario.orders.map((o) => [o.id, o]));
+    const helpers: BuildStopHelpers = {
+      globalGroupMap: new Map() as OrderGroupMap,
+      groupSameLocation: false,
+      buildTimeWindow: (orderId: string) => {
+        const o = ordersById.get(orderId);
+        return o?.timeWindowStart && o?.timeWindowEnd
+          ? { start: o.timeWindowStart, end: o.timeWindowEnd }
+          : undefined;
+      },
+    };
+    const vehiclesById = new Map(scenario.vehicles.map((v) => [v.id, v]));
+    const assigned: AssignedSolvedRoute[] = vroomOutput.routes.map((r) => {
+      const vehicle = vehiclesById.get(r.vehicleId);
+      if (!vehicle) throw new Error(`Unknown vehicle in route: ${r.vehicleId}`);
+      const raw = buildRawSolvedRoute({
+        vehicle: toVehicleForSolve(vehicle),
+        vroomRoute: r,
+        zoneId: undefined,
+        helpers,
+      });
+      return {
+        ...raw,
+        driverId: "harness-driver",
+        driverName: "Harness Driver",
+        assignmentQuality: { score: 100, warnings: [], errors: [] },
+      };
     });
+
+    const aggregated = await aggregatePlan({
+      routes: assigned,
+      unassignedOrders: vroomOutput.unassigned.map((u) => ({
+        orderId: u.orderId,
+        trackingId: u.trackingId,
+        reason: u.reason,
+      })),
+      selectedDrivers: [],
+      driverVehicleOriginMap: new Map(),
+      vehiclesForFallback: [],
+      warnings: [],
+      startTime: start,
+      engineUsed: SOLVER_NAME,
+      solveTelemetry: [
+        {
+          orders: scenario.orders.length,
+          vehicles: scenario.vehicles.length,
+          computingTimeMs: vroomOutput.metrics.computingTimeMs,
+          vroomComputingTimes: vroomOutput.metrics.vroomComputingTimes,
+        },
+      ],
+      objective: scenario.config.objective,
+      depot: {
+        latitude: scenario.config.depot.latitude,
+        longitude: scenario.config.depot.longitude,
+      },
+    });
+
+    // Verify through the production gate, config built like run.ts does.
+    const verified = verifyPlan({
+      plan: aggregated,
+      orders: scenario.orders,
+      vehicles: scenario.vehicles.map(toRunnerVehicle),
+      config: {
+        depot: {
+          latitude: scenario.config.depot.latitude,
+          longitude: scenario.config.depot.longitude,
+          timeWindowStart: scenario.config.depot.timeWindowStart ?? null,
+          timeWindowEnd: scenario.config.depot.timeWindowEnd ?? null,
+        },
+        objective: scenario.config.objective,
+        maxDistanceKm: scenario.config.maxDistanceKm ?? null,
+        maxTravelTimeMinutes: scenario.config.maxTravelTimeMinutes ?? null,
+        flexibleTimeWindows: scenario.config.flexibleTimeWindows ?? false,
+        profile: scenario.config.profile ?? null,
+      },
+    });
+    const report = verified.verification;
+
     const expectationFailures = evaluateExpectations(scenario.expected, report);
     return {
       scenario: scenario.name,

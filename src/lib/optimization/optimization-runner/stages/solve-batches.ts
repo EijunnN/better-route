@@ -14,8 +14,10 @@ import {
   type DayOfWeek,
   type ZoneData,
 } from "../../../geo/zone-utils";
+import { DEFAULT_MAX_ORDERS_PER_VEHICLE } from "../../constants";
 import type {
   RawSolvedRoute,
+  SolveBatchTelemetry,
   SolvedStop,
   UnassignedOrderRecord,
 } from "../../solved-plan";
@@ -102,10 +104,8 @@ export interface SolveBatchesArgs {
   buildTimeWindow: (
     orderId: string,
   ) => { start: string; end: string } | undefined;
-  calculateWaitingSeconds: (
-    arrivalSeconds: number,
-    orderId: string,
-  ) => number | undefined;
+  /** Aborts the in-flight VROOM request when the job is cancelled. */
+  signal?: AbortSignal;
   /** Fired after each route is appended — lets the caller snapshot for cancel. */
   onRouteAdded?: (allRoutes: RawSolvedRoute[]) => void;
   /** Fired after each batch finishes; lets the caller update job progress. */
@@ -117,6 +117,8 @@ export interface SolveBatchesResult {
   rawRoutes: RawSolvedRoute[];
   unassignedOrders: UnassignedOrderRecord[];
   warnings: string[];
+  /** One entry per VROOM call — persisted with the plan summary. */
+  telemetry: SolveBatchTelemetry[];
 }
 
 // ─── VROOM input adapters ─────────────────────────────────────────────
@@ -171,7 +173,7 @@ function toVroomVehicle(
     maxVolume: vehicle.volumeCapacity ?? 100,
     maxValueCapacity: vehicle.maxValueCapacity ?? undefined,
     maxUnitsCapacity: vehicle.maxUnitsCapacity ?? undefined,
-    maxOrders: vehicle.maxOrders ?? 30,
+    maxOrders: vehicle.maxOrders ?? DEFAULT_MAX_ORDERS_PER_VEHICLE,
     originLatitude: vehicle.originLatitude
       ? parseFloat(vehicle.originLatitude)
       : undefined,
@@ -190,11 +192,10 @@ function toVroomVehicle(
 
 // ─── VROOM output → SolvedStop / RawSolvedRoute ───────────────────────
 
-interface BuildStopHelpers {
+export interface BuildStopHelpers {
   globalGroupMap: OrderGroupMap;
   groupSameLocation: boolean;
   buildTimeWindow: SolveBatchesArgs["buildTimeWindow"];
-  calculateWaitingSeconds: SolveBatchesArgs["calculateWaitingSeconds"];
 }
 
 interface VroomStopShape {
@@ -204,12 +205,20 @@ interface VroomStopShape {
   latitude: number;
   longitude: number;
   arrivalTime?: number;
+  /** VROOM's real waiting time at the stop, seconds (SEMANTICS A2). */
+  waitingTime?: number;
 }
 
 /**
  * Materialise SolvedStops from a VROOM stop, expanding grouped orders
  * back into individual rows when grouping was enabled but the caller wants
  * each order represented separately.
+ *
+ * `arrivalTime`/`waitingTime` come straight from VROOM. The old code
+ * recomputed waiting as `max(0, twStart - arrival)` — which silently pinned
+ * serviceStart to the window open and killed the verifier's "service before
+ * window opens" branch (SEMANTICS A2). Guards use `!== undefined`: an
+ * arrival of 0 (midnight) is valid.
  */
 function buildSolvedStops(
   vroomStops: VroomStopShape[],
@@ -218,6 +227,10 @@ function buildSolvedStops(
   const result: SolvedStop[] = [];
   let sequence = 1;
   for (const stop of vroomStops) {
+    const estimatedArrival =
+      stop.arrivalTime !== undefined
+        ? formatArrivalTime(stop.arrivalTime)
+        : undefined;
     const grouped = helpers.globalGroupMap.get(stop.orderId);
     if (grouped && grouped.orderIds.length > 1) {
       if (helpers.groupSameLocation) {
@@ -229,21 +242,16 @@ function buildSolvedStops(
           address: stop.address,
           latitude: stop.latitude,
           longitude: stop.longitude,
-          estimatedArrival: stop.arrivalTime
-            ? formatArrivalTime(stop.arrivalTime)
-            : undefined,
-          waitingTimeSeconds: stop.arrivalTime
-            ? helpers.calculateWaitingSeconds(
-                stop.arrivalTime,
-                grouped.orderIds[0],
-              )
-            : undefined,
+          estimatedArrival,
+          waitingTimeSeconds: stop.waitingTime,
           timeWindow: helpers.buildTimeWindow(grouped.orderIds[0]),
           groupedOrderIds: grouped.orderIds,
           groupedTrackingIds: grouped.trackingIds,
         });
       } else {
-        // Expand into per-order stops at the same location
+        // Expand into per-order stops at the same location. Groups share
+        // one physical visit (same coords + same window), so the arrival
+        // and waiting apply to every expanded row.
         for (let i = 0; i < grouped.orderIds.length; i++) {
           result.push({
             orderId: grouped.orderIds[i],
@@ -252,15 +260,8 @@ function buildSolvedStops(
             address: stop.address,
             latitude: stop.latitude,
             longitude: stop.longitude,
-            estimatedArrival: stop.arrivalTime
-              ? formatArrivalTime(stop.arrivalTime)
-              : undefined,
-            waitingTimeSeconds: stop.arrivalTime
-              ? helpers.calculateWaitingSeconds(
-                  stop.arrivalTime,
-                  grouped.orderIds[i],
-                )
-              : undefined,
+            estimatedArrival,
+            waitingTimeSeconds: stop.waitingTime,
             timeWindow: helpers.buildTimeWindow(grouped.orderIds[i]),
           });
         }
@@ -273,12 +274,8 @@ function buildSolvedStops(
         address: stop.address,
         latitude: stop.latitude,
         longitude: stop.longitude,
-        estimatedArrival: stop.arrivalTime
-          ? formatArrivalTime(stop.arrivalTime)
-          : undefined,
-        waitingTimeSeconds: stop.arrivalTime
-          ? helpers.calculateWaitingSeconds(stop.arrivalTime, stop.orderId)
-          : undefined,
+        estimatedArrival,
+        waitingTimeSeconds: stop.waitingTime,
         timeWindow: helpers.buildTimeWindow(stop.orderId),
       });
     }
@@ -286,7 +283,7 @@ function buildSolvedStops(
   return result;
 }
 
-interface BuildRouteArgs {
+export interface BuildRouteArgs {
   vehicle: VehicleForSolve;
   vroomRoute: {
     vehicleId: string;
@@ -304,7 +301,12 @@ interface BuildRouteArgs {
   helpers: BuildStopHelpers;
 }
 
-function buildRawSolvedRoute({
+/**
+ * Exported so the routing-quality harness materialises routes with the SAME
+ * code production runs (SEMANTICS A10) — a harness-only copy is exactly how
+ * the golden suite went green while prod diverged.
+ */
+export function buildRawSolvedRoute({
   vehicle,
   vroomRoute,
   zoneId,
@@ -357,7 +359,7 @@ export async function solveBatches(
     oneRoutePerVehicle,
     orderDetailsMap,
     buildTimeWindow,
-    calculateWaitingSeconds,
+    signal,
     onRouteAdded,
     onBatchProgress,
     checkAbort,
@@ -366,6 +368,7 @@ export async function solveBatches(
   const rawRoutes: RawSolvedRoute[] = [];
   const unassignedOrders: UnassignedOrderRecord[] = [];
   const warnings: string[] = [];
+  const telemetry: SolveBatchTelemetry[] = [];
   const globalGroupMap: OrderGroupMap = new Map();
   const vehiclesWithRoutes = new Set<string>();
   const selectedVehiclesById = new Map(selectedVehicles.map((v) => [v.id, v]));
@@ -373,7 +376,6 @@ export async function solveBatches(
     globalGroupMap,
     groupSameLocation,
     buildTimeWindow,
-    calculateWaitingSeconds,
   };
 
   const hasZones = zonesData.length > 0;
@@ -469,7 +471,16 @@ export async function solveBatches(
         batchOrdersForVroom,
         batchVehiclesForVroom,
         vroomConfig,
+        signal,
       );
+      telemetry.push({
+        zoneId: vroomZoneId,
+        zoneName: batch.zoneName,
+        orders: batchOrdersForVroom.length,
+        vehicles: batchVehiclesForVroom.length,
+        computingTimeMs: batchResult.metrics.computingTimeMs,
+        vroomComputingTimes: batchResult.metrics.vroomComputingTimes,
+      });
 
       // Expand batch unassigned (handle grouped orders)
       for (const unassigned of batchResult.unassigned) {
@@ -545,7 +556,14 @@ export async function solveBatches(
       ordersForVroom,
       vehiclesForVroom,
       vroomConfig,
+      signal,
     );
+    telemetry.push({
+      orders: ordersForVroom.length,
+      vehicles: vehiclesForVroom.length,
+      computingTimeMs: vroomResult.metrics.computingTimeMs,
+      vroomComputingTimes: vroomResult.metrics.vroomComputingTimes,
+    });
 
     // Expand unassigned (handle grouped)
     for (const unassigned of vroomResult.unassigned) {
@@ -589,5 +607,5 @@ export async function solveBatches(
     }
   }
 
-  return { rawRoutes, unassignedOrders, warnings };
+  return { rawRoutes, unassignedOrders, warnings, telemetry };
 }
