@@ -275,6 +275,11 @@ Caveat: `getCacheStats()` calls `isRedisAvailable()` every request. If env is un
 
 ### `warmupCache(companyId)` — `cache.ts:922-931`
 
+> ✅ **RESOLVED (option A, applied post-audit).** `warmupCache()` and the
+> endpoint's warmup action were deleted — see the header comment in
+> `src/app/api/admin/cache/route.ts`. The analysis below is kept as the
+> record of why.
+
 ```ts
 export async function warmupCache(companyId: string): Promise<void> {
   console.log(`[Cache] Warmed up cache for company ${companyId}`);
@@ -511,7 +516,9 @@ export async function createOrder(input: NewOrder, companyId: string) {
 
 Then every `/api/orders*` route calls the repository function; invalidation is guaranteed.
 
-**Phase 3 — implement `warmupCache` with registry pattern** (see D6).
+**Phase 3 — ~~implement `warmupCache` with registry pattern~~ moot.**
+Option A was applied instead: `warmupCache` and the endpoint's warmup
+action were deleted (see D6).
 
 **Phase 4 — fix `cacheGetOrSet`** to guard against thundering herd with a per-key Redis lock (see D4).
 

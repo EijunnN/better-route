@@ -6,8 +6,10 @@
 > comparten una semántica que ahora vive en **módulos compartidos**
 > (`constants.ts`, `time-window-policy.ts`) además de este doc. En v2 se
 > resolvieron las asimetrías críticas de v1 (A1, A2, A3, A5, A6, A7, A10,
-> A11 — ver §4) y se eliminó el fallback nearest-neighbor. Tocar cualquiera
-> de los dos lados ⇒ leer esto primero (rúbrica "Verifier ↔ Solver").
+> A11 — ver §4) y se eliminó el fallback nearest-neighbor; el cierre
+> 2026-07-02 resolvió A15 (driver errors estructurados) y A12 (eliminado).
+> Tocar cualquiera de los dos lados ⇒ leer esto primero (rúbrica
+> "Verifier ↔ Solver").
 
 ## 0. Cambios estructurales v2 (2026-07-02)
 
@@ -68,11 +70,20 @@
   verifier ensancha con la MISMA constante
   (`FLEX_TIME_WINDOW_TOLERANCE_*` en `constants.ts`). El flag viaja en
   `RunnerConfigInput.flexibleTimeWindows` — A1 resuelta.
-- `strictness HARD/SOFT` de los presets **NO lo consume ni el solver ni el
-  verifier** hoy (solo la asignación manual). Sin cambios en v2.
-- Solo el verifier emite violaciones. `VroomRoute.violations` sigue sin
-  leerse, pero `timeWindowViolations`/`timeWindowComplianceRate` ahora las
-  recomputa `verifyPlan` desde el reporte (§0).
+- `strictness HARD/SOFT` de los presets/pedidos: **decisión 2026-07-02** —
+  strictness aplica SOLO a la asignación manual
+  (`validateTimeWindowStrictness`); ni el solver ni el verifier lo consumen.
+  Ambos tratan toda ventana válida como restricción HARD, con la única
+  tolerancia del ensanche FLEX (±30 min) cuando `flexibleTimeWindows` está
+  activo. Un doc que prometa "SOFT = penalización proporcional en el
+  optimizador" está stale (corregido en
+  `docs/configuracion/ventanas-de-tiempo.md`).
+- Solo el verifier emite violaciones. `VroomRoute.violations` **no se lee a
+  propósito** (decisión 2026-07-02): las métricas de violaciones se
+  recomputan SIEMPRE desde el verifier (v2) —
+  `timeWindowViolations`/`timeWindowComplianceRate` salen de `verifyPlan`
+  (§0) — y la señal nativa de VROOM se descarta para que exista una única
+  fuente de verdad (ver A16 en §4).
 
 ## 3. Catálogo de checks del verifier
 
@@ -91,10 +102,9 @@
 | capacity | CAPACITY_EXCEEDED_{WEIGHT,VOLUME,VALUE,UNITS} | **HARD si la dimensión está en `profile.activeDimensions`, INFO si no** (A3 resuelta) | Σ cruda > cap; fallback [WEIGHT, VOLUME] espejo del solver |
 | capacity | MAX_ORDERS_EXCEEDED | HARD | stops > maxOrders (>0) |
 | priority | PRIORITY_INVERSION | SOFT | unassigned con orderType URGENT o priority cruda ≥90 (A9) |
-| travel-limits | MAX_DISTANCE_EXCEEDED | HARD | km > maxDistanceKm + 0.5; ahora valida distancia REAL (VROOM enforce nativo, sin trim estimado) |
-| travel-limits | MAX_TRAVEL_TIME_EXCEEDED | HARD | dead code en prod (run.ts fija `maxTravelTimeMinutes: undefined` — A12) |
+| travel-limits | MAX_DISTANCE_EXCEEDED | HARD | km > maxDistanceKm + 0.5; ahora valida distancia REAL (VROOM enforce nativo, sin trim estimado). `maxTravelTimeMinutes` fue **eliminado** (A12) |
 | unassigned | UNASSIGNED_ORDER | INFO | una por unassigned |
-| assignments | ROUTE_WITHOUT_DRIVER + DRIVER_* | HARD/SOFT | solo vía `verifyPlan`; clasifica por **substring** de mensajes (frágil — pendiente) |
+| assignments | ROUTE_WITHOUT_DRIVER + DRIVER_* | HARD/SOFT | solo vía `verifyPlan`; clasifica por **código estructurado** (`DriverAssignmentError.code`, A15 resuelta) |
 
 ## 4. Registro de asimetrías
 
@@ -138,16 +148,36 @@ aceptada a propósito; **[FIX]** = pendiente.
 - **A11 RESUELTA** — el fallback nearest-neighbor fue **eliminado**. VROOM
   caído/timeout/error ⇒ el job falla con mensaje claro (`solveVRP`
   distingue timeout vs conexión). `usedVroom` ya no existe en el output.
-- **A12 [DOC] `maxTravelTimeMinutes` muerto en prod** (run.ts, "reserved
-  for future use").
+- **A12 RESUELTA (cerrada por eliminación, 2026-07-02)** —
+  `maxTravelTimeMinutes` estaba muerto en prod (run.ts lo fijaba
+  `undefined`, ningún preset ni escenario golden lo seteaba). Se eliminó de
+  punta a punta: config del solver (`OptimizationConfig`), opción
+  `maxTravelTime`/`max_travel_time` de vroom-client, el check
+  `MAX_TRAVEL_TIME_EXCEEDED` del verifier y los tipos
+  (`OptimizerConfig`, `RunnerConfigInput`). Si el límite de tiempo por ruta
+  vuelve como feature, entra como campo de preset + enforce nativo de VROOM
+  + check espejo, igual que `maxDistanceKm` (A6).
 - **A13 [DOC] Skills por id (solver) vs string (verifier)** — simétrico
   porque ambos parten de `parseRequiredSkills`; el skill-map del solver es
   por-solve desde v2 (antes global mutable de módulo).
 - **A14 [DOC] Razón de `unassigned` inferida** (solo weight/volume/skills)
   — el reason puede ser incorrecto (INFO).
-- **A15 [FIX] Clasificación de driver errors por substring** en
-  check-assignments (acoplamiento frágil a texto libre de
-  `validateDriverAssignment`) — pendiente de códigos estructurados.
+- **A15 RESUELTA (2026-07-02)** — los assignment errors son estructurados:
+  `validateDriverAssignment` y `calculateDriverScore` emiten
+  `DriverAssignmentError { code, message }`
+  (`src/lib/routing/assignment-errors.ts`; union: DRIVER_NOT_FOUND,
+  VEHICLE_NOT_FOUND, LICENSE_EXPIRED, LICENSE_EXPIRY_MISSING,
+  LICENSE_CATEGORY_MISMATCH, MISSING_SKILLS, DRIVER_UNAVAILABLE).
+  `checkDriverAssignments` clasifica con un switch total sobre el código —
+  cero parsing de strings; el `message` es solo para UI/logs. El shape
+  persistido (`AssignedSolvedRoute.assignmentQuality.errors`) y su Zod
+  boundary validan el enum.
+- **A16 [DOC] `VroomRoute.violations` no se lee** (decisión 2026-07-02) —
+  VROOM reporta violaciones nativas por ruta, pero el pipeline las descarta
+  a propósito: todas las métricas de violaciones se recomputan desde el
+  verifier (`verifyPlan`), que es la única fuente de verdad HARD/SOFT/INFO.
+  Leer ambas señales crearía dos verdades divergentes (la nativa no conoce
+  la política compartida de §2: flex, gracia ±60 s, ventanas malformadas).
 
 ## 5. Constantes compartidas (y dónde viven)
 
@@ -159,7 +189,6 @@ aceptada a propósito; **[FIX]** = pendiente.
 | Política de ventanas | ambos bordes + start ≤ end | **`time-window-policy.ts`** (única) | solver y verifier |
 | Gracia TW / jornada | ±60 s | inline en check-time-windows | |
 | Tolerancia distancia | +0.5 km | check-travel-limits | |
-| Tolerancia tiempo | +1 min | check-travel-limits | |
 | Break: duración/arranque | −60 s / ±60 s | check-break-time | |
 | `PRIORITY` umbral | ≥90 | check-priority | |
 | Costs por objetivo | TIME {3600,0} / DISTANCE {36,1200} / BALANCED {3600,120}; minimize fixed = 2·per_hour + 60·per_km | vroom-optimizer `buildVehicleCosts` | ratios asumen ~30 km/h urbano |

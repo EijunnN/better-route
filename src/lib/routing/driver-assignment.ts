@@ -10,6 +10,7 @@ import {
   vehicles,
 } from "@/db/schema";
 import { parseRequiredSkills } from "@/lib/orders/required-skills";
+import type { DriverAssignmentError } from "./assignment-errors";
 
 /**
  * Driver assignment quality score
@@ -26,7 +27,7 @@ export interface AssignmentScore {
     workload: number; // 0-100: Balanced workload
   };
   warnings: string[];
-  errors: string[];
+  errors: DriverAssignmentError[];
 }
 
 /**
@@ -298,12 +299,15 @@ async function calculateDriverScore(
   };
 
   const warnings: string[] = [];
-  const errors: string[] = [];
+  const errors: DriverAssignmentError[] = [];
 
   // 1. Check license validity
   const now = new Date();
   if (!driver.licenseExpiry) {
-    errors.push("No license expiry date");
+    errors.push({
+      code: "LICENSE_EXPIRY_MISSING",
+      message: "No license expiry date",
+    });
     factors.licenseValid = 0;
   } else {
     const licenseExpiry = new Date(driver.licenseExpiry);
@@ -312,7 +316,7 @@ async function calculateDriverScore(
     );
 
     if (daysUntilExpiry < 0) {
-      errors.push("License expired");
+      errors.push({ code: "LICENSE_EXPIRED", message: "License expired" });
       factors.licenseValid = 0;
     } else if (daysUntilExpiry <= config.maxDaysLicenseNearExpiry) {
       warnings.push(`License expires in ${daysUntilExpiry} days`);
@@ -326,7 +330,10 @@ async function calculateDriverScore(
 
   // 2. Check driver status
   if (driver.status === "UNAVAILABLE" || driver.status === "ABSENT") {
-    errors.push(`Driver is ${driver.status.toLowerCase()}`);
+    errors.push({
+      code: "DRIVER_UNAVAILABLE",
+      message: `Driver is ${driver.status.toLowerCase()}`,
+    });
     factors.availability = 0;
   } else if (driver.status === "COMPLETED") {
     factors.availability = 50; // Available but just completed a route
@@ -378,7 +385,10 @@ async function calculateDriverScore(
     }
 
     if (config.requireSkillsMatch && factors.skillsMatch === 0) {
-      errors.push("Missing required skills");
+      errors.push({
+        code: "MISSING_SKILLS",
+        message: "Missing required skills",
+      });
     }
   } else {
     factors.skillsMatch = 100; // No skills required
@@ -561,7 +571,7 @@ function getDayOfWeek(date: Date): string {
  */
 export interface AssignmentValidationResult {
   isValid: boolean;
-  errors: string[];
+  errors: DriverAssignmentError[];
   warnings: string[];
 }
 
@@ -571,7 +581,7 @@ export async function validateDriverAssignment(
   vehicleId: string,
   routeStops: Array<{ orderId: string; promisedDate?: Date | null }>,
 ): Promise<AssignmentValidationResult> {
-  const errors: string[] = [];
+  const errors: DriverAssignmentError[] = [];
   const warnings: string[] = [];
 
   // Get driver details (user with role CONDUCTOR)
@@ -594,7 +604,7 @@ export async function validateDriverAssignment(
   if (!driver) {
     return {
       isValid: false,
-      errors: ["Driver not found"],
+      errors: [{ code: "DRIVER_NOT_FOUND", message: "Driver not found" }],
       warnings: [],
     };
   }
@@ -607,7 +617,7 @@ export async function validateDriverAssignment(
   if (!vehicle) {
     return {
       isValid: false,
-      errors: ["Vehicle not found"],
+      errors: [{ code: "VEHICLE_NOT_FOUND", message: "Vehicle not found" }],
       warnings: [],
     };
   }
@@ -619,7 +629,10 @@ export async function validateDriverAssignment(
   } else {
     const licenseExpiry = new Date(driver.licenseExpiry);
     if (licenseExpiry < now) {
-      errors.push("Driver's license has expired");
+      errors.push({
+        code: "LICENSE_EXPIRED",
+        message: "Driver's license has expired",
+      });
     } else {
       const daysUntilExpiry = Math.ceil(
         (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
@@ -636,9 +649,10 @@ export async function validateDriverAssignment(
       .split(",")
       .map((c) => c.trim());
     if (!driverCategories.includes(vehicle.licenseRequired)) {
-      errors.push(
-        `Driver missing required license category: ${vehicle.licenseRequired}`,
-      );
+      errors.push({
+        code: "LICENSE_CATEGORY_MISMATCH",
+        message: `Driver missing required license category: ${vehicle.licenseRequired}`,
+      });
     }
   }
 
@@ -655,9 +669,10 @@ export async function validateDriverAssignment(
     );
 
     if (missingSkills.length > 0) {
-      errors.push(
-        `Driver missing required skills: ${missingSkills.join(", ")}`,
-      );
+      errors.push({
+        code: "MISSING_SKILLS",
+        message: `Driver missing required skills: ${missingSkills.join(", ")}`,
+      });
     }
   }
 
@@ -671,7 +686,10 @@ export async function validateDriverAssignment(
   // Check driver status
   const driverStatus = driver.driverStatus;
   if (driverStatus === "UNAVAILABLE" || driverStatus === "ABSENT") {
-    errors.push(`Driver is ${driverStatus.toLowerCase()}`);
+    errors.push({
+      code: "DRIVER_UNAVAILABLE",
+      message: `Driver is ${driverStatus.toLowerCase()}`,
+    });
   } else if (driverStatus !== "AVAILABLE" && driverStatus !== "COMPLETED") {
     warnings.push(`Driver status is ${driverStatus}`);
   }

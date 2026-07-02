@@ -1,0 +1,52 @@
+{
+  "contractVersion": 2,
+  "endpoint": "GET /api/mobile/driver/delivery-policy",
+  "status": 200,
+  "body": {
+    "data": {
+      "policy": {
+        "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+        "labelPending": "Pendiente",
+        "labelInProgress": "En progreso",
+        "labelCompleted": "Entregado",
+        "labelFailed": "No entregado",
+        "colorPending": "#6B7280",
+        "colorInProgress": "#3B82F6",
+        "colorCompleted": "#16A34A",
+        "colorFailed": "#DC4840",
+        "completedRequiresPhoto": true,
+        "completedRequiresSignature": false,
+        "completedRequiresNotes": false,
+        "failedRequiresPhoto": false,
+        "failedRequiresNotes": true,
+        "failureReasons": [
+          "Cliente ausente",
+          "Dirección incorrecta",
+          "Paquete dañado",
+          "Cliente rechazó",
+          "Zona insegura",
+          "Reprogramado",
+          "Otro"
+        ],
+        "createdAt": "2026-06-01T15:00:00.000Z",
+        "updatedAt": "2026-06-01T15:00:00.000Z"
+      },
+      "stateMachine": {
+        "states": ["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED"],
+        "transitions": {
+          "PENDING": ["IN_PROGRESS", "FAILED"],
+          "IN_PROGRESS": ["COMPLETED", "FAILED", "PENDING"],
+          "COMPLETED": [],
+          "FAILED": ["PENDING"]
+        }
+      },
+      "quickReplies": [
+        { "code": "ON_THE_WAY", "label": "Voy en camino" },
+        { "code": "ARRIVED", "label": "Llegué al punto" },
+        { "code": "CUSTOMER_ABSENT", "label": "Cliente ausente" },
+        { "code": "DELAYED", "label": "Me demoro unos minutos" },
+        { "code": "NEED_HELP", "label": "Necesito ayuda" }
+      ]
+    }
+  }
+}

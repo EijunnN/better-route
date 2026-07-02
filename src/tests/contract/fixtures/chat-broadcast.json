@@ -1,0 +1,6 @@
+{
+  "contractVersion": 2,
+  "endpoint": "POST /api/chat/broadcast",
+  "status": 200,
+  "body": { "ok": true, "reached": 4 }
+}

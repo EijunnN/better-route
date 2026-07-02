@@ -113,7 +113,7 @@ interface RouteData {
   assignmentQuality?: {
     score: number;
     warnings: string[];
-    errors: string[];
+    errors: Array<{ code: string; message: string }>;
   };
 }
 
@@ -531,12 +531,12 @@ export function DriverRouteDetail({
                 <div className="flex flex-wrap gap-1">
                   {route.assignmentQuality.errors.map((error) => (
                     <Badge
-                      key={error}
+                      key={`${error.code}-${error.message}`}
                       variant="destructive"
                       className="text-[10px]"
                     >
                       <AlertTriangle className="size-2.5 mr-0.5" />
-                      {error}
+                      {error.message}
                     </Badge>
                   ))}
                   {route.assignmentQuality.warnings.map((warning) => (

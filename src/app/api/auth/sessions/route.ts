@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { getSessionId } from "@/lib/auth/auth";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 import { getUserSessions } from "@/lib/auth/session";
 
@@ -10,8 +11,13 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getAuthenticatedUser(request);
 
-    // Get user's sessions
-    const sessions = await getUserSessions(user.userId);
+    // Bearer-only requests carry no session cookie: currentSessionId is
+    // undefined and every row reports isCurrent: false (access tokens
+    // don't embed the sessionId).
+    const [sessions, currentSessionId] = await Promise.all([
+      getUserSessions(user.userId),
+      getSessionId(),
+    ]);
 
     return NextResponse.json({
       sessions: sessions.map((s) => ({
@@ -20,7 +26,7 @@ export async function GET(request: NextRequest) {
         lastActivityAt: new Date(s.lastActivityAt).toISOString(),
         userAgent: s.userAgent,
         ipAddress: s.ipAddress,
-        isCurrent: true, // TODO: Compare with current session ID
+        isCurrent: s.sessionId === currentSessionId,
       })),
       count: sessions.length,
     });

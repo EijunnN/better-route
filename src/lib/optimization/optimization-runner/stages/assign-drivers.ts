@@ -107,9 +107,7 @@ export async function assignDrivers(
     const preAssignedDriverId = vehicleDriverMap.get(rawRoute.vehicleId);
     let driverId: string | undefined;
     let driverName: string | undefined;
-    let assignmentQuality:
-      | { score: number; warnings: string[]; errors: string[] }
-      | undefined;
+    let assignmentQuality: AssignedSolvedRoute["assignmentQuality"] | undefined;
 
     if (
       preAssignedDriverId &&

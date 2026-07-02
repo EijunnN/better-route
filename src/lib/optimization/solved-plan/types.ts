@@ -21,6 +21,8 @@
  * See docs/CONTEXT.md → Plan Optimization → "Shapes canónicos del solver output".
  */
 
+import type { DriverAssignmentError } from "@/lib/routing/assignment-errors";
+
 // ─── Capacity ──────────────────────────────────────────────────────────
 
 export type CapacityDimension = "WEIGHT" | "VOLUME" | "VALUE" | "UNITS";
@@ -148,7 +150,8 @@ export interface AssignedSolvedRoute extends RawSolvedRoute {
     /** 0–100, higher is a better match. */
     score: number;
     warnings: string[];
-    errors: string[];
+    /** Typed codes + display message (SEMANTICS A15). */
+    errors: DriverAssignmentError[];
   };
 }
 

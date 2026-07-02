@@ -1,0 +1,112 @@
+{
+  "contractVersion": 2,
+  "endpoint": "GET /api/route-stops/[id]",
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "d9e8f7a6-b5c4-4d3e-8f1a-0b9c8d7e6f5a",
+      "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+      "jobId": "e4d5c6b7-a8f9-4e0d-b1c2-d3e4f5a6b7c8",
+      "routeId": "route-1",
+      "userId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "vehicleId": "b58a1c2e-3d4f-4a5b-9c6d-7e8f9a0b1c2d",
+      "orderId": "1f2e3d4c-5b6a-4f7e-8d9c-0b1a2c3d4e5f",
+      "sequence": 2,
+      "attemptNumber": 1,
+      "address": "Av. Brasil 1250, Jesús María",
+      "latitude": "-12.078812",
+      "longitude": "-77.048915",
+      "estimatedArrival": "2026-07-02T13:20:00.000Z",
+      "estimatedServiceTime": 240,
+      "predictedEtaAt": "2026-07-02T13:18:40.000Z",
+      "etaComputedAt": "2026-07-02T13:05:12.000Z",
+      "timeWindowStart": null,
+      "timeWindowEnd": null,
+      "scheduledDate": "2026-07-02",
+      "status": "COMPLETED",
+      "startedAt": "2026-07-02T13:22:10.000Z",
+      "completedAt": "2026-07-02T13:29:45.000Z",
+      "notes": "Recibió el vigilante",
+      "failureReason": null,
+      "evidenceUrls": [
+        "https://files.betterroute.pe/evidence/3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34/2026-07-02/TRK-0002_1.jpg"
+      ],
+      "zoneId": null,
+      "metadata": null,
+      "customFields": { "dni_receptor": "45671234" },
+      "createdAt": "2026-07-02T11:00:05.000Z",
+      "updatedAt": "2026-07-02T13:29:45.000Z",
+      "user": {
+        "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "name": "Juan Pérez",
+        "email": "conductor@empresa.pe",
+        "role": "CONDUCTOR",
+        "phone": "+51 999 111 222"
+      },
+      "vehicle": {
+        "id": "b58a1c2e-3d4f-4a5b-9c6d-7e8f9a0b1c2d",
+        "name": "Furgón 01",
+        "plate": "ABC-123",
+        "status": "ACTIVE"
+      },
+      "order": {
+        "id": "1f2e3d4c-5b6a-4f7e-8d9c-0b1a2c3d4e5f",
+        "trackingId": "TRK-0002",
+        "customerName": "Bruno Díaz",
+        "address": "Av. Brasil 1250, Jesús María",
+        "latitude": "-12.078812",
+        "longitude": "-77.048915",
+        "status": "COMPLETED"
+      },
+      "job": {
+        "id": "e4d5c6b7-a8f9-4e0d-b1c2-d3e4f5a6b7c8",
+        "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+        "configurationId": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+        "status": "COMPLETED",
+        "progress": 100,
+        "result": {
+          "routes": [
+            {
+              "vehicleId": "b58a1c2e-3d4f-4a5b-9c6d-7e8f9a0b1c2d",
+              "totalDistance": 15230,
+              "totalDuration": 3540,
+              "geometry": "gjjkC~xthLuBnA{@f@sAt@kBhA"
+            }
+          ]
+        },
+        "error": null,
+        "startedAt": "2026-07-02T10:58:00.000Z",
+        "completedAt": "2026-07-02T11:00:00.000Z",
+        "cancelledAt": null,
+        "timeoutMs": 300000,
+        "inputHash": "5f3a1c9e7b2d4f6a8c0e1b3d5f7a9c2e4b6d8f0a1c3e5b7d9f2a4c6e8b0d1f3a",
+        "createdAt": "2026-07-02T10:57:55.000Z",
+        "updatedAt": "2026-07-02T11:00:00.000Z"
+      },
+      "history": [
+        {
+          "id": "8e7f6a5b-4c3d-4e2f-9a1b-0c9d8e7f6a5b",
+          "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+          "routeStopId": "d9e8f7a6-b5c4-4d3e-8f1a-0b9c8d7e6f5a",
+          "previousStatus": "IN_PROGRESS",
+          "newStatus": "COMPLETED",
+          "userId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "notes": "Recibió el vigilante",
+          "metadata": {
+            "evidenceUrls": [
+              "https://files.betterroute.pe/evidence/3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34/2026-07-02/TRK-0002_1.jpg"
+            ]
+          },
+          "createdAt": "2026-07-02T13:29:45.000Z",
+          "user": {
+            "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "name": "Juan Pérez",
+            "email": "conductor@empresa.pe",
+            "role": "CONDUCTOR",
+            "phone": "+51 999 111 222"
+          }
+        }
+      ]
+    }
+  }
+}

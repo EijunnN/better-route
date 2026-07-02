@@ -7,6 +7,7 @@ import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logUpdate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { withContractHeader } from "@/lib/mobile-contract";
 import {
   applyOrderTransition,
   toOrderTransitionHttp,
@@ -37,7 +38,7 @@ function projectHhmmOnDate(hhmm: string, anchor: Date): Date {
  * Crucially this does NOT modify the prior `delivery_visits` row — the
  * audit trail of the previous attempt remains intact (issue 001).
  */
-export async function POST(
+async function handlePost(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -276,3 +277,5 @@ export async function POST(
 
   return NextResponse.json({ data: updatedStop });
 }
+
+export const POST = withContractHeader(handlePost);

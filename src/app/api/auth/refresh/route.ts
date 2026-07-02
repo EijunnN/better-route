@@ -9,6 +9,7 @@ import {
   verifyToken,
 } from "@/lib/auth/auth";
 import { isRefreshTokenValid } from "@/lib/auth/session";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 const ACCESS_TOKEN_EXPIRES_IN_SECONDS =
@@ -20,7 +21,7 @@ const ACCESS_TOKEN_EXPIRES_IN_SECONDS =
  * Refresh access token using a valid refresh token
  * Returns a new access token (and optionally a new refresh token)
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     // Get refresh token from cookie or request body
     const cookieToken = await getRefreshToken();
@@ -114,3 +115,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withContractHeader(handlePost);

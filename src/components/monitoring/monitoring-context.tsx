@@ -138,7 +138,11 @@ export interface DriverDetailData {
       timeWindowEnd?: string | null;
       workflowState?: ProjectedWorkflowState | null;
     }>;
-    assignmentQuality?: { score: number; warnings: string[]; errors: string[] };
+    assignmentQuality?: {
+      score: number;
+      warnings: string[];
+      errors: Array<{ code: string; message: string }>;
+    };
   } | null;
 }
 

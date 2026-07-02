@@ -27,7 +27,7 @@ import {
 export interface AssignmentQuality {
   score: number;
   warnings: string[];
-  errors: string[];
+  errors: Array<{ code: string; message: string }>;
 }
 
 export interface DriverAssignmentDisplayProps {
@@ -188,11 +188,11 @@ export function DriverAssignmentDisplay({
               <ul className="space-y-1">
                 {quality.errors.map((error) => (
                   <li
-                    key={error}
+                    key={`${error.code}-${error.message}`}
                     className="text-xs text-red-600 flex items-start gap-1"
                   >
                     <XCircle className="size-3 mt-0.5 flex-shrink-0" />
-                    <span>{error}</span>
+                    <span>{error.message}</span>
                   </li>
                 ))}
               </ul>

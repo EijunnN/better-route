@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
+import { withContractHeader } from "@/lib/mobile-contract";
 import {
   ALLOWED_CONTENT_TYPES,
   generateEvidenceKey,
@@ -35,7 +36,7 @@ import {
  * - Only allows specific image types (jpeg, png, webp, heic)
  * - Maximum file size enforced: 10MB
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   try {
     // 1. Validate authentication
     const authUser = await getAuthenticatedUser(request);
@@ -173,3 +174,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withContractHeader(handleGet);

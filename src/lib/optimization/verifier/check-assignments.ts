@@ -8,9 +8,15 @@
  *
  * This check reads that `assignmentQuality` — plus a ROUTE_WITHOUT_DRIVER
  * sentinel — and converts it into Violations so the UI panel and CI gate
- * surface them alongside the solver-level constraints.
+ * surface them alongside the solver-level constraints. Errors carry a typed
+ * `DriverAssignmentErrorCode` (SEMANTICS A15) — classification is a total
+ * switch over that code, never string parsing.
  */
 
+import type {
+  DriverAssignmentError,
+  DriverAssignmentErrorCode,
+} from "@/lib/routing/assignment-errors";
 import type { Violation } from "./types";
 
 export interface AssignmentRouteInput {
@@ -22,34 +28,24 @@ export interface AssignmentRouteInput {
   assignmentQuality?: {
     score: number;
     warnings: string[];
-    errors: string[];
+    errors: DriverAssignmentError[];
   };
 }
 
-/**
- * Map a free-form assignment-error string to a specific ViolationCode + severity.
- * The strings come from `validateDriverAssignment` in lib/routing/driver-assignment.ts
- * — keep this in sync with the messages emitted there.
- */
-function classifyAssignmentError(message: string): {
-  code: Violation["code"];
-  severity: Violation["severity"];
-} {
-  const lower = message.toLowerCase();
-  if (lower.includes("licens")) {
-    return { code: "DRIVER_LICENSE_MISMATCH", severity: "HARD" };
+function violationCodeFor(code: DriverAssignmentErrorCode): Violation["code"] {
+  switch (code) {
+    case "LICENSE_EXPIRED":
+    case "LICENSE_EXPIRY_MISSING":
+    case "LICENSE_CATEGORY_MISMATCH":
+      return "DRIVER_LICENSE_MISMATCH";
+    case "MISSING_SKILLS":
+      return "DRIVER_SKILL_MISSING";
+    case "DRIVER_UNAVAILABLE":
+      return "DRIVER_UNAVAILABLE";
+    case "DRIVER_NOT_FOUND":
+    case "VEHICLE_NOT_FOUND":
+      return "DRIVER_ASSIGNMENT_ERROR";
   }
-  if (lower.includes("skill") || lower.includes("habilidad")) {
-    return { code: "DRIVER_SKILL_MISSING", severity: "HARD" };
-  }
-  if (
-    lower.includes("unavailable") ||
-    lower.includes("absent") ||
-    lower.includes("no disponible")
-  ) {
-    return { code: "DRIVER_UNAVAILABLE", severity: "HARD" };
-  }
-  return { code: "DRIVER_ASSIGNMENT_ERROR", severity: "HARD" };
 }
 
 /**
@@ -81,15 +77,14 @@ export function checkDriverAssignments(
     if (!quality) continue;
 
     for (const err of quality.errors) {
-      const { code, severity } = classifyAssignmentError(err);
       violations.push({
-        code,
-        severity,
+        code: violationCodeFor(err.code),
+        severity: "HARD",
         vehicleId: route.vehicleId,
         vehicleIdentifier: route.vehicleIdentifier,
         orderId: route.driverId,
         trackingId: route.driverName,
-        message: err,
+        message: err.message,
       });
     }
     for (const warn of quality.warnings) {

@@ -15,8 +15,14 @@ import { Action, EntityType } from "@/lib/auth/authorization";
 import { recomputeRouteEtas } from "@/lib/eta";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { publishDriverLocationEvent } from "@/lib/realtime";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+
+// Pre-filtro del jobId del body: un string no-uuid en un eq() contra una
+// columna uuid revienta en Postgres (22P02) con 500 en vez de ignorarse.
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Validates latitude value
@@ -53,6 +59,9 @@ function isValidLongitude(lng: number): boolean {
  *   batteryLevel?: number (0-100)
  *   recordedAt: string (ISO8601 timestamp)
  *   source?: "GPS" | "MANUAL" | "GEOFENCE" | "NETWORK"
+ *   routeId?: string (contexto de ruta del cliente)
+ *   stopSequence?: number
+ *   jobId?: string (uuid del optimization job)
  * }
  *
  * Respuesta:
@@ -60,7 +69,7 @@ function isValidLongitude(lng: number): boolean {
  * - locationId: string (ID del registro guardado)
  * - savedAt: string (timestamp del servidor)
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const authResult = await requireRoutePermission(
       request,
@@ -98,6 +107,9 @@ export async function POST(request: NextRequest) {
       batteryLevel,
       recordedAt,
       source = "GPS",
+      routeId: bodyRouteId,
+      stopSequence: bodyStopSequence,
+      jobId: bodyJobId,
     } = body;
 
     // Validar campos requeridos
@@ -210,49 +222,71 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Buscar job activo del día actual (para contexto de ruta)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Contexto de ruta (FIX-7): el contexto que manda el cliente gana; la
+    // derivación server-side queda como fallback para lo que falte. Un
+    // valor mal tipado (o un jobId ajeno a la empresa) se trata como
+    // ausente en vez de 400: un ping GPS nunca debe perderse por contexto
+    // defectuoso.
+    let routeId: string | null =
+      typeof bodyRouteId === "string" &&
+      bodyRouteId.length > 0 &&
+      bodyRouteId.length <= 100
+        ? bodyRouteId
+        : null;
+    let stopSequence: number | null =
+      typeof bodyStopSequence === "number" && Number.isInteger(bodyStopSequence)
+        ? bodyStopSequence
+        : null;
+    let jobId: string | null = null;
 
-    const activeJob = await db.query.optimizationJobs.findFirst({
-      where: and(
-        withTenantFilter(optimizationJobs, [], companyId),
-        eq(optimizationJobs.status, "COMPLETED"),
-        gte(optimizationJobs.createdAt, today),
-        lt(optimizationJobs.createdAt, tomorrow),
-      ),
-      columns: {
-        id: true,
-      },
-      orderBy: desc(optimizationJobs.createdAt),
-    });
+    if (typeof bodyJobId === "string" && UUID_PATTERN.test(bodyJobId)) {
+      const bodyJob = await db.query.optimizationJobs.findFirst({
+        where: and(
+          withTenantFilter(optimizationJobs, [], companyId),
+          eq(optimizationJobs.id, bodyJobId),
+        ),
+        columns: { id: true },
+      });
+      jobId = bodyJob?.id ?? null;
+    }
 
-    // Buscar parada actual del conductor (si tiene ruta)
-    let routeId: string | null = null;
-    let stopSequence: number | null = null;
+    if (!jobId) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
 
-    if (activeJob) {
+      const activeJob = await db.query.optimizationJobs.findFirst({
+        where: and(
+          withTenantFilter(optimizationJobs, [], companyId),
+          eq(optimizationJobs.status, "COMPLETED"),
+          gte(optimizationJobs.createdAt, today),
+          lt(optimizationJobs.createdAt, tomorrow),
+        ),
+        columns: {
+          id: true,
+        },
+        orderBy: desc(optimizationJobs.createdAt),
+      });
+      jobId = activeJob?.id ?? null;
+    }
+
+    if (jobId && (routeId === null || stopSequence === null)) {
       const currentStop = await db.query.routeStops.findFirst({
         where: and(
-          eq(routeStops.jobId, activeJob.id),
+          eq(routeStops.jobId, jobId),
           eq(routeStops.userId, driverId),
         ),
         columns: {
           routeId: true,
           sequence: true,
-          status: true,
         },
-        orderBy: [
-          // Priorizar paradas en progreso, luego pendientes
-          desc(routeStops.sequence),
-        ],
+        orderBy: [desc(routeStops.sequence)],
       });
 
       if (currentStop) {
-        routeId = currentStop.routeId;
-        stopSequence = currentStop.sequence;
+        routeId = routeId ?? currentStop.routeId;
+        stopSequence = stopSequence ?? currentStop.sequence;
       }
     }
 
@@ -265,18 +299,21 @@ export async function POST(request: NextRequest) {
       .values({
         companyId,
         driverId,
-        vehicleId: assignedVehicle?.id || null,
-        jobId: activeJob?.id || null,
+        vehicleId: assignedVehicle?.id ?? null,
+        jobId,
         routeId,
         stopSequence,
         latitude: lat.toString(),
         longitude: lng.toString(),
-        accuracy: accuracy ? Math.round(accuracy) : null,
-        altitude: altitude ? Math.round(altitude) : null,
-        speed: speed ? Math.round(speed) : null,
-        heading: heading ? Math.round(heading) : null,
+        // FIX-6: != null en vez de truthiness — 0 es un valor válido para
+        // todos estos campos (accuracy perfecta, altitud al nivel del mar,
+        // detenido, rumbo norte, batería agotada).
+        accuracy: accuracy != null ? Math.round(accuracy) : null,
+        altitude: altitude != null ? Math.round(altitude) : null,
+        speed: speed != null ? Math.round(speed) : null,
+        heading: heading != null ? Math.round(heading) : null,
         source: source as keyof typeof LOCATION_SOURCE,
-        batteryLevel: batteryLevel ? Math.round(batteryLevel) : null,
+        batteryLevel: batteryLevel != null ? Math.round(batteryLevel) : null,
         isMoving,
         recordedAt: recordedAtDate,
       })
@@ -295,8 +332,8 @@ export async function POST(request: NextRequest) {
       routeId,
       latitude: lat,
       longitude: lng,
-      heading: heading ? Math.round(heading) : null,
-      speed: speed ? Math.round(speed) : null,
+      heading: heading != null ? Math.round(heading) : null,
+      speed: speed != null ? Math.round(speed) : null,
       isMoving,
     });
 
@@ -351,7 +388,7 @@ export async function POST(request: NextRequest) {
  * Respuesta:
  * - location: Última ubicación o null si no hay registros
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   let authResult: Awaited<ReturnType<typeof getAuthenticatedUser>>;
   try {
     authResult = await getAuthenticatedUser(request);
@@ -424,3 +461,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const POST = withContractHeader(handlePost);
+export const GET = withContractHeader(handleGet);

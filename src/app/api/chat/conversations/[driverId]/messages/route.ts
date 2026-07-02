@@ -11,6 +11,7 @@ import { Action, EntityType } from "@/lib/auth/authorization";
 import { isDispatchRole, isQuickReplyCode, sendChatMessage } from "@/lib/chat";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 const LIMIT_DEFAULT = 50;
@@ -51,7 +52,7 @@ async function isTenantDriver(
  *
  * A dispatcher may read any thread of the tenant; a driver only theirs.
  */
-export async function GET(
+async function handleGet(
   request: NextRequest,
   { params }: { params: Promise<{ driverId: string }> },
 ) {
@@ -177,7 +178,7 @@ export async function GET(
  * dispatcher message is TO_DRIVER, a driver message TO_DISPATCH — so the
  * client cannot spoof it. A driver may only post in their own thread.
  */
-export async function POST(
+async function handlePost(
   request: NextRequest,
   { params }: { params: Promise<{ driverId: string }> },
 ) {
@@ -239,3 +240,6 @@ export async function POST(
 
   return NextResponse.json({ data: message }, { status: 201 });
 }
+
+export const GET = withContractHeader(handleGet);
+export const POST = withContractHeader(handlePost);

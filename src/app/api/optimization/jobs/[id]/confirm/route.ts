@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  deliveryVisits,
   optimizationConfigurations,
   optimizationJobs,
   orders,
@@ -66,6 +67,18 @@ function safeToISOString(value: unknown): string | null {
 }
 
 /**
+ * Thrown from inside the transaction so the busy-vehicle detail survives
+ * the rollback and can be shaped into the 409 response.
+ */
+class VehiclesBusyError extends Error {
+  constructor(
+    readonly vehicles: Array<{ vehicleId: string; activeStopsCount: number }>,
+  ) {
+    super("Vehicles have active route stops");
+  }
+}
+
+/**
  * POST /api/optimization/jobs/[id]/confirm
  *
  * Confirms an optimization plan for execution.
@@ -93,8 +106,35 @@ export async function POST(
       userId: tenantContext.userId,
     };
 
-    // Parse request body
-    const body = await request.json().catch(() => ({}));
+    // An empty body means "confirm with defaults", but malformed JSON must
+    // fail loudly: silently falling back to {} would e.g. drop a badly
+    // serialized `overrideWarnings` and confirm a plan the operator meant
+    // to review.
+    let body: Record<string, unknown> = {};
+    const rawBody = await request.text();
+    if (rawBody.trim().length > 0) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(rawBody);
+      } catch {
+        return NextResponse.json(
+          { error: "Malformed JSON in request body" },
+          { status: 400 },
+        );
+      }
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        Array.isArray(parsed)
+      ) {
+        return NextResponse.json(
+          { error: "Request body must be a JSON object" },
+          { status: 400 },
+        );
+      }
+      body = parsed as Record<string, unknown>;
+    }
+
     const parseResult = planConfirmationSchema.safeParse({
       ...body,
       companyId: tenantContext.companyId,
@@ -121,6 +161,8 @@ export async function POST(
         configuration: {
           id: optimizationConfigurations.id,
           status: optimizationConfigurations.status,
+          confirmedAt: optimizationConfigurations.confirmedAt,
+          serviceTimeMinutes: optimizationConfigurations.serviceTimeMinutes,
         },
       })
       .from(optimizationJobs)
@@ -160,7 +202,7 @@ export async function POST(
       return NextResponse.json(
         {
           error: "Plan has already been confirmed",
-          confirmedAt: job.configuration,
+          confirmedAt: safeToISOString(job.configuration.confirmedAt),
         },
         { status: 409 },
       );
@@ -280,40 +322,10 @@ export async function POST(
       );
     }
 
-    // Validate vehicles don't have active route stops from other plans
+    // Vehicles must not have active stops from other plans. The check itself
+    // runs inside the transaction (see below) so it cannot race a concurrent
+    // confirm; here we only collect the vehicle ids.
     const routeVehicleIds = [...new Set(result.routes.map((r) => r.vehicleId))];
-    if (routeVehicleIds.length > 0) {
-      const vehiclesWithActiveStops = await db
-        .select({
-          vehicleId: routeStops.vehicleId,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(routeStops)
-        .where(
-          and(
-            eq(routeStops.companyId, tenantContext.companyId),
-            inArray(routeStops.vehicleId, routeVehicleIds),
-            inArray(routeStops.status, ["PENDING", "IN_PROGRESS"]),
-          ),
-        )
-        .groupBy(routeStops.vehicleId);
-
-      if (vehiclesWithActiveStops.length > 0) {
-        const busyList = vehiclesWithActiveStops
-          .map((v) => `${v.vehicleId} (${v.count} paradas activas)`)
-          .join(", ");
-        return NextResponse.json(
-          {
-            error: `No se puede confirmar: los siguientes vehículos tienen rutas activas sin completar: ${busyList}`,
-            vehiclesWithActiveStops: vehiclesWithActiveStops.map((v) => ({
-              vehicleId: v.vehicleId,
-              activeStopsCount: v.count,
-            })),
-          },
-          { status: 409 },
-        );
-      }
-    }
 
     // Extract all order IDs from routes (including grouped orders)
     let assignedOrderIds: string[] = [];
@@ -358,8 +370,9 @@ export async function POST(
     // Missing or non-pending orders are filtered out and skipped
 
     if (skippedOrderIds.length > 0) {
+      const skippedOrderIdSet = new Set(skippedOrderIds);
       const validOrderIds = assignedOrderIds.filter(
-        (id) => !skippedOrderIds.includes(id),
+        (id) => !skippedOrderIdSet.has(id),
       );
       if (validOrderIds.length === 0) {
         return NextResponse.json(
@@ -379,16 +392,21 @@ export async function POST(
     // Parse the plan's start date to combine with HH:mm times from the optimizer
     // The optimizer returns times as HH:mm strings (e.g., "09:01"), which need
     // to be combined with the actual planned date to form full timestamps.
-    let planDate: string | null = null;
+    // An unparseable startDate is rejected: silently falling back to today
+    // would schedule tomorrow's plan on today's route.
+    let planDate: string;
     if (data.startDate) {
-      // Extract just the date part (YYYY-MM-DD) from the startDate
       const parsed = new Date(data.startDate);
-      if (!Number.isNaN(parsed.getTime())) {
-        planDate = parsed.toISOString().split("T")[0];
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json(
+          {
+            error: `Invalid startDate "${data.startDate}". Use YYYY-MM-DD or an ISO datetime.`,
+          },
+          { status: 400 },
+        );
       }
-    }
-    if (!planDate) {
-      // Fallback to today's date
+      planDate = parsed.toISOString().split("T")[0];
+    } else {
       planDate = now.toISOString().split("T")[0];
     }
 
@@ -432,6 +450,8 @@ export async function POST(
     }> = [];
 
     const assignedOrderIdSet = new Set(assignedOrderIds);
+    const estimatedServiceTimeSeconds =
+      job.configuration.serviceTimeMinutes * 60;
 
     for (const route of result.routes) {
       if (!route.driverId) continue;
@@ -468,7 +488,7 @@ export async function POST(
             latitude: String(stop.latitude),
             longitude: String(stop.longitude),
             estimatedArrival,
-            estimatedServiceTime: 600, // Default 10 minutes
+            estimatedServiceTime: estimatedServiceTimeSeconds,
             timeWindowStart,
             timeWindowEnd,
             zoneId: route.zoneId ?? null,
@@ -496,6 +516,14 @@ export async function POST(
 
     // Wrap all DB mutations in a single transaction
     const txResult = await db.transaction(async (tx) => {
+      // Serialize confirms per company: under READ COMMITTED, the busy-vehicle
+      // check and the per-order PENDING guard below would otherwise race a
+      // concurrent confirm of a *different* configuration sharing vehicles or
+      // orders. Released automatically at commit/rollback.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${tenantContext.companyId}))`,
+      );
+
       // 1. Confirm the plan - update configuration status AND name
       const updateData: Record<string, unknown> = {
         status: "CONFIRMED",
@@ -523,8 +551,37 @@ export async function POST(
         );
       }
 
-      // 2. Update orders status to ASSIGNED with race condition guard
-      let ordersUpdatedCount = 0;
+      // 2. Vehicles must not carry active stops from another plan. Runs
+      // inside the tx (behind the advisory lock) so a concurrent confirm
+      // of another plan with the same vehicle cannot slip through.
+      if (routeVehicleIds.length > 0) {
+        const vehiclesWithActiveStops = await tx
+          .select({
+            vehicleId: routeStops.vehicleId,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(routeStops)
+          .where(
+            and(
+              eq(routeStops.companyId, tenantContext.companyId),
+              inArray(routeStops.vehicleId, routeVehicleIds),
+              inArray(routeStops.status, ["PENDING", "IN_PROGRESS"]),
+            ),
+          )
+          .groupBy(routeStops.vehicleId);
+
+        if (vehiclesWithActiveStops.length > 0) {
+          throw new VehiclesBusyError(
+            vehiclesWithActiveStops.map((v) => ({
+              vehicleId: v.vehicleId,
+              activeStopsCount: v.count,
+            })),
+          );
+        }
+      }
+
+      // 3. Update orders status to ASSIGNED with race condition guard
+      const updatedOrderIdSet = new Set<string>();
       if (assignedOrderIds.length > 0) {
         const updatedOrders = await tx
           .update(orders)
@@ -541,37 +598,54 @@ export async function POST(
           )
           .returning({ id: orders.id });
 
-        ordersUpdatedCount = updatedOrders.length;
-      }
+        for (const o of updatedOrders) {
+          updatedOrderIdSet.add(o.id);
+        }
 
-      // 3. Insert route stops with computed `attempt_number`.
+        if (updatedOrderIdSet.size === 0) {
+          throw new Error(
+            "CONFLICT:All orders in this plan changed status while confirming. Re-run the optimization with current orders.",
+          );
+        }
+      }
+      const ordersUpdatedCount = updatedOrderIdSet.size;
+
+      // Orders that lost PENDING between the pre-check and this statement
+      // must not receive a stop: re-filter the insert list against the ids
+      // the UPDATE actually touched, or a stop would be born orphaned
+      // (PENDING stop for a non-ASSIGNED order).
+      const staleOrderIds = assignedOrderIds.filter(
+        (id) => !updatedOrderIdSet.has(id),
+      );
+      const stopsToInsert = routeStopsToCreate.filter((rs) =>
+        updatedOrderIdSet.has(rs.orderId),
+      );
+
+      // 4. Insert route stops with computed `attempt_number`.
       // For each Order being assigned, attempt_number = (existing
       // delivery_visits for that Order) + 1. First-time Orders get 1;
       // revisitas (Orders that previously had a Visit logged) get 2+.
       // See ADR-0005.
       let routeStopsCreatedCount = 0;
-      if (routeStopsToCreate.length > 0) {
+      if (stopsToInsert.length > 0) {
         const visitCountByOrder = new Map<string, number>();
-        if (assignedOrderIds.length > 0) {
-          const { deliveryVisits } = await import("@/db/schema");
-          const counts = await tx
-            .select({
-              orderId: deliveryVisits.orderId,
-              c: sql<number>`count(*)::int`,
-            })
-            .from(deliveryVisits)
-            .where(
-              and(
-                eq(deliveryVisits.companyId, tenantContext.companyId),
-                inArray(deliveryVisits.orderId, assignedOrderIds),
-              ),
-            )
-            .groupBy(deliveryVisits.orderId);
-          for (const row of counts) {
-            visitCountByOrder.set(row.orderId, row.c);
-          }
+        const counts = await tx
+          .select({
+            orderId: deliveryVisits.orderId,
+            c: sql<number>`count(*)::int`,
+          })
+          .from(deliveryVisits)
+          .where(
+            and(
+              eq(deliveryVisits.companyId, tenantContext.companyId),
+              inArray(deliveryVisits.orderId, [...updatedOrderIdSet]),
+            ),
+          )
+          .groupBy(deliveryVisits.orderId);
+        for (const row of counts) {
+          visitCountByOrder.set(row.orderId, row.c);
         }
-        const enriched = routeStopsToCreate.map((rs) => ({
+        const enriched = stopsToInsert.map((rs) => ({
           ...rs,
           attemptNumber: (visitCountByOrder.get(rs.orderId) ?? 0) + 1,
         }));
@@ -579,7 +653,7 @@ export async function POST(
         routeStopsCreatedCount = enriched.length;
       }
 
-      // 4. Save plan metrics
+      // 5. Save plan metrics
       const [insertedMetrics] = await tx
         .insert(planMetrics)
         .values({
@@ -621,6 +695,7 @@ export async function POST(
         updatedConfiguration,
         ordersUpdatedCount,
         routeStopsCreatedCount,
+        staleOrderIds,
         metricsId: insertedMetrics.id,
       };
     });
@@ -629,8 +704,15 @@ export async function POST(
       updatedConfiguration,
       ordersUpdatedCount,
       routeStopsCreatedCount,
+      staleOrderIds,
       metricsId,
     } = txResult;
+
+    // Orders skipped in the pre-check plus those that lost PENDING inside
+    // the confirmation window — both are excluded from update AND insert,
+    // and both are reported.
+    const allNonPendingOrderIds = [...nonPendingOrderIds, ...staleOrderIds];
+    const allSkippedOrderIds = [...skippedOrderIds, ...staleOrderIds];
 
     // Create audit log with safe serialization
     // Note: All values here should be primitives or simple objects
@@ -702,19 +784,19 @@ export async function POST(
     const responseData = {
       success: true,
       message:
-        skippedOrderIds.length > 0
-          ? `Plan confirmed with ${skippedOrderIds.length} order(s) skipped (missing or no longer PENDING)`
+        allSkippedOrderIds.length > 0
+          ? `Plan confirmed with ${allSkippedOrderIds.length} order(s) skipped (missing or no longer PENDING)`
           : "Plan confirmed successfully",
       ordersAssigned: ordersUpdatedCount,
       routeStopsCreated: routeStopsCreatedCount,
       skippedOrders:
-        skippedOrderIds.length > 0
+        allSkippedOrderIds.length > 0
           ? {
-              count: skippedOrderIds.length,
+              count: allSkippedOrderIds.length,
               missingCount: missingOrderIds.length,
-              nonPendingCount: nonPendingOrderIds.length,
+              nonPendingCount: allNonPendingOrderIds.length,
               missingOrderIds,
-              nonPendingOrderIds,
+              nonPendingOrderIds: allNonPendingOrderIds,
             }
           : undefined,
       configuration: safeConfiguration,
@@ -764,6 +846,18 @@ export async function POST(
 
     return NextResponse.json(responseData);
   } catch (error) {
+    if (error instanceof VehiclesBusyError) {
+      const busyList = error.vehicles
+        .map((v) => `${v.vehicleId} (${v.activeStopsCount} paradas activas)`)
+        .join(", ");
+      return NextResponse.json(
+        {
+          error: `No se puede confirmar: los siguientes vehículos tienen rutas activas sin completar: ${busyList}`,
+          vehiclesWithActiveStops: error.vehicles,
+        },
+        { status: 409 },
+      );
+    }
     // Handle conflict errors thrown from transaction
     if (error instanceof Error && error.message.startsWith("CONFLICT:")) {
       const message = error.message.slice("CONFLICT:".length);

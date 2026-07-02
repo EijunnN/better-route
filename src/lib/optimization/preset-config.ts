@@ -70,7 +70,6 @@ export function buildVroomConfigFromPreset(opts: {
     profile,
     balanceVisits: preset?.balanceVisits ?? false,
     maxDistanceKm: preset?.maxDistanceKm ?? undefined,
-    maxTravelTimeMinutes: undefined,
     // trafficFactor is a 0-100 scale (DB default 50 = neutral). The old
     // `?? 1.0` default produced speed_factor 1.49 (~33% optimistic ETAs)
     // whenever no preset existed.

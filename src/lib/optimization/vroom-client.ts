@@ -47,7 +47,6 @@ export interface VroomVehicle {
   }>;
   speed_factor?: number; // Multiplier for travel time
   max_tasks?: number; // Maximum number of tasks
-  max_travel_time?: number; // Maximum travel time in seconds
   max_distance?: number; // Maximum distance in meters (VROOM enforces during solve)
   /**
    * Cost model per vehicle (VROOM 1.14). The solver minimizes
@@ -331,7 +330,6 @@ export function createVroomVehicle(
     timeWindowEnd?: string;
     maxTasks?: number;
     speedFactor?: number;
-    maxTravelTime?: number; // Maximum travel time in seconds
     maxDistanceMeters?: number; // Max route distance — VROOM enforces natively
     costs?: VroomVehicle["costs"]; // Objective expressed as cost model
     openStart?: boolean; // Don't set start location
@@ -381,7 +379,6 @@ export function createVroomVehicle(
   if (options?.skills) vehicle.skills = options.skills;
   if (options?.maxTasks) vehicle.max_tasks = options.maxTasks;
   if (options?.speedFactor) vehicle.speed_factor = options.speedFactor;
-  if (options?.maxTravelTime) vehicle.max_travel_time = options.maxTravelTime;
   if (options?.maxDistanceMeters) {
     vehicle.max_distance = Math.round(options.maxDistanceMeters);
   }

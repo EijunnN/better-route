@@ -1,0 +1,17 @@
+{
+  "contractVersion": 2,
+  "endpoint": "POST /api/auth/login",
+  "status": 200,
+  "body": {
+    "user": {
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+      "email": "conductor@empresa.pe",
+      "name": "Juan Pérez",
+      "role": "CONDUCTOR"
+    },
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiYWNjZXNzIn0.fixture-access-signature",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoicmVmcmVzaCJ9.fixture-refresh-signature",
+    "expiresIn": 900
+  }
+}

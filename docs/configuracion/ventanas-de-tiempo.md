@@ -18,9 +18,9 @@ Las ventanas de tiempo son configuraciones predefinidas (presets) que establecen
 
 4. **Impacto en la planificacion**: En el modulo de Planificacion, los pedidos con ventana de tiempo asignada aparecen en la pestana "Con Horario", lo que permite al planificador identificarlos rapidamente. El motor de optimizacion utiliza estos horarios para calcular rutas que respeten las restricciones de tiempo.
 
-5. **Validacion durante la optimizacion**: El sistema evalua si el horario estimado de llegada del conductor cumple con la ventana de tiempo. Dependiendo de la rigurosidad configurada:
-   - **Estricto (HARD)**: Si la hora estimada de llegada cae fuera de la ventana, el pedido se rechaza de esa ruta.
-   - **Flexible (SOFT)**: Si la hora estimada de llegada cae fuera de la ventana, el pedido se permite pero se aplica una penalizacion proporcional al retraso, lo que hace que el optimizador busque alternativas mejores.
+5. **Validacion de la ventana** (decision 2026-07-02): la rigurosidad HARD/SOFT aplica **solo a la asignacion manual** de pedidos a rutas — el motor de optimizacion y el verificador no la consumen.
+   - **Durante la optimizacion**: toda ventana valida se trata como restriccion estricta (HARD). La unica tolerancia es la opcion "Ventanas de tiempo flexibles" del preset de optimizacion, que ensancha cada ventana ±30 minutos antes de resolver.
+   - **En la asignacion manual**: con rigurosidad **Estricta (HARD)**, si la hora estimada de llegada cae fuera de la ventana el sistema bloquea la asignacion; con **Flexible (SOFT)**, la permite con una advertencia y una penalizacion informativa proporcional al retraso.
 
 6. **Persistencia**: Los presets se guardan por empresa (multi-tenant). Cada empresa tiene sus propios presets independientes. Los nombres de presets deben ser unicos dentro de la misma empresa.
 
@@ -29,7 +29,7 @@ Las ventanas de tiempo son configuraciones predefinidas (presets) que establecen
 - Garantizar que las entregas se realicen dentro de los horarios acordados con los clientes.
 - Estandarizar las ventanas horarias de entrega en toda la operacion, evitando configuracion manual repetitiva.
 - Alimentar al motor de optimizacion con restricciones temporales para calcular rutas viables.
-- Diferenciar entre restricciones estrictas (que no se pueden violar) y flexibles (que se pueden violar con penalizacion).
+- Diferenciar, al asignar pedidos manualmente, entre restricciones estrictas (que bloquean la asignacion) y flexibles (que la permiten con advertencia).
 - Permitir sobreescrituras puntuales por pedido cuando un cliente tiene una necesidad especial sin alterar la configuracion general.
 
 ## En que ayuda
@@ -38,7 +38,7 @@ Las ventanas de tiempo son configuraciones predefinidas (presets) que establecen
 - **Reduccion de entregas fallidas**: Los conductores llegan en el horario en que el cliente esta disponible para recibir, reduciendo los intentos fallidos de entrega.
 - **Satisfaccion del cliente**: Los clientes reciben sus entregas cuando lo esperan. Esto es particularmente importante para clientes corporativos con horarios de recepcion restringidos.
 - **Optimizacion de rutas realista**: El planificador de rutas calcula trayectos que no solo minimizan distancia sino que tambien respetan las ventanas horarias, generando planes ejecutables en la realidad.
-- **Flexibilidad operativa**: El modo flexible (SOFT) permite que la operacion no se detenga por restricciones menores, penalizando retrasos en lugar de bloquearlos, lo que resulta en planes mas completos.
+- **Flexibilidad operativa**: El modo flexible (SOFT) evita que la asignacion manual se bloquee por desvios menores — el sistema advierte el retraso en lugar de rechazar la asignacion.
 
 ## Opciones de configuracion
 
@@ -67,8 +67,10 @@ Las ventanas de tiempo son configuraciones predefinidas (presets) que establecen
 
 | Nivel | Etiqueta en pantalla | Comportamiento |
 |-------|---------------------|----------------|
-| **HARD** | Estricto | El sistema rechaza la asignacion si la hora estimada de llegada cae fuera de la ventana. La entrega no se puede planificar en esa ruta. Garantiza cumplimiento absoluto. |
-| **SOFT** | Flexible | El sistema permite la asignacion aunque la hora estimada de llegada caiga fuera de la ventana, pero aplica una penalizacion proporcional al retraso. El optimizador prioriza otras alternativas con menor penalizacion. Factor de penalizacion configurable (por defecto: 5x por minuto de retraso). |
+| **HARD** | Estricto | En la asignacion manual, el sistema rechaza la asignacion si la hora estimada de llegada cae fuera de la ventana. |
+| **SOFT** | Flexible | En la asignacion manual, el sistema permite la asignacion aunque la hora estimada caiga fuera de la ventana, con una advertencia y una penalizacion informativa proporcional al retraso (por defecto: 5x por minuto). |
+
+> **Nota (decision 2026-07-02)**: la rigurosidad no afecta al motor de optimizacion ni al verificador. Durante la optimizacion, toda ventana valida es una restriccion estricta; la unica tolerancia es la opcion "Ventanas de tiempo flexibles" del preset de optimizacion (±30 minutos). Ver `docs/optimization/SEMANTICS.md` §2.
 
 ### Sobreescritura por pedido
 
@@ -89,7 +91,7 @@ Un restaurante recibe insumos solo entre las 06:00 y las 08:00, antes de que abr
 Una farmaceutica requiere entregas de medicamentos refrigerados en un horario exacto para coordinar con su equipo de recepcion. Se crea un preset "Recepcion Cadena Frio" de tipo Exacto (10:00, tolerancia 10 min) con rigurosidad Estricta. El conductor debe llegar entre 09:50 y 10:10.
 
 ### 3. E-commerce con entrega en franja horaria
-Un e-commerce ofrece a sus clientes elegir entre franjas "Manana (09:00-13:00)" y "Tarde (14:00-18:00)". Se crean dos presets de tipo Rango con rigurosidad Flexible. Si un conductor llega 5 minutos tarde, el pedido no se rechaza pero el optimizador intentara alternativas mejores.
+Un e-commerce ofrece a sus clientes elegir entre franjas "Manana (09:00-13:00)" y "Tarde (14:00-18:00)". Se crean dos presets de tipo Rango con rigurosidad Flexible. Si el planificador asigna manualmente un pedido cuya llegada estimada cae 5 minutos fuera de la franja, la asignacion se permite con una advertencia en lugar de bloquearse.
 
 ### 4. Oficinas corporativas con horario de recepcion
 Una empresa solo recibe paquetes entre las 09:00 y las 17:00. Se crea un preset "Horario Oficina" de tipo Turno (09:00 - 17:00) con rigurosidad Estricta. Es un rango amplio que da flexibilidad al optimizador pero garantiza que la entrega ocurra en horario laboral.
@@ -112,7 +114,7 @@ Un cliente paga por entrega express con hora comprometida a las 14:00. Se usa un
 - **Operaciones 24 horas sin restriccion**: Si todos los puntos de entrega estan disponibles las 24 horas, agregar ventanas de tiempo solo agrega restricciones innecesarias al optimizador y puede generar rutas menos eficientes.
 - **Demasiados presets para pocas variaciones**: Si todos los clientes tienen el mismo horario, es mejor no crear multiples presets redundantes. Un solo preset reutilizable es suficiente.
 - **Presets de prueba en produccion**: No dejar presets de prueba activos. Los presets inactivos no aparecen en la seleccion de pedidos, pero generan ruido en la lista de configuracion. Eliminar o desactivar los que no se usen.
-- **Rigurosidad Estricta por defecto sin analisis**: No configurar todos los presets como Estrictos si la operacion no lo requiere. Esto puede causar que el optimizador no encuentre rutas viables para algunos pedidos. Usar Flexible cuando haya margenes aceptables de retraso.
+- **Rigurosidad Estricta por defecto sin analisis**: No configurar todos los presets como Estrictos si la operacion no lo requiere. Esto puede bloquear asignaciones manuales por desvios menores. Usar Flexible cuando haya margenes aceptables de retraso. (Para dar tolerancia al optimizador, lo que aplica es la opcion "Ventanas de tiempo flexibles" del preset de optimizacion, no la rigurosidad.)
 
 ## Relacion con otros modulos
 
@@ -123,7 +125,7 @@ Cada pedido puede tener asignado un preset de ventana de tiempo mediante el camp
 En el modulo de Planificacion, los pedidos con ventana de tiempo asignada se pueden filtrar en la pestana "Con Horario". Esto permite al planificador identificar rapidamente cuales pedidos tienen restricciones temporales y priorizarlos en la asignacion de rutas.
 
 ### Optimizacion de Rutas
-El motor de optimizacion lee las ventanas de tiempo de cada pedido y las utiliza como restricciones al calcular rutas. En modo Estricto, los pedidos que no pueden cumplir la ventana se excluyen de la ruta. En modo Flexible, se aplica una penalizacion proporcional al retraso (factor configurable, por defecto 5x por minuto) que guia al optimizador hacia soluciones con menor violacion de horarios.
+El motor de optimizacion lee las ventanas de tiempo de cada pedido y las utiliza como restricciones estrictas al calcular rutas: un pedido que no puede cumplir su ventana queda sin asignar (no se planifica tarde). La rigurosidad HARD/SOFT no interviene en este calculo — su efecto se limita a la validacion de asignaciones manuales. La unica tolerancia que el motor aplica es la opcion "Ventanas de tiempo flexibles" del preset de optimizacion, que ensancha cada ventana ±30 minutos.
 
 ### Perfil de Empresa
 Los presets se guardan a nivel de empresa. Cada empresa gestiona sus propios presets de forma independiente. El contexto de empresa se hereda automaticamente del usuario logueado.

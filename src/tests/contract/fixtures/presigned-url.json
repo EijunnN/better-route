@@ -1,0 +1,13 @@
+{
+  "contractVersion": 2,
+  "endpoint": "GET /api/upload/presigned-url",
+  "status": 200,
+  "body": {
+    "uploadUrl": "https://betterroute-evidence.r2.cloudflarestorage.com/evidence/3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34/2026-07-02/TRK-0002_1.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=300&X-Amz-Signature=fixture",
+    "publicUrl": "https://files.betterroute.pe/evidence/3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34/2026-07-02/TRK-0002_1.jpg",
+    "key": "evidence/3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34/2026-07-02/TRK-0002_1.jpg",
+    "expiresIn": 300,
+    "maxFileSize": 10485760,
+    "contentType": "image/jpeg"
+  }
+}

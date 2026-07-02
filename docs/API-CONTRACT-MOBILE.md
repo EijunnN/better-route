@@ -1,6 +1,6 @@
 # Contrato del seam: app móvil (aea) ↔ backend (planeamiento)
 
-> **v1 — 2026-07-01.** Fuente única del contrato de API entre el backend
+> **v2 — 2026-07-02.** Fuente única del contrato de API entre el backend
 > Next.js (`planeamiento`) y la app Flutter del conductor (`aea`).
 > **Copia canónica: `planeamiento/docs/API-CONTRACT-MOBILE.md`.** El espejo
 > `aea/docs/API-CONTRACT-MOBILE.md` debe ser byte-idéntico: editá el del web
@@ -9,11 +9,12 @@
 > Autorado leyendo **ambos repos a la vez** (sesión SOTA 2026-07-01). Cada
 > shape fue extraído del código real de los dos lados, no de docs.
 >
-> **Semántica:** lo descriptivo documenta el wire format REAL de hoy. Las
-> entradas `[FIX-n]` son cambios **normativos acordados** (§11): hasta que se
-> apliquen, manda lo descriptivo. Cualquier cambio de shape exige bump de
-> `CONTRACT_VERSION` (§10) y actualización de este doc **en ambos repos en el
-> mismo cambio**.
+> **Semántica:** lo descriptivo documenta el wire format REAL de hoy.
+> **2026-07-02: los 10 fixes normativos del §11 fueron aplicados** — las
+> entradas `[FIX-n]` quedan como registro histórico y lo descriptivo ya
+> refleja el comportamiento implementado. Cualquier cambio de shape exige
+> bump de `CONTRACT_VERSION` (§10) y actualización de este doc **en ambos
+> repos en el mismo cambio**.
 
 ---
 
@@ -118,26 +119,27 @@ Endpoints top-level SIN envelope `data`.
   JWT-only; la revocación queda inoperante).
 - `/refresh` no tiene rate limit.
 
-**`[FIX-4]` (móvil) — single-flight de refresh.** Hoy `_isRefreshing` es un
-bool: el primer 401 refresca y reintenta; los 401 concurrentes se rechazan
-de inmediato con `'Sesion expirada'` (errores espurios en ráfagas). Spec: un
-`Completer`/mutex único; los requests concurrentes **esperan** el resultado
-del refresh en vuelo y se replayean con el token nuevo. Persistir
-atómicamente UN par ganador. Es corrección **local** (el server tolera
-refresh paralelo); un fallo del refresh en vuelo rechaza toda la cola y
-dispara logout local **solo** si el fallo fue 401 del `/refresh` (no por
-timeout/red — eso hoy nukea el storage con `clearAll()` ante cualquier
-excepción: corregirlo en el mismo fix).
+**`[FIX-4]` (móvil, aplicado 2026-07-02) — single-flight de refresh.**
+Un solo refresh en vuelo: los requests concurrentes que reciben 401
+**esperan** el resultado del mismo refresh y se **replayean** con el token
+nuevo; un flag `authRetried` por request evita el doble-refresh (un request
+ya replayeado no vuelve a disparar refresh). Se persiste atómicamente UN
+par ganador. Es corrección **local** (el server tolera refresh paralelo);
+un fallo del refresh en vuelo rechaza toda la cola y dispara logout local
+**solo** si el fallo fue 401 del `/refresh` (timeout/red NO nukea el
+storage).
 
 ### POST `/api/auth/logout`
 
-- Req: sin body. Auth opcional (cookie o Bearer); 200 siempre.
-- Con Bearer: apaga `users.appOnline` (presencia en monitoring) pero **NO
-  revoca la sesión Redis** (la revocación lee la cookie `session_id`) — el
-  refreshToken sigue vivo hasta sus 7 d. `[FIX-8]` (web): aceptar
-  `{ refreshToken }` en el body de logout, derivar `sessionId` y revocar;
-  (móvil): mandarlo. Nota: si el access token ya expiró, `appOnline` queda
-  en `true` — el móvil debe refrescar antes de hacer logout si hace falta.
+- Req: body opcional `{ refreshToken }`. Auth opcional (cookie o Bearer);
+  200 siempre.
+- Con Bearer: apaga `users.appOnline` (presencia en monitoring).
+  `[FIX-8]` (aplicado 2026-07-02): el server acepta `{ refreshToken }` en el
+  body — best-effort, nunca falla el logout: verifica la firma, exige
+  `type === "refresh"` y revoca la sesión Redis (`sessionId` del token). El
+  flujo por cookie (`session_id`) queda intacto. El móvil lo manda. Nota: si
+  el access token ya expiró, `appOnline` queda en `true` — el móvil debe
+  refrescar antes de hacer logout si hace falta.
 
 ### GET `/api/auth/me`
 
@@ -218,8 +220,9 @@ Request (todos opcionales salvo la regla "status O customFields"):
 
 ```jsonc
 { "status": "PENDING|IN_PROGRESS|COMPLETED|FAILED",
-  "notes": "string",            // ⚠️ hoy: si se omite, el server BORRA las
-                                // notas previas (notes: notes || null) [FIX-3]
+  "notes": "string|null",       // JSON-merge-patch [FIX-3]: omitida = no
+                                // tocar, null explícito = borrar, "" se
+                                // almacena como "", no-string → null
   "failureReason": "string",    // verbatim de policy.failureReasons (ADR-0011)
   "evidenceUrls": ["url"],      // publicUrl(s) devueltas por el presign
   "customFields": { },          // entity=route_stops
@@ -229,11 +232,11 @@ Request (todos opcionales salvo la regla "status O customFields"):
 Validaciones server (en orden): transición válida contra
 `STOP_STATUS_TRANSITIONS` (400 con `validTransitions`); `COMPLETED` exige
 `evidenceUrls` no-vacío si `policy.completedRequiresPhoto` (default true) y
-custom fields required completos; `FAILED` exige `failureReason` string
-truthy mientras `policy.failureReasons` sea no-vacío (default sí) — **hoy
-`"  "` (espacios) pasa; `[FIX-2]` exige no-blank tras trim en server y el
-móvil bloquea el encolado sin motivo**. Membresía en la lista NO se valida
-(deliberado, ADR-0011).
+custom fields required completos; `FAILED` exige `failureReason` **no-blank
+tras trim** mientras `policy.failureReasons` sea no-vacío (default sí) —
+`[FIX-2]` aplicado 2026-07-02: whitespace-only → 400; el valor se almacena
+**VERBATIM sin trim** (solo la validación trimea). Membresía en la lista NO
+se valida (deliberado, ADR-0011).
 
 Respuestas: 200 `{ data: <fila routeStops cruda $inferSelect> }` (§4 col-2);
 **idempotencia terminal**: re-PATCH del MISMO status terminal → 200 con la
@@ -248,23 +251,27 @@ alerta `STOP_FAILED` + publish a `monitoring:{companyId}` + recompute de ETA.
 
 ### 3.7 POST `/api/mobile/driver/location`
 
-Request (el móvil manda; ⚠️ = el server hoy lo ignora):
+Request:
 
 ```jsonc
 { "latitude": REQ, "longitude": REQ, "accuracy", "speed" /* km/h */,
   "heading", "altitude", "batteryLevel", "recordedAt" /* ISO, ≤60s futuro */,
   "source": "GPS|MANUAL|GEOFENCE|NETWORK",
-  "isMoving": ⚠️,  "stopSequence": ⚠️, "jobId": ⚠️, "routeId": ⚠️ }
+  "isMoving" /* ignorado: el server lo recalcula */,
+  "stopSequence", "jobId", "routeId" }
 ```
 
 - 201 `{ success: true, locationId, savedAt }` (sin envelope `data`). El
   móvil acepta cualquier 2xx (histórico 200/201) — **congelado: éxito = 2xx**.
-- ⚠️ El server **ignora el contexto de ruta del cliente** y deriva
-  `routeId`/`stopSequence` del job COMPLETED más reciente **de la empresa**
-  (no necesariamente del driver). `[FIX-7]`: usar el contexto del body
-  cuando venga; fallback a la derivación.
-- ⚠️ Valores `0` se pierden (`accuracy ? ... : null` — falsy). `[FIX-6]`:
-  usar `??`. `isMoving` lo recalcula el server como `speed > 5`.
+- `[FIX-7]` aplicado 2026-07-02: el server **honra** `routeId`/
+  `stopSequence`/`jobId` del body, con fallback **por-campo** a la
+  derivación server-side (job COMPLETED más reciente) para los campos
+  ausentes. Valores mal tipados, `jobId` no-uuid o ajeno al tenant se
+  tratan como ausentes (fallback silencioso, sin 400 nuevo). `isMoving`
+  sigue recalculándose server-side (`speed > 5`).
+- `[FIX-6]` aplicado 2026-07-02: valores `0` de `accuracy`/`altitude`/
+  `speed`/`heading`/`batteryLevel` se persisten como `0` (antes se perdían
+  a `null` por check falsy).
 - 400 con mensajes por campo; validación estricta de rangos.
 
 ### 3.8 GET `/api/mobile/driver/delivery-policy`
@@ -279,8 +286,9 @@ Request (el móvil manda; ⚠️ = el server hoy lo ignora):
   `failedRequiresNotes` (bool?, default false); `failureReasons` (string[]?,
   default []). `transitions` vacío = terminal. El móvil valida estos gates
   ANTES de enviar; el server los re-valida (§3.6).
-- `[FIX-9]` (web): agregar `quickReplies: [{code,label}]` al DTO (hoy
-  hardcodeadas espejo en ambos repos — §7); el móvil usa su lista embebida
+- `[FIX-9]` aplicado 2026-07-02 (aditivo): la respuesta incluye
+  `data.quickReplies: [{code, label}]` con la lista canónica de
+  `src/lib/chat/quick-replies.ts` (§7). El móvil conserva su copia embebida
   como fallback si el campo falta.
 
 ### 3.9 GET `/api/mobile/driver/field-definitions`
@@ -302,8 +310,8 @@ Request (el móvil manda; ⚠️ = el server hoy lo ignora):
   en `PresignedUrlResponse`).
 - Key determinística con trackingId: `{trackingId}_{index}.{ext}` (sin
   `index` ⇒ `{trackingId}.{ext}`: **todas las fotos del mismo stop
-  colisionan en una key** — ver `[FIX-1]` §5). `maxFileSize` es informativo
-  (el PUT no lo fuerza).
+  colisionan en una key** — por eso el móvil SIEMPRE pasa `index`, ver
+  `[FIX-1]` §5). `maxFileSize` es informativo (el PUT no lo fuerza).
 - Quirk de tenancy: usa `authUser.companyId` directo e ignora
   `x-company-id` (allowlist §9).
 - Flujo: presign → `PUT` binario a `uploadUrl` (Dio limpio) → incluir
@@ -336,8 +344,8 @@ Request (el móvil manda; ⚠️ = el server hoy lo ignora):
 Web-only pero define lo que el móvil ve tras un re-intento: solo
 `FAILED→PENDING`; limpia `failureReason/evidenceUrls/notes/startedAt/
 completedAt`; la Visit previa queda (ADR-0005). El stop reabierto reaparece
-en `my-route` con `attemptNumber` mayor. `reason` del reopen SÍ exige
-no-vacío tras trim (a diferencia del PATCH — resuelto por `[FIX-2]`).
+en `my-route` con `attemptNumber` mayor. `reason` del reopen exige no-vacío
+tras trim, igual que `failureReason` del PATCH desde `[FIX-2]`.
 
 ---
 
@@ -382,37 +390,37 @@ no-vacío tras trim (a diferencia del PATCH — resuelto por `[FIX-2]`).
   failureReason?, notes?, customFields?, gpsLatitude?, gpsLongitude?,
   photoPaths[], uploadedByPath{path→publicUrl} (resume-safe), createdAtMs,
   retryCount }`. Persistido en SharedPreferences `offline_outbox_v1`.
-- Reintentos: transitorio (sin response / ≥500 / desconocido) →
-  `retryCount++` hasta 60, luego **drop** con `lastError` client-only;
-  **4xx → drop inmediato**. En ningún caso se informa al server (gap
-  conocido y aceptado v1).
+- Reintentos: transitorio (sin response / ≥500 / **409 lock optimista
+  (§3.6)** / desconocido) → `retryCount++` hasta 60, luego **drop** con
+  `lastError` client-only; **el resto de 4xx → drop inmediato**. En ningún
+  caso se informa al server (gap conocido y aceptado v1).
 - Idempotencia: depende del PATCH terminal no-op (§3.6) para reintentar
   tras un ack perdido sin duplicar Visits. **Congelado server-side.**
 - Flush: timer 30 s + al encolar + app resume + reload de ruta; secuencial,
   corta al primer fallo transitorio.
 
-### Los dos bugs de pérdida de datos (normativo)
+### Los dos bugs de pérdida de datos (resueltos 2026-07-02)
 
-- **`[FIX-1]` (móvil, crítico) — fotos sin `index` en el drain.** El camino
-  online presigna con `index=i+1`; el drain del outbox llama
-  `uploadEvidencePhoto` SIN index ⇒ con `trackingId` la key es
-  `{trackingId}.jpg` para TODAS las fotos ⇒ se pisan en R2. Spec: el drain
-  pasa `index = posición+1` igual que el camino online (y `PendingClose` no
-  necesita campo nuevo: el índice es la posición en `photoPaths`).
-- **`[FIX-2]` (ambos, crítico) — FAILED sin motivo se pierde.** Offline, un
-  `PendingClose` FAILED sin `failureReason` llega al server sin el campo
-  (RouteService omite strings vacíos) → 400 → el outbox dropea 4xx → **la
-  falla desaparece**. Spec móvil: si la policy cacheada tiene
-  `failureReasons`, la UI exige motivo ANTES de encolar (bloqueo en el
-  form, no en el drain). Spec server: `failureReason` debe ser no-blank
-  tras `trim()` (hoy `"  "` pasa).
+- **`[FIX-1]` (móvil, aplicado 2026-07-02) — fotos sin `index` en el
+  drain.** El drain del outbox presigna con `index = posición+1` en
+  `photoPaths`, igual que el camino online (`PendingClose` sin campo nuevo:
+  el índice es la posición), y **respeta `uploadedByPath`** — una foto ya
+  subida no se re-sube en reintentos.
+- **`[FIX-2]` (ambos, aplicado 2026-07-02) — FAILED sin motivo se
+  perdía.** Móvil: gate de motivo en **ambas vías de UI** —
+  `WorkflowTransitionSheet` exige motivo para FAILED cuando
+  `reasonOptions` es no-vacía aunque falte `requiresReason` — más un
+  **backstop duro** en `OfflineOutbox.submitClose` que lanza ANTES de
+  persistir el `PendingClose`. Cold-start sin policy cacheada → el gate
+  queda deshabilitado (conservador: no bloquea sin datos). Server:
+  `failureReason` no-blank tras `trim()` → 400 (§3.6).
 
-### `[FIX-3]` (web) — PATCH parcial honesto
+### `[FIX-3]` (web, aplicado 2026-07-02) — PATCH parcial honesto
 
-`updateData` hace `notes: notes || null`: un PATCH de solo-status borra las
-notas previas. Spec: incluir en el UPDATE únicamente los campos presentes en
-el body (semántica JSON-merge-patch: ausente = no tocar, `null` explícito =
-borrar). Aplica a `notes` y a cualquier campo opcional futuro.
+El UPDATE incluye únicamente los campos presentes en el body, con semántica
+JSON-merge-patch para `notes`: omitida = no tocar, `null` explícito =
+borrar, `""` se almacena como `""`, valores no-string se normalizan a
+`null`. Aplica el mismo criterio a cualquier campo opcional futuro.
 
 ---
 
@@ -423,11 +431,12 @@ borrar). Aplica a `notes` y a cualquier campo opcional futuro.
   `distanceFilter` 25 m, foreground-service en Android;
   `forceSendLocation` (abrir/cerrar parada) manda payload reducido.
 - Retries: 3 × 5 s; agotados → cola `_pendingLocations` **EN MEMORIA**
-  (max 100 FIFO) que se pierde al matar el proceso. Asimetría deliberada v1
-  frente al outbox de cierres (disk): **spec pendiente para Opus** — decidir
-  persistir la cola GPS con el patrón del outbox o documentar la pérdida
-  como aceptable (el cierre de stop SÍ registra GPS de forma durable vía
-  PendingClose). Hasta esa decisión: no "arreglarlo" de pasada.
+  (max 100 FIFO) que se pierde al matar el proceso. **Decisión (2026-07-02):
+  la cola en memoria queda ACEPTADA como pérdida tolerable.** Los pings son
+  telemetría continua y el stream se reanuda al relanzar la app; el outbox
+  de cierres (disk, §5) cubre lo que sí es crítico — el cierre de stop
+  registra su GPS de forma durable vía `PendingClose`. La asimetría con el
+  outbox es deliberada: no "arreglarla" de pasada.
 - El server publica `driver.location` a `monitoring:{companyId}` (el driver
   no lo recibe) y persiste en `driver_locations`. Presencia del driver en
   monitoring = `users.appOnline` (login/logout) + recencia GPS — **no** la
@@ -453,11 +462,11 @@ borrar). Aplica a `notes` y a cualquier campo opcional futuro.
   TTL **15 min**, claims `sub=userId`, `info:{role,companyId}`, `channels`.
   El SDK re-pide vía `getToken` antes del expiry.
 - Suscripción (dispatch-only): TTL 5 min, claim `channel` único.
-- **`[FIX-5]` (móvil) — `getToken` mata reconexiones.** Hoy cualquier fallo
-  (timeout, 500, red) se convierte en `UnauthorizedException`, que detiene
-  los reconnects del SDK permanentemente. Spec: `UnauthorizedException`
-  SOLO ante 401 real de `/api/realtime/token`; cualquier otro error se
-  relanza como transitorio para que el backoff (300 ms–30 s) siga.
+- **`[FIX-5]` (móvil, aplicado 2026-07-02) — `getToken` ya no mata
+  reconexiones.** El cliente de chat discrimina el 401 real:
+  `UnauthorizedException` SOLO ante 401 de `/api/realtime/token`; cualquier
+  otro error (timeout, 500, red) se relanza como transitorio para que el
+  backoff del SDK (300 ms–30 s) siga reintentando.
 
 ### Payloads que el driver recibe
 
@@ -480,12 +489,12 @@ borrar). Aplica a `notes` y a cualquier campo opcional futuro.
   (`OneSignal.login(user.id)` en el móvil; el backend no guarda device
   tokens).
 - **Pairing de App ID**: server `ONESIGNAL_APP_ID` (env) debe == App ID del
-  móvil (hoy hardcodeado `35dbded5-641d-47b1-b931-07dad0d49770`, público by
-  design). `[FIX-10]` (móvil): moverlo a `--dart-define`
-  `ONESIGNAL_APP_ID` con el valor actual como default, y documentar el par
-  env↔define en `dart_define.example.json`.
+  móvil (público by design). `[FIX-10]` (móvil, aplicado 2026-07-02): el
+  móvil lo lee vía `String.fromEnvironment('ONESIGNAL_APP_ID')` con el
+  valor previo (`35dbded5-641d-47b1-b931-07dad0d49770`) como default; el
+  par env↔define está documentado en `dart_define.example.json`.
 
-### Quick replies (catálogo espejado — fuente de drift)
+### Quick replies (catálogo)
 
 Lista canónica (`src/lib/chat/quick-replies.ts`, validada server-side en el
 POST; un código fuera de lista → 400):
@@ -495,9 +504,11 @@ POST; un código fuera de lista → 400):
 `NEED_HELP` "Necesito ayuda"
 
 El móvil manda el **label como `body`** + el `code` como `templateCode` (el
-server no deriva el body del code). Hoy la lista está duplicada a mano en
-`chat_message.dart` — `[FIX-9]` la sirve en delivery-policy; hasta entonces,
-**cambiar la lista = cambiarla en ambos repos en el mismo cambio**.
+server no deriva el body del code). `[FIX-9]` (aplicado 2026-07-02): el
+server la sirve en delivery-policy (§3.8) y el móvil la consume de ahí; la
+copia embebida en `chat_message.dart` queda solo como **fallback** si el
+campo falta — cambiar la lista canónica exige actualizar también ese
+fallback en el mismo cambio.
 
 ---
 
@@ -551,7 +562,8 @@ no-nullables o `DateTime.parse` en Dart):
 
 Tolerantes (el móvil tiene defaults): metrics, timeWindow, geometry,
 liveEtaAt, evidenceUrls, customFields, batteryLevel, readAt, createdAt de
-chat (fallback `now()`).
+chat (fallback `now()`), quickReplies de delivery-policy (fallback: lista
+embebida — §7).
 
 ---
 
@@ -562,9 +574,14 @@ chat (fallback `now()`).
 URL: pre-deploy y single-tenant-per-VPS (ADR-0008) hacen que server y app se
 desplieguen coordinados; un handshake liviano alcanza.
 
-1. **`CONTRACT_VERSION = 1`** — web: `src/lib/mobile-contract/version.ts`;
+1. **`CONTRACT_VERSION = 2`** — web: `src/lib/mobile-contract/version.ts`;
    móvil: `lib/core/contract_version.dart`. Bump en cualquier cambio de
    shape/semántica de este doc; siempre en ambos repos en el mismo cambio.
+   Historial: v1 = contrato inicial (2026-07-01); v2 = aplicación de los 10
+   fixes normativos del §11 (2026-07-02) — cambios de semántica en PATCH
+   (notes merge-patch, failureReason no-blank), location (ceros persistidos,
+   contexto de ruta honrado), logout (`{refreshToken}` en body) y shape
+   aditivo en delivery-policy (`quickReplies`).
 2. **Header de handshake** — el web agrega `x-br-contract: <version>` en las
    respuestas del seam (helper compartido en los handlers móviles); el móvil
    lo compara post-login y loguea/avisa UI en mismatch (no bloquea).
@@ -589,20 +606,24 @@ desplieguen coordinados; un handshake liviano alcanza.
 
 ## 11. Registro de fixes normativos
 
-| ID | Lado | Sev | Resumen |
-|---|---|---|---|
-| FIX-1 | móvil | 🔴 pérdida de datos | drain del outbox presigna sin `index` → fotos colisionan en R2 |
-| FIX-2 | ambos | 🔴 pérdida de datos | FAILED sin motivo: exigir al encolar (móvil) + no-blank tras trim (web) |
-| FIX-3 | web | 🟠 | PATCH parcial: no clobberear `notes` omitidas (`|| null`) |
-| FIX-4 | móvil | 🟠 | refresh 401 single-flight real (Completer + replay; clearAll solo ante 401 del refresh) |
-| FIX-5 | móvil | 🟠 | `getToken` Centrifugo: `UnauthorizedException` solo ante 401 real |
-| FIX-6 | web | 🟡 | location POST: valores `0` se pierden (falsy→null) → usar `??` |
-| FIX-7 | web | 🟡 | location POST: honrar `routeId/stopSequence/jobId` del cliente |
-| FIX-8 | ambos | 🟡 | logout Bearer: aceptar `{refreshToken}` y revocar sesión Redis |
-| FIX-9 | web | 🟡 | servir `quickReplies` en delivery-policy (hoy espejo hardcodeado) |
-| FIX-10 | móvil | 🟢 | OneSignal App ID a `--dart-define` (default = actual) |
+**Los 10 fixes fueron aplicados el 2026-07-02** (bump a `CONTRACT_VERSION
+= 2`, §10). Las secciones descriptivas ya reflejan el comportamiento
+implementado; los detalles de cada fix viven junto a su endpoint.
 
-Gaps conocidos y **aceptados** v1 (no fixes): outbox no reporta drops al
-server; cola GPS en memoria (decisión pendiente §6); read-receipt del
+| ID | Lado | Sev | Resumen | Estado |
+|---|---|---|---|---|
+| FIX-1 | móvil | 🔴 pérdida de datos | drain del outbox presigna con `index=posición+1` y respeta `uploadedByPath` (§5) | ✅ aplicado 2026-07-02 |
+| FIX-2 | ambos | 🔴 pérdida de datos | FAILED sin motivo: gate en UI + backstop en `submitClose` (móvil), no-blank tras trim → 400 (web) (§3.6, §5) | ✅ aplicado 2026-07-02 |
+| FIX-3 | web | 🟠 | PATCH parcial: `notes` con semántica JSON-merge-patch (§3.6, §5) | ✅ aplicado 2026-07-02 |
+| FIX-4 | móvil | 🟠 | refresh single-flight con replay de la cola; flag `authRetried` anti doble-refresh (§2) | ✅ aplicado 2026-07-02 |
+| FIX-5 | móvil | 🟠 | `getToken` Centrifugo: `UnauthorizedException` solo ante 401 real (§7) | ✅ aplicado 2026-07-02 |
+| FIX-6 | web | 🟡 | location POST: valores `0` se persisten como `0` (§3.7) | ✅ aplicado 2026-07-02 |
+| FIX-7 | web | 🟡 | location POST: honra `routeId/stopSequence/jobId` del body con fallback por-campo (§3.7) | ✅ aplicado 2026-07-02 |
+| FIX-8 | ambos | 🟡 | logout Bearer: acepta `{refreshToken}` y revoca sesión Redis (§2) | ✅ aplicado 2026-07-02 |
+| FIX-9 | web | 🟡 | delivery-policy sirve `quickReplies` (aditivo; fallback embebido en móvil) (§3.8, §7) | ✅ aplicado 2026-07-02 |
+| FIX-10 | móvil | 🟢 | OneSignal App ID vía `--dart-define` con default previo (§7) | ✅ aplicado 2026-07-02 |
+
+Gaps conocidos y **aceptados** (no fixes): outbox no reporta drops al
+server; cola GPS en memoria (aceptado §6, 2026-07-02); read-receipt del
 dispatch no llega en vivo al driver; access tokens viejos válidos hasta exp
 tras logout/revocación; rate-limit de auth en memoria de proceso.

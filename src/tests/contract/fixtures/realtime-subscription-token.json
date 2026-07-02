@@ -1,0 +1,8 @@
+{
+  "contractVersion": 2,
+  "endpoint": "GET /api/realtime/subscription-token",
+  "status": 200,
+  "body": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGFubmVsIjoiY2hhdCJ9.fixture-subscription-signature"
+  }
+}

@@ -92,7 +92,6 @@ export interface OptimizationConfig {
   // New options for balancing and limits
   balanceVisits?: boolean; // Enable pre-solve balancing (max_tasks fair-share cap)
   maxDistanceKm?: number; // Maximum distance per route (km) — enforced natively by VROOM
-  maxTravelTimeMinutes?: number; // Maximum travel time per route (minutes)
   trafficFactor?: number; // Traffic factor 0-100 (affects speed)
   // Route end configuration
   routeEndMode?: "DRIVER_ORIGIN" | "SPECIFIC_DEPOT" | "OPEN_END";
@@ -357,12 +356,8 @@ async function optimizeWithVroom(
       ? 1.5 - config.trafficFactor / 100 // 0 traffic = 1.5x speed, 100 traffic = 0.5x speed
       : undefined;
 
-  // Max travel time per route, straight from config. The max-distance cap is
-  // enforced natively by VROOM (vehicle.max_distance) — no 35 km/h proxy and
-  // no post-solve trim (SEMANTICS A6).
-  const maxTravelTime = config.maxTravelTimeMinutes
-    ? config.maxTravelTimeMinutes * 60
-    : undefined;
+  // The max-distance cap is enforced natively by VROOM (vehicle.max_distance)
+  // — no 35 km/h proxy and no post-solve trim (SEMANTICS A6).
   const maxDistanceMeters = config.maxDistanceKm
     ? config.maxDistanceKm * 1000
     : undefined;
@@ -442,7 +437,6 @@ async function optimizeWithVroom(
         timeWindowEnd: vehicle.timeWindowEnd || config.depot.timeWindowEnd,
         speedFactor: effectiveSpeedFactor,
         maxTasks: effectiveMaxOrders,
-        maxTravelTime, // Maximum travel time per route
         maxDistanceMeters, // Maximum distance per route (native VROOM)
         costs: vehicleCosts,
         endLongitude,

@@ -5,6 +5,7 @@ import { users } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { isDispatchRole } from "@/lib/chat";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import { withContractHeader } from "@/lib/mobile-contract";
 import {
   centrifugoChannels,
   issueCentrifugoSubscriptionToken,
@@ -33,7 +34,7 @@ const CHAT_THREAD_RE = /^chat:([^:]+):driver:([^:]+)$/;
  * and that the driverId is a real CONDUCTOR of that tenant — every
  * piece of the channel name is checked, not just the namespace.
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   const authResult = await requireRoutePermission(
     request,
     EntityType.CHAT,
@@ -112,3 +113,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withContractHeader(handleGet);

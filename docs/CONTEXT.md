@@ -375,9 +375,6 @@ lugar de mantenerlo. Sin migrations data-rescue todavía.
 - `docs/ROLES-PERMISSIONS.md` — catálogo completo de permisos y roles.
 - `docs/API-CONTRACT-MOBILE.md` — contrato del seam con la app móvil
   (espejado en `aea/docs/`).
-- ~~`docs/SISTEMA_OPTIMIZACION.md`~~ / ~~`docs/ESTADO_PROYECTO.md`~~ —
-  **stale** (describen PyVRP eliminado / congelado en 2025). No usar como
-  referencia; ver banner en cada uno.
 - `docs/adr/` — decisiones arquitectónicas con su motivación:
   - ADR-0001: VROOM como único solver
   - ADR-0002: Canonical SolvedPlan shape (cadena tipada)
@@ -387,4 +384,6 @@ lugar de mantenerlo. Sin migrations data-rescue todavía.
   - ADR-0006: CSV import con preview-and-confirm para colisiones de trackingId
   - ADR-0007: Realtime vía Centrifugo, push vía OneSignal
   - ADR-0008: Tenancy — multi-tenant lógico, single-tenant-per-VPS físico
+  - ADR-0009: Migraciones Drizzle versionadas (`db:generate` + `db:migrate`, nunca `db:push`)
+  - ADR-0010: Contrato RBAC tipado compartido server/cliente
   - ADR-0011: FailureReason como string libre per-company (enum legacy)

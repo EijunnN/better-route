@@ -3,6 +3,7 @@ import { Action, EntityType } from "@/lib/auth/authorization";
 import { broadcastChatMessage, isDispatchRole } from "@/lib/chat";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
@@ -12,7 +13,7 @@ import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
  * so it lands in each thread, plus a single publish to the broadcast
  * channel. Dispatch roles only.
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   const authResult = await requireRoutePermission(
     request,
     EntityType.CHAT,
@@ -53,3 +54,5 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true, reached });
 }
+
+export const POST = withContractHeader(handlePost);

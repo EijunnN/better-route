@@ -2,12 +2,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import type { OUTPUT_FORMAT } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
-import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   canGenerateOutput,
   convertOutputToCSV,
   generatePlanOutput,
 } from "@/lib/routing/output-generator";
+import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
  * POST /api/output
@@ -36,14 +37,8 @@ export async function POST(request: NextRequest) {
     );
     if (authResult instanceof NextResponse) return authResult;
 
-    // Extract tenant context from headers
-    const tenantCtx = getTenantContext();
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
 
     const { companyId, userId } = tenantCtx;
 
@@ -67,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Set tenant context for database operations
-    setTenantContext({ companyId, userId: userId || "" });
+    setTenantContext({ companyId, userId });
 
     // Check if output can be generated
     const canGenerate = await canGenerateOutput(companyId, jobId);
@@ -81,14 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate output (userId must be defined for database operation)
-    const outputUserId = userId || "system";
-    const output = await generatePlanOutput(
-      companyId,
-      jobId,
-      outputUserId,
-      format,
-    );
+    const output = await generatePlanOutput(companyId, jobId, userId, format);
 
     // Return based on format
     if (format === "CSV") {
@@ -143,16 +131,10 @@ export async function GET(request: NextRequest) {
     );
     if (authResult instanceof NextResponse) return authResult;
 
-    // Extract tenant context from headers
-    const tenantCtx = getTenantContext();
-    if (!tenantCtx) {
-      return NextResponse.json(
-        { error: "Missing tenant context" },
-        { status: 401 },
-      );
-    }
+    const tenantCtx = extractTenantContextAuthed(request, authResult);
+    if (tenantCtx instanceof NextResponse) return tenantCtx;
 
-    const { companyId } = tenantCtx;
+    const { companyId, userId } = tenantCtx;
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -161,7 +143,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     // Set tenant context for database operations
-    setTenantContext({ companyId, userId: "" });
+    setTenantContext({ companyId, userId });
 
     // Get output history
     const { getOutputHistory } = await import("@/lib/routing/output-generator");

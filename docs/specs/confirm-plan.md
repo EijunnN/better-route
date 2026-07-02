@@ -110,19 +110,30 @@ Tampoco se escribe `route_stop_history` al nacer los stops.
 
 ## 6. Deudas conocidas (para Opus, en orden de valor)
 
-| ID | Sev | Qué |
-|---|---|---|
-| C-4 | 🔴 | stops huérfanos de órdenes no-PENDING: re-filtrar insert contra RETURNING del update |
-| C-5 | 🟠 | TOCTOU de vehículos ocupados: mover el guard dentro de la tx |
-| C-3 | 🟠 | validar driverAssignments (existe, CONDUCTOR, mismo tenant) en la validación → 400, no 500-por-FK |
-| C-2 | 🟡 | body JSON malformado se traga (`.catch(()=>({}))`) — al menos loguear; un `overrideWarnings` mal serializado se vuelve `false` |
-| C-9 | 🟡 | `startDate` imparseable cae silenciosamente a HOY (plan de mañana aparece en la ruta de hoy) — rechazar con 400 |
-| C-8 | 🟡 | `estimatedServiceTime` 600 hardcodeado ignora `serviceTimeMinutes` de la config |
-| C-1 | 🟢 | 409 con `confirmedAt: {id,status}` (mislabel) |
-| C-6 | 🟢 | `skippedOrderIds.includes()` O(n²) con 1000+ órdenes |
+| ID | Sev | Qué | Resolución |
+|---|---|---|---|
+| C-4 | 🔴 | stops huérfanos de órdenes no-PENDING: re-filtrar insert contra RETURNING del update | **RESUELTA 2026-07-02** — el insert se re-filtra contra los ids del RETURNING dentro de la tx; `ordersUpdatedCount===0` aborta con `CONFLICT:` → 409; las órdenes caídas en la ventana se reportan en `skippedOrders` |
+| C-5 | 🟠 | TOCTOU de vehículos ocupados: mover el guard dentro de la tx | **RESUELTA 2026-07-02** — guard movido dentro de la tx, detrás de `pg_advisory_xact_lock(hashtext(companyId))` que serializa confirms por empresa (sin el lock, READ COMMITTED dejaba la carrera cross-config abierta); el detalle del 409 viaja en `VehiclesBusyError` |
+| C-3 | 🟠 | validar driverAssignments (existe, CONDUCTOR, mismo tenant) en la validación → 400, no 500-por-FK | **RESUELTA 2026-07-02** — `validateDrivers` en `plan-validation.ts` corre siempre y emite ERROR `driver_not_found` por driver desconocido/otro tenant/no-CONDUCTOR |
+| C-2 | 🟡 | body JSON malformado se traga (`.catch(()=>({}))`) — al menos loguear; un `overrideWarnings` mal serializado se vuelve `false` | **RESUELTA 2026-07-02** — body vacío = defaults; JSON malformado o no-objeto → 400 |
+| C-9 | 🟡 | `startDate` imparseable cae silenciosamente a HOY (plan de mañana aparece en la ruta de hoy) — rechazar con 400 | **RESUELTA 2026-07-02** — `startDate` presente e imparseable → 400; el fallback a hoy solo aplica si está ausente |
+| C-8 | 🟡 | `estimatedServiceTime` 600 hardcodeado ignora `serviceTimeMinutes` de la config | **RESUELTA 2026-07-02** — `estimatedServiceTime = configuration.serviceTimeMinutes * 60` |
+| C-1 | 🟢 | 409 con `confirmedAt: {id,status}` (mislabel) | **RESUELTA 2026-07-02** — el fetch trae `confirmedAt` real y el 409 devuelve ISO string |
+| C-6 | 🟢 | `skippedOrderIds.includes()` O(n²) con 1000+ órdenes | **RESUELTA 2026-07-02** — filtro contra `Set` |
+
+C-7 (drift `job.result` vs `route_stops.userId` cuando el operador
+reasigna drivers) sigue **asumido** por diseño (§1) — no se re-escribe el
+result persistido.
 
 Tests que fijan el contrato (integration, DB real): doble-confirm
 concurrente → exactamente un 200 y un 409, sin stops duplicados; confirm
 parcial con orden CANCELLED intercalada → ni ASSIGNED ni stop para esa
 orden (rojo hoy — C-4); attemptNumber con Visits previas; rollback total
 ante FK inválido de driverAssignments.
+
+> **2026-07-02:** los dos primeros (más C-4 concurrente cross-config,
+> vehículo ocupado, driver fantasma → 400, JSON malformado → 400,
+> `startDate` inválido → 400 y `confirmedAt` real en el 409) viven en
+> `src/tests/integration/plans/plan-confirmation-debts.test.ts`. El caso
+> "rollback ante FK inválido de driverAssignments" ya no es alcanzable:
+> C-3 lo intercepta con 400 antes de la tx.

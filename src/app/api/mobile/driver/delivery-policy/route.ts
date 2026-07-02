@@ -4,8 +4,10 @@ import { db } from "@/db";
 import { companyDeliveryPolicy, USER_ROLES } from "@/db/schema";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 import { Action, EntityType } from "@/lib/auth/authorization";
+import { CHAT_QUICK_REPLIES } from "@/lib/chat";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { ALLOWED_TRANSITIONS, SYSTEM_STATE_ORDER } from "@/lib/workflow/states";
 
@@ -21,7 +23,7 @@ import { ALLOWED_TRANSITIONS, SYSTEM_STATE_ORDER } from "@/lib/workflow/states";
  * every install — only the labels, colours, evidence requirements,
  * and failure-reason list vary per company.
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   try {
     const authResult = await requireRoutePermission(
       request,
@@ -57,6 +59,9 @@ export async function GET(request: NextRequest) {
       policy = inserted;
     }
 
+    // FIX-9: la lista canónica de quick replies viaja en la policy para
+    // que el móvil deje de depender de su copia embebida (que queda como
+    // fallback si el campo falta).
     return NextResponse.json({
       data: {
         policy,
@@ -64,6 +69,7 @@ export async function GET(request: NextRequest) {
           states: SYSTEM_STATE_ORDER,
           transitions: ALLOWED_TRANSITIONS,
         },
+        quickReplies: CHAT_QUICK_REPLIES,
       },
     });
   } catch (error) {
@@ -82,3 +88,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withContractHeader(handleGet);

@@ -1,0 +1,39 @@
+{
+  "contractVersion": 2,
+  "endpoint": "POST /api/route-stops/[id]/reopen",
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "5a6b7c8d-9e0f-4a1b-9c3d-4e5f6a7b8c9d",
+      "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+      "jobId": "e4d5c6b7-a8f9-4e0d-b1c2-d3e4f5a6b7c8",
+      "routeId": "route-1",
+      "userId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "vehicleId": "b58a1c2e-3d4f-4a5b-9c6d-7e8f9a0b1c2d",
+      "orderId": "9a8b7c6d-5e4f-4a3b-8c1d-0e9f8a7b6c5d",
+      "sequence": 1,
+      "attemptNumber": 1,
+      "address": "Jr. Ancash 512, Cercado de Lima",
+      "latitude": "-12.045511",
+      "longitude": "-77.028240",
+      "estimatedArrival": "2026-07-02T14:10:00.000Z",
+      "estimatedServiceTime": 300,
+      "predictedEtaAt": null,
+      "etaComputedAt": null,
+      "timeWindowStart": "2026-07-02T14:00:00.000Z",
+      "timeWindowEnd": "2026-07-02T18:00:00.000Z",
+      "scheduledDate": "2026-07-02",
+      "status": "PENDING",
+      "startedAt": null,
+      "completedAt": null,
+      "notes": null,
+      "failureReason": null,
+      "evidenceUrls": null,
+      "zoneId": null,
+      "metadata": null,
+      "customFields": null,
+      "createdAt": "2026-07-02T11:00:05.000Z",
+      "updatedAt": "2026-07-02T15:40:00.000Z"
+    }
+  }
+}

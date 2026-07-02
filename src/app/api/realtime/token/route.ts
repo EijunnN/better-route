@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { issueCentrifugoToken } from "@/lib/realtime";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
@@ -17,7 +18,7 @@ export const dynamic = "force-dynamic";
  * The token's `channels` claim is derived from the caller's role, so a
  * driver can never receive a token that subscribes them to monitoring.
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   let user: Awaited<ReturnType<typeof getAuthenticatedUser>>;
   try {
     user = await getAuthenticatedUser(request);
@@ -48,3 +49,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withContractHeader(handleGet);

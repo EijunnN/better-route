@@ -38,9 +38,12 @@ export async function POST(request: NextRequest) {
 
 **Reglas:**
 - Toda ruta API que muta datos llama a `requireRoutePermission` antes del handler.
-- Para multi-tenant: si la ruta recibe `companyId` por path/body, validá contra
-  el JWT con `assertSameTenant(user, companyId)` o usá
-  `extractTenantContextAuthed`.
+- Para multi-tenant: derivá el tenant del JWT con
+  `extractTenantContextAuthed(request, user)` — directo tras
+  `requireRoutePermission`, o implícito si usás `setupAuthContext` (lo llama
+  internamente). Si además la ruta recibe `companyId` por path/body, compará
+  ese valor contra el user — mismatch = 403, solo `ADMIN_SISTEMA` lo salta —
+  como hace `canAccessCompany` en `src/app/api/companies/[id]/route.ts`.
 - **Nunca** uses `setupAuthContext` solo — siempre acompañado de un check de
   permission.
 
@@ -195,10 +198,14 @@ export async function POST(request: NextRequest) {
 
 El cliente esconde el botón por UX. **El server enforce siempre**.
 
-### ❌ NO escribas helpers `canAccessX()` ad-hoc por archivo
+### ❌ NO reimplementes el check tenant-vs-path con semántica propia
 
-Ya existe el patrón `assertSameTenant(user, companyId)` para multi-tenant
-checks. No reimplementar en cada handler.
+No hay un helper compartido para validar el `companyId` del path: el patrón
+de referencia es `canAccessCompany(user, companyIdFromPath)` en
+`src/app/api/companies/[id]/route.ts` (bypass solo para `ADMIN_SISTEMA`,
+mismatch → 403 `TENANT_MISMATCH`). Si tu ruta recibe `companyId` por path,
+replicá esa semántica exacta — no inventes variantes que devuelvan 401 o
+que olviden el bypass de admin.
 
 ### ❌ NO `<ProtectedPage>` sin `requiredPermission`
 

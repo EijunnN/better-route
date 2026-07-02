@@ -13,6 +13,7 @@
  */
 
 import { z } from "zod";
+import { DRIVER_ASSIGNMENT_ERROR_CODES } from "@/lib/routing/assignment-errors";
 import type {
   AggregatedPlan,
   AssignedSolvedRoute,
@@ -126,7 +127,12 @@ const assignedSolvedRouteSchema: z.ZodType<AssignedSolvedRoute> = z.object({
   assignmentQuality: z.object({
     score: z.number().min(0).max(100),
     warnings: z.array(z.string()),
-    errors: z.array(z.string()),
+    errors: z.array(
+      z.object({
+        code: z.enum(DRIVER_ASSIGNMENT_ERROR_CODES),
+        message: z.string(),
+      }),
+    ),
   }),
 });
 

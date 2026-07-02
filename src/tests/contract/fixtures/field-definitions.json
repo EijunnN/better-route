@@ -1,0 +1,49 @@
+{
+  "contractVersion": 2,
+  "endpoint": "GET /api/mobile/driver/field-definitions",
+  "status": 200,
+  "body": {
+    "data": [
+      {
+        "id": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
+        "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+        "entity": "route_stops",
+        "code": "dni_receptor",
+        "label": "DNI de quien recibe",
+        "fieldType": "text",
+        "required": true,
+        "placeholder": "45671234",
+        "options": null,
+        "defaultValue": null,
+        "position": 1,
+        "showInList": false,
+        "showInMobile": true,
+        "showInCsv": true,
+        "validationRules": null,
+        "active": true,
+        "createdAt": "2026-06-01T15:00:00.000Z",
+        "updatedAt": "2026-06-01T15:00:00.000Z"
+      },
+      {
+        "id": "4c5d6e7f-8a9b-4c0d-9e1f-2a3b4c5d6e7f",
+        "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+        "entity": "orders",
+        "code": "sede",
+        "label": "Sede",
+        "fieldType": "select",
+        "required": false,
+        "placeholder": null,
+        "options": ["Norte", "Centro", "Sur"],
+        "defaultValue": "Centro",
+        "position": 2,
+        "showInList": true,
+        "showInMobile": true,
+        "showInCsv": true,
+        "validationRules": null,
+        "active": true,
+        "createdAt": "2026-06-01T15:00:00.000Z",
+        "updatedAt": "2026-06-01T15:00:00.000Z"
+      }
+    ]
+  }
+}

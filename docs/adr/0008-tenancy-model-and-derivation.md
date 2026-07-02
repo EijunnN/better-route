@@ -53,8 +53,10 @@ audit):
 - `ADMIN_SISTEMA` is the only cross-tenant role and must pass the header
   explicitly to select a workspace (`400 COMPANY_REQUIRED` otherwise).
 - Routes with `companyId` in the path (e.g.
-  `/api/companies/[id]/...`) must additionally
-  `assertSameTenant(user, companyIdFromPath)`.
+  `/api/companies/[id]/...`) must additionally compare the path
+  `companyId` against the user (403 on mismatch; only `ADMIN_SISTEMA`
+  bypasses) — reference pattern: `canAccessCompany` in
+  `src/app/api/companies/[id]/route.ts`.
 - The pre-audit unauthed helper (`extractTenantContext`) is deleted and
   must not be reintroduced.
 

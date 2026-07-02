@@ -8,6 +8,7 @@ import {
   verifyToken,
 } from "@/lib/auth/auth";
 import { getUserPermissionsFromDB } from "@/lib/auth/authorization";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 /**
@@ -16,7 +17,7 @@ import { AUTH_ERRORS } from "@/lib/validations/auth";
  * Get current authenticated user information
  * Supports both cookie-based and Bearer token authentication
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   try {
     // Try to get user from cookies first
     let payload = await getCurrentUser();
@@ -83,3 +84,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withContractHeader(handleGet);

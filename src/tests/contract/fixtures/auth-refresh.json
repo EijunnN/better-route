@@ -1,0 +1,10 @@
+{
+  "contractVersion": 2,
+  "endpoint": "POST /api/auth/refresh",
+  "status": 200,
+  "body": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiYWNjZXNzIn0.fixture-access-signature-2",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoicmVmcmVzaCJ9.fixture-refresh-signature-2",
+    "expiresIn": 900
+  }
+}

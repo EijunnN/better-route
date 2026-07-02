@@ -1,0 +1,22 @@
+{
+  "contractVersion": 2,
+  "endpoint": "GET /api/auth/me",
+  "status": 200,
+  "body": {
+    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+    "email": "conductor@empresa.pe",
+    "name": "Juan Pérez",
+    "role": "CONDUCTOR",
+    "active": true,
+    "createdAt": "2026-06-01T15:00:00.000Z",
+    "permissions": [
+      "route:read",
+      "route_stop:read",
+      "route_stop:update",
+      "order:read",
+      "chat:read",
+      "chat:create"
+    ]
+  }
+}

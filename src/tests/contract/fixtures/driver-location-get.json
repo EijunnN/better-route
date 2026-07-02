@@ -1,0 +1,21 @@
+{
+  "contractVersion": 2,
+  "endpoint": "GET /api/mobile/driver/location",
+  "status": 200,
+  "body": {
+    "location": {
+      "id": "0c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+      "latitude": -12.061205,
+      "longitude": -77.036918,
+      "accuracy": 8,
+      "altitude": 0,
+      "speed": 0,
+      "heading": 0,
+      "source": "GPS",
+      "batteryLevel": 76,
+      "isMoving": false,
+      "recordedAt": "2026-07-02T13:15:00.000Z",
+      "savedAt": "2026-07-02T13:15:04.000Z"
+    }
+  }
+}

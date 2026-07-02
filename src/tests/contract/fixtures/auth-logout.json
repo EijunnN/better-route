@@ -1,0 +1,9 @@
+{
+  "contractVersion": 2,
+  "endpoint": "POST /api/auth/logout",
+  "status": 200,
+  "body": {
+    "success": true,
+    "message": "Sesión cerrada correctamente"
+  }
+}

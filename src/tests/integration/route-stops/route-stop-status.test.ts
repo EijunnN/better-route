@@ -16,6 +16,15 @@ import {
 import { cleanDatabase, testDb } from "../setup/test-db";
 import { createTestRequest } from "../setup/test-request";
 
+/**
+ * La empresa de este suite NO tiene fila de delivery policy, así que el
+ * handler corre con el fallback: `completedRequiresPhoto: true` y
+ * `DEFAULT_FAILURE_REASONS` (lista no vacía → FAILED exige un reason
+ * no-blank). Por ADR-0011 el reason es free text opaco: se almacena
+ * verbatim y la membresía en la lista NO se valida. La validación fina
+ * del cierre (trim, merge-patch de notes, policy explícita) vive en
+ * route-stop-close-validation.test.ts.
+ */
 describe("PATCH /api/route-stops/[id] — status transitions", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
   let admin: Awaited<ReturnType<typeof createAdmin>>;
@@ -56,7 +65,7 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
       vehicleId: vehicle.id,
       orderId: order.id,
       status: overrides.status ?? "PENDING",
-      failureReason: overrides.failureReason as any,
+      failureReason: overrides.failureReason,
       evidenceUrls: overrides.evidenceUrls,
     });
     return { stop, order };
@@ -138,7 +147,12 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
   test("IN_PROGRESS → COMPLETED sets completedAt and order becomes COMPLETED", async () => {
     const { stop, order } = await freshStop({ status: "IN_PROGRESS" });
 
-    const res = await patchStop(stop.id, { status: "COMPLETED" });
+    // El fallback de policy exige foto para COMPLETED; el sujeto de este
+    // test es completedAt + sync de la orden, no el guard de evidencia.
+    const res = await patchStop(stop.id, {
+      status: "COMPLETED",
+      evidenceUrls: ["https://example.com/pod.jpg"],
+    });
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -153,20 +167,20 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
   });
 
   // -----------------------------------------------------------------------
-  // 3. IN_PROGRESS → FAILED with CUSTOMER_ABSENT saves failureReason
+  // 3. IN_PROGRESS → FAILED with a free-text reason saves it verbatim
   // -----------------------------------------------------------------------
-  test("IN_PROGRESS → FAILED with CUSTOMER_ABSENT saves failureReason", async () => {
+  test("IN_PROGRESS → FAILED with a free-text reason saves failureReason verbatim", async () => {
     const { stop } = await freshStop({ status: "IN_PROGRESS" });
 
     const res = await patchStop(stop.id, {
       status: "FAILED",
-      failureReason: "CUSTOMER_ABSENT",
+      failureReason: "Cliente ausente",
     });
     expect(res.status).toBe(200);
 
     const body = await res.json();
     expect(body.data.status).toBe("FAILED");
-    expect(body.data.failureReason).toBe("CUSTOMER_ABSENT");
+    expect(body.data.failureReason).toBe("Cliente ausente");
   });
 
   // -----------------------------------------------------------------------
@@ -175,7 +189,7 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
   test("FAILED → PENDING (retry) clears failureReason and evidenceUrls", async () => {
     const { stop } = await freshStop({
       status: "FAILED",
-      failureReason: "PACKAGE_DAMAGED",
+      failureReason: "Paquete dañado",
       evidenceUrls: ["https://example.com/photo.jpg"],
     });
 
@@ -191,6 +205,9 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
   // -----------------------------------------------------------------------
   // 6. PENDING → FAILED requires failureReason (400)
   // -----------------------------------------------------------------------
+  // Sin fila de policy, el fallback DEFAULT_FAILURE_REASONS (no vacío)
+  // hace obligatorio el reason. El 400 no enumera valores válidos:
+  // por ADR-0011 no existe una lista cerrada que devolver.
   test("PENDING → FAILED without failureReason returns 400", async () => {
     const { stop } = await freshStop({ status: "PENDING" });
 
@@ -199,8 +216,6 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
 
     const body = await res.json();
     expect(body.error).toMatch(/failureReason/i);
-    expect(body.validReasons).toBeDefined();
-    expect(Array.isArray(body.validReasons)).toBe(true);
   });
 
   // -----------------------------------------------------------------------
@@ -217,39 +232,37 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
   });
 
   // -----------------------------------------------------------------------
-  // 9. FAILED without failureReason → 400 with validReasons list
+  // 9. COMPLETED without evidence → 400 (fallback completedRequiresPhoto)
   // -----------------------------------------------------------------------
-  test("IN_PROGRESS → FAILED without failureReason returns 400 with validReasons", async () => {
+  test("IN_PROGRESS → COMPLETED without evidenceUrls returns 400 (photo required by default policy)", async () => {
     const { stop } = await freshStop({ status: "IN_PROGRESS" });
 
-    const res = await patchStop(stop.id, { status: "FAILED" });
+    const res = await patchStop(stop.id, { status: "COMPLETED" });
     expect(res.status).toBe(400);
 
     const body = await res.json();
-    expect(body.validReasons).toContain("CUSTOMER_ABSENT");
-    expect(body.validReasons).toContain("CUSTOMER_REFUSED");
-    expect(body.validReasons).toContain("ADDRESS_NOT_FOUND");
-    expect(body.validReasons).toContain("PACKAGE_DAMAGED");
-    expect(body.validReasons).toContain("RESCHEDULE_REQUESTED");
-    expect(body.validReasons).toContain("UNSAFE_AREA");
-    expect(body.validReasons).toContain("OTHER");
+    expect(body.error).toMatch(/foto/i);
   });
 
   // -----------------------------------------------------------------------
-  // 10. FAILED with invalid failureReason → 400
+  // 10. FAILED with a reason outside the default list → accepted (ADR-0011)
   // -----------------------------------------------------------------------
-  test("FAILED with invalid failureReason returns 400", async () => {
+  // Membresía deliberadamente NO validada: una policy cacheada stale en el
+  // device no puede convertir una falla real en un 400 permanente. Acá se
+  // ejercita el path de fallback (sin fila de policy); el path con policy
+  // explícita vive en route-stop-close-validation.test.ts.
+  test("FAILED with a reason not in the default list is accepted verbatim", async () => {
     const { stop } = await freshStop({ status: "IN_PROGRESS" });
 
     const res = await patchStop(stop.id, {
       status: "FAILED",
-      failureReason: "NOT_A_REAL_REASON",
+      failureReason: "Motivo fuera de la lista default",
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
 
     const body = await res.json();
-    expect(body.error).toMatch(/invalid failureReason/i);
-    expect(body.validReasons).toBeDefined();
+    expect(body.data.status).toBe("FAILED");
+    expect(body.data.failureReason).toBe("Motivo fuera de la lista default");
   });
 
   // -----------------------------------------------------------------------
@@ -264,13 +277,13 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
 
     const res = await patchStop(stop.id, {
       status: "FAILED",
-      failureReason: "ADDRESS_NOT_FOUND",
+      failureReason: "Dirección incorrecta",
       evidenceUrls: urls,
     });
     expect(res.status).toBe(200);
 
     const body = await res.json();
-    expect(body.data.failureReason).toBe("ADDRESS_NOT_FOUND");
+    expect(body.data.failureReason).toBe("Dirección incorrecta");
     expect(body.data.evidenceUrls).toEqual(urls);
   });
 
@@ -283,7 +296,10 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
       orderStatus: "IN_PROGRESS",
     });
 
-    const res = await patchStop(stop.id, { status: "COMPLETED" });
+    const res = await patchStop(stop.id, {
+      status: "COMPLETED",
+      evidenceUrls: ["https://example.com/pod.jpg"],
+    });
     expect(res.status).toBe(200);
 
     const dbOrder = await testDb.query.orders.findFirst({
@@ -383,7 +399,7 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
 
     const res = await patchStop(stop.id, {
       status: "FAILED",
-      failureReason: "UNSAFE_AREA",
+      failureReason: "Zona insegura",
       notes: "Zone was restricted",
       evidenceUrls: ["https://example.com/evidence.jpg"],
     });
@@ -399,7 +415,7 @@ describe("PATCH /api/route-stops/[id] — status transitions", () => {
     expect(history?.notes).toBe("Zone was restricted");
     expect(history?.metadata).toBeDefined();
     const meta = history?.metadata as Record<string, unknown>;
-    expect(meta.failureReason).toBe("UNSAFE_AREA");
+    expect(meta.failureReason).toBe("Zona insegura");
     expect(meta.evidenceUrls).toEqual(["https://example.com/evidence.jpg"]);
   });
 

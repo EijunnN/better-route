@@ -1,0 +1,19 @@
+{
+  "contractVersion": 2,
+  "endpoint": "POST /api/chat/conversations/[driverId]/messages",
+  "status": 201,
+  "body": {
+    "data": {
+      "id": "6a7b8c9d-0e1f-4a2b-b3c4-d5e6f7a8b9c0",
+      "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+      "driverId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "senderId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "direction": "TO_DISPATCH",
+      "kind": "TEMPLATE",
+      "body": "Voy en camino",
+      "templateCode": "ON_THE_WAY",
+      "readAt": null,
+      "createdAt": "2026-07-02T13:32:10.000Z"
+    }
+  }
+}

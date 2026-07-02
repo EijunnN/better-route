@@ -21,7 +21,7 @@ VROOM solver + OSRM road network.
 
 ## RBAC — autorización
 
-**Único contrato tipado entre server y cliente.** Lee
+**Único contrato tipado entre server y cliente** (ADR-0010). Lee
 [`src/lib/auth/permissions/README.md`](./src/lib/auth/permissions/README.md)
 antes de tocar cualquier botón mutativo o ruta API.
 
@@ -51,9 +51,11 @@ roles** se crean por empresa en `/roles` y se almacenan en DB.
 - Non-admin: JWT `companyId` es autoritativo; mismatch con header = 403.
 - `ADMIN_SISTEMA` debe pasar header explícitamente para switchear workspace.
 
-Para rutas con `companyId` en el path (ej. `/api/companies/[id]/...`), usar
-el patrón `assertSameTenant(user, companyIdFromPath)` que aparece en
-`workflow-states/route.ts`.
+Para rutas con `companyId` en el path (ej. `/api/companies/[id]/...`):
+`setupAuthContext` + `checkPermissionOrError`, y después comparar el
+`companyId` del path contra el user — mismatch = 403, solo `ADMIN_SISTEMA`
+lo salta. Patrón de referencia: `canAccessCompany` en
+`src/app/api/companies/[id]/route.ts`.
 
 ---
 
@@ -127,7 +129,7 @@ existir.
 - Tamaño típico: 1000+ órdenes por plan.
 - Verifier (`src/lib/optimization/verifier/`) es independiente del solver y
   valida HARD/SOFT/INFO violations.
-- Test harness en `src/tests/routing-quality/` corre 28 escenarios golden.
+- Test harness en `src/tests/routing-quality/` corre 29 escenarios golden.
 - Zonas: `createZoneBatches` en `src/lib/geo/zone-utils.ts` divide por zona
   para isolation hard.
 
@@ -161,13 +163,12 @@ Los ADR aceptados son la verdad canónica de las decisiones. Si un doc derivado
 (CONTEXT, README, guías) contradice un ADR, el doc está *stale*: seguí el ADR y
 corregí/anotá el doc.
 
-> **Drift reconciliado (2026-07-01, sesión SOTA):** `CONTEXT.md` fue corregido
-> (Realtime §7 → Centrifugo/OneSignal, estados de Stop sin `SKIPPED`,
-> FailureReason free-text, tenancy con ADR-0008) y los docs stale llevan
-> banner (`SISTEMA_OPTIMIZACION`, `ESTADO_PROYECTO`,
-> `routing-quality-findings`). **Pendiente (Opus):** reescribir o borrar los
-> docs con banner; ADR-0009 (migraciones) y ADR-0010 (RBAC tipado) faltan —
-> su contenido ya vive en este archivo y en `permissions/README.md`.
+> **Drift reconciliado (2026-07-01, cerrado 2026-07-02):** los docs stale
+> `SISTEMA_OPTIMIZACION.md` y `ESTADO_PROYECTO.md` fueron **eliminados** (la
+> verdad vive en `CONTEXT.md` + ADRs); ADR-0009 (migraciones) y ADR-0010
+> (RBAC tipado) fueron escritos. `docs/routing-quality-findings.md` queda
+> como snapshot histórico con banner (decidido 2026-07-02: se conserva —
+> documenta por qué existe el verifier).
 
 ## Seam con la app móvil
 
@@ -183,7 +184,7 @@ desaparecen; el rol `CONDUCTOR` debe conservar el capability set del §8.
 ## Migraciones (Drizzle)
 
 - **`db:generate` + `db:migrate`. NUNCA `db:push`.** `db:push` rompe el historial
-  versionado de migraciones.
+  versionado de migraciones (ADR-0009).
 - Flujo tras cambiar un archivo de `src/db/schema/`:
   1. `bun run db:generate` — genera el SQL en `drizzle/`.
   2. Revisá el SQL generado.
@@ -196,7 +197,7 @@ desaparecen; el rol `CONDUCTOR` debe conservar el capability set del §8.
 | Unit | `bun test src/tests/unit` | No |
 | Integration | `bun test src/tests/integration/` | **Sí** (DB real) |
 | Todos | `bun test` | Sí (incluye integration) |
-| Golden routing-quality (28 escenarios) | `bun run src/tests/routing-quality/run.ts` | Según escenario |
+| Golden routing-quality (29 escenarios) | `bun run src/tests/routing-quality/run.ts` | Según escenario |
 | Routing integration | `bun run src/tests/routing-quality/integration-runner.ts` | Sí |
 
 Los tests de integración tocan la DB real: si Postgres no está arriba, fallan por

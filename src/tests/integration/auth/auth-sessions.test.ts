@@ -14,6 +14,13 @@ import { createCompany, createUser } from "../setup/test-data";
 import { cleanDatabase } from "../setup/test-db";
 import { createTestRequest } from "../setup/test-request";
 
+// Firma del mock in-memory de createSession (setup/preload.ts), que
+// difiere de la firma de produccion.
+type MockCreateSession = (
+  userId: string,
+  data?: Record<string, unknown>,
+) => Promise<string>;
+
 describe("Auth sessions & token management", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
   let admin: Awaited<ReturnType<typeof createUser>>;
@@ -212,6 +219,115 @@ describe("Auth sessions & token management", () => {
   });
 
   // -----------------------------------------------------------------------
+  // 8b. POST /auth/logout — [FIX-8] `{ refreshToken }` body revokes the
+  //     Redis session (Bearer clients carry no session_id cookie)
+  // -----------------------------------------------------------------------
+  test("POST /auth/logout with refreshToken body revokes the session", async () => {
+    const { createSession, getSession } = await import("@/lib/auth/session");
+
+    const sessionId = await (createSession as unknown as MockCreateSession)(
+      driver.id,
+      {
+        lastActivityAt: Date.now(),
+        userAgent: "Mobile App",
+        ipAddress: "10.0.0.2",
+      },
+    );
+    expect(await getSession(sessionId)).not.toBeNull();
+
+    const accessToken = await createTestToken({
+      userId: driver.id,
+      companyId: company.id,
+      email: driver.email,
+      role: driver.role,
+    });
+    const refreshToken = await createTestRefreshToken({
+      userId: driver.id,
+      companyId: company.id,
+      email: driver.email,
+      role: driver.role,
+      sessionId,
+    });
+
+    const req = await createTestRequest("/api/auth/logout", {
+      method: "POST",
+      token: accessToken,
+      body: { refreshToken },
+    });
+
+    const res = await logoutPOST(req);
+    expect(res.status).toBe(200);
+
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(await getSession(sessionId)).toBeNull();
+  });
+
+  // -----------------------------------------------------------------------
+  // 8c. POST /auth/logout — invalid refreshToken body is ignored (200 always)
+  // -----------------------------------------------------------------------
+  test("POST /auth/logout with invalid refreshToken still returns 200 and revokes nothing", async () => {
+    const { createSession, getSession } = await import("@/lib/auth/session");
+
+    const sessionId = await (createSession as unknown as MockCreateSession)(
+      driver.id,
+      { lastActivityAt: Date.now() },
+    );
+
+    const req = await createTestRequest("/api/auth/logout", {
+      method: "POST",
+      body: { refreshToken: "not.a.valid.jwt" },
+    });
+
+    const res = await logoutPOST(req);
+    expect(res.status).toBe(200);
+    expect((await res.json()).success).toBe(true);
+    expect(await getSession(sessionId)).not.toBeNull();
+  });
+
+  // -----------------------------------------------------------------------
+  // 8d. POST /auth/logout — an access token in the body must not revoke
+  // -----------------------------------------------------------------------
+  test("POST /auth/logout ignores an access token sent as refreshToken", async () => {
+    const { createSession, getSession } = await import("@/lib/auth/session");
+
+    const sessionId = await (createSession as unknown as MockCreateSession)(
+      driver.id,
+      { lastActivityAt: Date.now() },
+    );
+
+    // Access tokens don't carry sessionId, but forge one to prove the
+    // type check (not just the missing claim) blocks revocation.
+    const { SignJWT } = await import("jose");
+    const forgedAccess = await new SignJWT({
+      userId: driver.id,
+      companyId: company.id,
+      email: driver.email,
+      role: driver.role,
+      type: "access",
+      sessionId,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("15min")
+      .setSubject(driver.id)
+      .sign(
+        new TextEncoder().encode(
+          "test-secret-key-for-integration-tests-minimum-32-characters!!",
+        ),
+      );
+
+    const req = await createTestRequest("/api/auth/logout", {
+      method: "POST",
+      body: { refreshToken: forgedAccess },
+    });
+
+    const res = await logoutPOST(req);
+    expect(res.status).toBe(200);
+    expect(await getSession(sessionId)).not.toBeNull();
+  });
+
+  // -----------------------------------------------------------------------
   // 9. GET /auth/sessions — lists user sessions
   // -----------------------------------------------------------------------
   test("GET /auth/sessions lists sessions for authenticated user", async () => {
@@ -232,6 +348,43 @@ describe("Auth sessions & token management", () => {
     expect(Array.isArray(data.sessions)).toBe(true);
     expect(data).toHaveProperty("count");
     expect(typeof data.count).toBe("number");
+  });
+
+  // -----------------------------------------------------------------------
+  // 9b. GET /auth/sessions — isCurrent compares against the session cookie;
+  //     Bearer-only requests (no cookie) report isCurrent: false per row
+  // -----------------------------------------------------------------------
+  test("GET /auth/sessions reports isCurrent false for Bearer-only requests", async () => {
+    const { createSession } = await import("@/lib/auth/session");
+
+    const sessionId = await (createSession as unknown as MockCreateSession)(
+      planner.id,
+      {
+        lastActivityAt: Date.now(),
+        userAgent: "Browser",
+        ipAddress: "10.0.0.3",
+      },
+    );
+
+    const token = await createTestToken({
+      userId: planner.id,
+      companyId: company.id,
+      email: planner.email,
+      role: planner.role,
+    });
+
+    const req = await createTestRequest("/api/auth/sessions", { token });
+    const res = await sessionsGET(req);
+    expect(res.status).toBe(200);
+
+    const data = await res.json();
+    const row = data.sessions.find(
+      (s: { sessionId: string }) => s.sessionId === sessionId,
+    );
+    expect(row).toBeDefined();
+    for (const s of data.sessions) {
+      expect(s.isCurrent).toBe(false);
+    }
   });
 
   // -----------------------------------------------------------------------
@@ -279,10 +432,13 @@ describe("Auth sessions & token management", () => {
     const { createSession } = await import("@/lib/auth/session");
 
     // Create a session owned by the admin
-    const sessionId = await (createSession as Function)(admin.id, {
-      userAgent: "Admin Browser",
-      ipAddress: "10.0.0.1",
-    });
+    const sessionId = await (createSession as unknown as MockCreateSession)(
+      admin.id,
+      {
+        userAgent: "Admin Browser",
+        ipAddress: "10.0.0.1",
+      },
+    );
 
     // The driver tries to delete it
     const token = await createTestToken({

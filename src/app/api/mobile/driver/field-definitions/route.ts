@@ -6,9 +6,10 @@ import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   try {
     const authResult = await requireRoutePermission(
       request,
@@ -58,3 +59,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withContractHeader(handleGet);

@@ -7,6 +7,7 @@ import {
 } from "@/lib/chat";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 /**
@@ -18,7 +19,7 @@ import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
  * - CONDUCTOR (solo su propio hilo): marca leídos los mensajes
  *   despacho→driver — la base del "Leído" que ve el despachador.
  */
-export async function POST(
+async function handlePost(
   request: NextRequest,
   { params }: { params: Promise<{ driverId: string }> },
 ) {
@@ -51,3 +52,5 @@ export async function POST(
     { status: 403 },
   );
 }
+
+export const POST = withContractHeader(handlePost);

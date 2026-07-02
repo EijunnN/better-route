@@ -68,7 +68,6 @@ export interface OptimizerConfig {
   profile?: ProfileSchema;
   balanceVisits?: boolean;
   maxDistanceKm?: number;
-  maxTravelTimeMinutes?: number;
   trafficFactor?: number;
   routeEndMode?: "DRIVER_ORIGIN" | "SPECIFIC_DEPOT" | "OPEN_END";
   endDepot?: OptimizerDepot;

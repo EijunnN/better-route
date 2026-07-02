@@ -174,10 +174,13 @@ Lo mecánico (slash-commands, poda, biblioteca de prompts) lo hace Opus, no gast
 3. FIX-1 y FIX-2 (pérdida de datos — contrato §11 y
    `aea/docs/specs/offline-outbox.spec.md` con sus tests).
 4. A1/A11 de `SEMANTICS.md` y C-4/C-5 de `confirm-plan.md`.
+   *(Parcial 2026-07-02: A1/A11 resueltos por SEMANTICS v2 — commit
+   `b67bd44`; C-4/C-5 siguen vigentes en la ruta confirm.)*
 5. FIX-3..FIX-10 (contrato §11) y C-3..C-9.
-6. ADR-0009 (migraciones — materia en CLAUDE.md §Migraciones) y ADR-0010
+6. ~~ADR-0009 (migraciones — materia en CLAUDE.md §Migraciones) y ADR-0010
    (RBAC tipado — materia en `permissions/README.md`); numeración 0009/0010
-   reservada.
+   reservada.~~ ✅ **Hecho 2026-07-02** — `docs/adr/0009` y `0010` escritos
+   y verificados contra código/git.
 7. Subagentes auditores (tenancy / verifier-solver / realtime /
    revisor-movil): el contenido ES la rúbrica + contrato + SEMANTICS —
    redactarlos como agents que los citan, no que los reinventan.
@@ -187,6 +190,11 @@ Lo mecánico (slash-commands, poda, biblioteca de prompts) lo hace Opus, no gast
 9. Reescribir-o-borrar los docs con banner; `SETUP.md`/`README` móvil
    (línea de `build_runner`, sobreventa offline); purga de deps codegen del
    pubspec.
+   *(Parcial 2026-07-02: tramo web resuelto — `SISTEMA_OPTIMIZACION` y
+   `ESTADO_PROYECTO` borrados; `routing-quality-findings` queda como
+   snapshot histórico con banner hasta decidir su destino. Tramo móvil
+   intacto: README aún manda `build_runner`, SETUP.md con drifts, pubspec
+   con las 5+2 deps de codegen que `aea/CLAUDE.md` REGLA #1 manda purgar.)*
 10. `ARCHITECTURE.md`/`DATA-MODEL.md`/READMEs de módulo, slash-commands,
     biblioteca de prompts.
 

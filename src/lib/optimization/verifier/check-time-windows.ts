@@ -11,8 +11,10 @@ import {
 
 /**
  * For each stop with a defined order time-window, verify arrival is inside the window.
- * Severity follows the order's strictness (defaulting to HARD if unknown — the order
- * passed a time window, so we treat violations as real unless told otherwise).
+ * Violations are always HARD: per the 2026-07-02 decision (SEMANTICS §2), the
+ * order's strictness HARD/SOFT applies only to manual assignment — solver and
+ * verifier treat windows as hard constraints, with FLEX widening when
+ * `flexibleTimeWindows` is on.
  *
  * Also checks vehicle workday windows (HARD): every stop arrival must be inside the
  * vehicle's [timeWindowStart, timeWindowEnd] if those are set.

@@ -1,0 +1,12 @@
+{
+  "src/app/api/auth/": "login/refresh/logout/me/sessions: pre-RBAC por naturaleza",
+  "src/app/api/public/": "tracking público: sin auth by design",
+  "src/app/api/realtime/token/route.ts": "authz real = derivación de canales por rol",
+  "src/app/api/upload/presigned-url/route.ts": "solo auth; companyId del JWT (ignora header)",
+  "src/app/api/health/route.ts": "health check público para load balancers/monitoring: sin auth by design",
+  "src/app/api/onboarding/setup/route.ts": "bootstrap one-shot pre-tenant: JWT + ADMIN_SISTEMA inline, 409 si ya existe empresa",
+  "src/app/api/playground/route.ts": "dev-only: NEXT_PUBLIC_ENABLE_PLAYGROUND + ADMIN_SISTEMA + extractTenantContextAuthed, sin entity RBAC",
+  "src/app/api/optimization/engines/route.ts": "catálogo estático del solver sin datos tenant; RBAC vía requireRoutePermission",
+  "src/app/api/users/[id]/sessions/route.ts": "self-or-admin (authorize) + guard cross-tenant inline por query scoped a companyId",
+  "src/app/api/companies/[id]/csv-profile-schema/route.ts": "requireRoutePermission + validación inline del companyId del path (ADMIN o misma empresa)"
+}

@@ -1,0 +1,46 @@
+{
+  "contractVersion": 2,
+  "endpoint": "GET /api/route-stops/[id]/history",
+  "status": 200,
+  "body": {
+    "data": [
+      {
+        "id": "8e7f6a5b-4c3d-4e2f-9a1b-0c9d8e7f6a5b",
+        "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+        "routeStopId": "d9e8f7a6-b5c4-4d3e-8f1a-0b9c8d7e6f5a",
+        "previousStatus": "IN_PROGRESS",
+        "newStatus": "COMPLETED",
+        "userId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "notes": "Recibió el vigilante",
+        "metadata": {
+          "evidenceUrls": [
+            "https://files.betterroute.pe/evidence/3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34/2026-07-02/TRK-0002_1.jpg"
+          ]
+        },
+        "createdAt": "2026-07-02T13:29:45.000Z",
+        "user": {
+          "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "name": "Juan Pérez",
+          "email": "conductor@empresa.pe"
+        }
+      },
+      {
+        "id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+        "companyId": "3f2c1b7a-9e4d-4c6a-8b21-5d0e7f9a2c34",
+        "routeStopId": "d9e8f7a6-b5c4-4d3e-8f1a-0b9c8d7e6f5a",
+        "previousStatus": "PENDING",
+        "newStatus": "IN_PROGRESS",
+        "userId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "notes": null,
+        "metadata": null,
+        "createdAt": "2026-07-02T13:22:10.000Z",
+        "user": {
+          "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "name": "Juan Pérez",
+          "email": "conductor@empresa.pe"
+        }
+      }
+    ],
+    "total": 2
+  }
+}

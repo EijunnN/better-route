@@ -85,7 +85,6 @@ export interface RunnerConfigInput {
   };
   objective: "DISTANCE" | "TIME" | "BALANCED";
   maxDistanceKm?: number | null;
-  maxTravelTimeMinutes?: number | null;
   /**
    * MUST mirror the solver's setting: when true the solver widened order
    * windows ±30 min, so the verifier widens by the same tolerance. Omitting
@@ -165,7 +164,6 @@ function toOptimizerConfig(c: RunnerConfigInput): OptimizerConfig {
     },
     objective: c.objective,
     maxDistanceKm: c.maxDistanceKm ?? undefined,
-    maxTravelTimeMinutes: c.maxTravelTimeMinutes ?? undefined,
     flexibleTimeWindows: c.flexibleTimeWindows ?? undefined,
     profile: c.profile ?? undefined,
   };

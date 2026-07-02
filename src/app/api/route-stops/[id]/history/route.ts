@@ -6,10 +6,11 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 
 // GET - Get history for a specific stop
-export async function GET(
+async function handleGet(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -64,3 +65,5 @@ export async function GET(
     );
   }
 }
+
+export const GET = withContractHeader(handleGet);

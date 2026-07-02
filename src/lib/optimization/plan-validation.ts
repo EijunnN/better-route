@@ -182,7 +182,7 @@ export async function validatePlanForConfirmation(
         issues.push({
           severity: ValidationSeverity.ERROR,
           category: "assignment_error",
-          message: error,
+          message: error.message,
           routeId: route.routeId,
           vehicleId: route.vehicleId,
           driverId: route.driverId,
@@ -249,15 +249,10 @@ export async function validatePlanForConfirmation(
     }
   }
 
-  // Check 6: Driver license and skill validation (if configured)
-  if (config.checkLicenseExpiry || config.checkSkillExpiry) {
-    const driverValidationIssues = await validateDriverLicensesAndSkills(
-      companyId,
-      routes,
-      config,
-    );
-    issues.push(...driverValidationIssues);
-  }
+  // Check 6: driver existence (always) + license expiry (if configured).
+  // An unknown driver id would otherwise surface as an FK violation inside
+  // the confirmation transaction — a generic 500 instead of a useful 400.
+  issues.push(...(await validateDrivers(companyId, routes, config)));
 
   // Calculate summary counts
   summary.errorCount = issues.filter(
@@ -298,17 +293,22 @@ export async function validatePlanForConfirmation(
 }
 
 /**
- * Validates driver licenses and skills for expiry
+ * Validates that every assigned driver exists as a CONDUCTOR of the company
+ * (blocking error otherwise) and checks license expiry when configured.
  */
-async function validateDriverLicensesAndSkills(
+async function validateDrivers(
   companyId: string,
   routes: AssignedSolvedRoute[],
   config: PlanValidationConfig,
 ): Promise<ValidationIssue[]> {
   const issues: ValidationIssue[] = [];
-  const driverIds = routes
-    .map((r) => r.driverId)
-    .filter((id): id is string => !!id && id !== "");
+  const driverIds = [
+    ...new Set(
+      routes
+        .map((r) => r.driverId)
+        .filter((id): id is string => !!id && id !== ""),
+    ),
+  ];
 
   if (driverIds.length === 0) return issues;
 
@@ -328,6 +328,23 @@ async function validateDriverLicensesAndSkills(
         eq(users.role, USER_ROLES.CONDUCTOR),
       ),
     );
+
+  const foundDriverIds = new Set(driversData.map((d) => d.id));
+  for (const driverId of driverIds) {
+    if (foundDriverIds.has(driverId)) continue;
+    const affectedRoutes = routes.filter((r) => r.driverId === driverId);
+    for (const route of affectedRoutes) {
+      issues.push({
+        severity: ValidationSeverity.ERROR,
+        category: "driver_not_found",
+        message: `Driver ${driverId} on route ${route.routeId} does not exist, is not a CONDUCTOR, or belongs to another company`,
+        driverId,
+        routeId: route.routeId,
+        vehicleId: route.vehicleId,
+        resolution: "Assign a valid driver from this company",
+      });
+    }
+  }
 
   const now = new Date();
   const licenseWarningDate = new Date();

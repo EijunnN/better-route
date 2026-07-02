@@ -15,6 +15,7 @@ import {
   getRateLimitHeaders,
   RATE_LIMITS,
 } from "@/lib/infra/rate-limit";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { AUTH_ERRORS, loginSchema } from "@/lib/validations/auth";
 
 const ACCESS_TOKEN_EXPIRES_IN_SECONDS =
@@ -26,7 +27,7 @@ const ACCESS_TOKEN_EXPIRES_IN_SECONDS =
  * Authenticate a user with email and password
  * Returns access and refresh tokens
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     // Rate limiting by IP
     const ip = getClientIp(request);
@@ -158,6 +159,8 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withContractHeader(handlePost);
 
 /**
  * GET /api/auth/login

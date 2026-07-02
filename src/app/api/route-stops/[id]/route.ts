@@ -19,6 +19,7 @@ import { Action, EntityType } from "@/lib/auth/authorization";
 import { getRouteEtas, recomputeRouteEtas } from "@/lib/eta";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { publishStopEvent } from "@/lib/realtime";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
@@ -68,7 +69,7 @@ const STOP_TO_ORDER_STATUS: Record<string, string> = {
 };
 
 // GET - Get a single route stop with details
-export async function GET(
+async function handleGet(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -146,7 +147,7 @@ export async function GET(
 }
 
 // PATCH - Update stop status (with validation and history)
-export async function PATCH(
+async function handlePatch(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -172,6 +173,11 @@ export async function PATCH(
       gpsLongitude,
     } = body;
     const { status } = body;
+    // JSON-merge-patch semantics for notes (FIX-3): absent = leave the
+    // stored value untouched, explicit null (or non-string junk) = clear.
+    const notesProvided = Object.hasOwn(body, "notes");
+    const notesValue: string | null =
+      notesProvided && typeof notes === "string" ? notes : null;
     const hasCustomFieldsUpdate =
       customFieldsInput &&
       typeof customFieldsInput === "object" &&
@@ -300,14 +306,19 @@ export async function PATCH(
     // Failure reason is required text when transitioning to FAILED — but
     // ONLY when the company actually defines a non-empty `failureReasons`
     // list. If the operator cleared the list, there's nothing for the
-    // driver to pick, so we allow FAILED without a reason. Membership in
-    // the list is not enforced (the value is an opaque human-readable
-    // Spanish string drawn from the policy; we trust the UI to pick).
+    // driver to pick, so we allow FAILED without a reason. Blank-after-trim
+    // is rejected (FIX-2: a whitespace-only reason is a lost failure cause).
+    // Membership in the list is deliberately NOT enforced (ADR-0011: a
+    // stale cached policy on the device must not turn a real failure into
+    // a permanent 400).
     if (
       status === "FAILED" &&
       (deliveryPolicy?.failureReasons.length ?? 0) > 0
     ) {
-      if (!failureReason || typeof failureReason !== "string") {
+      if (
+        typeof failureReason !== "string" ||
+        failureReason.trim().length === 0
+      ) {
         return NextResponse.json(
           { error: "failureReason is required when status is FAILED" },
           { status: 400 },
@@ -345,9 +356,11 @@ export async function PATCH(
     const now = new Date();
     const updateData: Partial<typeof routeStops.$inferInsert> = {
       status,
-      notes: notes || null,
       updatedAt: now,
     };
+    if (notesProvided) {
+      updateData.notes = notesValue;
+    }
 
     // Persist customFields alongside the status change
     if (normalizedCustomFields !== null) {
@@ -514,7 +527,7 @@ export async function PATCH(
           previousStatus: currentStop.status,
           newStatus: status,
           userId: tenantCtx.userId || null,
-          notes: notes || null,
+          notes: notesValue,
           metadata: historyMetadata,
         });
 
@@ -533,7 +546,7 @@ export async function PATCH(
             completedAt: now,
             outcome: status === "COMPLETED" ? "SUCCESS" : "FAILURE",
             failureReason: status === "FAILED" ? (failureReason ?? null) : null,
-            notes: notes || null,
+            notes: notesValue,
             evidenceUrls: evidenceUrls ?? null,
             intendedAddress: currentStop.address,
             intendedLatitude: currentStop.latitude,
@@ -588,7 +601,7 @@ export async function PATCH(
           entityId: stopId,
           title: `Stop #${currentStop.sequence} ${status.toLowerCase()}: ${currentStop.address}`,
           description: failureLabel
-            ? `No entregado: ${failureLabel}. ${notes || ""}`
+            ? `No entregado: ${failureLabel}. ${notesValue ?? ""}`
             : `The stop at ${currentStop.address} was marked as ${status.toLowerCase()}.`,
           metadata: {
             userId: currentStop.userId,
@@ -660,6 +673,9 @@ export async function PATCH(
     );
   }
 }
+
+export const GET = withContractHeader(handleGet);
+export const PATCH = withContractHeader(handlePatch);
 
 // DELETE - Delete a route stop (should be rare, mainly for cleanup)
 export async function DELETE(

@@ -342,7 +342,6 @@ export async function runOptimization(
     // Apply preset settings if available (sensible defaults when no preset)
     balanceVisits: preset?.balanceVisits ?? false,
     maxDistanceKm: preset?.maxDistanceKm ?? undefined, // undefined = no limit
-    maxTravelTimeMinutes: undefined, // reserved for future use
     // 0-100 scale, 50 = neutral (speed_factor 1.0). `?? 1.0` here used to
     // make every travel time ~33% optimistic when the company had no preset.
     trafficFactor: preset?.trafficFactor ?? 50,
@@ -511,7 +510,6 @@ export async function runOptimization(
       },
       objective: vroomConfig.objective,
       maxDistanceKm: vroomConfig.maxDistanceKm ?? null,
-      maxTravelTimeMinutes: vroomConfig.maxTravelTimeMinutes ?? null,
       // The verifier must judge with the same rules the solver ran with:
       // flex widens windows ±30 min (SEMANTICS A1) and the profile decides
       // which capacity dimensions are HARD (SEMANTICS A3).

@@ -41,48 +41,32 @@ describe("checkDriverAssignments", () => {
     expect(v).toEqual([]);
   });
 
-  test("license error is classified as DRIVER_LICENSE_MISMATCH HARD", () => {
-    const v = checkDriverAssignments([
-      route({
-        assignmentQuality: {
-          score: 40,
-          warnings: [],
-          errors: ["Driver missing required license category: A-II"],
-        },
-      }),
-    ]);
-    expect(v).toHaveLength(1);
-    expect(v[0].code).toBe("DRIVER_LICENSE_MISMATCH");
-    expect(v[0].severity).toBe("HARD");
-  });
-
-  test("skill error is classified as DRIVER_SKILL_MISSING HARD", () => {
-    const v = checkDriverAssignments([
-      route({
-        assignmentQuality: {
-          score: 30,
-          warnings: [],
-          errors: ["Driver missing required skills: REFRIGERATED"],
-        },
-      }),
-    ]);
-    expect(v[0].code).toBe("DRIVER_SKILL_MISSING");
-    expect(v[0].severity).toBe("HARD");
-  });
-
-  test("availability error is classified as DRIVER_UNAVAILABLE HARD", () => {
-    const v = checkDriverAssignments([
-      route({
-        assignmentQuality: {
-          score: 10,
-          warnings: [],
-          errors: ["Driver is unavailable"],
-        },
-      }),
-    ]);
-    expect(v[0].code).toBe("DRIVER_UNAVAILABLE");
-    expect(v[0].severity).toBe("HARD");
-  });
+  test.each([
+    ["LICENSE_EXPIRED", "DRIVER_LICENSE_MISMATCH"],
+    ["LICENSE_EXPIRY_MISSING", "DRIVER_LICENSE_MISMATCH"],
+    ["LICENSE_CATEGORY_MISMATCH", "DRIVER_LICENSE_MISMATCH"],
+    ["MISSING_SKILLS", "DRIVER_SKILL_MISSING"],
+    ["DRIVER_UNAVAILABLE", "DRIVER_UNAVAILABLE"],
+    ["DRIVER_NOT_FOUND", "DRIVER_ASSIGNMENT_ERROR"],
+    ["VEHICLE_NOT_FOUND", "DRIVER_ASSIGNMENT_ERROR"],
+  ] as const)(
+    "error code %s maps to violation %s (HARD)",
+    (errorCode, violationCode) => {
+      const v = checkDriverAssignments([
+        route({
+          assignmentQuality: {
+            score: 40,
+            warnings: [],
+            errors: [{ code: errorCode, message: "detalle para UI" }],
+          },
+        }),
+      ]);
+      expect(v).toHaveLength(1);
+      expect(v[0].code).toBe(violationCode);
+      expect(v[0].severity).toBe("HARD");
+      expect(v[0].message).toBe("detalle para UI");
+    },
+  );
 
   test("warnings map to DRIVER_ASSIGNMENT_WARNING SOFT", () => {
     const v = checkDriverAssignments([
@@ -99,27 +83,18 @@ describe("checkDriverAssignments", () => {
     expect(v[0].severity).toBe("SOFT");
   });
 
-  test("unrecognized error string falls back to DRIVER_ASSIGNMENT_ERROR HARD", () => {
-    const v = checkDriverAssignments([
-      route({
-        assignmentQuality: {
-          score: 50,
-          warnings: [],
-          errors: ["Algo inesperado"],
-        },
-      }),
-    ]);
-    expect(v[0].code).toBe("DRIVER_ASSIGNMENT_ERROR");
-    expect(v[0].severity).toBe("HARD");
-  });
-
   test("mixed errors and warnings preserve both", () => {
     const v = checkDriverAssignments([
       route({
         assignmentQuality: {
           score: 60,
           warnings: ["License expires in 20 days", "Skill X expired"],
-          errors: ["Driver's license has expired"],
+          errors: [
+            {
+              code: "LICENSE_EXPIRED",
+              message: "Driver's license has expired",
+            },
+          ],
         },
       }),
     ]);
@@ -145,7 +120,12 @@ describe("checkDriverAssignments", () => {
         assignmentQuality: {
           score: 50,
           warnings: [],
-          errors: ["Driver missing required skills: HAZMAT"],
+          errors: [
+            {
+              code: "MISSING_SKILLS",
+              message: "Driver missing required skills: HAZMAT",
+            },
+          ],
         },
       }),
     ]);

@@ -26,8 +26,10 @@ import { Action, EntityType } from "@/lib/auth/authorization";
 import { getRouteEtas } from "@/lib/eta";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { withContractHeader } from "@/lib/mobile-contract";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { safeParseJson } from "@/lib/utils/safe-json";
+import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 /**
  * GET /api/mobile/driver/my-route
@@ -45,7 +47,12 @@ import { safeParseJson } from "@/lib/utils/safe-json";
  * - route: Datos de la ruta (paradas ordenadas, metricas)
  * - Si no hay ruta para hoy, route es null
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
+  // Correlation id: aparece en el log de entrada y en el log del catch,
+  // así un 500 (que responde un shape genérico congelado por el contrato
+  // móvil) es rastreable a su stack en los logs del server.
+  const requestId = crypto.randomUUID();
+  console.info(`[my-route:${requestId}] GET /api/mobile/driver/my-route`);
   try {
     const authResult = await requireRoutePermission(
       request,
@@ -531,10 +538,15 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching driver route:", error);
+    console.error(
+      `[my-route:${requestId}] unhandled error`,
+      error instanceof Error
+        ? { name: error.name, message: error.message, stack: error.stack }
+        : { error },
+    );
 
     // Manejar error de autenticacion
-    if (error instanceof Error && error.message === "Unauthorized") {
+    if (error instanceof Error && error.message === AUTH_ERRORS.UNAUTHORIZED) {
       return NextResponse.json(
         { error: "No autorizado. Por favor inicie sesion." },
         { status: 401 },
@@ -547,3 +559,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withContractHeader(handleGet);
