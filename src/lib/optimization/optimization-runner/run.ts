@@ -3,11 +3,12 @@ import { parseRequiredSkills } from "@/lib/orders/required-skills";
 import { type DayOfWeek, getDayOfWeek } from "../../geo/zone-utils";
 import { DEFAULT_MAX_ORDERS_PER_VEHICLE } from "../constants";
 import { updateJobProgress } from "../optimization-job";
-import type {
-  AggregatedPlan,
-  RawSolvedRoute,
-  UnassignedOrderRecord,
-  VerifiedPlan,
+import {
+  type AggregatedPlan,
+  assertPersistableVerifiedPlan,
+  type RawSolvedRoute,
+  type UnassignedOrderRecord,
+  type VerifiedPlan,
 } from "../solved-plan";
 import { verifyPlan } from "../verifier";
 import type {
@@ -521,5 +522,7 @@ export async function runOptimization(
   await updateJobProgress(jobId || input.configurationId, 100);
   checkAbort();
 
-  return verified;
+  // Boundary 2 (solved-plan/schemas): the caller persists this plan verbatim
+  // into optimization_jobs.result — catch shape drift before it lands in DB.
+  return assertPersistableVerifiedPlan(verified);
 }

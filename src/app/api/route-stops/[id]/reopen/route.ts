@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { routeStopHistory, routeStops } from "@/db/schema";
@@ -189,6 +189,13 @@ async function handlePost(
   let updatedStop: typeof routeStops.$inferSelect;
   try {
     updatedStop = await db.transaction(async (tx) => {
+      // Serializa contra el confirm de planes (mismo lock por companyId):
+      // revivir un stop a PENDING cambia el conteo de stops activos que el
+      // guard de vehículos del confirm lee bajo READ COMMITTED.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${tenantCtx.companyId}))`,
+      );
+
       const [fresh] = await tx
         .select()
         .from(routeStops)

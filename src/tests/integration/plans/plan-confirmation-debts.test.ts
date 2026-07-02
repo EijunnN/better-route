@@ -7,7 +7,12 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/optimization/jobs/[id]/confirm/route";
-import { optimizationConfigurations, orders, routeStops } from "@/db/schema";
+import {
+  optimizationConfigurations,
+  orders,
+  planMetrics,
+  routeStops,
+} from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
 import {
   buildOptimizationResult,
@@ -246,6 +251,17 @@ describe("confirm-plan debts (C-1..C-9)", () => {
     for (const stop of stops) {
       expect(stop.estimatedServiceTime).toBe(15 * 60);
     }
+
+    // plan_metrics reflects what was actually dispatched, not the full plan:
+    // the skipped order is excluded from totalStops and counted as unassigned.
+    expect(body.planMetrics.totalStops).toBe(2);
+    expect(body.planMetrics.unassignedOrders).toBe(1);
+    const [metricsRow] = await testDb
+      .select()
+      .from(planMetrics)
+      .where(eq(planMetrics.jobId, job.id));
+    expect(metricsRow.totalStops).toBe(2);
+    expect(metricsRow.unassignedOrders).toBe(1);
   });
 
   // ---- C-5: vehicle with active stops from another plan -------------------
@@ -432,5 +448,66 @@ describe("confirm-plan debts (C-1..C-9)", () => {
     const body = await second.json();
     expect(typeof body.confirmedAt).toBe("string");
     expect(Number.isNaN(new Date(body.confirmedAt).getTime())).toBe(false);
+  });
+
+  // ---- Boundary 3: drifted persisted shape rejected with a clear 500 ------
+  test("job result with a drifted shape returns 500 with a clear error and zero mutation", async () => {
+    const { company, token } = await setupBase();
+    const order = await createOrder({ companyId: company.id });
+    const config = await createOptimizationConfig({ companyId: company.id });
+    const job = await createOptimizationJob({
+      companyId: company.id,
+      configurationId: config.id,
+      // Pre-A15 shape: assignmentQuality.errors as string[] — exactly the
+      // drift parseVerifiedPlan exists to catch.
+      result: {
+        routes: [
+          {
+            routeId: "route-1",
+            vehicleId: "not-even-checked",
+            assignmentQuality: { score: 100, warnings: [], errors: ["OLD"] },
+          },
+        ],
+      } as never,
+    });
+
+    const response = await callConfirm(job.id, token, company.id);
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toContain("invalid shape");
+
+    const [dbConfig] = await testDb
+      .select({ status: optimizationConfigurations.status })
+      .from(optimizationConfigurations)
+      .where(eq(optimizationConfigurations.id, config.id));
+    expect(dbConfig.status).toBe("DRAFT");
+    const [dbOrder] = await testDb
+      .select({ status: orders.status })
+      .from(orders)
+      .where(eq(orders.id, order.id));
+    expect(dbOrder.status).toBe("PENDING");
+  });
+
+  // ---- Boundary 3 tolerance: driver removed post-solve is a 400, not 500 ---
+  test("persisted route with driverId null (driver removed) fails validation with 400, not a shape error", async () => {
+    const { company, driver, vehicle, token } = await setupBase();
+    const order = await createOrder({ companyId: company.id });
+    const config = await createOptimizationConfig({ companyId: company.id });
+    const result = buildOptimizationResult([
+      routeFixture("route-1", vehicle, driver.id, [order]),
+    ]);
+    // What driver-assignment remove persists into the JSONB.
+    result.routes[0].driverId = null as never;
+    result.routes[0].driverName = null as never;
+    const job = await createOptimizationJob({
+      companyId: company.id,
+      configurationId: config.id,
+      result: result as never,
+    });
+
+    const response = await callConfirm(job.id, token, company.id);
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(JSON.stringify(body)).toContain("no driver assigned");
   });
 });

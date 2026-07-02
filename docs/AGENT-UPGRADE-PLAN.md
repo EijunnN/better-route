@@ -167,36 +167,40 @@ Lo mecánico (slash-commands, poda, biblioteca de prompts) lo hace Opus, no gast
 
 ### Cola de Opus (en orden; cada item tiene su spec)
 
-1. Hook de tenancy (`docs/specs/hook-tenancy-gate.spec.md`) — incluye smoke
-   sobre las rutas existentes.
-2. Contract-tests + fixtures + `CONTRACT_VERSION` + sync script
-   (contrato §10) y test del capability set CONDUCTOR (contrato §8).
-3. FIX-1 y FIX-2 (pérdida de datos — contrato §11 y
-   `aea/docs/specs/offline-outbox.spec.md` con sus tests).
-4. A1/A11 de `SEMANTICS.md` y C-4/C-5 de `confirm-plan.md`.
-   *(Parcial 2026-07-02: A1/A11 resueltos por SEMANTICS v2 — commit
-   `b67bd44`; C-4/C-5 siguen vigentes en la ruta confirm.)*
-5. FIX-3..FIX-10 (contrato §11) y C-3..C-9.
+1. ~~Hook de tenancy (`docs/specs/hook-tenancy-gate.spec.md`) — incluye smoke
+   sobre las rutas existentes.~~ ✅ **Hecho 2026-07-02** — hook implementado
+   y calibrado contra las rutas existentes.
+2. ~~Contract-tests + fixtures + `CONTRACT_VERSION` + sync script
+   (contrato §10) y test del capability set CONDUCTOR (contrato §8).~~
+   ✅ **Hecho 2026-07-02** — contract-tests + fixtures golden +
+   `CONTRACT_VERSION=2` + `scripts/sync-contract-fixtures.{sh,ps1}`.
+3. ~~FIX-1 y FIX-2 (pérdida de datos — contrato §11 y
+   `aea/docs/specs/offline-outbox.spec.md` con sus tests).~~
+   ✅ **Hecho 2026-07-02** — FIX-1..10 aplicados (ver ítem 5).
+4. ~~A1/A11 de `SEMANTICS.md` y C-4/C-5 de `confirm-plan.md`.~~
+   ✅ **Hecho 2026-07-02** — A1/A11 resueltos por SEMANTICS v2 (commit
+   `b67bd44`); C-4/C-5 cerradas hoy con advisory lock en la ruta confirm.
+5. ~~FIX-3..FIX-10 (contrato §11) y C-3..C-9.~~ ✅ **Hecho 2026-07-02** —
+   FIX-1..10 aplicados y C-1..C-9 resueltas.
 6. ~~ADR-0009 (migraciones — materia en CLAUDE.md §Migraciones) y ADR-0010
    (RBAC tipado — materia en `permissions/README.md`); numeración 0009/0010
    reservada.~~ ✅ **Hecho 2026-07-02** — `docs/adr/0009` y `0010` escritos
    y verificados contra código/git.
-7. Subagentes auditores (tenancy / verifier-solver / realtime /
+7. ~~Subagentes auditores (tenancy / verifier-solver / realtime /
    revisor-movil): el contenido ES la rúbrica + contrato + SEMANTICS —
-   redactarlos como agents que los citan, no que los reinventan.
-8. Skills de scaffolding (`new-api-route`, `add-feature-rbac`,
+   redactarlos como agents que los citan, no que los reinventan.~~
+   ✅ **Hecho 2026-07-02**.
+8. ~~Skills de scaffolding (`new-api-route`, `add-feature-rbac`,
    `new-feature-module`; móvil: `nuevo-modelo`/`provider`/`pantalla`
-   anti-codegen) — deben citar rúbrica/contrato.
-9. Reescribir-o-borrar los docs con banner; `SETUP.md`/`README` móvil
+   anti-codegen) — deben citar rúbrica/contrato.~~ ✅ **Hecho 2026-07-02**.
+9. ~~Reescribir-o-borrar los docs con banner; `SETUP.md`/`README` móvil
    (línea de `build_runner`, sobreventa offline); purga de deps codegen del
-   pubspec.
-   *(Parcial 2026-07-02: tramo web resuelto — `SISTEMA_OPTIMIZACION` y
+   pubspec.~~ ✅ **Hecho 2026-07-02** — tramo web: `SISTEMA_OPTIMIZACION` y
    `ESTADO_PROYECTO` borrados; `routing-quality-findings` queda como
-   snapshot histórico con banner hasta decidir su destino. Tramo móvil
-   intacto: README aún manda `build_runner`, SETUP.md con drifts, pubspec
-   con las 5+2 deps de codegen que `aea/CLAUDE.md` REGLA #1 manda purgar.)*
-10. `ARCHITECTURE.md`/`DATA-MODEL.md`/READMEs de módulo, slash-commands,
-    biblioteca de prompts.
+   snapshot histórico con banner (decidido: se conserva). Tramo móvil:
+   README/SETUP corregidos y pubspec purgado de deps codegen.
+10. ~~`ARCHITECTURE.md`/`DATA-MODEL.md`/READMEs de módulo, slash-commands,
+    biblioteca de prompts.~~ ✅ **Hecho 2026-07-02**.
 
 ## Ya hecho (2026-07-01, preparando la sesión — Nivel 🅲 y esqueletos 🅱️)
 

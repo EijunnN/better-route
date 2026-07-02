@@ -83,7 +83,7 @@ async function setupConfirmedPlan(orderCount = 2) {
   const job = await createOptimizationJob({
     companyId: company.id,
     configurationId: config.id,
-    result: result as any,
+    result: result as never,
   });
 
   // Set orders to ASSIGNED (simulating confirm flow)
@@ -240,6 +240,10 @@ describe("DELETE /api/optimization/configure/[id]", () => {
     );
     expect(response.status).toBe(200);
 
+    // ordersReverted counts rows actually flipped, not the plan's order list
+    const body = await response.json();
+    expect(body.ordersReverted).toBe(1);
+
     // IN_PROGRESS order should remain IN_PROGRESS
     const [inProgressOrder] = await testDb
       .select()
@@ -289,6 +293,87 @@ describe("DELETE /api/optimization/configure/[id]", () => {
       .where(eq(orders.id, fixture.orders[1].id))
       .limit(1);
     expect(assignedOrder.status).toBe("PENDING");
+  });
+
+  // ---- 5b. Revert derives from route_stops, not the stale result blob -------
+  test("does not revert an order whose active stop belongs to another plan", async () => {
+    const fixture = await setupConfirmedPlan(1);
+    const order = fixture.orders[0];
+
+    // Plan A's attempt closed: its stop is no longer active.
+    await testDb
+      .update(routeStops)
+      .set({ status: "COMPLETED" })
+      .where(eq(routeStops.jobId, fixture.job.id));
+
+    // The order got re-planned and confirmed under plan B: it is ASSIGNED
+    // with an active stop belonging to B's job.
+    const configB = await createOptimizationConfig({
+      companyId: fixture.company.id,
+      status: "CONFIRMED",
+    });
+    const jobB = await createOptimizationJob({
+      companyId: fixture.company.id,
+      configurationId: configB.id,
+      result: buildOptimizationResult([
+        {
+          routeId: "route-b",
+          vehicleId: fixture.vehicle.id,
+          vehiclePlate: fixture.vehicle.plate,
+          driverId: fixture.driver.id,
+          stops: [
+            {
+              orderId: order.id,
+              trackingId: order.trackingId,
+              sequence: 1,
+              address: order.address,
+              latitude: order.latitude,
+              longitude: order.longitude,
+            },
+          ],
+          totalDistance: 3000,
+          totalDuration: 900,
+          totalWeight: 50,
+          totalVolume: 5,
+          utilizationPercentage: 40,
+          timeWindowViolations: 0,
+        },
+      ]) as never,
+    });
+    await createRouteStop({
+      companyId: fixture.company.id,
+      jobId: jobB.id,
+      routeId: "route-b",
+      userId: fixture.driver.id,
+      vehicleId: fixture.vehicle.id,
+      orderId: order.id,
+    });
+
+    // Deleting plan A (whose stale result still lists the order) must not
+    // flip the ASSIGNED that plan B owns.
+    const response = await callDelete(
+      fixture.config.id,
+      fixture.token,
+      fixture.company.id,
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.ordersReverted).toBe(0);
+
+    const [dbOrder] = await testDb
+      .select()
+      .from(orders)
+      .where(eq(orders.id, order.id))
+      .limit(1);
+    expect(dbOrder.status).toBe("ASSIGNED");
+
+    // Plan B's stop is untouched.
+    const stopsB = await testDb
+      .select()
+      .from(routeStops)
+      .where(eq(routeStops.jobId, jobB.id));
+    expect(stopsB.length).toBe(1);
+    expect(stopsB[0].status).toBe("PENDING");
   });
 
   // ---- 6. OPTIMIZING status blocks deletion ---------------------------------
@@ -377,7 +462,7 @@ describe("DELETE /api/optimization/configure/[id]", () => {
     const newJob = await createOptimizationJob({
       companyId: fixture.company.id,
       configurationId: newConfig.id,
-      result: newResult as any,
+      result: newResult as never,
     });
 
     // Mark orders as ASSIGNED again (simulating new confirm)

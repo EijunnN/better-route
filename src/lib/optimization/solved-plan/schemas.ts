@@ -114,9 +114,13 @@ const assignedSolvedRouteSchema: z.ZodType<AssignedSolvedRoute> = z.object({
       }),
     )
     .optional(),
-  // Driver-assignment additions.
-  driverId: z.string().min(1),
-  driverName: z.string().min(1),
+  // Driver-assignment additions. A persisted plan can legitimately lose its
+  // driver after the solve (driver-assignment remove nulls these fields in
+  // the JSONB; partial snapshots use ""): the boundary normalizes null → ""
+  // so plan-validation's "route without driver" check owns that state
+  // instead of surfacing it as a shape error.
+  driverId: z.preprocess((v) => v ?? "", z.string()),
+  driverName: z.preprocess((v) => v ?? "", z.string()),
   driverOrigin: z
     .object({
       latitude: z.number(),

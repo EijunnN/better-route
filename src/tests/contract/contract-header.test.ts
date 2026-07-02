@@ -52,6 +52,33 @@ describe("API-CONTRACT-MOBILE.md §10 — header x-br-contract", () => {
     expect(await response.json()).toEqual({ ok: true });
   });
 
+  test("handler que lanza → 500 con header y shape { error } del §1", async () => {
+    const originalConsoleError = console.error;
+    const logged: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      logged.push(args);
+    };
+    try {
+      const handler = withContractHeader(async () => {
+        throw new Error("boom interno");
+      });
+      const response = await handler(request);
+      expect(response.status).toBe(500);
+      expect(response.headers.get(CONTRACT_HEADER)).toBe(
+        String(CONTRACT_VERSION),
+      );
+      expect(await response.json()).toEqual({
+        error: "Error interno del servidor",
+      });
+      // El log lleva requestId correlacionable y el stack del error real.
+      expect(logged).toHaveLength(1);
+      expect(String(logged[0]?.[0])).toMatch(/\[mobile-seam:[0-9a-f-]{36}\]/);
+      expect(logged[0]?.[1]).toMatchObject({ message: "boom interno" });
+    } finally {
+      console.error = originalConsoleError;
+    }
+  });
+
   test("pasa los args extra (context de rutas dinámicas) sin tocarlos", async () => {
     const seen: { id?: string } = {};
     const handler = withContractHeader(

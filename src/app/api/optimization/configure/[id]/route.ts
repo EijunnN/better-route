@@ -1,18 +1,19 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   optimizationConfigurations,
   optimizationJobs,
   orders,
+  routeStops,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logDelete, logUpdate } from "@/lib/infra/audit";
 import { forceReleaseCompanyLock } from "@/lib/infra/job-queue";
+import { hasPgErrorCode, PG_DEADLOCK_DETECTED } from "@/lib/infra/pg-errors";
 import { setTenantContext } from "@/lib/infra/tenant";
-import type { VerifiedPlan } from "@/lib/optimization/optimization-runner";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { safeParseJson } from "@/lib/utils/safe-json";
 import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-config";
@@ -237,61 +238,61 @@ export async function DELETE(
       );
     }
 
-    // If plan was CONFIRMED, revert assigned orders back to PENDING
+    // Revert + delete run in one tx behind the per-company advisory lock
+    // (the same serialization point confirm takes): without it, the revert
+    // could flip an ASSIGNED that a concurrent confirm of ANOTHER plan just
+    // set, leaving a PENDING order with a live stop from that plan.
     let ordersReverted = 0;
-    if (existing.status === "CONFIRMED") {
-      // Find the completed job to get the result with order IDs
-      const [job] = await db
-        .select({ id: optimizationJobs.id, result: optimizationJobs.result })
-        .from(optimizationJobs)
-        .where(
-          and(
-            eq(optimizationJobs.configurationId, id),
-            eq(optimizationJobs.status, "COMPLETED"),
-          ),
-        )
-        .limit(1);
+    await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${tenantCtx.companyId}))`,
+      );
 
-      if (job?.result) {
-        try {
-          const result = safeParseJson(job.result) as VerifiedPlan;
-          const assignedOrderIds: string[] = [];
-
-          for (const route of result.routes || []) {
-            for (const stop of route.stops) {
-              if (stop.groupedOrderIds && stop.groupedOrderIds.length > 0) {
-                assignedOrderIds.push(...stop.groupedOrderIds);
-              } else {
-                assignedOrderIds.push(stop.orderId);
-              }
-            }
-          }
-
-          if (assignedOrderIds.length > 0) {
-            const _updateResult = await db
-              .update(orders)
-              .set({ status: "PENDING", updatedAt: new Date() })
-              .where(
-                and(
-                  inArray(orders.id, assignedOrderIds),
-                  eq(orders.companyId, tenantCtx.companyId),
-                  eq(orders.status, "ASSIGNED"),
-                ),
-              );
-            ordersReverted = assignedOrderIds.length;
-          }
-        } catch {
-          console.error(
-            "[Delete Plan] Failed to parse job result for order reversion",
+      if (existing.status === "CONFIRMED") {
+        // Revert only orders whose ACTIVE stop belongs to this config's
+        // jobs — not the persisted result blob, which is a plan-time
+        // snapshot: an order can have since moved on to another plan.
+        const activeStopOrders = await tx
+          .select({ orderId: routeStops.orderId })
+          .from(routeStops)
+          .innerJoin(
+            optimizationJobs,
+            eq(routeStops.jobId, optimizationJobs.id),
+          )
+          .where(
+            and(
+              eq(optimizationJobs.configurationId, id),
+              eq(routeStops.companyId, tenantCtx.companyId),
+              inArray(routeStops.status, ["PENDING", "IN_PROGRESS"]),
+            ),
           );
+
+        // Sorted for stable lock order against other bulk order writers.
+        const orderIds = [
+          ...new Set(activeStopOrders.map((s) => s.orderId)),
+        ].sort();
+
+        if (orderIds.length > 0) {
+          const reverted = await tx
+            .update(orders)
+            .set({ status: "PENDING", updatedAt: new Date() })
+            .where(
+              and(
+                inArray(orders.id, orderIds),
+                eq(orders.companyId, tenantCtx.companyId),
+                eq(orders.status, "ASSIGNED"),
+              ),
+            )
+            .returning({ id: orders.id });
+          ordersReverted = reverted.length;
         }
       }
-    }
 
-    // Delete configuration (cascades to jobs → route_stops → history, plan_metrics, etc.)
-    await db
-      .delete(optimizationConfigurations)
-      .where(eq(optimizationConfigurations.id, id));
+      // Cascades to jobs → route_stops → history, plan_metrics, etc.
+      await tx
+        .delete(optimizationConfigurations)
+        .where(eq(optimizationConfigurations.id, id));
+    });
 
     // Release any optimization lock held for this company
     forceReleaseCompanyLock(tenantCtx.companyId);
@@ -304,6 +305,17 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, ordersReverted });
   } catch (error) {
+    // Deadlock against another bulk order writer: clean rollback, retryable.
+    if (hasPgErrorCode(error, PG_DEADLOCK_DETECTED)) {
+      return NextResponse.json(
+        {
+          error:
+            "The deletion collided with a concurrent operation on the same orders. Retry the deletion.",
+          retryable: true,
+        },
+        { status: 409 },
+      );
+    }
     console.error("Error deleting optimization configuration:", error);
     return NextResponse.json(
       { error: "Failed to delete configuration" },

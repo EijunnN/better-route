@@ -18,6 +18,7 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { withContractHeader } from "@/lib/mobile-contract";
 import { publishDriverLocationEvent } from "@/lib/realtime";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 // Pre-filtro del jobId del body: un string no-uuid en un eq() contra una
 // columna uuid revienta en Postgres (22P02) con 500 en vez de ignorarse.
@@ -222,21 +223,13 @@ async function handlePost(request: NextRequest) {
       },
     });
 
-    // Contexto de ruta (FIX-7): el contexto que manda el cliente gana; la
-    // derivación server-side queda como fallback para lo que falte. Un
-    // valor mal tipado (o un jobId ajeno a la empresa) se trata como
-    // ausente en vez de 400: un ping GPS nunca debe perderse por contexto
-    // defectuoso.
-    let routeId: string | null =
-      typeof bodyRouteId === "string" &&
-      bodyRouteId.length > 0 &&
-      bodyRouteId.length <= 100
-        ? bodyRouteId
-        : null;
-    let stopSequence: number | null =
-      typeof bodyStopSequence === "number" && Number.isInteger(bodyStopSequence)
-        ? bodyStopSequence
-        : null;
+    // Contexto de ruta (FIX-7, refinado): el contexto que manda el cliente
+    // gana solo si le pertenece — jobId se valida contra el tenant y routeId
+    // contra los routeStops del propio driver. Un valor mal tipado o ajeno se
+    // trata como ausente en vez de 400: un ping GPS nunca debe perderse por
+    // contexto defectuoso. routeId/stopSequence se resuelven como PAR
+    // coherente: o del body (routeId validado), o derivados juntos del mismo
+    // stop — nunca mezclados de rutas distintas.
     let jobId: string | null = null;
 
     if (typeof bodyJobId === "string" && UUID_PATTERN.test(bodyJobId)) {
@@ -271,9 +264,45 @@ async function handlePost(request: NextRequest) {
       jobId = activeJob?.id ?? null;
     }
 
-    if (jobId && (routeId === null || stopSequence === null)) {
+    let routeId: string | null = null;
+    let stopSequence: number | null = null;
+
+    const claimedRouteId =
+      typeof bodyRouteId === "string" &&
+      bodyRouteId.length > 0 &&
+      bodyRouteId.length <= 100
+        ? bodyRouteId
+        : null;
+
+    if (claimedRouteId) {
+      // El filtro por companyId es redundante con userId (ADR-0008: defensa
+      // en profundidad como costo aceptado).
+      const ownedStop = await db.query.routeStops.findFirst({
+        where: and(
+          eq(routeStops.companyId, companyId),
+          eq(routeStops.routeId, claimedRouteId),
+          eq(routeStops.userId, driverId),
+        ),
+        columns: {
+          sequence: true,
+        },
+        orderBy: [desc(routeStops.sequence)],
+      });
+
+      if (ownedStop) {
+        routeId = claimedRouteId;
+        stopSequence =
+          typeof bodyStopSequence === "number" &&
+          Number.isInteger(bodyStopSequence)
+            ? bodyStopSequence
+            : ownedStop.sequence;
+      }
+    }
+
+    if (routeId === null && jobId) {
       const currentStop = await db.query.routeStops.findFirst({
         where: and(
+          eq(routeStops.companyId, companyId),
           eq(routeStops.jobId, jobId),
           eq(routeStops.userId, driverId),
         ),
@@ -285,8 +314,8 @@ async function handlePost(request: NextRequest) {
       });
 
       if (currentStop) {
-        routeId = routeId ?? currentStop.routeId;
-        stopSequence = stopSequence ?? currentStop.sequence;
+        routeId = currentStop.routeId;
+        stopSequence = currentStop.sequence;
       }
     }
 
@@ -365,7 +394,7 @@ async function handlePost(request: NextRequest) {
   } catch (error) {
     console.error("Error saving driver location:", error);
 
-    if (error instanceof Error && error.message.includes("Unauthorized")) {
+    if (error instanceof Error && error.message === AUTH_ERRORS.UNAUTHORIZED) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
@@ -450,10 +479,6 @@ async function handleGet(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching driver location:", error);
-
-    if (error instanceof Error && error.message.includes("Unauthorized")) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
     return NextResponse.json(
       { error: "Error al obtener ubicación" },

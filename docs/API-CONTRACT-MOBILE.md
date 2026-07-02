@@ -66,7 +66,8 @@ cableado por endpoint).
 ### Tipos en el wire
 
 - Fechas: ISO-8601 UTC strings. **Excepción**: time windows de la Order en
-  my-orders son `HH:MM` crudos (§4).
+  my-orders son `HH:MM:SS` crudos (formato `time` de Postgres; el parser
+  Dart tolera `HH:MM` y `HH:MM:SS`) (§4).
 - Coordenadas: `latitude`/`longitude` son `number` en respuestas del server;
   los parsers móviles toleran string-o-num. En el `PATCH` de cierre,
   `gpsLatitude`/`gpsLongitude` viajan como **string**.
@@ -263,12 +264,15 @@ Request:
 
 - 201 `{ success: true, locationId, savedAt }` (sin envelope `data`). El
   móvil acepta cualquier 2xx (histórico 200/201) — **congelado: éxito = 2xx**.
-- `[FIX-7]` aplicado 2026-07-02: el server **honra** `routeId`/
-  `stopSequence`/`jobId` del body, con fallback **por-campo** a la
-  derivación server-side (job COMPLETED más reciente) para los campos
-  ausentes. Valores mal tipados, `jobId` no-uuid o ajeno al tenant se
-  tratan como ausentes (fallback silencioso, sin 400 nuevo). `isMoving`
-  sigue recalculándose server-side (`speed > 5`).
+- `[FIX-7]` aplicado 2026-07-02 (endurecido el mismo día): el server
+  **honra** el contexto del body con estas reglas — `jobId` con fallback
+  por-campo (no-uuid o ajeno al tenant ⇒ ausente); `routeId`/
+  `stopSequence` como **par coherente**: un `routeId` del body se valida
+  por pertenencia (route del propio driver y tenant; ajeno/inexistente ⇒
+  el par completo cae al fallback) y un `stopSequence` sin `routeId` se
+  descarta — ambos se derivan juntos del mismo stop server-side. Todo
+  fallback es silencioso (sin 400 nuevo). `isMoving` sigue
+  recalculándose server-side (`speed > 5`).
 - `[FIX-6]` aplicado 2026-07-02: valores `0` de `accuracy`/`altitude`/
   `speed`/`heading`/`batteryLevel` se persisten como `0` (antes se perdían
   a `null` por check falsy).
@@ -365,8 +369,9 @@ tras trim, igual que `failureReason` del PATCH desde `[FIX-2]`.
   (rúbrica móvil §8). El parser defensivo de `RouteStop.fromJson` tolera la
   fila plana, pero es tolerancia, no contrato de UI.
 - **Tercer formato de time window** en `my-orders`: a nivel Order son
-  strings `HH:MM` crudos + `strictness`; a nivel `stop` embebido son ISO.
-  No unificar sin bump de versión.
+  strings `HH:MM:SS` crudos (formato `time` de Postgres; el parser Dart
+  tolera `HH:MM` y `HH:MM:SS`) + `strictness`; a nivel `stop` embebido son
+  ISO. No unificar sin bump de versión.
 - Wire de status: `PENDING|IN_PROGRESS|COMPLETED|FAILED` (4 — no existe
   `SKIPPED`). Desconocido ⇒ el móvil degrada a PENDING (fail-soft).
 
@@ -618,7 +623,7 @@ implementado; los detalles de cada fix viven junto a su endpoint.
 | FIX-4 | móvil | 🟠 | refresh single-flight con replay de la cola; flag `authRetried` anti doble-refresh (§2) | ✅ aplicado 2026-07-02 |
 | FIX-5 | móvil | 🟠 | `getToken` Centrifugo: `UnauthorizedException` solo ante 401 real (§7) | ✅ aplicado 2026-07-02 |
 | FIX-6 | web | 🟡 | location POST: valores `0` se persisten como `0` (§3.7) | ✅ aplicado 2026-07-02 |
-| FIX-7 | web | 🟡 | location POST: honra `routeId/stopSequence/jobId` del body con fallback por-campo (§3.7) | ✅ aplicado 2026-07-02 |
+| FIX-7 | web | 🟡 | location POST: honra el contexto del body — `jobId` por-campo; `routeId/stopSequence` como par coherente validado por pertenencia (§3.7) | ✅ aplicado 2026-07-02 |
 | FIX-8 | ambos | 🟡 | logout Bearer: acepta `{refreshToken}` y revoca sesión Redis (§2) | ✅ aplicado 2026-07-02 |
 | FIX-9 | web | 🟡 | delivery-policy sirve `quickReplies` (aditivo; fallback embebido en móvil) (§3.8, §7) | ✅ aplicado 2026-07-02 |
 | FIX-10 | móvil | 🟢 | OneSignal App ID vía `--dart-define` con default previo (§7) | ✅ aplicado 2026-07-02 |

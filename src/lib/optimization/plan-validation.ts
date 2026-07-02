@@ -59,8 +59,6 @@ export interface PlanValidationConfig {
   allowUnassignedOrdersOverride: boolean;
   checkLicenseExpiry: boolean;
   licenseExpiryWarningDays: number;
-  checkSkillExpiry: boolean;
-  skillExpiryWarningDays: number;
 }
 
 /**
@@ -73,8 +71,6 @@ export const DEFAULT_VALIDATION_CONFIG: PlanValidationConfig = {
   allowUnassignedOrdersOverride: false,
   checkLicenseExpiry: true,
   licenseExpiryWarningDays: 30,
-  checkSkillExpiry: true,
-  skillExpiryWarningDays: 30,
 };
 
 /**

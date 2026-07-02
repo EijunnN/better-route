@@ -21,7 +21,10 @@ import { createTestRequest } from "../setup/test-request";
  * FIX-6, FIX-7 y FIX-9 del contrato móvil (docs/API-CONTRACT-MOBILE.md §11):
  * - FIX-6: valores 0 (accuracy/altitude/speed/heading/batteryLevel) se
  *   persisten como 0, no como null.
- * - FIX-7: routeId/stopSequence/jobId del body ganan; derivación = fallback.
+ * - FIX-7 (refinado): jobId del body se valida por tenant; routeId del body
+ *   se valida contra los routeStops del propio driver. routeId/stopSequence
+ *   se resuelven como par coherente: del body si el routeId pertenece al
+ *   driver, o derivados juntos del mismo stop en fallback.
  * - FIX-9: delivery-policy sirve quickReplies [{code,label}].
  */
 describe("Mobile driver — location context & delivery-policy DTO", () => {
@@ -34,6 +37,12 @@ describe("Mobile driver — location context & delivery-policy DTO", () => {
 
   const DERIVED_ROUTE_ID = "route-derived";
   const DERIVED_SEQUENCE = 3;
+  // Segunda ruta del mismo driver, con sequence menor que DERIVED_SEQUENCE
+  // para no interferir con la derivación fallback (que toma el max sequence).
+  const CLIENT_ROUTE_ID = "route-client-owned";
+  const CLIENT_ROUTE_SEQUENCE = 1;
+  // Ruta real pero de otra empresa/driver: inyectarla debe caer al fallback.
+  const FOREIGN_ROUTE_ID = "route-foreign";
 
   async function postLocation(body: Record<string, unknown>) {
     const req = await createTestRequest("/api/mobile/driver/location", {
@@ -93,12 +102,44 @@ describe("Mobile driver — location context & delivery-policy DTO", () => {
       status: "IN_PROGRESS",
     });
 
+    const clientRouteOrder = await createOrder({
+      companyId: company.id,
+      status: "ASSIGNED",
+    });
+    await createRouteStop({
+      companyId: company.id,
+      jobId: job.id,
+      routeId: CLIENT_ROUTE_ID,
+      sequence: CLIENT_ROUTE_SEQUENCE,
+      userId: driver.id,
+      vehicleId: vehicle.id,
+      orderId: clientRouteOrder.id,
+      status: "PENDING",
+    });
+
     const otherConfig = await createOptimizationConfig({
       companyId: otherCompany.id,
     });
     otherCompanyJob = await createOptimizationJob({
       companyId: otherCompany.id,
       configurationId: otherConfig.id,
+    });
+
+    const otherDriver = await createDriver(otherCompany.id);
+    const otherVehicle = await createVehicle({ companyId: otherCompany.id });
+    const otherOrder = await createOrder({
+      companyId: otherCompany.id,
+      status: "ASSIGNED",
+    });
+    await createRouteStop({
+      companyId: otherCompany.id,
+      jobId: otherCompanyJob.id,
+      routeId: FOREIGN_ROUTE_ID,
+      sequence: 1,
+      userId: otherDriver.id,
+      vehicleId: otherVehicle.id,
+      orderId: otherOrder.id,
+      status: "PENDING",
     });
   });
 
@@ -140,17 +181,17 @@ describe("Mobile driver — location context & delivery-policy DTO", () => {
   });
 
   // -------------------------------------------------------------------------
-  // FIX-7: contexto del body gana; derivación = fallback
+  // FIX-7: contexto del body gana si le pertenece; derivación = fallback
   // -------------------------------------------------------------------------
-  test("client routeId/stopSequence/jobId are honored", async () => {
+  test("client routeId/stopSequence/jobId are honored when the route belongs to the driver", async () => {
     const res = await postLocation({
-      routeId: "route-from-client",
+      routeId: CLIENT_ROUTE_ID,
       stopSequence: 9,
       jobId: job.id,
     });
     const row = await savedRow(res);
 
-    expect(row?.routeId).toBe("route-from-client");
+    expect(row?.routeId).toBe(CLIENT_ROUTE_ID);
     expect(row?.stopSequence).toBe(9);
     expect(row?.jobId).toBe(job.id);
   });
@@ -169,6 +210,36 @@ describe("Mobile driver — location context & delivery-policy DTO", () => {
     const row = await savedRow(res);
 
     expect(row?.jobId).toBe(job.id);
+  });
+
+  test("routeId from another company falls back entirely as a coherent pair", async () => {
+    const res = await postLocation({
+      routeId: FOREIGN_ROUTE_ID,
+      stopSequence: 9,
+    });
+    const row = await savedRow(res);
+
+    expect(row?.jobId).toBe(job.id);
+    expect(row?.routeId).toBe(DERIVED_ROUTE_ID);
+    // El stopSequence del body no sobrevive solo: acompaña al routeId
+    // rechazado y el par completo se deriva del mismo stop.
+    expect(row?.stopSequence).toBe(DERIVED_SEQUENCE);
+  });
+
+  test("valid routeId without stopSequence derives the sequence from the SAME route", async () => {
+    const res = await postLocation({ routeId: CLIENT_ROUTE_ID });
+    const row = await savedRow(res);
+
+    expect(row?.routeId).toBe(CLIENT_ROUTE_ID);
+    expect(row?.stopSequence).toBe(CLIENT_ROUTE_SEQUENCE);
+  });
+
+  test("stopSequence without routeId is discarded and the pair derives together", async () => {
+    const res = await postLocation({ stopSequence: 9 });
+    const row = await savedRow(res);
+
+    expect(row?.routeId).toBe(DERIVED_ROUTE_ID);
+    expect(row?.stopSequence).toBe(DERIVED_SEQUENCE);
   });
 
   test("malformed context values fall back to derivation without 500", async () => {

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { PATCH } from "@/app/api/route-stops/[id]/route";
-import { routeStops } from "@/db/schema";
+import { deliveryVisits, routeStops } from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
 import {
   createAdmin,
@@ -194,5 +194,39 @@ describe("PATCH /api/route-stops/[id] — close validation (FIX-2 / FIX-3)", () 
 
     const body = await res.json();
     expect(body.data.notes).toBe("nota nueva");
+  });
+
+  test("close without notes snapshots the stop's current note in delivery_visits", async () => {
+    const stop = await freshStop({ notes: "nota vigente" });
+
+    const res = await patchStop(stop.id, { status: "COMPLETED" });
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.data.notes).toBe("nota vigente");
+
+    const visit = await testDb.query.deliveryVisits.findFirst({
+      where: eq(deliveryVisits.routeStopId, stop.id),
+    });
+    expect(visit?.notes).toBe("nota vigente");
+  });
+
+  test("customFields-only PATCH (short path) applies a provided notes", async () => {
+    const stop = await freshStop({ status: "PENDING", notes: "nota previa" });
+
+    const res = await patchStop(stop.id, {
+      customFields: {},
+      notes: "nota corta",
+    });
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.data.status).toBe("PENDING");
+    expect(body.data.notes).toBe("nota corta");
+
+    const dbStop = await testDb.query.routeStops.findFirst({
+      where: eq(routeStops.id, stop.id),
+    });
+    expect(dbStop?.notes).toBe("nota corta");
   });
 });

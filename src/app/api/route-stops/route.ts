@@ -124,45 +124,53 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Delete existing stops for this job (if recreating)
-    await db
-      .delete(routeStops)
-      .where(
-        and(
-          eq(routeStops.jobId, jobId),
-          eq(routeStops.companyId, tenantCtx.companyId),
-        ),
+    // Delete-and-recreate atomically. The advisory lock serializes contra el
+    // confirm de planes (mismo lock por companyId): crear stops PENDING
+    // cambia el conteo de stops activos que el guard de vehículos del
+    // confirm lee bajo READ COMMITTED.
+    const insertedStops = await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${tenantCtx.companyId}))`,
       );
 
-    // Insert new stops
-    const insertedStops = await db
-      .insert(routeStops)
-      .values(
-        stops.map((stop) => ({
-          companyId: tenantCtx.companyId,
-          jobId,
-          routeId: stop.routeId,
-          userId: stop.driverId || stop.userId,
-          vehicleId: stop.vehicleId,
-          orderId: stop.orderId,
-          sequence: stop.sequence,
-          address: stop.address,
-          latitude: stop.latitude,
-          longitude: stop.longitude,
-          estimatedArrival: stop.estimatedArrival
-            ? new Date(stop.estimatedArrival)
-            : null,
-          estimatedServiceTime: stop.estimatedServiceTime || null,
-          timeWindowStart: stop.timeWindowStart
-            ? new Date(stop.timeWindowStart)
-            : null,
-          timeWindowEnd: stop.timeWindowEnd
-            ? new Date(stop.timeWindowEnd)
-            : null,
-          metadata: stop.metadata || null,
-        })),
-      )
-      .returning();
+      await tx
+        .delete(routeStops)
+        .where(
+          and(
+            eq(routeStops.jobId, jobId),
+            eq(routeStops.companyId, tenantCtx.companyId),
+          ),
+        );
+
+      return tx
+        .insert(routeStops)
+        .values(
+          stops.map((stop) => ({
+            companyId: tenantCtx.companyId,
+            jobId,
+            routeId: stop.routeId,
+            userId: stop.driverId || stop.userId,
+            vehicleId: stop.vehicleId,
+            orderId: stop.orderId,
+            sequence: stop.sequence,
+            address: stop.address,
+            latitude: stop.latitude,
+            longitude: stop.longitude,
+            estimatedArrival: stop.estimatedArrival
+              ? new Date(stop.estimatedArrival)
+              : null,
+            estimatedServiceTime: stop.estimatedServiceTime || null,
+            timeWindowStart: stop.timeWindowStart
+              ? new Date(stop.timeWindowStart)
+              : null,
+            timeWindowEnd: stop.timeWindowEnd
+              ? new Date(stop.timeWindowEnd)
+              : null,
+            metadata: stop.metadata || null,
+          })),
+        )
+        .returning();
+    });
 
     return NextResponse.json({
       data: insertedStops,

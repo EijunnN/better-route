@@ -8,11 +8,14 @@ import {
   orders,
   planMetrics,
   routeStops,
+  USER_ROLES,
+  users,
 } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { createAuditLog } from "@/lib/infra/audit";
 import { releaseCompanyLock } from "@/lib/infra/job-queue";
+import { hasPgErrorCode, PG_DEADLOCK_DETECTED } from "@/lib/infra/pg-errors";
 import { setTenantContext } from "@/lib/infra/tenant";
 import type { VerifiedPlan } from "@/lib/optimization/optimization-runner";
 import {
@@ -23,6 +26,7 @@ import {
   canConfirmPlan,
   validatePlanForConfirmation,
 } from "@/lib/optimization/plan-validation";
+import { parseVerifiedPlan } from "@/lib/optimization/solved-plan";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { safeParseJson } from "@/lib/utils/safe-json";
 import {
@@ -221,15 +225,26 @@ export async function POST(
       );
     }
 
-    // Parse optimization result
+    // Boundary 3 (solved-plan/schemas): the persisted JSONB is untrusted —
+    // a bare cast would let a drifted shape flow silently into validation
+    // and the stops insert.
     let result: VerifiedPlan | null = null;
-    try {
-      result = job.result ? (safeParseJson(job.result) as VerifiedPlan) : null;
-    } catch (_error) {
-      return NextResponse.json(
-        { error: "Failed to parse optimization result" },
-        { status: 500 },
-      );
+    if (job.result) {
+      try {
+        result = parseVerifiedPlan(safeParseJson(job.result));
+      } catch (error) {
+        console.error(
+          "Stored optimization result has an invalid shape:",
+          error,
+        );
+        return NextResponse.json(
+          {
+            error:
+              "Stored optimization result has an invalid shape and cannot be confirmed. Re-run the optimization.",
+          },
+          { status: 500 },
+        );
+      }
     }
 
     if (!result) {
@@ -386,6 +401,11 @@ export async function POST(
       assignedOrderIds = validOrderIds;
     }
 
+    // Stable lock order: the bulk UPDATE below locks order rows in array
+    // order. Sorting reduces lock-order inversion (40P01 deadlocks) against
+    // other bulk order writers (batch delete, configure revert).
+    assignedOrderIds.sort();
+
     // Build route stops data before transaction
     const now = new Date();
 
@@ -499,6 +519,10 @@ export async function POST(
       }
     }
 
+    const routeDriverIds = [
+      ...new Set(routeStopsToCreate.map((rs) => rs.userId)),
+    ].sort();
+
     // Calculate plan metrics before transaction (read-only computation)
     const planMetricsData = calculatePlanMetrics(
       tenantContext.companyId,
@@ -580,7 +604,34 @@ export async function POST(
         }
       }
 
-      // 3. Update orders status to ASSIGNED with race condition guard
+      // 3. Drivers were validated pre-tx (C-3), but a driver deleted or
+      // demoted in the window between validation and commit would either
+      // blow the route_stops FK (500) or — worse — commit stops assigned to
+      // a user whose mobile app will never serve them. Re-check under the
+      // advisory lock.
+      if (routeDriverIds.length > 0) {
+        const validDrivers = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(
+            and(
+              eq(users.companyId, tenantContext.companyId),
+              inArray(users.id, routeDriverIds),
+              eq(users.role, USER_ROLES.CONDUCTOR),
+            ),
+          );
+        const validDriverIds = new Set(validDrivers.map((d) => d.id));
+        const goneDriverIds = routeDriverIds.filter(
+          (id) => !validDriverIds.has(id),
+        );
+        if (goneDriverIds.length > 0) {
+          throw new Error(
+            `CONFLICT:Driver(s) no longer available as CONDUCTOR of this company: ${goneDriverIds.join(", ")}. Re-validate the plan.`,
+          );
+        }
+      }
+
+      // 4. Update orders status to ASSIGNED with race condition guard
       const updatedOrderIdSet = new Set<string>();
       if (assignedOrderIds.length > 0) {
         const updatedOrders = await tx
@@ -621,7 +672,7 @@ export async function POST(
         updatedOrderIdSet.has(rs.orderId),
       );
 
-      // 4. Insert route stops with computed `attempt_number`.
+      // 5. Insert route stops with computed `attempt_number`.
       // For each Order being assigned, attempt_number = (existing
       // delivery_visits for that Order) + 1. First-time Orders get 1;
       // revisitas (Orders that previously had a Visit logged) get 2+.
@@ -653,7 +704,15 @@ export async function POST(
         routeStopsCreatedCount = enriched.length;
       }
 
-      // 5. Save plan metrics
+      // 6. Save plan metrics. totalStops/unassignedOrders are recalibrated
+      // against what this confirm actually dispatched: a partial confirm
+      // (skipped or stale orders) must not persist the full plan's numbers —
+      // dashboards and the job-to-job comparison read this row.
+      const totalStopsActual = routeStopsCreatedCount;
+      const unassignedOrdersActual =
+        planMetricsData.unassignedOrders +
+        skippedOrderIds.length +
+        staleOrderIds.length;
       const [insertedMetrics] = await tx
         .insert(planMetrics)
         .values({
@@ -661,7 +720,7 @@ export async function POST(
           jobId: planMetricsData.jobId,
           configurationId: planMetricsData.configurationId,
           totalRoutes: planMetricsData.totalRoutes,
-          totalStops: planMetricsData.totalStops,
+          totalStops: totalStopsActual,
           totalDistance: planMetricsData.totalDistance,
           totalDuration: planMetricsData.totalDuration,
           averageUtilizationRate: planMetricsData.averageUtilizationRate,
@@ -677,7 +736,7 @@ export async function POST(
           licenseCompliance: planMetricsData.licenseCompliance,
           fleetAlignment: planMetricsData.fleetAlignment,
           workloadBalance: planMetricsData.workloadBalance,
-          unassignedOrders: planMetricsData.unassignedOrders,
+          unassignedOrders: unassignedOrdersActual,
           objective: planMetricsData.objective as
             | "DISTANCE"
             | "TIME"
@@ -697,6 +756,8 @@ export async function POST(
         routeStopsCreatedCount,
         staleOrderIds,
         metricsId: insertedMetrics.id,
+        totalStopsActual,
+        unassignedOrdersActual,
       };
     });
 
@@ -706,6 +767,8 @@ export async function POST(
       routeStopsCreatedCount,
       staleOrderIds,
       metricsId,
+      totalStopsActual,
+      unassignedOrdersActual,
     } = txResult;
 
     // Orders skipped in the pre-check plus those that lost PENDING inside
@@ -811,7 +874,7 @@ export async function POST(
         jobId: planMetricsData.jobId,
         configurationId: planMetricsData.configurationId,
         totalRoutes: planMetricsData.totalRoutes,
-        totalStops: planMetricsData.totalStops,
+        totalStops: totalStopsActual,
         totalDistance: planMetricsData.totalDistance,
         totalDuration: planMetricsData.totalDuration,
         averageUtilizationRate: planMetricsData.averageUtilizationRate,
@@ -827,7 +890,7 @@ export async function POST(
         licenseCompliance: planMetricsData.licenseCompliance,
         fleetAlignment: planMetricsData.fleetAlignment,
         workloadBalance: planMetricsData.workloadBalance,
-        unassignedOrders: planMetricsData.unassignedOrders,
+        unassignedOrders: unassignedOrdersActual,
         objective: planMetricsData.objective,
         processingTimeMs: planMetricsData.processingTimeMs,
         comparison: comparisonMetrics
@@ -862,6 +925,18 @@ export async function POST(
     if (error instanceof Error && error.message.startsWith("CONFLICT:")) {
       const message = error.message.slice("CONFLICT:".length);
       return NextResponse.json({ error: message }, { status: 409 });
+    }
+    // A deadlock against another bulk order writer rolls back cleanly —
+    // a retry works, so surface it as a retryable 409, not a generic 500.
+    if (hasPgErrorCode(error, PG_DEADLOCK_DETECTED)) {
+      return NextResponse.json(
+        {
+          error:
+            "The confirmation collided with a concurrent operation on the same orders. Retry the confirmation.",
+          retryable: true,
+        },
+        { status: 409 },
+      );
     }
     console.error("Error confirming plan:", error);
     return NextResponse.json(

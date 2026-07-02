@@ -34,8 +34,6 @@ export const planValidationRequestSchema = z.object({
       allowUnassignedOrdersOverride: z.boolean().default(false),
       checkLicenseExpiry: z.boolean().default(true),
       licenseExpiryWarningDays: z.number().int().min(0).max(365).default(30),
-      checkSkillExpiry: z.boolean().default(true),
-      skillExpiryWarningDays: z.number().int().min(0).max(365).default(30),
     })
     .optional(),
 });

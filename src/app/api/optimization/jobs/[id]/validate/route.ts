@@ -12,6 +12,7 @@ import {
   getValidationSummaryText,
   validatePlanForConfirmation,
 } from "@/lib/optimization/plan-validation";
+import { parseVerifiedPlan } from "@/lib/optimization/solved-plan";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import { safeParseJson } from "@/lib/utils/safe-json";
 import type { PlanValidationRequestSchema } from "@/lib/validations/plan-confirmation";
@@ -122,15 +123,25 @@ export async function GET(
       });
     }
 
-    // Parse optimization result
+    // Boundary 3 (solved-plan/schemas): the persisted JSONB is untrusted —
+    // a bare cast would let a drifted shape flow silently into validation.
     let result: VerifiedPlan | null = null;
-    try {
-      result = job.result ? (safeParseJson(job.result) as VerifiedPlan) : null;
-    } catch (_error) {
-      return NextResponse.json(
-        { error: "Failed to parse optimization result" },
-        { status: 500 },
-      );
+    if (job.result) {
+      try {
+        result = parseVerifiedPlan(safeParseJson(job.result));
+      } catch (error) {
+        console.error(
+          "Stored optimization result has an invalid shape:",
+          error,
+        );
+        return NextResponse.json(
+          {
+            error:
+              "Stored optimization result has an invalid shape and cannot be validated. Re-run the optimization.",
+          },
+          { status: 500 },
+        );
+      }
     }
 
     if (!result) {

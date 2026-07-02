@@ -260,7 +260,11 @@ async function handlePatch(
       const now = new Date();
       const [updated] = await db
         .update(routeStops)
-        .set({ customFields: normalizedCustomFields, updatedAt: now })
+        .set({
+          customFields: normalizedCustomFields,
+          ...(notesProvided ? { notes: notesValue } : {}),
+          updatedAt: now,
+        })
         .where(
           and(
             eq(routeStops.id, stopId),
@@ -426,18 +430,35 @@ async function handlePatch(
       }
     }
 
-    // Create history entry metadata
-    const historyMetadata =
-      status === "FAILED"
+    // Nota efectiva post-merge: cuando `notes` viene omitida, la visita y el
+    // alert deben snapshotear la nota vigente del stop, no null.
+    const effectiveNotes = notesProvided ? notesValue : currentStop.notes;
+
+    // history registra el delta (notes = lo enviado en este PATCH);
+    // `notesPatched` distingue null-omitida (false) de null-borrada (true).
+    const historyMetadata = {
+      notesPatched: notesProvided,
+      ...(status === "FAILED"
         ? { failureReason, evidenceUrls: evidenceUrls || [] }
         : status === "COMPLETED" && evidenceUrls
           ? { evidenceUrls }
-          : null;
+          : {}),
+    };
 
     // Wrap all writes in a transaction with optimistic locking
     let updatedStop: (typeof routeStops.$inferSelect)[];
     try {
       updatedStop = await db.transaction(async (tx) => {
+        // Serializa contra el confirm de planes (mismo lock por companyId):
+        // una transición que activa el stop (PENDING/IN_PROGRESS) cambia el
+        // conteo de stops activos que el guard de vehículos del confirm lee
+        // bajo READ COMMITTED. Las terminales no lo necesitan.
+        if (status === "PENDING" || status === "IN_PROGRESS") {
+          await tx.execute(
+            sql`SELECT pg_advisory_xact_lock(hashtext(${tenantCtx.companyId}))`,
+          );
+        }
+
         // Re-fetch inside transaction for fresh state
         const [fresh] = await tx
           .select()
@@ -546,7 +567,7 @@ async function handlePatch(
             completedAt: now,
             outcome: status === "COMPLETED" ? "SUCCESS" : "FAILURE",
             failureReason: status === "FAILED" ? (failureReason ?? null) : null,
-            notes: notesValue,
+            notes: effectiveNotes,
             evidenceUrls: evidenceUrls ?? null,
             intendedAddress: currentStop.address,
             intendedLatitude: currentStop.latitude,
@@ -601,7 +622,7 @@ async function handlePatch(
           entityId: stopId,
           title: `Stop #${currentStop.sequence} ${status.toLowerCase()}: ${currentStop.address}`,
           description: failureLabel
-            ? `No entregado: ${failureLabel}. ${notesValue ?? ""}`
+            ? `No entregado: ${failureLabel}. ${effectiveNotes ?? ""}`
             : `The stop at ${currentStop.address} was marked as ${status.toLowerCase()}.`,
           metadata: {
             userId: currentStop.userId,
@@ -674,11 +695,8 @@ async function handlePatch(
   }
 }
 
-export const GET = withContractHeader(handleGet);
-export const PATCH = withContractHeader(handlePatch);
-
 // DELETE - Delete a route stop (should be rare, mainly for cleanup)
-export async function DELETE(
+async function handleDelete(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -726,3 +744,7 @@ export async function DELETE(
     );
   }
 }
+
+export const GET = withContractHeader(handleGet);
+export const PATCH = withContractHeader(handlePatch);
+export const DELETE = withContractHeader(handleDelete);

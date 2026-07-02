@@ -190,9 +190,21 @@ describe("parseVerifiedPlan", () => {
     expect(() => parseVerifiedPlan(plan)).toThrow(ZodError);
   });
 
-  test("rejects route missing driverId (must be AssignedSolvedRoute, not Raw)", () => {
+  test("normalizes a route whose driver was removed post-solve (null/missing) to ''", () => {
+    // driver-assignment remove nulls driverId/driverName in the persisted
+    // JSONB — the boundary must hand that to plan-validation as "" (route
+    // without driver), not blow up as a shape error.
     const plan = validVerifiedPlan();
-    delete (plan.routes[0] as Partial<(typeof plan.routes)[0]>).driverId;
+    (plan.routes[0] as unknown as { driverId: null }).driverId = null;
+    (plan.routes[0] as unknown as { driverName: null }).driverName = null;
+    const parsed = parseVerifiedPlan(plan);
+    expect(parsed.routes[0].driverId).toBe("");
+    expect(parsed.routes[0].driverName).toBe("");
+  });
+
+  test("rejects a non-string driverId", () => {
+    const plan = validVerifiedPlan();
+    (plan.routes[0] as unknown as { driverId: number }).driverId = 42;
     expect(() => parseVerifiedPlan(plan)).toThrow(ZodError);
   });
 

@@ -1,8 +1,10 @@
-# Hallazgos del review adversarial — 2026-07-02 (PENDIENTES de aplicar)
+# Hallazgos del review adversarial — 2026-07-02 (todos APLICADOS)
 
-> Review de 5 agentes (2 auditores custom + 3 revisores adversariales) sobre el trabajo del 2026-07-02
-> (Cola de Opus completa). Los fixes NO se aplicaron: la sesión alcanzó su límite. Cada hallazgo tiene
-> escenario de falla verificado y fix sugerido. Prioridad: el crítico primero, luego los medios.
+> ✅ **Los 23 hallazgos fueron aplicados el mismo 2026-07-02** (ronda posterior al
+> commit `e67fe2c` que los registró como pendientes). Verificación: tsc 0, 252 tests
+> web pass, flutter 42/42, smoke de guards exit 0. Se conserva como registro del
+> review: 5 agentes (2 auditores custom + 3 revisores adversariales) sobre el cierre
+> de la Cola de Opus; cada hallazgo tiene escenario de falla verificado.
 
 ## [CRITICO] Spec §5 sin implementar: my-route resucita stops con PendingClose vivo (hasPendingFor tiene 0 call sites)
 *Fuente: review-outbox* — lib/providers/route_provider.dart
