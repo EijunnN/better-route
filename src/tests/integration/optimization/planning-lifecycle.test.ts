@@ -211,10 +211,15 @@ describe("Planning Lifecycle - Full E2E and edge cases", () => {
       );
       expect(inProgressRes.status).toBe(200);
 
-      // IN_PROGRESS -> COMPLETED
+      // IN_PROGRESS -> COMPLETED. The default delivery policy requires a
+      // proof-of-delivery photo, so the close carries evidence like the
+      // driver app does (see route-stop-status: closing without it is a 400).
       const completedRes = await callPatchRouteStop(
         stop.id,
-        { status: "COMPLETED" },
+        {
+          status: "COMPLETED",
+          evidenceUrls: ["https://r2.example/pod.jpg"],
+        },
         token,
         company.id,
         admin.id,

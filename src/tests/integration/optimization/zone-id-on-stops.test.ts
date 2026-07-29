@@ -48,13 +48,17 @@ mock.module("@/lib/optimization/vroom-optimizer", () => ({
               routeId: "mock-route",
               vehicleId: vehicles[0].id,
               vehiclePlate: vehicles[0].plate ?? "",
+              // Numbers, matching `OptimizedStop`. The mock used to stringify
+              // these, which only went unnoticed while the canonical plan's
+              // Zod boundary was dead code — once `assertPersistableVerifiedPlan`
+              // was wired into the runner it rejected the shape outright.
               stops: orders.map((o, i) => ({
                 orderId: o.id,
                 trackingId: o.trackingId,
                 sequence: i + 1,
                 address: o.address,
-                latitude: String(o.latitude),
-                longitude: String(o.longitude),
+                latitude: o.latitude,
+                longitude: o.longitude,
               })),
               totalDistance: 100,
               totalDuration: 300,

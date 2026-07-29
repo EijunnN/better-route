@@ -164,20 +164,11 @@ mock.module("@/lib/optimization/optimization-job/lifecycle", () => ({
   },
 }));
 
-// Plan validation — default to "valid" so confirm tests control it per-test
-mock.module("@/lib/optimization/plan-validation", () => ({
-  validatePlanForConfirmation: async () => ({
-    isValid: true,
-    canConfirm: true,
-    issues: [],
-    summary: { totalChecks: 5, errorCount: 0, warningCount: 0, infoCount: 0 },
-    metrics: {},
-  }),
-  canConfirmPlan: () => true,
-  getIssuesByCategory: () => ({}),
-  getIssuesBySeverity: () => ({}),
-  getValidationSummaryText: () => "Plan is valid and ready for confirmation",
-}));
+// NOTE: `@/lib/optimization/plan-validation` is deliberately NOT mocked.
+// It is the confirmation gate (routes without drivers, unknown/foreign
+// drivers, expired licenses, verifier HARD violations) and it only needs the
+// test DB — stubbing it to "always valid" made every confirm test blind to
+// the guard it was asserting.
 
 // Optimization runner — no real optimization in tests
 mock.module("@/lib/optimization/optimization-runner", () => ({
@@ -253,30 +244,77 @@ mock.module("@/lib/optimization/plan-metrics", () => ({
   }),
 }));
 
-// Cache layer — in-memory replacement for Redis-based cache
-mock.module("@/lib/infra/cache", () => ({
-  getCacheStats: async () => ({
-    available: true,
-    hitRate: 0.85,
-    metrics: { hits: 850, misses: 150, sets: 200, deletes: 10, errors: 0 },
-  }),
-  invalidateAllCache: async () => {},
-  cacheGet: async () => null,
-  cacheSet: async () => {},
-  cacheDelete: async () => {},
-  cacheDeletePattern: async () => {},
-  CACHE_TTL: {
-    SESSION: 604800,
-    GEOCODING: 2592000,
-    REFERENCE_DATA: 3600,
-    USER_DATA: 900,
-    OPERATIONAL_DATA: 300,
-    PLANNING_DATA: 120,
-    REALTIME_DATA: 30,
-    METRICS: 60,
-    OPTIMIZATION_RESULTS: 600,
-  },
-}));
+// Cache layer — in-memory replacement for Redis-based cache.
+//
+// This has to actually store values, not no-op. The CSV import
+// preview-and-confirm flow (ADR-0006) uses the cache as the *storage* for the
+// parsed preview, not as an accelerator: phase 1 writes it under `previewId`
+// and phase 2 reads it back. An always-miss stub made every confirm 404 on a
+// preview it had just created, so the whole second phase — reactivations,
+// CANCELLED-is-terminal, race-condition detection — was unreachable and its
+// tests passed vacuously or failed for the wrong reason.
+mock.module("@/lib/infra/cache", () => {
+  const store = new Map<string, { value: string; expiresAt: number }>();
+
+  const liveEntry = (key: string) => {
+    const entry = store.get(key);
+    if (!entry) return null;
+    if (entry.expiresAt <= Date.now()) {
+      store.delete(key);
+      return null;
+    }
+    return entry;
+  };
+
+  return {
+    getCacheStats: async () => ({
+      available: true,
+      hitRate: 0.85,
+      metrics: { hits: 850, misses: 150, sets: 200, deletes: 10, errors: 0 },
+    }),
+    invalidateAllCache: async () => {
+      store.clear();
+    },
+    // Mirrors the real cacheGet: JSON round-trip, raw string on parse failure.
+    cacheGet: async (key: string) => {
+      const entry = liveEntry(key);
+      if (!entry) return null;
+      try {
+        return JSON.parse(entry.value);
+      } catch {
+        return entry.value;
+      }
+    },
+    cacheSet: async (key: string, value: unknown, ttl: number) => {
+      store.set(key, {
+        value: typeof value === "string" ? value : JSON.stringify(value),
+        expiresAt: Date.now() + ttl * 1000,
+      });
+    },
+    cacheDelete: async (key: string) => {
+      store.delete(key);
+    },
+    cacheDeletePattern: async (pattern: string) => {
+      const rx = new RegExp(
+        `^${pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`,
+      );
+      for (const key of [...store.keys()]) {
+        if (rx.test(key)) store.delete(key);
+      }
+    },
+    CACHE_TTL: {
+      SESSION: 604800,
+      GEOCODING: 2592000,
+      REFERENCE_DATA: 3600,
+      USER_DATA: 900,
+      OPERATIONAL_DATA: 300,
+      PLANNING_DATA: 120,
+      REALTIME_DATA: 30,
+      METRICS: 60,
+      OPTIMIZATION_RESULTS: 600,
+    },
+  };
+});
 
 // Alert engine — no-op in tests
 mock.module("@/lib/alerts/engine", () => ({

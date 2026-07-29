@@ -59,12 +59,20 @@ if (!TEST_DATABASE_URL) {
   );
 }
 
+// `cleanDatabase()` TRUNCATEs 41 tables before every suite, so pointing the
+// tests at the app database wipes it. Pre-deploy that is a deliberate, useful
+// setup (one Neon branch, re-seed with `db:seed`); once there is data worth
+// keeping it is a foot-gun. The guard stays on by default and takes an
+// explicit opt-in rather than being deleted.
 if (
   process.env.DATABASE_URL &&
-  process.env.DATABASE_URL === TEST_DATABASE_URL
+  process.env.DATABASE_URL === TEST_DATABASE_URL &&
+  process.env.ALLOW_DESTRUCTIVE_TESTS_ON_APP_DB !== "1"
 ) {
   throw new Error(
-    "TEST_DATABASE_URL must point to a dedicated test database and cannot match DATABASE_URL.",
+    "TEST_DATABASE_URL matches DATABASE_URL: running the integration suite " +
+      "would TRUNCATE every table in the app database. Point it at a dedicated " +
+      "test database, or set ALLOW_DESTRUCTIVE_TESTS_ON_APP_DB=1 to accept the wipe.",
   );
 }
 

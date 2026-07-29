@@ -4,7 +4,12 @@ import { POST as CONFIRM } from "@/app/api/orders/csv-import/confirm/route";
 import { POST as PREVIEW } from "@/app/api/orders/csv-import/preview/route";
 import { orders } from "@/db/schema";
 import { createTestToken } from "../setup/test-auth";
-import { createAdmin, createCompany, createOrder } from "../setup/test-data";
+import {
+  createAdmin,
+  createCompany,
+  createCompanyProfile,
+  createOrder,
+} from "../setup/test-data";
 import { cleanDatabase, testDb } from "../setup/test-db";
 import { createTestRequest } from "../setup/test-request";
 
@@ -23,6 +28,17 @@ describe("CSV import preview + confirm (issue 006)", () => {
   beforeAll(async () => {
     await cleanDatabase();
     company = await createCompany();
+    // Profile without capacity dimensions: these CSVs carry only the identity,
+    // geo and customer columns. Without this, resolveProfileSchema falls back
+    // to DEFAULT_DIMENSIONS=[WEIGHT,VOLUME] and the preview rejects with
+    // "Missing required field" before classifying anything (same fixture gap
+    // fixed in order-csv-import.test.ts).
+    await createCompanyProfile({
+      companyId: company.id,
+      enableWeight: false,
+      enableVolume: false,
+      activeDimensions: [],
+    });
     admin = await createAdmin(null);
     token = await createTestToken({
       userId: admin.id,
@@ -172,7 +188,13 @@ describe("CSV import preview + confirm (issue 006)", () => {
       status: "CANCELLED",
     });
 
-    const headers = ["trackcode", "direccion", "latitud", "longitud"];
+    const headers = [
+      "trackcode",
+      "direccion",
+      "latitud",
+      "longitud",
+      "nombre_cliente",
+    ];
     const csv = csvOf(
       [
         {
@@ -180,18 +202,21 @@ describe("CSV import preview + confirm (issue 006)", () => {
           direccion: "Av. Ins 1",
           latitud: "-12",
           longitud: "-77",
+          nombre_cliente: "Cli Ins",
         },
         {
           trackcode: "TRK-FAIL-2",
           direccion: "Av. Reactivada",
           latitud: "-12.5",
           longitud: "-77.5",
+          nombre_cliente: "Cli Re",
         },
         {
           trackcode: "TRK-CAN-2",
           direccion: "X",
           latitud: "-12",
           longitud: "-77",
+          nombre_cliente: "Cli Can",
         },
       ],
       headers,
@@ -229,7 +254,13 @@ describe("CSV import preview + confirm (issue 006)", () => {
       status: "FAILED",
     });
 
-    const headers = ["trackcode", "direccion", "latitud", "longitud"];
+    const headers = [
+      "trackcode",
+      "direccion",
+      "latitud",
+      "longitud",
+      "nombre_cliente",
+    ];
     const csv = csvOf(
       [
         {
@@ -237,6 +268,7 @@ describe("CSV import preview + confirm (issue 006)", () => {
           direccion: "Av. X",
           latitud: "-12",
           longitud: "-77",
+          nombre_cliente: "Cli Race",
         },
       ],
       headers,
@@ -288,7 +320,13 @@ describe("CSV import preview + confirm (issue 006)", () => {
       status: "FAILED",
     });
 
-    const headers = ["trackcode", "direccion", "latitud", "longitud"];
+    const headers = [
+      "trackcode",
+      "direccion",
+      "latitud",
+      "longitud",
+      "nombre_cliente",
+    ];
     const csv = csvOf(
       [
         {
@@ -296,6 +334,7 @@ describe("CSV import preview + confirm (issue 006)", () => {
           direccion: "Av. X",
           latitud: "-12",
           longitud: "-77",
+          nombre_cliente: "Cli XT",
         },
       ],
       headers,

@@ -95,6 +95,25 @@ afterAll(async () => {
   await cleanDatabase();
 });
 
+/**
+ * Public tracking is gated behind a per-company master switch that defaults
+ * to OFF, so every happy-path tracking test has to turn it on explicitly.
+ * Delete-then-insert because `company_tracking_settings.company_id` is UNIQUE.
+ */
+async function enableTrackingFor(
+  companyId: string,
+  overrides: Partial<typeof companyTrackingSettings.$inferInsert> = {},
+) {
+  await testDb
+    .delete(companyTrackingSettings)
+    .where(eq(companyTrackingSettings.companyId, companyId));
+  await testDb.insert(companyTrackingSettings).values({
+    companyId,
+    trackingEnabled: true,
+    ...overrides,
+  });
+}
+
 // ==========================================================================
 // Order Detail (GET /api/orders/[id])
 // ==========================================================================
@@ -208,7 +227,17 @@ describe("Order Update - PATCH /api/orders/[id]", () => {
     const data = await response.json();
     expect(data.customerName).toBe("Updated Customer");
     expect(data.notes).toBe("Updated notes");
-    expect(data.status).toBe("ASSIGNED");
+
+    // `status` is deliberately not updatable here: state changes must flow
+    // through the dedicated transition endpoints so the order state machine
+    // and its append-only history are never bypassed. The generic PATCH
+    // drops the field (see `updateOrderSchema`), leaving the order PENDING.
+    expect(data.status).toBe("PENDING");
+    const [dbRecord] = await testDb
+      .select()
+      .from(orders)
+      .where(eq(orders.id, order.id));
+    expect(dbRecord.status).toBe("PENDING");
   });
 
   test("returns 404 when updating non-existent order", async () => {
@@ -362,6 +391,7 @@ describe("Tracking Generate - POST /api/tracking/generate", () => {
     await testDb.delete(trackingTokens);
     await testDb.delete(orders).where(eq(orders.companyId, companyA.id));
     await testDb.delete(orders).where(eq(orders.companyId, companyB.id));
+    await enableTrackingFor(companyA.id);
   });
 
   test("generates tracking token for order by orderIds", async () => {
@@ -517,6 +547,53 @@ describe("Tracking Generate - POST /api/tracking/generate", () => {
     // Should not find the order since tenant filter is applied
     expect(response.status).toBe(404);
   });
+
+  test("returns 409 when public tracking is disabled for the company", async () => {
+    const order = await createOrder({
+      companyId: companyA.id,
+      trackingId: "TRK-DISABLED",
+    });
+    await enableTrackingFor(companyA.id, { trackingEnabled: false });
+
+    const request = await createTestRequest("/api/tracking/generate", {
+      method: "POST",
+      token: tokenPlannerA,
+      companyId: companyA.id,
+      userId: plannerA.id,
+      body: { orderIds: [order.id] },
+    });
+
+    const response = await POST_TRACKING_GENERATE(request);
+    expect(response.status).toBe(409);
+
+    // No token may be minted while the master privacy switch is off.
+    const minted = await testDb
+      .select()
+      .from(trackingTokens)
+      .where(eq(trackingTokens.orderId, order.id));
+    expect(minted).toHaveLength(0);
+  });
+
+  test("returns 409 when the company has no tracking settings at all", async () => {
+    const order = await createOrder({
+      companyId: companyA.id,
+      trackingId: "TRK-NO-SETTINGS",
+    });
+    await testDb
+      .delete(companyTrackingSettings)
+      .where(eq(companyTrackingSettings.companyId, companyA.id));
+
+    const request = await createTestRequest("/api/tracking/generate", {
+      method: "POST",
+      token: tokenPlannerA,
+      companyId: companyA.id,
+      userId: plannerA.id,
+      body: { orderIds: [order.id] },
+    });
+
+    const response = await POST_TRACKING_GENERATE(request);
+    expect(response.status).toBe(409);
+  });
 });
 
 // ==========================================================================
@@ -644,6 +721,7 @@ describe("Public Tracking - GET /api/public/tracking/[token]", () => {
     await testDb.delete(trackingTokens);
     await testDb.delete(companyTrackingSettings);
     await testDb.delete(orders).where(eq(orders.companyId, companyA.id));
+    await enableTrackingFor(companyA.id);
   });
 
   test("returns tracking data for valid token", async () => {
@@ -651,7 +729,10 @@ describe("Public Tracking - GET /api/public/tracking/[token]", () => {
       companyId: companyA.id,
       trackingId: "TRK-PUBLIC-1",
       customerName: "Public Customer",
+      customerPhone: "999888777",
+      customerEmail: "public.customer@example.com",
       address: "Av. Publica 100",
+      notes: "Internal note - do not expose",
       status: "PENDING",
     });
 
@@ -687,6 +768,16 @@ describe("Public Tracking - GET /api/public/tracking/[token]", () => {
     expect(data.settings).toBeDefined();
     expect(data.timeline).toBeDefined();
     expect(Array.isArray(data.timeline)).toBe(true);
+
+    // Unauthenticated endpoint: it may only echo back what the recipient
+    // already knows. Contact details and internal notes must never ship.
+    const body = JSON.stringify(data);
+    expect(body).not.toContain("999888777");
+    expect(body).not.toContain("public.customer@example.com");
+    expect(body).not.toContain("Internal note - do not expose");
+    expect(data.order.customerPhone).toBeUndefined();
+    expect(data.order.customerEmail).toBeUndefined();
+    expect(data.order.notes).toBeUndefined();
   });
 
   test("returns 404 for non-existent token", async () => {
@@ -775,9 +866,7 @@ describe("Public Tracking - GET /api/public/tracking/[token]", () => {
     });
 
     // Set up company settings
-    await testDb.insert(companyTrackingSettings).values({
-      companyId: companyA.id,
-      trackingEnabled: true,
+    await enableTrackingFor(companyA.id, {
       showMap: false,
       showDriverName: true,
       showTimeline: false,
@@ -843,6 +932,39 @@ describe("Public Tracking - GET /api/public/tracking/[token]", () => {
     expect(data.timeline.length).toBeGreaterThanOrEqual(1);
     expect(data.timeline[0].status).toBe("PENDING");
     expect(data.timeline[0].label).toBe("Pedido registrado");
+  });
+
+  test("returns 404 (indistinguishable from unknown token) when tracking is disabled", async () => {
+    const order = await createOrder({
+      companyId: companyA.id,
+      trackingId: "TRK-PRIVACY-OFF",
+    });
+
+    const tokenValue = `privacy-off-token-${Date.now()}`;
+    await testDb.insert(trackingTokens).values({
+      companyId: companyA.id,
+      orderId: order.id,
+      trackingId: "TRK-PRIVACY-OFF",
+      token: tokenValue,
+      active: true,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
+    await enableTrackingFor(companyA.id, { trackingEnabled: false });
+
+    const request = await createTestRequest(
+      `/api/public/tracking/${tokenValue}`,
+      { method: "GET" },
+    );
+    const response = await GET_PUBLIC_TRACKING(request, {
+      params: Promise.resolve({ token: tokenValue }),
+    });
+    expect(response.status).toBe(404);
+
+    // The body must not hint that the token (and therefore the order) exists.
+    const data = await response.json();
+    expect(JSON.stringify(data)).not.toContain("TRK-PRIVACY-OFF");
+    expect(data.order).toBeUndefined();
   });
 });
 
