@@ -204,7 +204,7 @@ osrm-client.ts        — OSRM road network client.
 - Una `OptimizationConfiguration` con `status: CONFIRMED` no puede
   re-optimizarse — el guard vive en `createAndExecuteJob`, no en la API
   route.
-- Test harness golden en `src/tests/routing-quality/` con 28 escenarios.
+- Test harness golden en `src/tests/routing-quality/` con 29 escenarios.
 
 **OptimizationJob state machine** (gestionado por `optimization-job/lifecycle.ts`):
 
@@ -372,6 +372,8 @@ lugar de mantenerlo. Sin migrations data-rescue todavía.
 ## Referencias rápidas
 
 - `CLAUDE.md` — convenciones operativas (cómo correr, comandos, RBAC flow).
+- `docs/ARCHITECTURE.md` — mapa de orientación: dónde vive cada cosa y qué doc
+  es canónico para cada tema.
 - `docs/ROLES-PERMISSIONS.md` — catálogo completo de permisos y roles.
 - `docs/API-CONTRACT-MOBILE.md` — contrato del seam con la app móvil
   (espejado en `aea/docs/`).
@@ -387,3 +389,6 @@ lugar de mantenerlo. Sin migrations data-rescue todavía.
   - ADR-0009: Migraciones Drizzle versionadas (`db:generate` + `db:migrate`, nunca `db:push`)
   - ADR-0010: Contrato RBAC tipado compartido server/cliente
   - ADR-0011: FailureReason como string libre per-company (enum legacy)
+- ⛔ `docs/archive/` — auditorías cerradas, planes ejecutados e issues
+  implementados. **Registro histórico: no es fuente de verdad y nunca gana un
+  conflicto.** Ver `docs/archive/README.md`.

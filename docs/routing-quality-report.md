@@ -1,5 +1,13 @@
 # Routing Quality Report
 
+> ⚙️ **Artefacto generado — no lo edites a mano.** Lo reescribe
+> `src/tests/routing-quality/run.ts` (la ruta está hardcodeada ahí) en cada
+> corrida del harness: `bun run src/tests/routing-quality/run.ts`. Por eso no
+> vive en `docs/archive/` aunque el contenido de abajo sea de una corrida vieja
+> (28 escenarios; hoy hay 29) — moverlo solo haría que la próxima corrida
+> recreara el archivo acá. El análisis histórico de la primera corrida está en
+> [`archive/routing-quality-findings.md`](./archive/routing-quality-findings.md).
+
 Generated: 2026-04-18T23:36:13.594Z
 
 Scenarios: 28 × 1 solver = 28 runs

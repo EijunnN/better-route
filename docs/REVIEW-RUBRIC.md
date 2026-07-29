@@ -1,12 +1,16 @@
 # BetterRoute — Rúbrica de revisión (correctness y seguridad)
 
-> **v1 — borrador generado durante el upgrade del harness (2026-07-01).**
-> Pensada para que el modelo SOTA la refine y para consumirse desde un subagente
-> auditor y/o una slash-command `/review-invariants`. Mecaniza las **8 invariantes
-> globales** de `docs/CONTEXT.md` en checks accionables sobre un diff.
+> Mecaniza las **8 invariantes globales** de `docs/CONTEXT.md` en checks
+> accionables sobre un diff. Se consume a mano, desde los subagentes auditores
+> (`tenancy-invariant-auditor`, `verifier-solver-sync-auditor`,
+> `realtime-channel-auth-auditor`) y desde `docs/prompts/README.md §1`.
 >
-> El único gate automático actual es `biome check` (estilo). Esta rúbrica cubre
-> lo que biome **no** ve: aislamiento multi-tenant, RBAC, máquinas de estado, etc.
+> **Esta rúbrica es la capa humana de la Definition of Done.** Los gates
+> automáticos (`biome check` en el hook `Stop`; `tsc`, lint, unit tests y
+> `scripts/check-route-guards.ts` en CI) no ven nada de lo que hay acá salvo el
+> guard de tenancy/RBAC sobre rutas nuevas. Aislamiento multi-tenant real, RBAC
+> de punta a punta, máquinas de estado, evidence y history append-only se
+> verifican leyendo.
 
 ## Cómo usarla
 
@@ -105,9 +109,9 @@ Si tocaste `src/lib/optimization/vroom-optimizer.ts` o
 `src/lib/optimization/verifier/*`: ¿los cambios mantienen la semántica compartida
 (tolerancias tipo `FLEX_TOLERANCE_SEC`, `service-start = arrival + waiting`,
 capacity vectors por company profile)? El fallo es **silencioso** — solo lo atrapan
-los 28 escenarios golden, y ni siquiera todos (asimetría A10). Ver
+los 29 escenarios golden, y ni siquiera todos. Ver
 `docs/optimization/SEMANTICS.md`: contrato completo + registro de asimetrías
-A1–A14 + reglas al tocar cada lado.
+A1–A16 (con su estado: resuelta / aceptada / [DOC]) + reglas al tocar cada lado.
 
 ### Autorización de canales realtime
 Si tocaste `src/lib/realtime/channels.ts` / `centrifugo.ts`: ¿`computeAllowedChannels`

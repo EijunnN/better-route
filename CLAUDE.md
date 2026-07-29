@@ -61,20 +61,62 @@ lo salta. Patrón de referencia: `canAccessCompany` en
 
 ## Compound component pattern
 
-Cada feature module sigue:
+Lo invariante es la **forma del context**, no cómo se reparte en archivos: un
+`Provider` que expone `state` / `actions` / `derived` / `meta`, la UI en
+`<feature>-views.tsx` y un barrel `index.ts` por feature.
+
+La descomposición en archivos se decide por **tamaño**, con una sola regla:
+
+> **Archivo único por defecto. Cuando un context supera las ~400 líneas,
+> convertilo en directorio y partilo por rol (state / actions / derived /
+> effects).** El umbral aplica **por archivo de context**, no por feature: una
+> feature puede tener uno chico y uno grande (`planificacion` tiene
+> `historial-context.tsx` en un archivo y `context/` descompuesto).
+
+**Caso simple — archivo único** (la mayoría). Ejemplo:
+`src/components/fleets/fleets-context.tsx` (183 LOC).
 
 ```
 src/components/<feature>/
-├── <feature>-context/
-│   ├── provider.tsx       — orquesta state + actions + derived + meta
-│   ├── use-state.ts       — todos los useState
-│   ├── use-actions.ts     — handlers (mutations)
-│   ├── use-derived.ts     — derivaciones puras
-│   ├── use-effects.ts     — useEffect + data loaders
-│   └── types.ts
+├── <feature>-context.tsx   — provider + state + actions + derived + tipos
 ├── <feature>-views.tsx     — UI (lista, form, etc.)
 └── index.ts                — barrel export
 ```
+
+**Caso descompuesto — directorio**. Ejemplo real:
+`src/components/planificacion/context/` (~1500 LOC repartidas).
+
+```
+src/components/<feature>/
+├── context/
+│   ├── provider.tsx        — orquesta state + actions + derived + meta
+│   ├── use-state.ts        — todos los useState
+│   ├── use-actions.ts      — handlers (mutations)
+│   ├── use-derived.ts      — derivaciones puras
+│   ├── use-effects.ts      — useEffect + data loaders
+│   ├── types.ts
+│   └── index.ts            — barrel del context
+├── <feature>-context.tsx   — re-export (`export * from "./context"`), para
+│                             que los imports existentes no cambien
+├── <feature>-views.tsx
+└── index.ts
+```
+
+**Por qué 400**: es donde se parte la distribución real del repo. De los 25
+contexts actuales, 19 están por debajo (mediana ≈ 300) y leen bien como un
+archivo; los 6 que están arriba son los que duelen, y entre 409 y 387 hay un
+hueco limpio. Un context nuevo prácticamente nunca nace pasado el umbral — o
+sea, **la respuesta por defecto es archivo único**.
+
+> **Migración pendiente (no la hagas de oficio).** La regla es para código
+> nuevo. Hoy solo `planificacion/context/` está descompuesto; estos 6 contexts
+> superan el umbral y esperan una decisión explícita antes de migrarse
+> (LOC medidas el 2026-07-28):
+> `optimization/optimization-dashboard-context.tsx` (590),
+> `chat/chat-context.tsx` (544), `monitoring/monitoring-context.tsx` (446),
+> `users/users-context.tsx` (420), `configuracion/configuracion-context.tsx`
+> (411), `zones/zones-context.tsx` (409). Si ya estás tocando uno a fondo,
+> partirlo es bienvenido; no abras un refactor de los 6 sin acordarlo.
 
 ---
 
@@ -148,7 +190,9 @@ existir.
 Tests integration tocan DB real — requieren Postgres up.
 
 Un hook `Stop` (`.claude/settings.json`) corre `biome check` al terminar cada
-turno y bloquea si hay errores de lint/formato.
+turno y bloquea si hay errores de lint/formato. Es la capa más barata y la más
+ciega: el reparto completo entre hook, CI y revisión humana está en
+"Definition of Done".
 
 ---
 
@@ -157,18 +201,35 @@ turno y bloquea si hay errores de lint/formato.
 Cuando dos documentos se contradigan, gana en este orden:
 
 **`docs/adr/` (el ADR más reciente) > `docs/CONTEXT.md` > este `CLAUDE.md` > el
-resto de `docs/`.**
+resto de `docs/` > ⛔ `docs/archive/` (fuera de la jerarquía: nunca gana).**
 
 Los ADR aceptados son la verdad canónica de las decisiones. Si un doc derivado
 (CONTEXT, README, guías) contradice un ADR, el doc está *stale*: seguí el ADR y
 corregí/anotá el doc.
 
+**`docs/archive/` no es una fuente**, es un registro de lo que pasó. Nada de lo
+que hay ahí gana un conflicto — ni siquiera contra el resto de `docs/` — y sus
+"acciones recomendadas" no son trabajo pendiente. Si necesitás algo de ahí para
+decidir, verificalo contra el código; si sigue vigente, su lugar es un doc
+canónico. Ver [`docs/archive/README.md`](./docs/archive/README.md).
+
 > **Drift reconciliado (2026-07-01, cerrado 2026-07-02):** los docs stale
 > `SISTEMA_OPTIMIZACION.md` y `ESTADO_PROYECTO.md` fueron **eliminados** (la
 > verdad vive en `CONTEXT.md` + ADRs); ADR-0009 (migraciones) y ADR-0010
-> (RBAC tipado) fueron escritos. `docs/routing-quality-findings.md` queda
-> como snapshot histórico con banner (decidido 2026-07-02: se conserva —
-> documenta por qué existe el verifier).
+> (RBAC tipado) fueron escritos.
+>
+> **Capas separadas (2026-07-28):** `docs/` mezclaba canónicos, snapshots
+> históricos e issues cerrados al mismo nivel. Se creó `docs/archive/` y se
+> movieron ahí las auditorías cerradas (`security-audit`, `cache-audit`,
+> `preprod-audit-report`), el review aplicado
+> (`pending-review-findings-2026-07-02`), el plan ejecutado
+> (`AGENT-UPGRADE-PLAN`) y los 12 issues implementados (`issues/`).
+> `docs/archive/routing-quality-findings.md` **se conserva** por la decisión del
+> 2026-07-02 — documenta por qué existe el verifier — solo cambió de ruta.
+> `docs/routing-quality-report.md` **no** se archivó: lo regenera
+> `src/tests/routing-quality/run.ts` en esa ruta exacta. Y se corrigió la regla
+> del compound pattern, que describía como universal una estructura que cumplía
+> 1 de 21 features.
 
 ## Seam con la app móvil
 
@@ -205,12 +266,31 @@ conexión, no por lógica.
 
 ## Definition of Done (checklist pre-PR)
 
-El hook `Stop` corre **solo `biome check`** (estilo) — **NO corre `tsc`**. Antes
-de dar una tarea por terminada, además del hook:
+Hay **tres capas de verificación** y ninguna reemplaza a las otras. Saber cuál
+cubre qué evita tanto el trabajo duplicado como el falso "ya pasó el hook,
+está listo".
 
-1. `bun run tsc --noEmit` — type check (el hook lo excluye a propósito por lento).
+| Capa | Qué corre | Cuándo | Qué **no** ve |
+|---|---|---|---|
+| Hook `Stop` (`.claude/settings.json`) | `biome check` (lint + formato) | al terminar cada turno; bloquea si falla | tipos, tests, correctness, seguridad |
+| CI (GitHub Actions, `.github/workflows/ci.yml`) | `tsc --noEmit`, `bun run lint`, `bun test src/tests/unit`, `scripts/check-route-guards.ts` | en el push / PR | invariantes de dominio, y todo lo que necesite servicios arriba (Postgres, VROOM/OSRM) mientras ese job no esté en el pipeline — **mirá el workflow, no lo asumas** |
+| Humano / agente | checklist de invariantes de `docs/REVIEW-RUBRIC.md` | antes de dar la tarea por terminada | — |
+
+El hook corre **solo `biome check`** — **NO corre `tsc`** (excluido a propósito
+por lento). Antes de dar una tarea por terminada:
+
+1. `bun run tsc --noEmit` — type check. Corrélo local: enterarte en CI es el
+   ciclo lento.
 2. `bun run lint` — biome (o dejá que el hook lo haga).
-3. Tests de la capa afectada (unit / integration).
+3. Tests de la capa afectada. Unit corre en CI; **integration y el harness
+   golden de routing-quality necesitan servicios arriba** (Postgres, VROOM/OSRM),
+   así que verificá si el pipeline los incluye — si no, corrélos vos. Ver
+   "Capas de testing".
 4. **Checklist de invariantes** → [`docs/REVIEW-RUBRIC.md`](./docs/REVIEW-RUBRIC.md)
    (aislamiento tenant, RBAC, estados terminales, evidence, history append-only).
-   El hook de biome **no** verifica correctness ni seguridad.
+   **Esto sigue siendo responsabilidad humana**: ni biome ni CI verifican
+   correctness ni seguridad de dominio. El único invariante mecanizado es el
+   guard de tenancy/RBAC sobre rutas nuevas
+   (`scripts/check-route-guards.ts`, spec en
+   [`docs/specs/hook-tenancy-gate.spec.md`](./docs/specs/hook-tenancy-gate.spec.md));
+   todo lo demás de la rúbrica se lee y se aplica a mano.

@@ -1,5 +1,15 @@
 # Security Audit — Multi-Tenant API (Pre-Deploy)
 
+> 🗄️ **ARCHIVADO — registro histórico, no fuente de verdad.** Describe el
+> estado del **2026-04-17**, antes del fix. El CRITICAL sistémico (header-trust)
+> se cerró: `extractTenantContext` fue eliminado y reemplazado por
+> `extractTenantContextAuthed(request, user)`, que valida el header contra el
+> JWT. La decisión y su motivación viven en
+> [`../adr/0008-tenancy-model-and-derivation.md`](../adr/0008-tenancy-model-and-derivation.md);
+> los checks vigentes, en [`../REVIEW-RUBRIC.md`](../REVIEW-RUBRIC.md) §1.
+> No tomes el código citado acá como el código actual. Ver
+> [`README.md`](./README.md).
+
 **Scope:** `src/app/api/**/route.ts` — 111 route files audited
 **Audit date:** 2026-04-17
 **Focus:** (A) Tenant isolation on `companyId`-scoped tables, (B) authorization enforcement

@@ -1,5 +1,16 @@
 # Auditoria pre-produccion — RBAC + discrepancias Mobile
 
+> 🗄️ **ARCHIVADO — registro histórico, no fuente de verdad.** Los hallazgos
+> CRITICAL / HIGH / MEDIUM verificados están cerrados (p. ej. el DELETE
+> cross-tenant de `POST /api/route-stops` hoy filtra por `companyId` y toma el
+> advisory lock; `/dashboard` ya está envuelto en
+> `<ProtectedPage requiredPermission="metrics:read">`). **Los LOW no fueron
+> re-auditados uno por uno** — si vas a actuar sobre alguno, verificalo contra el
+> código primero. Los checks vigentes viven en
+> [`../REVIEW-RUBRIC.md`](../REVIEW-RUBRIC.md) y el contrato del seam móvil en
+> [`../API-CONTRACT-MOBILE.md`](../API-CONTRACT-MOBILE.md). Ver
+> [`README.md`](./README.md).
+
 ## Cobertura
 - Handlers API mapeados: 192 en 119 archivos
 - Handlers que mutan: 96 — sin check: 0, solo-auth: 3

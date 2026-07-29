@@ -2,8 +2,10 @@
 
 > ⚠️ **ARCHIVO HISTÓRICO — no es un proceso vigente.** Es el registro de una
 > auditoría full-stack puntual **ya completada**. No describe el flujo de trabajo
-> actual ni tareas pendientes. Para el trabajo forward-looking del proyecto, ver
-> [`docs/AGENT-UPGRADE-PLAN.md`](./docs/AGENT-UPGRADE-PLAN.md) y `docs/issues/`.
+> actual ni tareas pendientes. Pertenece a la misma capa que
+> [`docs/archive/`](./docs/archive/README.md) (donde ahora viven el plan de
+> agentes y los issues cerrados que este doc citaba). Para las convenciones
+> vigentes, ver [`CLAUDE.md`](./CLAUDE.md) y [`docs/CONTEXT.md`](./docs/CONTEXT.md).
 
 ## Estado: COMPLETADO ✓
 

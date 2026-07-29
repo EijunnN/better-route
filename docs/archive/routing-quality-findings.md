@@ -1,13 +1,16 @@
 # Routing Quality — Findings & Gaps
 
-> ⚠️ **SNAPSHOT HISTÓRICO (marcado 2026-07-01).** Este análisis es de la
-> primera corrida del harness, cuando PyVRP aún existía. **PyVRP,
-> `optimizer-factory.ts` e `IOptimizer` fueron eliminados** (ADR-0001) y el
-> harness hoy corre 28 escenarios solo-VROOM
-> (`src/tests/routing-quality/`). Valioso como historia de por qué existe
-> el verifier; **no** como descripción del sistema actual.
+> 🗄️ **ARCHIVADO — snapshot histórico (marcado 2026-07-01, movido a
+> `docs/archive/` el 2026-07-28).** Este análisis es de la primera corrida del
+> harness, cuando PyVRP aún existía. **PyVRP, `optimizer-factory.ts` e
+> `IOptimizer` fueron eliminados** (ADR-0001) y el harness hoy corre 29
+> escenarios solo-VROOM (`src/tests/routing-quality/`). **Se conserva a
+> propósito**: es la historia de *por qué existe el verifier*. No lo leas como
+> descripción del sistema actual — para eso está
+> [`../optimization/SEMANTICS.md`](../optimization/SEMANTICS.md). Ver
+> [`README.md`](./README.md).
 
-> Este documento es el **análisis ejecutivo**. El reporte generado automáticamente está en `docs/routing-quality-report.md`. Los JSON detallados por escenario están en `results/routing-quality/`.
+> Este documento es el **análisis ejecutivo**. El reporte generado automáticamente está en [`../routing-quality-report.md`](../routing-quality-report.md) (sigue vivo: lo regenera el harness). Los JSON detallados por escenario están en `results/routing-quality/`.
 
 Generado tras la primera corrida del harness (24 runs = 12 escenarios × 2 solvers) ejecutado contra VROOM (v1.14.0) y PyVRP (v0.13.3) con OSRM cargado con `peru-latest`.
 

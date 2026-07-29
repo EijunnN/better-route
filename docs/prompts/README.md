@@ -48,7 +48,7 @@ Canónico: `docs/API-CONTRACT-MOBILE.md` (espejo en `aea/docs/`).
 ## 3. Correr y leer el harness golden de routing
 
 ```
-Corré bun run src/tests/routing-quality/run.ts (28 escenarios golden; los
+Corré bun run src/tests/routing-quality/run.ts (29 escenarios golden; los
 que necesitan DB corren con integration-runner.ts — requiere Postgres up).
 Después:
 1. Resumí escenarios PASS/FAIL y, por cada FAIL, qué check del verifier

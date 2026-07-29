@@ -4,7 +4,8 @@
 > es canónico para cada tema. No duplica reglas — si buscás semántica de
 > dominio, andá a `docs/CONTEXT.md`; si buscás una decisión con motivación,
 > a `docs/adr/`. Precedencia ante conflicto (de `CLAUDE.md`):
-> **ADR más reciente > CONTEXT.md > CLAUDE.md > resto de docs.**
+> **ADR más reciente > CONTEXT.md > CLAUDE.md > resto de docs > ⛔
+> `docs/archive/` (fuera de la jerarquía: nunca gana).**
 
 ## Capas
 
@@ -72,9 +73,12 @@ Convenciones canónicas en `CLAUDE.md`:
 - Layout chain: `AppShell > ThemeProvider > PermissionsProvider >
   CompanyProvider > LayoutProvider`.
 - Cada feature module sigue el compound pattern
-  `Provider > State / Actions / Meta / Derived` con la estructura
-  `<feature>-context/{provider,use-state,use-actions,use-derived,use-effects,types}`
-  + `<feature>-views.tsx` + barrel `index.ts`.
+  `Provider > State / Actions / Meta / Derived`, con `<feature>-views.tsx` +
+  barrel `index.ts`. El context va en **un archivo** (`<feature>-context.tsx`)
+  hasta las ~400 líneas; pasado el umbral se parte en directorio
+  `context/{provider,use-state,use-actions,use-derived,use-effects,types}` — la
+  regla completa y la lista de migración pendiente están en `CLAUDE.md`. Hoy
+  solo `planificacion/context/` está descompuesto.
 - Data fetching compartido → hooks de dominio sobre `useApiData` en
   `src/hooks/queries/`; nunca `fetch` dentro de `useEffect`.
 
@@ -102,7 +106,7 @@ contrato). Campos congelados en §9; capability set de `CONDUCTOR` en §8.
 | Tema | Doc |
 |---|---|
 | Vocabulario, bounded contexts, invariantes globales | `docs/CONTEXT.md` |
-| Decisiones con motivación (12 ADRs) | `docs/adr/` |
+| Decisiones con motivación (11 ADRs) | `docs/adr/` |
 | Semántica solver ↔ verifier | `docs/optimization/SEMANTICS.md` |
 | Contrato móvil | `docs/API-CONTRACT-MOBILE.md` |
 | Rúbrica de revisión (tenancy, RBAC, terminales, evidence, history) | `docs/REVIEW-RUBRIC.md` |
@@ -111,3 +115,6 @@ contrato). Campos congelados en §9; capability set de `CONDUCTOR` en §8.
 | Modelo de datos (tablas y relaciones) | `docs/DATA-MODEL.md` |
 | Comandos, testing, Definition of Done | `CLAUDE.md` |
 | Prompts reutilizables | `docs/prompts/README.md` |
+| Despliegue (OSRM/VROOM, Centrifugo) | `docs/DEPLOYMENT-ROUTING.md`, `docs/deployment-centrifugo.md` |
+| Anatomía de hotspots (confirm de plan, hook de tenancy) | `docs/specs/` |
+| ⛔ Registro histórico — **no** es fuente de verdad | `docs/archive/` |

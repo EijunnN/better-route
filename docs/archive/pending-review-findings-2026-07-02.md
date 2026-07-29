@@ -1,5 +1,9 @@
 # Hallazgos del review adversarial — 2026-07-02 (todos APLICADOS)
 
+> 🗄️ **ARCHIVADO — registro histórico, no fuente de verdad.** Los "fix
+> sugeridos" de abajo ya se aplicaron: no son trabajo pendiente. Ver
+> [`README.md`](./README.md).
+
 > ✅ **Los 23 hallazgos fueron aplicados el mismo 2026-07-02** (ronda posterior al
 > commit `e67fe2c` que los registró como pendientes). Verificación: tsc 0, 252 tests
 > web pass, flutter 42/42, smoke de guards exit 0. Se conserva como registro del

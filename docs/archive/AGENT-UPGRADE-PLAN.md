@@ -1,5 +1,11 @@
 # Plan de potenciación del agente — sesión del modelo SOTA
 
+> 🗄️ **ARCHIVADO — registro histórico, no fuente de verdad.** El plan se
+> ejecutó: los 10 items de la "Cola de Opus" están cerrados (ver el final del
+> doc). Se conserva como registro de por qué existen la rúbrica, las skills y
+> los subagentes. No sigas sus pendientes como si estuvieran abiertos. Ver
+> [`README.md`](./README.md).
+
 > **Qué es esto.** El desarrollo de BetterRoute se dirige con un agente cotidiano
 > (Claude Opus 4.8). Habrá acceso temporal (**una sola sesión**) a un modelo SOTA
 > mucho más capaz. Este documento es el plan para usar esa ventana construyendo

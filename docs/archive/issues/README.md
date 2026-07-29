@@ -1,5 +1,10 @@
 # Issues backlog
 
+> 🗄️ **ARCHIVADO — registro histórico, no fuente de verdad.** Los 12 issues
+> están implementados. Se conservan como registro de cómo se descompuso el
+> trabajo; **no son backlog abierto**. La verdad de estas features vive en los
+> ADR-0005/0006/0007 y en `docs/CONTEXT.md`. Ver [`../README.md`](../README.md).
+
 Vertical-slice issues generated from the grilling on driver re-delivery /
 Visits / Revisitas. Source decisions:
 

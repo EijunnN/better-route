@@ -1,9 +1,17 @@
 # Cache Layer Audit — Multi-Tenant Pre-Deploy
 
+> 🗄️ **ARCHIVADO — registro histórico, no fuente de verdad.** Se ejecutó la
+> **Opción A** del deploy gate: `src/lib/infra/cache.ts` quedó reducido a las
+> primitivas realmente usadas (~350 líneas: `cacheGet/Set/Delete/DeletePattern`,
+> `cacheGetOrSet`, geocoding, `invalidateAllCache`, stats), los 30+ exports
+> muertos con defectos de tenant-key se borraron junto con el stub `warmupCache`
+> y su endpoint POST. La matriz D1 de abajo describe funciones que **ya no
+> existen**. Ver [`README.md`](./README.md).
+
 **Scope:** `src/lib/infra/cache.ts` (950 lines, 40+ exports), `src/lib/infra/server-cache.ts` (90 lines, in-proc LRU), `src/lib/geo/geospatial.ts` (Redis consumer).
 **Audit date:** 2026-04-18
 **Severity scale:** CRITICAL | HIGH | MEDIUM | LOW | OK
-**Sibling report:** `docs/security-audit.md` (tenant isolation of API routes).
+**Sibling report:** [`security-audit.md`](./security-audit.md) (tenant isolation of API routes).
 
 ---
 
@@ -421,7 +429,7 @@ export function invalidateByCompany(companyId: string): void {
 
 ### HIGH
 
-- **H1. No API mutation path invalidates any cache** (`docs/cache-audit.md` §D2). 40+ missing invalidation call sites.
+- **H1. No API mutation path invalidates any cache** (§D2 de este mismo doc). 40+ missing invalidation call sites.
 - **H2. `user:v1:<userId>` stale authorization payload** on role change. `src/app/api/users/[id]/route.ts` and `/roles/route.ts` do not call `invalidateUserCache`. A PLANIFICADOR demoted to CONDUCTOR retains PLANIFICADOR permissions in cache for up to 15 min. *Mitigated today only because the cache is never populated.*
 - **H3. `server-cache.ts` `getCached` is not tenant-aware.** Will leak across tenants on adoption.
 - **H4. Orphan invalidators** (`invalidateVehicleSkillsCache`, `invalidateTimeWindowPresetsCache`, `invalidateAlertRulesCache`, `invalidateFleetCache`): defined, never called from any mutation route.
