@@ -16,6 +16,8 @@
     "cleanup:locations": "bun run scripts/cleanup-driver-locations.ts",
     "smoke:centrifugo": "bun run scripts/smoke-centrifugo.ts",
     "test": "bun test",
+    "test:unit": "bun test src/tests/unit",
+    "test:contract": "bun test src/tests/contract",
     "test:integration": "bun test src/tests/integration/",
     "test:e2e": "playwright test",
     "test:e2e:debug": "playwright test --debug",

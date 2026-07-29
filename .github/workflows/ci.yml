@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Un push nuevo sobre la misma rama cancela el run anterior: el feedback que
+# importa es el del último commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Mantener en sync con la versión de Bun local (`bun --version`).
+  BUN_VERSION: 1.3.14
+
+jobs:
+  verify:
+    name: Type check · lint · unit · contract · route guards
+    runs-on: ubuntu-latest
+    env:
+      # `bunfig.toml` precarga `src/tests/integration/setup/preload.ts` en TODA
+      # corrida de `bun test`, y ese preload importa `test-db.ts`, que tira a
+      # nivel de módulo si `TEST_DATABASE_URL` no está seteada. postgres-js
+      # conecta de forma lazy, así que una URL sintética hacia un puerto muerto
+      # deja pasar unit/contract sin ninguna DB — y garantiza que los contract
+      # tests que dependen de DB se auto-skipeen (`describe.skipIf(!dbUp)`) en
+      # vez de pegarle a un Postgres que el runner pudiera tener instalado.
+      TEST_DATABASE_URL: postgresql://ci:ci@127.0.0.1:1/betterroute_ci_placeholder
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - run: bun install --frozen-lockfile
+
+      # El hook `Stop` de Claude Code corre solo biome; `tsc` vive acá a
+      # propósito (ver scripts/verify-lint.ts).
+      - name: Type check
+        run: bun run tsc --noEmit
+
+      # `biome check` sale 0 con warnings y != 0 con errores, que es
+      # exactamente la política que queremos: los 100 warnings actuales no
+      # rompen el build, un error sí. No hace falta ningún flag extra.
+      - name: Lint (Biome)
+        run: bun run lint
+
+      - name: Unit tests
+        run: bun run test:unit
+
+      # Sin DB alcanzable, la mitad `handlers-live` se auto-skipea y quedan los
+      # tests de fixtures/header/capability set del seam móvil.
+      - name: Contract tests (seam móvil)
+        run: bun run test:contract
+
+      # Gate de tenancy/RBAC sobre TODAS las rutas del repo. Sin stdin el
+      # script cae a `git diff HEAD`, que en un árbol limpio no chequea nada y
+      # pasaría en falso — por eso le pipeamos la lista completa de `route.ts`,
+      # igual que el "caso 5" de docs/specs/hook-tenancy-gate.spec.md.
+      # El script sale 2 cuando una ruta no tiene guards.
+      - name: Route guards (tenancy/RBAC)
+        run: |
+          routes="$(git ls-files 'src/app/api/**/route.ts')"
+          if [ -z "$routes" ]; then
+            echo "::error::No matcheó ninguna route.ts — el gate pasaría en vacío."
+            exit 1
+          fi
+          echo "Chequeando $(printf '%s\n' "$routes" | wc -l) rutas API…"
+          printf '%s\n' "$routes" | bun run scripts/check-route-guards.ts
+
+  integration:
+    name: Integration tests (Postgres)
+    runs-on: ubuntu-latest
+    needs: verify
+    # MODO OBSERVACIÓN. La infraestructura de abajo está verificada (las 5
+    # migraciones aplican limpias sobre postgres:16 y 792/809 tests pasan),
+    # pero hoy fallan 17 tests de forma determinista en 5 suites:
+    #   orders/order-detail-tracking (7)  visits/csv-preview-confirm (4)
+    #   plans/plan-confirmation-debts (3) optimization/zone-id-on-stops (2)
+    #   optimization/planning-lifecycle (1)
+    # Son fallos de lógica/expectativas preexistentes, no de plumbing (fallan
+    # igual corriendo el archivo aislado). Arrancar bloqueando enseñaría al
+    # equipo a ignorar CI. Cuando estén triados: borrar esta línea y el gate
+    # pasa a bloquear sin ningún otro cambio.
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: planeamiento_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - run: bun install --frozen-lockfile
+
+      # `drizzle.config.ts` lee DATABASE_URL. Va scopeada a ESTE step a
+      # propósito: `test-db.ts` se niega a correr si DATABASE_URL ===
+      # TEST_DATABASE_URL, así que no puede filtrarse al step de tests.
+      # ADR-0009: db:migrate, nunca db:push.
+      - name: Aplicar migraciones (Drizzle)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/planeamiento_test
+        run: bun run db:migrate
+
+      # Postgres es la única dependencia externa real: el preload mockea Redis
+      # (cache + sesiones), VROOM, R2 y el audit log, y el test de realtime
+      # setea su propio CENTRIFUGO_TOKEN_HMAC_SECRET_KEY.
+      - name: Integration tests
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/planeamiento_test
+        run: bun run test:integration
+
+      # Con DB arriba, la mitad `handlers-live` del contrato sí ejecuta contra
+      # handlers reales (en el job `verify` queda skipeada).
+      - name: Contract tests (handlers reales vs schemas)
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/planeamiento_test
+        run: bun run test:contract
