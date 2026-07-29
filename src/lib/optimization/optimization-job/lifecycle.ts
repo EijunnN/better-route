@@ -34,6 +34,9 @@ import {
   optimizationConfigurations,
   optimizationJobs,
   orders,
+  users,
+  vehicles,
+  zones,
 } from "@/db/schema";
 import {
   acquireCompanyLock,
@@ -292,14 +295,38 @@ export async function createAndExecuteJob(
     companyId: input.companyId,
     configurationId: input.configurationId,
   });
+  // Vehicles, drivers and zones enter the hash by (id, updatedAt), not by id
+  // alone: editing a vehicle's capacity or skills, a driver's schedule, or a
+  // zone polygon changes the plan without changing any id in the request.
+  // Zones are the whole active set for the company — `createZoneBatches`
+  // partitions against all of them, so deactivating one is also a change.
+  const [vehicleRefs, driverRefs, zoneRefs] = await Promise.all([
+    input.vehicleIds.length
+      ? db
+          .select({ id: vehicles.id, updatedAt: vehicles.updatedAt })
+          .from(vehicles)
+          .where(inArray(vehicles.id, input.vehicleIds))
+      : [],
+    input.driverIds.length
+      ? db
+          .select({ id: users.id, updatedAt: users.updatedAt })
+          .from(users)
+          .where(inArray(users.id, input.driverIds))
+      : [],
+    db
+      .select({ id: zones.id, updatedAt: zones.updatedAt })
+      .from(zones)
+      .where(and(eq(zones.companyId, input.companyId), eq(zones.active, true))),
+  ]);
   const inputHash = calculateInputHash(
     input.configurationId,
-    input.vehicleIds,
-    input.driverIds,
+    vehicleRefs,
+    driverRefs,
     pendingOrders.map((o) => ({ id: o.id, updatedAt: o.updatedAt })),
     {
       configurationUpdatedAt: config.updatedAt,
       presetUpdatedAt: preset?.updatedAt,
+      zones: zoneRefs,
     },
   );
   const cachedResult = await getCachedResult(inputHash, input.companyId);
