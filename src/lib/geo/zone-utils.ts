@@ -126,11 +126,15 @@ export function isPointInZone(
  * Get the zone for an order based on its coordinates.
  *
  * Priority: RESTRICTED zones win over DELIVERY zones when polygons
- * overlap. The "more restrictive wins" rule is explicit here so two
- * overlapping DELIVERY zones (which are still allowed) don't depend
- * on createdAt iteration order, and a RESTRICTED polygon drawn on
- * top of a DELIVERY area correctly excludes that pocket from
- * routing without forcing the operator to recut polygons by hand.
+ * overlap, so a RESTRICTED polygon drawn on top of a DELIVERY area
+ * correctly excludes that pocket from routing without forcing the
+ * operator to recut polygons by hand.
+ *
+ * That rule only settles RESTRICTED-vs-DELIVERY. Two overlapping
+ * DELIVERY zones (still allowed, nothing validates against them) fall
+ * back to "first match in the array wins", so the answer depends on
+ * the order the caller passes in — callers that need a stable answer
+ * must sort. `loadInputs` orders by (createdAt, id) for exactly this.
  */
 export function getZoneForOrder(
   order: OrderWithLocation,

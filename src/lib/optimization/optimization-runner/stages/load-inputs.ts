@@ -94,10 +94,16 @@ export async function loadInputs(
         },
       },
     }),
+    // Deterministic order matters: `getZoneForOrder` resolves two overlapping
+    // DELIVERY zones with "first match in the array wins" (only RESTRICTED-vs-
+    // DELIVERY has a real precedence rule). Without ORDER BY, which zone an
+    // order in the intersection lands in would follow Postgres row order and
+    // could differ between identical runs.
     db
       .select()
       .from(zones)
-      .where(and(eq(zones.companyId, input.companyId), eq(zones.active, true))),
+      .where(and(eq(zones.companyId, input.companyId), eq(zones.active, true)))
+      .orderBy(zones.createdAt, zones.id),
     db.query.users.findMany({
       where: and(
         eq(users.companyId, input.companyId),

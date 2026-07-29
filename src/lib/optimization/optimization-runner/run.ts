@@ -159,8 +159,11 @@ export async function runOptimization(
     id: string;
     trackingId: string;
     address: string;
-    latitude: (typeof pendingOrders)[number]["latitude"];
-    longitude: (typeof pendingOrders)[number]["longitude"];
+    // Numbers, not the raw `varchar` the DB hands back: everything downstream
+    // (OrderForOptimization, OptimizedStop, the canonical SolvedRoute and its
+    // Zod boundary) declares these as numbers, so the string has to die here.
+    latitude: number;
+    longitude: number;
     weightRequired: number;
     volumeRequired: number;
     orderValue: number;
@@ -185,8 +188,8 @@ export async function runOptimization(
       id: order.id,
       trackingId: order.trackingId,
       address: order.address,
-      latitude: order.latitude,
-      longitude: order.longitude,
+      latitude: lat,
+      longitude: lng,
       weightRequired: order.weightRequired || 0,
       volumeRequired: order.volumeRequired || 0,
       orderValue: order.orderValue || 0,
@@ -212,23 +215,18 @@ export async function runOptimization(
   // Orders with invalid coordinates are added to unassigned list below
 
   // Create lookup map for order details (used when populating unassigned orders and time windows).
-  // Coordinates are normalized to numbers here so downstream consumers (canonical
-  // SolvedRoute / unassigned records) don't redo string parsing.
+  // Coordinates arrive already normalized from `ordersWithLocation`.
   const orderDetailsMap = new Map(
-    ordersWithLocation.map((o) => {
-      const latNum = parseFloat(String(o.latitude));
-      const lngNum = parseFloat(String(o.longitude));
-      return [
-        o.id,
-        {
-          latitude: Number.isFinite(latNum) ? latNum : undefined,
-          longitude: Number.isFinite(lngNum) ? lngNum : undefined,
-          address: o.address,
-          timeWindowStart: o.timeWindowStart,
-          timeWindowEnd: o.timeWindowEnd,
-        },
-      ];
-    }),
+    ordersWithLocation.map((o) => [
+      o.id,
+      {
+        latitude: o.latitude,
+        longitude: o.longitude,
+        address: o.address,
+        timeWindowStart: o.timeWindowStart,
+        timeWindowEnd: o.timeWindowEnd,
+      },
+    ]),
   );
 
   // Helper: build timeWindow object from order's HH:mm strings
