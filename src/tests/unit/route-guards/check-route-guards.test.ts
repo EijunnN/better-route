@@ -56,7 +56,12 @@ export async function GET(request: NextRequest) {
 }
 `;
 
-const CONTENT_MIDDLEWARE_C = `
+/**
+ * `withAuthAndAudit` fue borrado junto al resto del middleware wrapper: el
+ * proyecto consolidó en el patrón manual. El gate ya no debe reconocerlo —
+ * si alguien reintroduce el token, esta ruta pasaría sin guards reales.
+ */
+const CONTENT_REMOVED_WRAPPER = `
 export const GET = withAuthAndAudit(
   EntityType.CACHE,
   Action.READ,
@@ -106,9 +111,9 @@ describe("check-route-guards", () => {
     expect(hasGuards(content)).toBe(false);
   });
 
-  test("wrapper completo (c): withAuthAndAudit solo pasa", () => {
-    expect(hasGuards(CONTENT_MIDDLEWARE_C)).toBe(true);
-    expect(evaluateRoute(ROUTE_PATH, CONTENT_MIDDLEWARE_C, [])).toBe("pass");
+  test("withAuthAndAudit (wrapper borrado) ya no cuenta como guard", () => {
+    expect(hasGuards(CONTENT_REMOVED_WRAPPER)).toBe(false);
+    expect(evaluateRoute(ROUTE_PATH, CONTENT_REMOVED_WRAPPER, [])).toBe("fail");
   });
 
   test("ruta sin nada falla; la misma ruta en la allowlist pasa", () => {
@@ -130,6 +135,12 @@ describe("check-route-guards", () => {
       ),
     ).toBe(true);
     expect(isAllowlisted(ROUTE_PATH, allowlist)).toBe(false);
+  });
+
+  test("admin/cache está allowlisted (recurso global sin tenancy)", () => {
+    expect(
+      isAllowlisted("src/app/api/admin/cache/route.ts", loadAllowlist()),
+    ).toBe(true);
   });
 
   test("path exacto de allowlist no cubre vecinos", () => {

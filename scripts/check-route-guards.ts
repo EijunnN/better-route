@@ -5,9 +5,8 @@
  *
  * Detección deliberadamente literal (grep, no AST): una `route.ts` bajo
  * `src/app/api` pasa si contiene un token RBAC **y** un token de tenancy
- * (ver spec §1 — incluye los wrappers equivalentes del proyecto), si usa el
- * middleware completo `withAuthAndAudit(`, o si su path está en
- * `scripts/route-guards-allowlist.json`.
+ * (ver spec §1 — incluye los wrappers equivalentes del proyecto), o si su path
+ * está en `scripts/route-guards-allowlist.json`.
  *
  * Modos de entrada:
  * - argv con paths → chequea esos paths.
@@ -53,17 +52,11 @@ const TENANT_TOKENS = [
 ];
 
 /**
- * Wrappers que cubren el guard completo por sí solos (spec §1).
- * `withAuthAndAudit` = `withAuth` (JWT) + `requirePermission` (RBAC) en
- * src/lib/infra/api-middleware.ts; se usa para recursos admin globales sin
- * datos tenant (hoy: admin/cache).
+ * No hay wrappers que cubran el guard completo por sí solos: el proyecto
+ * consolidó en el patrón manual (RBAC + tenancy explícitos). Los recursos
+ * admin globales sin datos tenant van por la allowlist, no por un wrapper.
  */
-const COMPLETE_WRAPPER_TOKENS = ["withAuthAndAudit("];
-
 export function hasGuards(content: string): boolean {
-  if (COMPLETE_WRAPPER_TOKENS.some((token) => content.includes(token))) {
-    return true;
-  }
   return (
     RBAC_TOKENS.some((token) => content.includes(token)) &&
     TENANT_TOKENS.some((token) => content.includes(token))
