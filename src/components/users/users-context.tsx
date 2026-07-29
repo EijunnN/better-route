@@ -9,8 +9,8 @@ import {
   useState,
 } from "react";
 import { useFleetList, useRoleList, useUserList } from "@/hooks/queries";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { CreateUserInput } from "@/lib/validations/user";
 
 // Types
@@ -46,17 +46,6 @@ export interface CustomRole {
   description?: string | null;
   code?: string | null;
   isSystem: boolean;
-}
-
-interface ApiErrorDetail {
-  path?: string[];
-  field?: string;
-  message: string;
-}
-
-interface ApiErrorResponse {
-  error?: string;
-  details?: ApiErrorDetail[] | string;
 }
 
 export const ROLE_TABS = [
@@ -140,7 +129,6 @@ const UsersContext = createContext<UsersContextValue | undefined>(undefined);
 
 export function UsersProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId, isSystemAdmin, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("all");
   const [showForm, setShowForm] = useState(false);
@@ -173,21 +161,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   const refetch = useCallback(async () => {
     await Promise.all([mutateUsers(), mutateFleets(), mutateRoles()]);
   }, [mutateUsers, mutateFleets, mutateRoles]);
-
-  const getApiErrorMessage = (
-    error: ApiErrorResponse,
-    fallback: string,
-  ): string => {
-    if (Array.isArray(error.details) && error.details.length > 0) {
-      return error.details.map((detail) => detail.message).join(" ");
-    }
-
-    if (typeof error.details === "string" && error.details.length > 0) {
-      return error.details;
-    }
-
-    return error.error || fallback;
-  };
+  const apiMutate = useApiMutation(mutateUsers);
 
   const fetchUserRoles = async (userId: string) => {
     if (!effectiveCompanyId) return [];
@@ -202,12 +176,12 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /** Best-effort, as before: a failed role assignment never blocks the save. */
   const assignRolesToUser = async (
     userId: string,
     roleIds: string[],
     currentRoleIds: string[] = [],
   ) => {
-    if (!effectiveCompanyId) return;
     const currentSet = new Set(currentRoleIds);
     const desiredSet = new Set(roleIds);
     const rolesToAdd = roleIds.filter((id) => !currentSet.has(id));
@@ -215,25 +189,20 @@ export function UsersProvider({ children }: { children: ReactNode }) {
 
     await Promise.all(
       rolesToAdd.map((roleId, idx) =>
-        fetch(`/api/users/${userId}/roles`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": effectiveCompanyId,
-          },
-          body: JSON.stringify({
-            roleId,
-            isPrimary: idx === 0,
-          }),
+        apiMutate(`/api/users/${userId}/roles`, {
+          body: { roleId, isPrimary: idx === 0 },
+          revalidate: null,
+          rethrow: false,
         }),
       ),
     );
 
     await Promise.all(
       rolesToRemove.map((roleId) =>
-        fetch(`/api/users/${userId}/roles?roleId=${roleId}`, {
+        apiMutate(`/api/users/${userId}/roles?roleId=${roleId}`, {
           method: "DELETE",
-          headers: { "x-company-id": effectiveCompanyId },
+          revalidate: null,
+          rethrow: false,
         }),
       ),
     );
@@ -243,152 +212,73 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     data: CreateUserInput,
     selectedRoleIds: string[],
   ) => {
-    if (!effectiveCompanyId) return;
-    try {
-      const response = await fetch("/api/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": effectiveCompanyId,
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = (await response
-          .json()
-          .catch(
-            () => ({ error: "Error al crear usuario" }) as ApiErrorResponse,
-          )) as ApiErrorResponse;
-        throw error;
-      }
-
-      const result = await response.json();
-      const userId = result.data?.id;
-
-      if (userId && selectedRoleIds.length > 0) {
-        await assignRolesToUser(userId, selectedRoleIds);
-      }
-
-      await mutateUsers();
-      setShowForm(false);
-      toast({
+    const result = await apiMutate<{ data?: { id?: string } }>("/api/users", {
+      body: data,
+      errorTitle: "Error al crear usuario",
+      revalidate: null,
+      success: {
         title: "Usuario creado",
         description: `El usuario "${data.name}" ha sido creado exitosamente.`,
-      });
-    } catch (err) {
-      const apiError =
-        err && typeof err === "object"
-          ? (err as ApiErrorResponse)
-          : { error: "Ocurrió un error inesperado" };
-      toast({
-        title: "Error al crear usuario",
-        description: getApiErrorMessage(
-          apiError,
-          "Ocurrió un error inesperado",
-        ),
-        variant: "destructive",
-      });
-      throw err;
+      },
+    });
+
+    const userId = result?.data?.id;
+    if (userId && selectedRoleIds.length > 0) {
+      await assignRolesToUser(userId, selectedRoleIds);
     }
+
+    await mutateUsers();
+    setShowForm(false);
   };
 
   const handleUpdate = async (
     data: CreateUserInput,
     selectedRoleIds: string[],
   ) => {
-    if (!editingUser || !effectiveCompanyId) return;
+    if (!editingUser) return;
 
-    try {
-      const updateData = { ...data };
-      if (!updateData.password) {
-        delete (updateData as Partial<CreateUserInput>).password;
-      }
+    const updateData = { ...data };
+    if (!updateData.password) {
+      delete (updateData as Partial<CreateUserInput>).password;
+    }
 
-      const response = await fetch(`/api/users/${editingUser.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": effectiveCompanyId,
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      if (!response.ok) {
-        const error = (await response
-          .json()
-          .catch(
-            () =>
-              ({ error: "Error al actualizar usuario" }) as ApiErrorResponse,
-          )) as ApiErrorResponse;
-        throw error;
-      }
-
-      await assignRolesToUser(
-        editingUser.id,
-        selectedRoleIds,
-        editingUserRoleIds,
-      );
-
-      await mutateUsers();
-      setEditingUser(null);
-      setEditingUserRoleIds([]);
-      toast({
+    await apiMutate(`/api/users/${editingUser.id}`, {
+      method: "PUT",
+      body: updateData,
+      errorTitle: "Error al actualizar usuario",
+      revalidate: null,
+      success: {
         title: "Usuario actualizado",
         description: `El usuario "${data.name}" ha sido actualizado exitosamente.`,
-      });
-    } catch (err) {
-      const apiError =
-        err && typeof err === "object"
-          ? (err as ApiErrorResponse)
-          : { error: "Ocurrió un error inesperado" };
-      toast({
-        title: "Error al actualizar usuario",
-        description: getApiErrorMessage(
-          apiError,
-          "Ocurrió un error inesperado",
-        ),
-        variant: "destructive",
-      });
-      throw err;
-    }
+      },
+    });
+
+    await assignRolesToUser(
+      editingUser.id,
+      selectedRoleIds,
+      editingUserRoleIds,
+    );
+
+    await mutateUsers();
+    setEditingUser(null);
+    setEditingUserRoleIds([]);
   };
 
   const handleDelete = async (id: string) => {
-    if (!effectiveCompanyId) return;
-    setDeletingId(id);
     const user = users.find((u) => u.id === id);
-
-    try {
-      const response = await fetch(`/api/users/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": effectiveCompanyId },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(
-          error.error || error.details || "Error al desactivar el usuario",
-        );
-      }
-
-      await mutateUsers();
-      toast({
+    setDeletingId(id);
+    await apiMutate(`/api/users/${id}`, {
+      method: "DELETE",
+      rethrow: false,
+      errorTitle: "Error al desactivar usuario",
+      success: {
         title: "Usuario desactivado",
         description: user
           ? `El usuario "${user.name}" ha sido desactivado.`
           : "El usuario ha sido desactivado.",
-      });
-    } catch (err) {
-      toast({
-        title: "Error al desactivar usuario",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
+      },
+    });
+    setDeletingId(null);
   };
 
   const handleEditUser = async (user: User) => {

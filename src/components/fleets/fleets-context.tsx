@@ -9,8 +9,8 @@ import {
   useState,
 } from "react";
 import { useFleetList, useVehicleList } from "@/hooks/queries";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { FleetInput } from "@/lib/validations/fleet";
 
 export interface Fleet {
@@ -79,7 +79,6 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
 
   const {
     data: fleets = [],
@@ -109,107 +108,53 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
   const refetch = useCallback(async () => {
     await Promise.all([mutateFleets(), mutateVehicles()]);
   }, [mutateFleets, mutateVehicles]);
+  const apiMutate = useApiMutation(refetch);
 
   const [showForm, setShowForm] = useState(false);
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleCreate = async (data: FleetInput) => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/fleets", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al crear flota");
-      }
-      await refetch();
-      setShowForm(false);
-      toast({
+    await apiMutate("/api/fleets", {
+      body: data,
+      errorTitle: "Error al crear flota",
+      success: {
         title: "Flota creada",
         description: `La flota "${data.name}" ha sido creada exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al crear flota",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
-    }
+      },
+    });
+    setShowForm(false);
   };
 
   const handleUpdate = async (data: FleetInput) => {
-    if (!editingFleet || !companyId) return;
-    try {
-      const response = await fetch(`/api/fleets/${editingFleet.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al actualizar flota");
-      }
-      await refetch();
-      setEditingFleet(null);
-      toast({
+    if (!editingFleet) return;
+    await apiMutate(`/api/fleets/${editingFleet.id}`, {
+      method: "PATCH",
+      body: data,
+      errorTitle: "Error al actualizar flota",
+      success: {
         title: "Flota actualizada",
         description: `La flota "${data.name}" ha sido actualizada exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al actualizar flota",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
-    }
+      },
+    });
+    setEditingFleet(null);
   };
 
   const handleDelete = async (id: string) => {
-    if (!companyId) return;
-    setDeletingId(id);
     const fleet = fleets.find((f) => f.id === id);
-    try {
-      const response = await fetch(`/api/fleets/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(
-          error.error || error.details || "Error al desactivar la flota",
-        );
-      }
-      await refetch();
-      toast({
+    setDeletingId(id);
+    await apiMutate(`/api/fleets/${id}`, {
+      method: "DELETE",
+      rethrow: false,
+      errorTitle: "Error al desactivar flota",
+      success: {
         title: "Flota desactivada",
         description: fleet
           ? `La flota "${fleet.name}" ha sido desactivada.`
           : "La flota ha sido desactivada.",
-      });
-    } catch (err) {
-      toast({
-        title: "Error al desactivar flota",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
+      },
+    });
+    setDeletingId(null);
   };
 
   const cancelForm = () => {

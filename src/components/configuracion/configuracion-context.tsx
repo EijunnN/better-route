@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import type { companyDeliveryPolicy } from "@/db/schema";
+import { ApiError, useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -179,6 +180,7 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, [companyId, isReady]);
+  const apiMutate = useApiMutation(fetchProfile);
 
   const fetchTracking = useCallback(async () => {
     if (!companyId || !isReady) return;
@@ -264,19 +266,36 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  /**
+   * Sections report failure by HTTP status rather than by the server message,
+   * so the `ApiError` is re-shaped into the message `saveAll` toasts.
+   */
+  const saveSection = async <T,>(
+    url: string,
+    method: "POST" | "PUT",
+    body: unknown,
+    label: string,
+  ): Promise<T | undefined> => {
+    try {
+      return await apiMutate<T>(url, { method, body, revalidate: null });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        throw new Error(`Error ${err.status} al guardar ${label}`);
+      }
+      throw err;
+    }
+  };
+
   const saveAll = async () => {
     if (!companyId || dirty.size === 0) return;
     setIsSaving(true);
     const savedSections: DirtySection[] = [];
     try {
       if (dirty.has("profile") && profile) {
-        const r = await fetch("/api/company-profiles", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": companyId,
-          },
-          body: JSON.stringify({
+        await saveSection(
+          "/api/company-profiles",
+          "POST",
+          {
             enableWeight: profile.enableWeight,
             enableVolume: profile.enableVolume,
             enableOrderValue: profile.enableOrderValue,
@@ -285,52 +304,33 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
             priorityNew: profile.priorityMapping.NEW,
             priorityRescheduled: profile.priorityMapping.RESCHEDULED,
             priorityUrgent: profile.priorityMapping.URGENT,
-          }),
-        });
-        if (r.ok) {
-          savedSections.push("profile");
-          setIsDefault(false);
-        } else {
-          throw new Error(`Error ${r.status} al guardar perfil`);
-        }
+          },
+          "perfil",
+        );
+        savedSections.push("profile");
+        setIsDefault(false);
       }
 
       if (dirty.has("tracking") && tracking) {
-        const r = await fetch("/api/tracking/settings", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": companyId,
-          },
-          body: JSON.stringify(tracking),
-        });
-        if (r.ok) {
-          savedSections.push("tracking");
-          const data = await r.json();
-          if (data.data) setTracking(data.data);
-        } else {
-          throw new Error(`Error ${r.status} al guardar seguimiento`);
-        }
+        const data = await saveSection<{ data?: TrackingSettings }>(
+          "/api/tracking/settings",
+          "PUT",
+          tracking,
+          "seguimiento",
+        );
+        savedSections.push("tracking");
+        if (data?.data) setTracking(data.data);
       }
 
       if (dirty.has("deliveryPolicy") && deliveryPolicy) {
-        const r = await fetch(`/api/companies/${companyId}/delivery-policy`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": companyId,
-          },
-          body: JSON.stringify(deliveryPolicy),
-        });
-        if (r.ok) {
-          savedSections.push("deliveryPolicy");
-          const data = await r.json();
-          if (data.data) setDeliveryPolicy(data.data);
-        } else {
-          throw new Error(
-            `Error ${r.status} al guardar la política de entrega`,
-          );
-        }
+        const data = await saveSection<{ data?: DeliveryPolicy }>(
+          `/api/companies/${companyId}/delivery-policy`,
+          "PUT",
+          deliveryPolicy,
+          "la política de entrega",
+        );
+        savedSections.push("deliveryPolicy");
+        if (data?.data) setDeliveryPolicy(data.data);
       }
 
       toast({
@@ -352,27 +352,18 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
   };
 
   const resetProfile = async () => {
-    if (!companyId) return;
     if (!confirm("¿Restablecer a valores predeterminados?")) return;
-    try {
-      await fetch("/api/company-profiles", {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-      fetchProfile();
-      setDirty((prev) => {
-        const next = new Set(prev);
-        next.delete("profile");
-        return next;
-      });
-      toast({ title: "Perfil restablecido" });
-    } catch (error) {
-      toast({
-        title: "Error al restablecer",
-        description: error instanceof Error ? error.message : "",
-        variant: "destructive",
-      });
-    }
+    await apiMutate("/api/company-profiles", {
+      method: "DELETE",
+      rethrow: false,
+      errorTitle: "Error al restablecer",
+      success: { title: "Perfil restablecido" },
+    });
+    setDirty((prev) => {
+      const next = new Set(prev);
+      next.delete("profile");
+      return next;
+    });
   };
 
   const downloadCsvTemplate = async () => {

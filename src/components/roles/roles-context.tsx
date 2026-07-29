@@ -9,8 +9,8 @@ import {
   useState,
 } from "react";
 import { useApiData } from "@/hooks/use-api";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 
 export interface Role {
   id: string;
@@ -104,7 +104,6 @@ const RolesContext = createContext<RolesContextValue | undefined>(undefined);
 
 export function RolesProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId, isSystemAdmin, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const {
     data: roles = [],
@@ -129,6 +128,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
   const fetchRoles = useCallback(async () => {
     await mutateRoles();
   }, [mutateRoles]);
+  const apiMutate = useApiMutation(fetchRoles);
 
   const fetchRolePermissions = useCallback(
     async (roleId: string) => {
@@ -178,112 +178,78 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const response = await fetch("/api/roles", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": effectiveCompanyId,
+      await apiMutate("/api/roles", {
+        body: formData,
+        errorTitle: "Error al crear rol",
+        success: {
+          title: "Rol creado",
+          description: `El rol "${formData.name}" ha sido creado exitosamente.`,
         },
-        body: JSON.stringify(formData),
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al crear el rol");
-      }
-      await fetchRoles();
       setShowForm(false);
       setFormData({ name: "", description: "" });
-      toast({
-        title: "Rol creado",
-        description: `El rol "${formData.name}" ha sido creado exitosamente.`,
-      });
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Error al crear el rol";
-      setFormError(errorMessage);
-      toast({
-        title: "Error al crear rol",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      setFormError(
+        err instanceof Error ? err.message : "Error al crear el rol",
+      );
     }
   };
 
   const handleDeleteRole = async (id: string) => {
-    if (!effectiveCompanyId) return;
-    setDeletingId(id);
     const role = roles.find((r) => r.id === id);
-    try {
-      const response = await fetch(`/api/roles/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": effectiveCompanyId },
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al eliminar el rol");
-      }
-      if (selectedRole?.id === id) setSelectedRole(null);
-      await fetchRoles();
-      toast({
+    setDeletingId(id);
+    await apiMutate(`/api/roles/${id}`, {
+      method: "DELETE",
+      rethrow: false,
+      errorTitle: "Error al eliminar rol",
+      revalidate: async () => {
+        if (selectedRole?.id === id) setSelectedRole(null);
+        await fetchRoles();
+      },
+      success: {
         title: "Rol eliminado",
         description: role
           ? `El rol "${role.name}" ha sido eliminado.`
           : "El rol ha sido eliminado.",
-      });
-    } catch (err) {
-      toast({
-        title: "Error al eliminar rol",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
+      },
+    });
+    setDeletingId(null);
   };
 
   const handleTogglePermission = async (
     permissionId: string,
     enabled: boolean,
   ) => {
-    if (!selectedRole || selectedRole.isSystem || !effectiveCompanyId) return;
+    if (!selectedRole || selectedRole.isSystem) return;
     setSavingPermission(permissionId);
     try {
-      const response = await fetch(
-        `/api/roles/${selectedRole.id}/permissions`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": effectiveCompanyId,
-          },
-          body: JSON.stringify({ permissionId, enabled }),
-        },
+      await apiMutate(`/api/roles/${selectedRole.id}/permissions`, {
+        method: "PATCH",
+        body: { permissionId, enabled },
+        revalidate: null,
+      });
+      setRolePermissions((prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev };
+        for (const category in updated.permissions) {
+          updated.permissions[category] = updated.permissions[category].map(
+            (p) => (p.id === permissionId ? { ...p, enabled } : p),
+          );
+        }
+        return updated;
+      });
+      await mutateRoles(
+        roles.map((r) =>
+          r.id === selectedRole.id
+            ? {
+                ...r,
+                enabledPermissionsCount:
+                  r.enabledPermissionsCount + (enabled ? 1 : -1),
+              }
+            : r,
+        ),
+        { revalidate: false },
       );
-      if (response.ok) {
-        setRolePermissions((prev) => {
-          if (!prev) return prev;
-          const updated = { ...prev };
-          for (const category in updated.permissions) {
-            updated.permissions[category] = updated.permissions[category].map(
-              (p) => (p.id === permissionId ? { ...p, enabled } : p),
-            );
-          }
-          return updated;
-        });
-        await mutateRoles(
-          roles.map((r) =>
-            r.id === selectedRole.id
-              ? {
-                  ...r,
-                  enabledPermissionsCount:
-                    r.enabledPermissionsCount + (enabled ? 1 : -1),
-                }
-              : r,
-          ),
-          { revalidate: false },
-        );
-      }
     } catch (error) {
       console.error("Error toggling permission:", error);
     } finally {
@@ -295,13 +261,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     category: string,
     enable: boolean,
   ) => {
-    if (
-      !selectedRole ||
-      !rolePermissions ||
-      selectedRole.isSystem ||
-      !effectiveCompanyId
-    )
-      return;
+    if (!selectedRole || !rolePermissions || selectedRole.isSystem) return;
     const permsInCategory = rolePermissions.permissions[category] || [];
     const updates = permsInCategory
       .filter((p) => p.enabled !== enable)
@@ -333,21 +293,11 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     );
 
     try {
-      const response = await fetch(
-        `/api/roles/${selectedRole.id}/permissions`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": effectiveCompanyId,
-          },
-          body: JSON.stringify({ permissions: updates }),
-        },
-      );
-      if (!response.ok) {
-        await fetchRolePermissions(selectedRole.id);
-        await fetchRoles();
-      }
+      await apiMutate(`/api/roles/${selectedRole.id}/permissions`, {
+        method: "PUT",
+        body: { permissions: updates },
+        revalidate: null,
+      });
     } catch (error) {
       console.error("Error toggling category permissions:", error);
       await fetchRolePermissions(selectedRole.id);

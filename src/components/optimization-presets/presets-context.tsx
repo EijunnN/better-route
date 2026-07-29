@@ -8,8 +8,8 @@ import {
   useState,
 } from "react";
 import { useOptimizationPresetList } from "@/hooks/queries";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 
 export interface OptimizationPreset {
   id: string;
@@ -120,7 +120,6 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
 
   const {
     data: presets = [],
@@ -137,6 +136,7 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
   const fetchPresets = useCallback(async () => {
     await mutatePresets();
   }, [mutatePresets]);
+  const apiMutate = useApiMutation(fetchPresets);
 
   const handleCreate = () => {
     setEditingPreset({ ...DEFAULT_PRESET });
@@ -149,110 +149,45 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
   };
 
   const handleSave = async () => {
-    if (!editingPreset || !companyId) return;
+    if (!editingPreset) return;
+    const isEditing = !!editingPreset.id;
     setIsSaving(true);
     try {
-      const isEditing = !!editingPreset.id;
-      const url = isEditing
-        ? `/api/optimization-presets/${editingPreset.id}`
-        : "/api/optimization-presets";
-
-      const response = await fetch(url, {
-        method: isEditing ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
+      await apiMutate(
+        isEditing
+          ? `/api/optimization-presets/${editingPreset.id}`
+          : "/api/optimization-presets",
+        {
+          method: isEditing ? "PUT" : "POST",
+          body: editingPreset,
+          errorTitle: "Error al guardar preset",
         },
-        body: JSON.stringify(editingPreset),
-      });
-
-      if (response.ok) {
-        setDialogOpen(false);
-        setEditingPreset(null);
-        await fetchPresets();
-      } else {
-        const data = await response.json().catch(() => null);
-        toast({
-          title: "Error al guardar preset",
-          description: data?.error || "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error al guardar preset",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
+      );
+      setDialogOpen(false);
+      setEditingPreset(null);
+    } catch {
+      // apiMutate ya reportó el fallo por toast; el diálogo queda abierto.
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!companyId || !confirm("¿Estás seguro de eliminar este preset?"))
-      return;
-    try {
-      const response = await fetch(`/api/optimization-presets/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-      if (response.ok) {
-        await fetchPresets();
-      } else {
-        const data = await response.json().catch(() => null);
-        toast({
-          title: "Error al eliminar preset",
-          description: data?.error || "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error al eliminar preset",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    }
+    if (!confirm("¿Estás seguro de eliminar este preset?")) return;
+    await apiMutate(`/api/optimization-presets/${id}`, {
+      method: "DELETE",
+      rethrow: false,
+      errorTitle: "Error al eliminar preset",
+    });
   };
 
   const handleSetDefault = async (preset: OptimizationPreset) => {
-    if (!companyId) return;
-    try {
-      const response = await fetch(`/api/optimization-presets/${preset.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify({ isDefault: true }),
-      });
-      if (response.ok) {
-        await fetchPresets();
-      } else {
-        const data = await response.json().catch(() => null);
-        toast({
-          title: "Error al establecer preset predeterminado",
-          description: data?.error || "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error al establecer preset predeterminado",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    }
+    await apiMutate(`/api/optimization-presets/${preset.id}`, {
+      method: "PUT",
+      body: { isDefault: true },
+      rethrow: false,
+      errorTitle: "Error al establecer preset predeterminado",
+    });
   };
 
   const updateEditingPreset = (updates: Partial<OptimizationPreset>) => {

@@ -15,8 +15,8 @@ import {
   useVehicleList,
   useVehicleSkillList,
 } from "@/hooks/queries";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 import type { VehicleStatusTransitionInput } from "@/lib/validations/vehicle-status";
 
@@ -146,7 +146,6 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
   const { drivers } = useDrivers();
   const {
     data: rawVehicles = [],
@@ -183,6 +182,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
   const refetchVehicles = useCallback(async () => {
     await mutateVehicles();
   }, [mutateVehicles]);
+  const apiMutate = useApiMutation(refetchVehicles);
 
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
@@ -209,15 +209,11 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
   };
 
   const saveVehicleSkills = async (vehicleId: string, skillIds: string[]) => {
-    if (!companyId) return;
     try {
-      await fetch(`/api/vehicles/${vehicleId}/skills`, {
+      await apiMutate(`/api/vehicles/${vehicleId}/skills`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify({ skillIds }),
+        body: { skillIds },
+        revalidate: null,
       });
     } catch (error) {
       console.error("Error saving vehicle skills:", error);
@@ -225,109 +221,57 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
   };
 
   const handleCreate = async (data: VehicleInput, skillIds?: string[]) => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/vehicles", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al crear vehículo");
-      }
-      const result = await response.json();
-      if (skillIds && skillIds.length > 0 && result.id) {
-        await saveVehicleSkills(result.id, skillIds);
-      }
-      await mutateVehicles();
-      setShowForm(false);
-      toast({
+    const result = await apiMutate<{ id?: string }>("/api/vehicles", {
+      body: data,
+      errorTitle: "Error al crear vehículo",
+      revalidate: null,
+      success: {
         title: "Vehículo creado",
         description: `El vehículo "${data.name}" ha sido creado exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al crear vehículo",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
+      },
+    });
+    if (skillIds && skillIds.length > 0 && result?.id) {
+      await saveVehicleSkills(result.id, skillIds);
     }
+    await mutateVehicles();
+    setShowForm(false);
   };
 
   const handleUpdate = async (data: VehicleInput, skillIds?: string[]) => {
-    if (!editingVehicle || !companyId) return;
-    try {
-      const response = await fetch(`/api/vehicles/${editingVehicle.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al actualizar vehículo");
-      }
-      if (skillIds !== undefined) {
-        await saveVehicleSkills(editingVehicle.id, skillIds);
-      }
-      await mutateVehicles();
-      setEditingVehicle(null);
-      setEditingVehicleSkillIds([]);
-      toast({
+    if (!editingVehicle) return;
+    await apiMutate(`/api/vehicles/${editingVehicle.id}`, {
+      method: "PATCH",
+      body: data,
+      errorTitle: "Error al actualizar vehículo",
+      revalidate: null,
+      success: {
         title: "Vehículo actualizado",
         description: `El vehículo "${data.name}" ha sido actualizado exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al actualizar vehículo",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
+      },
+    });
+    if (skillIds !== undefined) {
+      await saveVehicleSkills(editingVehicle.id, skillIds);
     }
+    await mutateVehicles();
+    setEditingVehicle(null);
+    setEditingVehicleSkillIds([]);
   };
 
   const handleDelete = async (id: string) => {
-    if (!companyId) return;
-    setDeletingId(id);
     const vehicle = vehicles.find((v) => v.id === id);
-    try {
-      const response = await fetch(`/api/vehicles/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(
-          error.error || error.details || "Error al desactivar el vehículo",
-        );
-      }
-      await mutateVehicles();
-      toast({
+    setDeletingId(id);
+    await apiMutate(`/api/vehicles/${id}`, {
+      method: "DELETE",
+      rethrow: false,
+      errorTitle: "Error al desactivar vehículo",
+      success: {
         title: "Vehículo desactivado",
         description: vehicle
           ? `El vehículo "${vehicle.name}" ha sido desactivado.`
           : "El vehículo ha sido desactivado.",
-      });
-    } catch (err) {
-      toast({
-        title: "Error al desactivar vehículo",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
+      },
+    });
+    setDeletingId(null);
   };
 
   const handleEditVehicle = async (vehicle: Vehicle) => {
@@ -340,20 +284,9 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     vehicleId: string,
     data: VehicleStatusTransitionInput,
   ) => {
-    if (!companyId) return;
-    const response = await fetch(
-      `/api/vehicles/${vehicleId}/status-transition`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(data),
-      },
-    );
-    if (!response.ok) throw response;
-    await mutateVehicles();
+    await apiMutate(`/api/vehicles/${vehicleId}/status-transition`, {
+      body: data,
+    });
   };
 
   const cancelForm = () => {

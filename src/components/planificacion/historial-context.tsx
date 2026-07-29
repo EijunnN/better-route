@@ -9,8 +9,8 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 
 import { safeParseJson } from "@/lib/utils/safe-json";
 // Types
@@ -138,7 +138,6 @@ export interface HistorialProviderProps {
 
 export function HistorialProvider({ children }: HistorialProviderProps) {
   const { push } = useRouter();
-  const { toast } = useToast();
   const {
     effectiveCompanyId: companyId,
     isReady,
@@ -230,6 +229,7 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
       setIsLoading(false);
     }
   }, [companyId, statusFilter, searchTerm, currentPage]);
+  const apiMutate = useApiMutation(loadJobs);
 
   useEffect(() => {
     if (companyId) {
@@ -250,34 +250,18 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
 
   const handleDelete = useCallback(
     async (job: OptimizationJob) => {
-      if (!companyId || !job.configurationId) return;
-      try {
-        const response = await fetch(
-          `/api/optimization/configure/${job.configurationId}`,
-          {
-            method: "DELETE",
-            headers: { "x-company-id": companyId },
-          },
-        );
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || "Error al eliminar el plan");
-        }
-        toast({
+      if (!job.configurationId) return;
+      await apiMutate(`/api/optimization/configure/${job.configurationId}`, {
+        method: "DELETE",
+        rethrow: false,
+        errorTitle: "Error al eliminar",
+        success: {
           title: "Plan eliminado",
           description: "El plan ha sido eliminado exitosamente.",
-        });
-        await loadJobs();
-      } catch (err) {
-        toast({
-          title: "Error al eliminar",
-          description:
-            err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
-        });
-      }
+        },
+      });
     },
-    [companyId, toast, loadJobs],
+    [apiMutate],
   );
 
   const navigateToResults = useCallback(

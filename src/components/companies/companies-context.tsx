@@ -2,6 +2,7 @@
 
 import { createContext, type ReactNode, use, useState } from "react";
 import useSWR from "swr";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useToast } from "@/hooks/use-toast";
 import type { CompanyInput } from "@/lib/validations/company";
 
@@ -64,39 +65,30 @@ export function CompaniesProvider({ children }: { children: ReactNode }) {
     error,
     mutate,
   } = useSWR("/api/companies", fetcher, { revalidateOnFocus: false });
+  const apiMutate = useApiMutation(mutate);
 
   const [showForm, setShowForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleCreate = async (data: CompanyInput) => {
-    try {
-      const response = await fetch("/api/companies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al crear empresa");
-      }
-      await mutate();
-      setShowForm(false);
-      toast({
+    await apiMutate("/api/companies", {
+      body: data,
+      tenantScoped: false,
+      errorTitle: "Error al crear empresa",
+      success: {
         title: "Empresa creada",
         description: `La empresa "${data.commercialName}" ha sido creada exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al crear empresa",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
-    }
+      },
+    });
+    setShowForm(false);
   };
 
+  /**
+   * `handleUpdate` / `handleDelete` keep their hand-rolled fetch: both run the
+   * request *inside* SWR's `mutate` so `optimisticData` + `rollbackOnError`
+   * apply, which `useApiMutation` (revalidate-after-success) cannot express.
+   */
   const handleUpdate = async (data: CompanyInput) => {
     if (!editingCompany) return;
     const optimisticData = companies.map((c) =>

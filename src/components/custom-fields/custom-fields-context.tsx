@@ -2,8 +2,8 @@
 
 import { createContext, type ReactNode, use, useState } from "react";
 import { useFieldDefinitionList } from "@/hooks/queries";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 
 export type FieldType =
   | "text"
@@ -109,7 +109,6 @@ const CustomFieldsContext = createContext<CustomFieldsContextValue | undefined>(
 
 export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -119,32 +118,19 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
     error: definitionsError,
     mutate: mutateDefinitions,
   } = useFieldDefinitionList();
+  const apiMutate = useApiMutation(mutateDefinitions);
 
   const createDefinition = async (data: FieldDefinitionInput) => {
-    if (!companyId || isSubmitting) return;
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(
-        `/api/companies/${companyId}/field-definitions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": companyId,
-          },
-          body: JSON.stringify(data),
+      await apiMutate(`/api/companies/${companyId}/field-definitions`, {
+        body: data,
+        errorMessage: "Error al crear campo",
+        success: {
+          title: "Campo creado",
+          description: `El campo "${data.label}" ha sido creado.`,
         },
-      );
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: "Error al crear campo" }));
-        throw new Error(error.error || "Error al crear campo");
-      }
-      await mutateDefinitions();
-      toast({
-        title: "Campo creado",
-        description: `El campo "${data.label}" ha sido creado.`,
       });
     } finally {
       setIsSubmitting(false);
@@ -152,30 +138,17 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   };
 
   const updateDefinition = async (id: string, data: FieldDefinitionInput) => {
-    if (!companyId || isSubmitting) return;
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(
-        `/api/companies/${companyId}/field-definitions/${id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": companyId,
-          },
-          body: JSON.stringify(data),
+      await apiMutate(`/api/companies/${companyId}/field-definitions/${id}`, {
+        method: "PATCH",
+        body: data,
+        errorMessage: "Error al actualizar campo",
+        success: {
+          title: "Campo actualizado",
+          description: `El campo "${data.label}" ha sido actualizado.`,
         },
-      );
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: "Error al actualizar campo" }));
-        throw new Error(error.error || "Error al actualizar campo");
-      }
-      await mutateDefinitions();
-      toast({
-        title: "Campo actualizado",
-        description: `El campo "${data.label}" ha sido actualizado.`,
       });
     } finally {
       setIsSubmitting(false);
@@ -183,26 +156,16 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteDefinition = async (id: string) => {
-    if (!companyId || isSubmitting) return;
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(
-        `/api/companies/${companyId}/field-definitions/${id}`,
-        {
-          method: "DELETE",
-          headers: { "x-company-id": companyId },
+      await apiMutate(`/api/companies/${companyId}/field-definitions/${id}`, {
+        method: "DELETE",
+        errorMessage: "Error al archivar campo",
+        success: {
+          title: "Campo archivado",
+          description: "El campo ya no se usará en nuevos pedidos.",
         },
-      );
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: "Error al archivar campo" }));
-        throw new Error(error.error || "Error al archivar campo");
-      }
-      await mutateDefinitions();
-      toast({
-        title: "Campo archivado",
-        description: "El campo ya no se usará en nuevos pedidos.",
       });
     } finally {
       setIsSubmitting(false);
@@ -210,31 +173,20 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleActive = async (definition: FieldDefinition, active: boolean) => {
-    if (!companyId) return;
-    const response = await fetch(
+    await apiMutate(
       `/api/companies/${companyId}/field-definitions/${definition.id}`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
+        body: { active },
+        errorMessage: "Error al cambiar estado",
+        success: {
+          title: active ? "Campo reactivado" : "Campo archivado",
+          description: active
+            ? `"${definition.label}" vuelve a estar disponible.`
+            : `"${definition.label}" ya no aparecerá en formularios nuevos.`,
         },
-        body: JSON.stringify({ active }),
       },
     );
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: "Error al cambiar estado" }));
-      throw new Error(error.error || "Error al cambiar estado");
-    }
-    await mutateDefinitions();
-    toast({
-      title: active ? "Campo reactivado" : "Campo archivado",
-      description: active
-        ? `"${definition.label}" vuelve a estar disponible.`
-        : `"${definition.label}" ya no aparecerá en formularios nuevos.`,
-    });
   };
 
   // Reorder swaps `position` with the previous/next sibling in the same entity.

@@ -8,8 +8,8 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type {
   ORDER_STATUS,
   TIME_WINDOW_STRICTNESS,
@@ -112,7 +112,6 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -152,74 +151,37 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, [companyId, filterStatus, searchQuery, currentPage]);
+  const apiMutate = useApiMutation(fetchOrders);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
   const handleCreate = async (data: OrderFormData) => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al crear pedido");
-      }
-      await fetchOrders();
-      setShowForm(false);
-      toast({
+    await apiMutate("/api/orders", {
+      body: data,
+      errorTitle: "Error al crear pedido",
+      success: {
         title: "Pedido creado",
         description: `El pedido "${data.trackingId}" ha sido creado exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al crear pedido",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
-    }
+      },
+    });
+    setShowForm(false);
   };
 
   const handleUpdate = async (data: OrderFormData) => {
-    if (!editingOrder || !companyId) return;
-    try {
-      const response = await fetch(`/api/orders/${editingOrder.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al actualizar pedido");
-      }
-      await fetchOrders();
-      setEditingOrder(null);
-      setShowForm(false);
-      toast({
+    if (!editingOrder) return;
+    await apiMutate(`/api/orders/${editingOrder.id}`, {
+      method: "PATCH",
+      body: data,
+      errorTitle: "Error al actualizar pedido",
+      success: {
         title: "Pedido actualizado",
         description: `El pedido "${data.trackingId}" ha sido actualizado exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al actualizar pedido",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
-    }
+      },
+    });
+    setEditingOrder(null);
+    setShowForm(false);
   };
 
   const handleEdit = (order: Order) => {
@@ -228,64 +190,38 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!companyId) return;
-    setDeletingId(id);
     const order = orders.find((o) => o.id === id);
-    try {
-      const response = await fetch(`/api/orders/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al eliminar pedido");
-      }
-      await fetchOrders();
-      toast({
+    setDeletingId(id);
+    await apiMutate(`/api/orders/${id}`, {
+      method: "DELETE",
+      rethrow: false,
+      errorTitle: "Error al eliminar pedido",
+      success: {
         title: "Pedido eliminado",
         description: order
           ? `El pedido "${order.trackingId}" ha sido eliminado.`
           : "El pedido ha sido eliminado.",
-      });
-    } catch (err) {
-      toast({
-        title: "Error al eliminar pedido",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
+      },
+    });
+    setDeletingId(null);
   };
 
   const handleDeleteAll = async () => {
-    if (!companyId) return;
     setIsDeleting(true);
-    try {
-      const response = await fetch("/api/orders/batch/delete?hard=true", {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-      const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.error || "Error al eliminar pedidos");
-      setCurrentPage(1);
-      await fetchOrders();
-      toast({
+    await apiMutate<{ deleted: number }>("/api/orders/batch/delete?hard=true", {
+      method: "DELETE",
+      rethrow: false,
+      errorTitle: "Error al eliminar pedidos",
+      revalidate: async () => {
+        setCurrentPage(1);
+        await fetchOrders();
+      },
+      success: (result) => ({
         title: "Pedidos eliminados",
-        description: `${result.deleted} pedidos han sido eliminados.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al eliminar pedidos",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-    }
+        description: `${result?.deleted} pedidos han sido eliminados.`,
+      }),
+    });
+    setIsDeleting(false);
   };
 
   const handleCloseForm = () => {
@@ -294,37 +230,23 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   };
 
   const handleGenerateTrackingLink = async (orderId: string) => {
-    if (!companyId) return;
     setIsGeneratingLink(true);
-    try {
-      const response = await fetch("/api/tracking/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify({ orderIds: [orderId] }),
+    const result = await apiMutate<{
+      data?: Array<{ trackingId: string; url: string }>;
+    }>("/api/tracking/generate", {
+      body: { orderIds: [orderId] },
+      rethrow: false,
+      revalidate: null,
+      errorTitle: "Error al generar enlace",
+    });
+    const link = result?.data?.[0];
+    if (link) {
+      setTrackingLink({
+        trackingId: link.trackingId,
+        url: `${window.location.origin}${link.url}`,
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al generar enlace");
-      }
-      const result = await response.json();
-      if (result.data?.[0]) {
-        const { trackingId, url } = result.data[0];
-        const fullUrl = `${window.location.origin}${url}`;
-        setTrackingLink({ trackingId, url: fullUrl });
-      }
-    } catch (err) {
-      toast({
-        title: "Error al generar enlace",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingLink(false);
     }
+    setIsGeneratingLink(false);
   };
 
   const clearTrackingLink = () => {

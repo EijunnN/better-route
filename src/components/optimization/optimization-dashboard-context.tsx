@@ -9,6 +9,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
@@ -188,6 +189,7 @@ export function OptimizationDashboardProvider({
 }: DashboardProviderProps) {
   const { effectiveCompanyId: companyId } = useCompanyContext();
   const { toast } = useToast();
+  const apiMutate = useApiMutation();
 
   // UI State
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
@@ -400,29 +402,20 @@ export function OptimizationDashboardProvider({
     setReassignmentError(null);
 
     try {
-      const response = await fetch(`/api/optimization/jobs/${jobId}/reassign`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
+      const updatedResult = await apiMutate<OptimizationResult>(
+        `/api/optimization/jobs/${jobId}/reassign`,
+        {
+          body: {
+            orders: selectedOrdersForReassign.map((o) => ({
+              orderId: o.orderId,
+              sourceRouteId: o.routeId,
+            })),
+            targetVehicleId: selectedVehicleForReassign,
+          },
         },
-        body: JSON.stringify({
-          orders: selectedOrdersForReassign.map((o) => ({
-            orderId: o.orderId,
-            sourceRouteId: o.routeId,
-          })),
-          targetVehicleId: selectedVehicleForReassign,
-        }),
-      });
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Error al reasignar los pedidos");
-      }
-
-      const updatedResult = await response.json();
-
-      if (onResultUpdate) {
+      if (updatedResult && onResultUpdate) {
         onResultUpdate(updatedResult);
       }
 
@@ -475,19 +468,14 @@ export function OptimizationDashboardProvider({
     const count = deletedIds.length;
     setIsDeletingOrders(true);
     try {
-      const response = await fetch("/api/orders/batch/delete", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
+      const data = await apiMutate<{ deleted?: number }>(
+        "/api/orders/batch/delete",
+        {
+          method: "DELETE",
+          body: { orderIds: deletedIds },
+          errorTitle: "Error al eliminar pedidos",
         },
-        body: JSON.stringify({ orderIds: deletedIds }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || "Error al eliminar los pedidos");
-      }
-      const data = await response.json().catch(() => null);
+      );
 
       // Drop the deleted orders from the current view so the operator can keep
       // pruning across passes; routes recalculate only when they reoptimize.
@@ -497,13 +485,8 @@ export function OptimizationDashboardProvider({
         title: "Pedidos eliminados",
         description: `${data?.deleted ?? count} pedido(s) eliminados. Reoptimizá cuando termines para recalcular las rutas.`,
       });
-    } catch (error) {
-      toast({
-        title: "Error al eliminar pedidos",
-        description:
-          error instanceof Error ? error.message : "Error desconocido",
-        variant: "destructive",
-      });
+    } catch {
+      // apiMutate ya reportó el fallo por toast.
     } finally {
       setIsDeletingOrders(false);
     }
@@ -514,26 +497,15 @@ export function OptimizationDashboardProvider({
 
     setIsSwapping(true);
     try {
-      const response = await fetch(
+      const updatedResult = await apiMutate<OptimizationResult>(
         `/api/optimization/jobs/${jobId}/swap-vehicles`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": companyId,
-          },
-          body: JSON.stringify({ vehicleAId, vehicleBId }),
+          body: { vehicleAId, vehicleBId },
+          errorTitle: "Error al intercambiar rutas",
         },
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Error al intercambiar las rutas");
-      }
-
-      const updatedResult = await response.json();
-
-      if (onResultUpdate) {
+      if (updatedResult && onResultUpdate) {
         onResultUpdate(updatedResult);
       }
 
@@ -548,13 +520,8 @@ export function OptimizationDashboardProvider({
         title: "Rutas intercambiadas exitosamente",
         description: `Se intercambiaron las rutas entre ${plateA} y ${plateB}`,
       });
-    } catch (error) {
-      toast({
-        title: "Error al intercambiar rutas",
-        description:
-          error instanceof Error ? error.message : "Error desconocido",
-        variant: "destructive",
-      });
+    } catch {
+      // apiMutate ya reportó el fallo por toast.
     } finally {
       setIsSwapping(false);
     }

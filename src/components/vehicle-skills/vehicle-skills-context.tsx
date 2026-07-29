@@ -8,8 +8,8 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { VehicleSkillInput } from "@/lib/validations/vehicle-skill";
 
 export interface VehicleSkill {
@@ -76,7 +76,6 @@ const VehicleSkillsContext = createContext<
 
 export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const [skills, setSkills] = useState<VehicleSkill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -115,137 +114,66 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, [companyId, filterCategory, filterActive, searchTerm]);
+  const apiMutate = useApiMutation(fetchSkills);
 
   useEffect(() => {
     fetchSkills();
   }, [fetchSkills]);
 
   const handleCreate = async (data: VehicleSkillInput) => {
-    if (!companyId) return;
-    try {
-      const response = await fetch("/api/vehicle-skills", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw error;
-      }
-      await fetchSkills();
-      setShowForm(false);
-      toast({
+    await apiMutate("/api/vehicle-skills", {
+      body: data,
+      errorTitle: "Error al crear habilidad",
+      success: {
         title: "Habilidad creada",
         description: `La habilidad "${data.name}" ha sido creada exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al crear habilidad",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
-    }
+      },
+    });
+    setShowForm(false);
   };
 
   const handleUpdate = async (data: VehicleSkillInput) => {
-    if (!editingSkill || !companyId) return;
-    try {
-      const response = await fetch(`/api/vehicle-skills/${editingSkill.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw error;
-      }
-      await fetchSkills();
-      setEditingSkill(null);
-      toast({
+    if (!editingSkill) return;
+    await apiMutate(`/api/vehicle-skills/${editingSkill.id}`, {
+      method: "PATCH",
+      body: data,
+      errorTitle: "Error al actualizar habilidad",
+      success: {
         title: "Habilidad actualizada",
         description: `La habilidad "${data.name}" ha sido actualizada exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al actualizar habilidad",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
-    }
+      },
+    });
+    setEditingSkill(null);
   };
 
   const handleDelete = async (id: string) => {
-    if (!companyId) return;
-    setDeletingId(id);
     const skill = skills.find((s) => s.id === id);
-    try {
-      const response = await fetch(`/api/vehicle-skills/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(
-          error.error || error.details || "Error al eliminar la habilidad",
-        );
-      }
-      await fetchSkills();
-      toast({
+    setDeletingId(id);
+    await apiMutate(`/api/vehicle-skills/${id}`, {
+      method: "DELETE",
+      rethrow: false,
+      errorTitle: "Error al eliminar habilidad",
+      success: {
         title: "Habilidad eliminada",
         description: skill
           ? `La habilidad "${skill.name}" ha sido eliminada.`
           : "La habilidad ha sido eliminada.",
-      });
-    } catch (err) {
-      toast({
-        title: "Error al eliminar habilidad",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
+      },
+    });
+    setDeletingId(null);
   };
 
   const handleToggleActive = async (skill: VehicleSkill) => {
-    if (!companyId) return;
-    try {
-      const response = await fetch(`/api/vehicle-skills/${skill.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify({ active: !skill.active }),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al actualizar el estado");
-      }
-      await fetchSkills();
-      toast({
+    await apiMutate(`/api/vehicle-skills/${skill.id}`, {
+      method: "PATCH",
+      body: { active: !skill.active },
+      rethrow: false,
+      errorTitle: "Error al actualizar estado",
+      success: {
         title: "Estado actualizado",
         description: `La habilidad "${skill.name}" ahora está ${!skill.active ? "activa" : "inactiva"}.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al actualizar estado",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    }
+      },
+    });
   };
 
   const cancelForm = () => {

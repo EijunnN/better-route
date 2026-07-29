@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { ApiError } from "@/hooks/use-api-mutation";
 import type { VehicleStatusTransitionInput } from "@/lib/validations/vehicle-status";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -78,17 +79,20 @@ export function VehicleStatusModal({
       setForce(false);
       onOpenChange(false);
     } catch (err: unknown) {
-      const response = err as Response;
-      const errorData = await response.json();
+      const apiError = err as ApiError;
+      const payload = (apiError.payload ?? {}) as {
+        reason?: string;
+        error?: string;
+      };
 
-      if (response.status === 409) {
+      if (apiError.status === 409) {
         // Conflict - has active routes
-        setError(errorData.reason || "No se puede cambiar el estado");
+        setError(payload.reason || "No se puede cambiar el estado");
         setWarning(
           "El vehículo tiene rutas activas. Marque 'Forzar cambio' para continuar después de reasignar las rutas.",
         );
-      } else if (errorData.error) {
-        setError(errorData.error);
+      } else if (payload.error) {
+        setError(payload.error);
       } else {
         setError("Error al cambiar el estado del vehículo");
       }

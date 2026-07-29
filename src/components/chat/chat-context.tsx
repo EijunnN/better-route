@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import useSWR from "swr";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
 
 /**
@@ -135,6 +136,7 @@ const ChatContext = createContext<ChatContextValue | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId } = useCompanyContext();
+  const apiMutate = useApiMutation();
 
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -446,27 +448,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const sendBroadcast = useCallback(
     async (body: string): Promise<number | null> => {
-      if (!companyId) return null;
       const text = body.trim();
       if (!text) return null;
       setIsBroadcasting(true);
       setBroadcastError(null);
       try {
-        const res = await fetch("/api/chat/broadcast", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": companyId,
+        const json = await apiMutate<{ reached: number }>(
+          "/api/chat/broadcast",
+          {
+            body: { body: text },
+            errorMessage: "No se pudo enviar la difusión",
           },
-          body: JSON.stringify({ body: text }),
-        });
-        if (!res.ok) {
-          const err = (await res.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          throw new Error(err.error ?? "No se pudo enviar la difusión");
-        }
-        const json = (await res.json()) as { reached: number };
+        );
+        if (!json) return null;
         setLastBroadcastReached(json.reached);
         return json.reached;
       } catch (err) {
@@ -478,47 +472,37 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setIsBroadcasting(false);
       }
     },
-    [companyId],
+    [apiMutate],
   );
 
   const sendMessage = useCallback(
     async (body: string, templateCode?: string) => {
-      if (!companyId || !selectedDriverId) return;
+      if (!selectedDriverId) return;
       const text = body.trim();
       if (!text) return;
 
       setIsSending(true);
       setSendError(null);
       try {
-        const res = await fetch(
-          `/api/chat/conversations/${selectedDriverId}/messages`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-company-id": companyId,
-            },
-            body: JSON.stringify({ body: text, templateCode }),
-          },
-        );
-        if (!res.ok) {
-          const err = (await res.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          throw new Error(err.error ?? "No se pudo enviar el mensaje");
-        }
         // The Centrifugo publish from the server will deliver the
         // message back to this client on the thread subscription, so
         // we do not optimistically insert — that would risk a duplicate
         // when the dedupe-by-id check in the subscription handler runs
         // a microsecond too late.
+        await apiMutate(
+          `/api/chat/conversations/${selectedDriverId}/messages`,
+          {
+            body: { body: text, templateCode },
+            errorMessage: "No se pudo enviar el mensaje",
+          },
+        );
       } catch (err) {
         setSendError(err instanceof Error ? err.message : "Error desconocido");
       } finally {
         setIsSending(false);
       }
     },
-    [companyId, selectedDriverId],
+    [apiMutate, selectedDriverId],
   );
 
   const loadOlder = useCallback(async () => {

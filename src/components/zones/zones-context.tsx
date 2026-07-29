@@ -9,8 +9,8 @@ import {
   useState,
 } from "react";
 import { useVehicleList, useZoneList } from "@/hooks/queries";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { ZoneInput } from "@/lib/validations/zone";
 
 // Types
@@ -124,7 +124,6 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
@@ -166,146 +165,89 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
   const refetch = useCallback(async () => {
     await mutateZones();
   }, [mutateZones]);
+  const apiMutate = useApiMutation(refetch);
+
+  /** Best-effort, matching the pre-existing behaviour: a failed assignment
+   *  never blocks the zone save nor surfaces to the form. */
+  const assignZoneVehicles = (
+    zoneId: string,
+    vehicleIds: string[],
+    data: ZoneInput,
+  ) =>
+    apiMutate(`/api/zones/${zoneId}/vehicles`, {
+      body: { vehicleIds, assignedDays: data.activeDays || null },
+      revalidate: null,
+      rethrow: false,
+    });
 
   const handleCreate = async (data: ZoneInput, vehicleIds: string[]) => {
-    if (!companyId || isSubmitting) return;
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/zones", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
+      const createdZone = await apiMutate<{ id?: string }>("/api/zones", {
+        body: data,
+        errorTitle: "Error al crear zona",
+        revalidate: null,
+        success: {
+          title: "Zona creada",
+          description: `La zona "${data.name}" ha sido creada exitosamente.`,
         },
-        body: JSON.stringify(data),
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al crear zona");
+      if (vehicleIds.length > 0 && createdZone?.id) {
+        await assignZoneVehicles(createdZone.id, vehicleIds, data);
       }
-
-      const createdZone = await response.json();
-      if (vehicleIds.length > 0 && createdZone.id) {
-        await fetch(`/api/zones/${createdZone.id}/vehicles`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-company-id": companyId,
-          },
-          body: JSON.stringify({
-            vehicleIds,
-            assignedDays: data.activeDays || null,
-          }),
-        });
-      }
-
       await mutateZones();
       setViewMode("list");
       setPendingFormData(null);
-      toast({
-        title: "Zona creada",
-        description: `La zona "${data.name}" ha sido creada exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al crear zona",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleUpdate = async (data: ZoneInput, vehicleIds: string[]) => {
-    if (!editingZone || !companyId || isSubmitting) return;
+    if (!editingZone || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/zones/${editingZone.id}`, {
+      await apiMutate(`/api/zones/${editingZone.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
+        body: data,
+        errorTitle: "Error al actualizar zona",
+        revalidate: null,
+        success: {
+          title: "Zona actualizada",
+          description: `La zona "${data.name}" ha sido actualizada exitosamente.`,
         },
-        body: JSON.stringify(data),
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al actualizar zona");
-      }
-
-      await fetch(`/api/zones/${editingZone.id}/vehicles`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify({
-          vehicleIds,
-          assignedDays: data.activeDays || null,
-        }),
-      });
-
+      await assignZoneVehicles(editingZone.id, vehicleIds, data);
       await mutateZones();
       setEditingZone(null);
       setEditingZoneVehicleIds([]);
       setViewMode("list");
       setPendingFormData(null);
-      toast({
-        title: "Zona actualizada",
-        description: `La zona "${data.name}" ha sido actualizada exitosamente.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error al actualizar zona",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-      throw err;
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!companyId) return;
-    setDeletingId(id);
     const zone = zones.find((z) => z.id === id);
-
-    try {
-      const response = await fetch(`/api/zones/${id}`, {
-        method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al desactivar la zona");
-      }
-
-      if (selectedZoneId === id) setSelectedZoneId(null);
-      await mutateZones();
-      toast({
+    setDeletingId(id);
+    await apiMutate(`/api/zones/${id}`, {
+      method: "DELETE",
+      rethrow: false,
+      errorTitle: "Error al desactivar zona",
+      revalidate: async () => {
+        if (selectedZoneId === id) setSelectedZoneId(null);
+        await mutateZones();
+      },
+      success: {
         title: "Zona desactivada",
         description: zone
           ? `La zona "${zone.name}" ha sido desactivada.`
           : "La zona ha sido desactivada.",
-      });
-    } catch (err) {
-      toast({
-        title: "Error al desactivar zona",
-        description:
-          err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
+      },
+    });
+    setDeletingId(null);
   };
 
   const handleStartNew = () => {

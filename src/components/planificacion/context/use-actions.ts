@@ -1,6 +1,8 @@
 "use client";
 
 import type { useRouter } from "next/navigation";
+import type { CsvImportPreview } from "@/components/orders/csv-import-preview-dialog";
+import { ApiError, useApiMutation } from "@/hooks/use-api-mutation";
 import type { useToast } from "@/hooks/use-toast";
 import { parseCSVLine } from "@/lib/csv/parse-csv-line";
 import type { CsvRow, Order, StepId } from "../planificacion-types";
@@ -25,6 +27,7 @@ export function usePlanificacionActions(
   deps: ActionsDeps,
 ): PlanificacionActions {
   const { state, derived, companyId, router, toast, loadOrders } = deps;
+  const apiMutate = useApiMutation();
   const {
     currentStep,
     setCurrentStep,
@@ -168,20 +171,17 @@ export function usePlanificacionActions(
    * auditables, igual que el "Eliminar seleccionados" de results.
    */
   const deleteOrdersBulk = async (ids: string[]) => {
-    if (!companyId || ids.length === 0) return;
+    if (ids.length === 0) return;
     try {
-      const res = await fetch("/api/orders/batch/delete", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
+      const json = await apiMutate<{ deleted?: number }>(
+        "/api/orders/batch/delete",
+        {
+          method: "DELETE",
+          body: { orderIds: ids },
+          errorTitle: "Error al eliminar pedidos",
+          errorMessage: "No se pudieron eliminar los pedidos",
         },
-        body: JSON.stringify({ orderIds: ids }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(json?.error || "No se pudieron eliminar los pedidos");
-      }
+      );
       const idsSet = new Set(ids);
       setOrders((prev) => prev.filter((o) => !idsSet.has(o.id)));
       setSelectedOrderIds((prev) => prev.filter((id) => !idsSet.has(id)));
@@ -189,39 +189,22 @@ export function usePlanificacionActions(
         title: "Pedidos eliminados",
         description: `${json?.deleted ?? ids.length} pedido(s) fuera de la planificación.`,
       });
-    } catch (error) {
-      toast({
-        title: "Error al eliminar pedidos",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
+    } catch {
+      // apiMutate ya reportó el fallo por toast.
     }
   };
 
   const deleteOrder = async (id: string) => {
-    if (!companyId) return;
     setDeletingOrderId(id);
     try {
-      const res = await fetch(`/api/orders/${id}`, {
+      await apiMutate(`/api/orders/${id}`, {
         method: "DELETE",
-        headers: { "x-company-id": companyId },
+        errorTitle: "Error al eliminar pedido",
       });
-      if (res.ok) {
-        setOrders((prev) => prev.filter((o) => o.id !== id));
-        setSelectedOrderIds((prev) => prev.filter((oid) => oid !== id));
-      }
-    } catch (error) {
-      toast({
-        title: "Error al eliminar pedido",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
+      setOrders((prev) => prev.filter((o) => o.id !== id));
+      setSelectedOrderIds((prev) => prev.filter((oid) => oid !== id));
+    } catch {
+      // apiMutate ya reportó el fallo por toast.
     } finally {
       setDeletingOrderId(null);
     }
@@ -233,35 +216,25 @@ export function usePlanificacionActions(
    * are untouched. Frees their trackingIds for re-import.
    */
   const discardPendingOrders = async () => {
-    if (!companyId) return;
     setIsDiscardingPending(true);
-    try {
-      const res = await fetch("/api/orders/batch/delete?status=PENDING", {
+    await apiMutate<{ deleted?: number }>(
+      "/api/orders/batch/delete?status=PENDING",
+      {
         method: "DELETE",
-        headers: { "x-company-id": companyId },
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(json?.error || "No se pudieron descartar los pedidos");
-      }
-      setSelectedOrderIds([]);
-      await loadOrders();
-      toast({
-        title: "Pedidos pendientes descartados",
-        description: `${json?.deleted ?? 0} pedido(s) eliminados del borrador.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error al descartar pedidos",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDiscardingPending(false);
-    }
+        rethrow: false,
+        errorTitle: "Error al descartar pedidos",
+        errorMessage: "No se pudieron descartar los pedidos",
+        revalidate: async () => {
+          setSelectedOrderIds([]);
+          await loadOrders();
+        },
+        success: (json) => ({
+          title: "Pedidos pendientes descartados",
+          description: `${json?.deleted ?? 0} pedido(s) eliminados del borrador.`,
+        }),
+      },
+    );
+    setIsDiscardingPending(false);
   };
 
   const handleSubmit = async () => {
@@ -286,38 +259,33 @@ export function usePlanificacionActions(
 
       const finalName = planName.trim() || `Plan ${planDate} ${planTime}`;
 
-      const configResponse = await fetch("/api/optimization/configure", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
+      const configData = await apiMutate<{ data: { id: string } }>(
+        "/api/optimization/configure",
+        {
+          body: {
+            name: finalName,
+            depotLatitude: selectedVehicles[0]?.originLatitude || "-12.0464",
+            depotLongitude: selectedVehicles[0]?.originLongitude || "-77.0428",
+            depotAddress: selectedVehicles[0]?.originAddress || "Depot",
+            selectedVehicleIds: JSON.stringify(selectedVehicleIds),
+            selectedDriverIds: JSON.stringify(driverIds),
+            selectedOrderIds: JSON.stringify(selectedOrderIds),
+            objective,
+            workWindowStart: planTime,
+            workWindowEnd: "20:00",
+            serviceTimeMinutes: serviceTime,
+            timeWindowStrictness: "SOFT",
+            penaltyFactor: 5,
+            optimizerType: "VROOM",
+            optimizationPresetId,
+          },
+          errorMessage: "Error al crear la configuración",
         },
-        body: JSON.stringify({
-          name: finalName,
-          depotLatitude: selectedVehicles[0]?.originLatitude || "-12.0464",
-          depotLongitude: selectedVehicles[0]?.originLongitude || "-77.0428",
-          depotAddress: selectedVehicles[0]?.originAddress || "Depot",
-          selectedVehicleIds: JSON.stringify(selectedVehicleIds),
-          selectedDriverIds: JSON.stringify(driverIds),
-          selectedOrderIds: JSON.stringify(selectedOrderIds),
-          objective,
-          workWindowStart: planTime,
-          workWindowEnd: "20:00",
-          serviceTimeMinutes: serviceTime,
-          timeWindowStrictness: "SOFT",
-          penaltyFactor: 5,
-          optimizerType: "VROOM",
-          optimizationPresetId,
-        }),
-      });
+      );
 
-      if (!configResponse.ok) {
-        const data = await configResponse.json();
-        throw new Error(data.error || "Error al crear la configuración");
+      if (configData) {
+        router.push(`/planificacion/${configData.data.id}/results`);
       }
-
-      const configData = await configResponse.json();
-      router.push(`/planificacion/${configData.data.id}/results`);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Error al iniciar la optimización",
@@ -435,34 +403,30 @@ export function usePlanificacionActions(
    * in `handleCsvConfirm` once the operator approves.
    */
   const handleCsvUpload = async () => {
-    if (!companyId || !csvRawText) return;
+    if (!csvRawText) return;
 
     setCsvUploading(true);
     setCsvError(null);
 
     try {
-      const response = await fetch("/api/orders/csv-import/preview", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
+      const result = await apiMutate<{ data: CsvImportPreview }>(
+        "/api/orders/csv-import/preview",
+        {
+          body: { csvContent: toBase64Utf8(csvRawText) },
+          errorMessage: "Error al previsualizar el CSV",
         },
-        body: JSON.stringify({ csvContent: toBase64Utf8(csvRawText) }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        let errorMsg = result.error || "Error al previsualizar el CSV";
-        if (result.details) errorMsg = `${errorMsg}: ${result.details}`;
-        setCsvError(errorMsg);
-        return;
-      }
+      );
+      if (!result) return;
 
       setCsvPreviewData(result.data);
       setShowCsvUpload(false);
       setShowCsvPreviewDialog(true);
     } catch (err) {
+      if (err instanceof ApiError) {
+        const headline = err.error || "Error al previsualizar el CSV";
+        setCsvError(err.details ? `${headline}: ${err.details}` : headline);
+        return;
+      }
       setCsvError(
         err instanceof Error ? err.message : "Error al previsualizar el CSV",
       );
@@ -480,31 +444,24 @@ export function usePlanificacionActions(
     previewId: string;
     reactivableSelections: string[];
   }) => {
-    if (!companyId) return null;
-    const response = await fetch("/api/orders/csv-import/confirm", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId,
-      },
-      body: JSON.stringify(input),
+    const json = await apiMutate<{
+      data: {
+        inserted: number;
+        reactivated: number;
+        failed?: number;
+        errors?: string[];
+        raceConditions: Array<{
+          existingOrderId: string;
+          trackingId: string;
+          actualStatus: string;
+        }>;
+      };
+    }>("/api/orders/csv-import/confirm", {
+      body: input,
+      errorMessage: "Error al confirmar",
+      revalidate: loadOrders,
     });
-    const json = await response.json();
-    if (!response.ok) {
-      throw new Error(json.error || "Error al confirmar");
-    }
-    await loadOrders();
-    return json.data as {
-      inserted: number;
-      reactivated: number;
-      failed?: number;
-      errors?: string[];
-      raceConditions: Array<{
-        existingOrderId: string;
-        trackingId: string;
-        actualStatus: string;
-      }>;
-    };
+    return json?.data ?? null;
   };
 
   /** Reset CSV state and close both dialogs after success or cancel. */
@@ -566,29 +523,21 @@ export function usePlanificacionActions(
   };
 
   const saveOrderChanges = async () => {
-    if (!editingOrder || !companyId) return;
+    if (!editingOrder) return;
 
     setIsUpdatingOrder(true);
     setUpdateOrderError(null);
 
     try {
-      const response = await fetch(`/api/orders/${editingOrder.id}`, {
+      await apiMutate(`/api/orders/${editingOrder.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": companyId,
-        },
-        body: JSON.stringify({
+        body: {
           address: editOrderData.address,
           latitude: editOrderData.latitude || null,
           longitude: editOrderData.longitude || null,
-        }),
+        },
+        errorMessage: "Error al actualizar el pedido",
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Error al actualizar el pedido");
-      }
 
       setOrders((prev) =>
         prev.map((o) =>
@@ -622,21 +571,11 @@ export function usePlanificacionActions(
     latitude: string,
     longitude: string,
   ) => {
-    if (!companyId) return;
-
-    const response = await fetch(`/api/orders/${orderId}`, {
+    await apiMutate(`/api/orders/${orderId}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId,
-      },
-      body: JSON.stringify({ latitude, longitude }),
+      body: { latitude, longitude },
+      errorMessage: "Error al actualizar ubicación",
     });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || "Error al actualizar ubicación");
-    }
 
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, latitude, longitude } : o)),
