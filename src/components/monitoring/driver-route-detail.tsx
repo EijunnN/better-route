@@ -19,6 +19,7 @@ import { Can } from "@/components/auth/can";
 import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import {
   AttemptBadge,
   ProgramarProximaEntregaDialog,
@@ -478,12 +479,10 @@ export function DriverRouteDetail({
                 <span className="text-xs font-medium">
                   {completedStops}/{totalStops}
                 </span>
-                <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{ width: `${progressPercentage}%` }}
-                  />
-                </div>
+                <Progress
+                  value={progressPercentage}
+                  className="w-16 h-1.5 bg-muted"
+                />
                 <span className="text-xs text-muted-foreground">
                   {progressPercentage}%
                 </span>

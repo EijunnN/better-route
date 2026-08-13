@@ -199,7 +199,7 @@ function EvidenceLightbox({
                     onClick={() => setIndex(i)}
                     aria-label={`Ver evidencia ${i + 1}`}
                     className={cn(
-                      "size-12 overflow-hidden rounded-md border-2 transition-all",
+                      "size-12 overflow-hidden rounded-md border-2 transition-[border-color,opacity]",
                       i === index
                         ? "border-white opacity-100"
                         : "border-transparent opacity-50 hover:opacity-80",

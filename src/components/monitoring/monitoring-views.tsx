@@ -288,7 +288,7 @@ export function MonitoringDashboardView() {
       {/* ============ SIDEBAR ============ */}
       <div
         className={cn(
-          "absolute top-24 bottom-4 left-4 z-10 transition-all duration-300 ease-out",
+          "absolute top-24 bottom-4 left-4 z-10 transition-[width] duration-300 ease-out",
           sidebarCollapsed ? "w-12" : "w-80",
         )}
       >

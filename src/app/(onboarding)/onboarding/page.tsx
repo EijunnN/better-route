@@ -134,24 +134,29 @@ export default function OnboardingPage() {
         </CardHeader>
 
         <CardContent className="pt-4">
-          {step === "welcome" && (
-            <WelcomeStep onNext={() => setStep("company")} />
-          )}
-          {step === "company" && (
-            <CompanyFormStep
-              onSubmit={handleCompanySubmit}
-              isLoading={isSubmitting}
-              error={error}
-            />
-          )}
-          {step === "success" && result && (
-            <SuccessStep
-              companyName={result.company.commercialName}
-              rolesCount={result.roles.length}
-              permissionsCount={result.totalPermissions}
-              onFinish={handleFinish}
-            />
-          )}
+          <div
+            key={step}
+            className="animate-in fade-in slide-in-from-bottom-1 duration-200 ease-[cubic-bezier(0.2,0.7,0.2,1)]"
+          >
+            {step === "welcome" && (
+              <WelcomeStep onNext={() => setStep("company")} />
+            )}
+            {step === "company" && (
+              <CompanyFormStep
+                onSubmit={handleCompanySubmit}
+                isLoading={isSubmitting}
+                error={error}
+              />
+            )}
+            {step === "success" && result && (
+              <SuccessStep
+                companyName={result.company.commercialName}
+                rolesCount={result.roles.length}
+                permissionsCount={result.totalPermissions}
+                onFinish={handleFinish}
+              />
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

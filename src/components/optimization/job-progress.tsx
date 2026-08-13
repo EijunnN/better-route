@@ -48,7 +48,9 @@ interface JobProgressProps {
 const STATUS_ICONS: Record<JobStatus, React.ReactNode> = {
   PENDING: <Clock className="size-5 text-yellow-500" />,
   RUNNING: <Loader2 className="size-5 text-blue-500 animate-spin" />,
-  COMPLETED: <CheckCircle2 className="size-5 text-green-500" />,
+  COMPLETED: (
+    <CheckCircle2 className="size-5 text-green-500 transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.2,0.7,0.2,1)] starting:opacity-0 starting:scale-90" />
+  ),
   FAILED: <AlertCircle className="size-5 text-red-500" />,
   CANCELLED: <XCircle className="size-5 text-gray-500" />,
 };
@@ -237,7 +239,7 @@ export function JobProgress({
 
         {/* Status message */}
         {jobData.status === "COMPLETED" && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg transition-[opacity,transform] duration-[250ms] ease-[cubic-bezier(0.2,0.7,0.2,1)] starting:opacity-0 starting:translate-y-1">
             <p className="text-sm text-green-800">
               Optimization completed successfully in {getElapsedTime()}!
             </p>
@@ -245,7 +247,7 @@ export function JobProgress({
         )}
 
         {jobData.status === "FAILED" && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg transition-[opacity,transform] duration-[250ms] ease-[cubic-bezier(0.2,0.7,0.2,1)] starting:opacity-0 starting:translate-y-1">
             <p className="text-sm text-red-800 font-medium">
               Optimization failed
             </p>
@@ -256,7 +258,7 @@ export function JobProgress({
         )}
 
         {jobData.status === "CANCELLED" && (
-          <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg transition-[opacity,transform] duration-[250ms] ease-[cubic-bezier(0.2,0.7,0.2,1)] starting:opacity-0 starting:translate-y-1">
             <p className="text-sm text-gray-700">
               Optimization was cancelled after {getElapsedTime()}.
             </p>
@@ -265,7 +267,7 @@ export function JobProgress({
 
         {/* Error message from fetch */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg transition-[opacity,transform] duration-[250ms] ease-[cubic-bezier(0.2,0.7,0.2,1)] starting:opacity-0 starting:translate-y-1">
             <p className="text-sm text-red-800">{error}</p>
           </div>
         )}

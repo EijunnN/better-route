@@ -129,12 +129,13 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
       </div>
 
       <div className="grid gap-3">
-        {features.map((feature) => {
+        {features.map((feature, index) => {
           const Icon = feature.icon;
           return (
             <div
               key={feature.title}
-              className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3"
+              className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out fill-mode-both"
+              style={{ animationDelay: `${index * 60}ms` }}
             >
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                 <Icon className="size-4 text-primary" />

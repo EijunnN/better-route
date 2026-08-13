@@ -86,7 +86,7 @@ export function PencilSelectOverlay({
           size="sm"
           onClick={onToggle}
           className={`
-            shadow-lg transition-all
+            shadow-lg transition-[background-color,color,border-color]
             ${
               isActive
                 ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500"

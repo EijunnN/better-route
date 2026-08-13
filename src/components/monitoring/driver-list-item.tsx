@@ -236,7 +236,7 @@ export const DriverListItem = memo(function DriverListItem({
   return (
     <Card
       className={cn(
-        "transition-all cursor-pointer",
+        "transition-[background-color,box-shadow] cursor-pointer",
         isSelected ? "ring-2 ring-primary bg-primary/5" : "hover:bg-accent/50",
       )}
       onClick={onClick}

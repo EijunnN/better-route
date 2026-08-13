@@ -16,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import type { BarDatum } from "./charts";
 import { IntakeAreaChart } from "./intake-area-chart";
 
@@ -346,12 +347,10 @@ export function GettingStarted({ counts }: { counts: SetupCounts }) {
                 {completed} / {steps.length}
               </span>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${(completed / steps.length) * 100}%` }}
-              />
-            </div>
+            <Progress
+              value={(completed / steps.length) * 100}
+              className="bg-muted"
+            />
             <Button asChild className="mt-4 w-full">
               <Link href={next.href}>
                 {completed === 0 ? "Empezar" : "Continuar"}

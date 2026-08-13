@@ -179,7 +179,7 @@ export function RecentEventsPanel({
                   role="button"
                   tabIndex={0}
                   className={cn(
-                    "p-2.5 rounded-lg border cursor-pointer transition-all hover:shadow-sm",
+                    "p-2.5 rounded-lg border cursor-pointer transition-[box-shadow] hover:shadow-sm",
                     event.type === "FAILED" &&
                       "border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20",
                   )}

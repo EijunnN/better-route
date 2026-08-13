@@ -124,86 +124,100 @@ export function TrackingTimeline({
         )}
       </div>
 
-      {open && (
-        <ol className="relative space-y-0 px-5 pb-5">
-          {timeline.map((event, index) => {
-            const state = getStepState(event.status, currentStatus);
-            const Icon = STATUS_ICON[event.status] ?? Package;
-            const isLast = index === timeline.length - 1;
-            const isFailed = event.status === "FAILED";
-            const isTerminalCurrent =
-              state === "current" &&
-              TERMINAL_STATUSES.includes(event.status) &&
-              !isFailed;
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-[250ms] ease-[cubic-bezier(0.2,0.7,0.2,1)]",
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+        inert={!open || undefined}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <ol className="relative space-y-0 px-5 pb-5">
+            {timeline.map((event, index) => {
+              const state = getStepState(event.status, currentStatus);
+              const Icon = STATUS_ICON[event.status] ?? Package;
+              const isLast = index === timeline.length - 1;
+              const isFailed = event.status === "FAILED";
+              const isTerminalCurrent =
+                state === "current" &&
+                TERMINAL_STATUSES.includes(event.status) &&
+                !isFailed;
 
-            const bubbleColor = isFailed
-              ? "var(--destructive)"
-              : state === "completed" || state === "current"
-                ? isTerminalCurrent
-                  ? "var(--chart-3)"
-                  : accent
-                : undefined;
+              const bubbleColor = isFailed
+                ? "var(--destructive)"
+                : state === "completed" || state === "current"
+                  ? isTerminalCurrent
+                    ? "var(--chart-3)"
+                    : accent
+                  : undefined;
 
-            return (
-              <li key={event.status} className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <div
-                    className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-full",
-                      state === "upcoming"
-                        ? "border border-border bg-background text-muted-foreground"
-                        : "text-white",
-                    )}
-                    style={
-                      bubbleColor ? { backgroundColor: bubbleColor } : undefined
-                    }
-                  >
-                    <Icon className="size-4" />
-                  </div>
-                  {!isLast && (
+              return (
+                <li
+                  key={event.status}
+                  className="flex gap-4 animate-in fade-in slide-in-from-bottom-1 duration-[250ms] ease-[cubic-bezier(0.2,0.7,0.2,1)] fill-mode-both"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex flex-col items-center">
                     <div
-                      className="w-0.5 grow"
-                      style={{
-                        backgroundColor:
-                          state === "completed" ? accent : "var(--border)",
-                        minHeight: "1.75rem",
-                      }}
-                    />
-                  )}
-                </div>
+                      className={cn(
+                        "flex size-9 shrink-0 items-center justify-center rounded-full",
+                        state === "upcoming"
+                          ? "border border-border bg-background text-muted-foreground"
+                          : "text-white",
+                      )}
+                      style={
+                        bubbleColor
+                          ? { backgroundColor: bubbleColor }
+                          : undefined
+                      }
+                    >
+                      <Icon className="size-4" />
+                    </div>
+                    {!isLast && (
+                      <div
+                        className="w-0.5 grow"
+                        style={{
+                          backgroundColor:
+                            state === "completed" ? accent : "var(--border)",
+                          minHeight: "1.75rem",
+                        }}
+                      />
+                    )}
+                  </div>
 
-                <div className={cn("min-w-0 pb-6", isLast && "pb-0")}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+                  <div className={cn("min-w-0 pb-6", isLast && "pb-0")}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+                      <p
+                        className={cn(
+                          "text-sm font-semibold",
+                          state === "upcoming" && "text-muted-foreground",
+                        )}
+                      >
+                        {event.label}
+                      </p>
+                      {event.timestamp && (
+                        <p className="text-xs text-muted-foreground">
+                          {formatRelative(event.timestamp)}
+                        </p>
+                      )}
+                    </div>
                     <p
                       className={cn(
-                        "text-sm font-semibold",
-                        state === "upcoming" && "text-muted-foreground",
+                        "mt-1 text-xs leading-relaxed",
+                        state === "upcoming"
+                          ? "text-muted-foreground/60"
+                          : "text-muted-foreground",
                       )}
                     >
-                      {event.label}
+                      {descriptionFor(event.status, driverName)}
                     </p>
-                    {event.timestamp && (
-                      <p className="text-xs text-muted-foreground">
-                        {formatRelative(event.timestamp)}
-                      </p>
-                    )}
                   </div>
-                  <p
-                    className={cn(
-                      "mt-1 text-xs leading-relaxed",
-                      state === "upcoming"
-                        ? "text-muted-foreground/60"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {descriptionFor(event.status, driverName)}
-                  </p>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      )}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      </div>
     </section>
   );
 }

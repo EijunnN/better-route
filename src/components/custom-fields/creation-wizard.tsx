@@ -198,7 +198,10 @@ export function CreationWizard({
             top-right; we don't render our own. */}
         <div className="flex min-h-[540px] flex-col overflow-y-auto p-7">
           <WizardHeader step={step} />
-          <div className="mt-6 flex-1">
+          <div
+            key={step}
+            className="mt-6 flex-1 animate-in fade-in slide-in-from-bottom-1 duration-[180ms] ease-[cubic-bezier(0.2,0.7,0.2,1)]"
+          >
             {step === 0 && <StepOrigin data={data} patch={patch} />}
             {step === 1 && <StepType data={data} patch={patch} />}
             {step === 2 && (
@@ -739,7 +742,7 @@ function PreviewLane({
 }) {
   return (
     <div
-      className={`flex-1 rounded-md px-1 py-2 text-center transition-all ${
+      className={`flex-1 rounded-md px-1 py-2 text-center transition-[background-color,color,opacity] ${
         active && tint
           ? `${tint.bg} ${tint.fg}`
           : "bg-muted text-muted-foreground"
@@ -769,7 +772,7 @@ function PreviewLaneType({
   const Icon = type ? FIELD_TYPE_ICON[type] : null;
   return (
     <div
-      className={`flex-[1.4] rounded-md px-1 py-2 text-center transition-all ${
+      className={`flex-[1.4] rounded-md px-1 py-2 text-center transition-[background-color,color,opacity] ${
         active && type
           ? FIELD_TYPE_TINT[type]
           : "bg-muted text-muted-foreground"
