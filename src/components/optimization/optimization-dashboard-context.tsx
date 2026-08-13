@@ -9,8 +9,8 @@ import {
   useEffect,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type {
   AssignedSolvedRoute,
   VerifiedPlan,
@@ -187,7 +187,6 @@ export function OptimizationDashboardProvider({
   onResultUpdate,
 }: DashboardProviderProps) {
   const { effectiveCompanyId: companyId } = useCompanyContext();
-  const { toast } = useToast();
 
   // UI State
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
@@ -493,16 +492,13 @@ export function OptimizationDashboardProvider({
       // pruning across passes; routes recalculate only when they reoptimize.
       onResultUpdate?.(removeOrdersFromResult(result, new Set(deletedIds)));
       clearSelection();
-      toast({
-        title: "Pedidos eliminados",
+      toast.success("Pedidos eliminados", {
         description: `${data?.deleted ?? count} pedido(s) eliminados. Reoptimizá cuando termines para recalcular las rutas.`,
       });
     } catch (error) {
-      toast({
-        title: "Error al eliminar pedidos",
+      toast.error("Error al eliminar pedidos", {
         description:
           error instanceof Error ? error.message : "Error desconocido",
-        variant: "destructive",
       });
     } finally {
       setIsDeletingOrders(false);
@@ -544,16 +540,13 @@ export function OptimizationDashboardProvider({
         result.routes.find((r) => r.vehicleId === vehicleBId)
           ?.vehicleIdentifier || vehicleBId;
 
-      toast({
-        title: "Rutas intercambiadas exitosamente",
+      toast.success("Rutas intercambiadas exitosamente", {
         description: `Se intercambiaron las rutas entre ${plateA} y ${plateB}`,
       });
     } catch (error) {
-      toast({
-        title: "Error al intercambiar rutas",
+      toast.error("Error al intercambiar rutas", {
         description:
           error instanceof Error ? error.message : "Error desconocido",
-        variant: "destructive",
       });
     } finally {
       setIsSwapping(false);

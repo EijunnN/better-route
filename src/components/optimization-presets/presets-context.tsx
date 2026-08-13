@@ -7,9 +7,9 @@ import {
   useCallback,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useOptimizationPresetList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 
 export interface OptimizationPreset {
   id: string;
@@ -120,7 +120,6 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
 
   const {
     data: presets = [],
@@ -172,20 +171,16 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
         await fetchPresets();
       } else {
         const data = await response.json().catch(() => null);
-        toast({
-          title: "Error al guardar preset",
+        toast.error("Error al guardar preset", {
           description: data?.error || "Ocurrió un error inesperado",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error al guardar preset",
+      toast.error("Error al guardar preset", {
         description:
           error instanceof Error
             ? error.message
             : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -204,20 +199,16 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
         await fetchPresets();
       } else {
         const data = await response.json().catch(() => null);
-        toast({
-          title: "Error al eliminar preset",
+        toast.error("Error al eliminar preset", {
           description: data?.error || "Ocurrió un error inesperado",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error al eliminar preset",
+      toast.error("Error al eliminar preset", {
         description:
           error instanceof Error
             ? error.message
             : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     }
   };
@@ -237,20 +228,16 @@ export function PresetsProvider({ children }: { children: ReactNode }) {
         await fetchPresets();
       } else {
         const data = await response.json().catch(() => null);
-        toast({
-          title: "Error al establecer preset predeterminado",
+        toast.error("Error al establecer preset predeterminado", {
           description: data?.error || "Ocurrió un error inesperado",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error al establecer preset predeterminado",
+      toast.error("Error al establecer preset predeterminado", {
         description:
           error instanceof Error
             ? error.message
             : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     }
   };

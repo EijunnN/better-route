@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,7 +15,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
 
 export type RescheduleMode = "same-day" | "cross-day";
 
@@ -80,7 +80,6 @@ export function ProgramarProximaEntregaDialog({
   prefill,
   onSubmit,
 }: DialogProps) {
-  const { toast } = useToast();
   const copy = COPY[mode];
   const [reason, setReason] = useState("");
   const [address, setAddress] = useState(prefill.address);
@@ -147,10 +146,8 @@ export function ProgramarProximaEntregaDialog({
       await onSubmit(diff);
       onOpenChange(false);
     } catch (err) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: err instanceof Error ? err.message : "No se pudo procesar",
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);

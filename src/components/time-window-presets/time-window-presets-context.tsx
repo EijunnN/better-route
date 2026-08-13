@@ -7,9 +7,9 @@ import {
   useCallback,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useTimeWindowPresetList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type {
   TIME_WINDOW_STRICTNESS,
   TIME_WINDOW_TYPES,
@@ -82,7 +82,6 @@ export function TimeWindowPresetsProvider({
   children: ReactNode;
 }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const {
     data: presets = [],
@@ -118,16 +117,13 @@ export function TimeWindowPresetsProvider({
       }
       await mutatePresets();
       setShowForm(false);
-      toast({
-        title: "Preset creado",
+      toast.success("Preset creado", {
         description: `El preset "${data.name}" ha sido creado exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al crear preset",
+      toast.error("Error al crear preset", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -154,16 +150,13 @@ export function TimeWindowPresetsProvider({
       await mutatePresets();
       setEditingPreset(null);
       setShowForm(false);
-      toast({
-        title: "Preset actualizado",
+      toast.success("Preset actualizado", {
         description: `El preset "${data.name}" ha sido actualizado exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al actualizar preset",
+      toast.error("Error al actualizar preset", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -188,18 +181,15 @@ export function TimeWindowPresetsProvider({
         throw new Error(error.error || "Error al eliminar el preset");
       }
       await mutatePresets();
-      toast({
-        title: "Preset eliminado",
+      toast.success("Preset eliminado", {
         description: preset
           ? `El preset "${preset.name}" ha sido eliminado.`
           : "El preset ha sido eliminado.",
       });
     } catch (err) {
-      toast({
-        title: "Error al eliminar preset",
+      toast.error("Error al eliminar preset", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingId(null);

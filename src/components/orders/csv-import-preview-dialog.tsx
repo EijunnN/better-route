@@ -9,6 +9,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,7 +23,6 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
 
 export interface PreviewBucketRow {
   row: number;
@@ -96,7 +96,6 @@ export function CsvImportPreviewDialog({
   onConfirm,
   onDone,
 }: DialogProps) {
-  const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("new");
   const [reactivableSelected, setReactivableSelected] = useState<Set<string>>(
@@ -150,22 +149,20 @@ export function CsvImportPreviewDialog({
           );
         const hadFailures = (result.failed ?? 0) > 0;
         if (hadFailures) parts.push(`${result.failed} fallaron`);
-        toast({
-          title: hadFailures
-            ? "Importación aplicada parcialmente"
-            : "Importación aplicada",
-          description: hadFailures
-            ? `${parts.join(" · ")}${result.errors?.[0] ? ` — ${result.errors[0]}` : ""}`
-            : parts.join(" · ") || "Sin cambios",
-          variant: hadFailures ? "destructive" : undefined,
-        });
+        if (hadFailures) {
+          toast.error("Importación aplicada parcialmente", {
+            description: `${parts.join(" · ")}${result.errors?.[0] ? ` — ${result.errors[0]}` : ""}`,
+          });
+        } else {
+          toast.success("Importación aplicada", {
+            description: parts.join(" · ") || "Sin cambios",
+          });
+        }
         onDone();
       }
     } catch (err) {
-      toast({
-        title: "Error al confirmar",
+      toast.error("Error al confirmar", {
         description: err instanceof Error ? err.message : "Error inesperado",
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);

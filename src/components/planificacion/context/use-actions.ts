@@ -1,7 +1,7 @@
 "use client";
 
 import type { useRouter } from "next/navigation";
-import type { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { parseCSVLine } from "@/lib/csv/parse-csv-line";
 import type { CsvRow, Order, StepId } from "../planificacion-types";
 import type { PlanificacionActions, PlanificacionDerived } from "./types";
@@ -13,7 +13,6 @@ interface ActionsDeps {
   derived: PlanificacionDerived;
   companyId: string | null;
   router: ReturnType<typeof useRouter>;
-  toast: ReturnType<typeof useToast>["toast"];
   loadOrders: (signal?: AbortSignal) => Promise<void>;
 }
 
@@ -24,7 +23,7 @@ interface ActionsDeps {
 export function usePlanificacionActions(
   deps: ActionsDeps,
 ): PlanificacionActions {
-  const { state, derived, companyId, router, toast, loadOrders } = deps;
+  const { state, derived, companyId, router, loadOrders } = deps;
   const {
     currentStep,
     setCurrentStep,
@@ -185,18 +184,15 @@ export function usePlanificacionActions(
       const idsSet = new Set(ids);
       setOrders((prev) => prev.filter((o) => !idsSet.has(o.id)));
       setSelectedOrderIds((prev) => prev.filter((id) => !idsSet.has(id)));
-      toast({
-        title: "Pedidos eliminados",
+      toast.success("Pedidos eliminados", {
         description: `${json?.deleted ?? ids.length} pedido(s) fuera de la planificación.`,
       });
     } catch (error) {
-      toast({
-        title: "Error al eliminar pedidos",
+      toast.error("Error al eliminar pedidos", {
         description:
           error instanceof Error
             ? error.message
             : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     }
   };
@@ -214,13 +210,11 @@ export function usePlanificacionActions(
         setSelectedOrderIds((prev) => prev.filter((oid) => oid !== id));
       }
     } catch (error) {
-      toast({
-        title: "Error al eliminar pedido",
+      toast.error("Error al eliminar pedido", {
         description:
           error instanceof Error
             ? error.message
             : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingOrderId(null);
@@ -246,18 +240,15 @@ export function usePlanificacionActions(
       }
       setSelectedOrderIds([]);
       await loadOrders();
-      toast({
-        title: "Pedidos pendientes descartados",
+      toast.success("Pedidos pendientes descartados", {
         description: `${json?.deleted ?? 0} pedido(s) eliminados del borrador.`,
       });
     } catch (error) {
-      toast({
-        title: "Error al descartar pedidos",
+      toast.error("Error al descartar pedidos", {
         description:
           error instanceof Error
             ? error.message
             : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setIsDiscardingPending(false);

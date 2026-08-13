@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ORDER_CANCELLATION_CATEGORIES } from "@/db/schema";
-import { useToast } from "@/hooks/use-toast";
 
 const CATEGORY_LABELS: Record<
   keyof typeof ORDER_CANCELLATION_CATEGORIES,
@@ -52,7 +52,6 @@ interface Props {
  * reactivate (issue 004).
  */
 export function CancelOrderDialog({ open, onOpenChange, onConfirm }: Props) {
-  const { toast } = useToast();
   const [category, setCategory] = useState<
     keyof typeof ORDER_CANCELLATION_CATEGORIES | ""
   >("");
@@ -73,10 +72,8 @@ export function CancelOrderDialog({ open, onOpenChange, onConfirm }: Props) {
       setCategory("");
       setNote("");
     } catch (err) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: err instanceof Error ? err.message : "No se pudo cancelar",
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);

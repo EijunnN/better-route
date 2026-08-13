@@ -1,7 +1,7 @@
 import { count } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout";
-import { Toaster } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/toaster";
 import { db } from "@/db";
 import { companies, USER_ROLES } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/auth";

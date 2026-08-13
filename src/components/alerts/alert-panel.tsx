@@ -2,9 +2,9 @@
 
 import { AlertTriangle, Loader2, RefreshCw, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { type Alert, AlertItem } from "./alert-item";
 
@@ -40,7 +40,6 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
   const [severityTab, setSeverityTab] = useState<SeverityKey>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusKey>("ACTIVE");
-  const { toast } = useToast();
 
   const fetchAlerts = useCallback(async () => {
     setIsLoading(true);
@@ -54,15 +53,13 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
       setAlerts(result.data || []);
     } catch (error) {
       console.error("Error fetching alerts:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
+      toast.error("Error", {
         description: "No se pudieron cargar las alertas",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [companyId, statusFilter, toast]);
+  }, [companyId, statusFilter]);
 
   useEffect(() => {
     if (companyId) fetchAlerts();
@@ -109,18 +106,13 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
         body: JSON.stringify({ note }),
       });
       if (!res.ok) throw new Error("Failed to acknowledge alert");
-      toast({
-        title: "Alerta reconocida",
+      toast.success("Alerta reconocida", {
         description: "La alerta fue marcada como reconocida.",
       });
       fetchAlerts();
     } catch (error) {
       console.error("Error acknowledging alert:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo reconocer la alerta",
-      });
+      toast.error("Error", { description: "No se pudo reconocer la alerta" });
     }
   };
 
@@ -135,18 +127,13 @@ export function AlertPanel({ companyId, onAlertClick }: AlertPanelProps) {
         body: JSON.stringify({ note }),
       });
       if (!res.ok) throw new Error("Failed to dismiss alert");
-      toast({
-        title: "Alerta descartada",
+      toast.success("Alerta descartada", {
         description: "La alerta fue ocultada de la lista activa.",
       });
       fetchAlerts();
     } catch (error) {
       console.error("Error dismissing alert:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo descartar la alerta",
-      });
+      toast.error("Error", { description: "No se pudo descartar la alerta" });
     }
   };
 

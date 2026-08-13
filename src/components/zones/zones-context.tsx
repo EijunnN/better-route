@@ -8,9 +8,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useVehicleList, useZoneList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { ZoneInput } from "@/lib/validations/zone";
 
 // Types
@@ -124,7 +124,6 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
@@ -203,16 +202,13 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
       await mutateZones();
       setViewMode("list");
       setPendingFormData(null);
-      toast({
-        title: "Zona creada",
+      toast.success("Zona creada", {
         description: `La zona "${data.name}" ha sido creada exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al crear zona",
+      toast.error("Error al crear zona", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     } finally {
@@ -255,16 +251,13 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
       setEditingZoneVehicleIds([]);
       setViewMode("list");
       setPendingFormData(null);
-      toast({
-        title: "Zona actualizada",
+      toast.success("Zona actualizada", {
         description: `La zona "${data.name}" ha sido actualizada exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al actualizar zona",
+      toast.error("Error al actualizar zona", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     } finally {
@@ -290,18 +283,15 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
 
       if (selectedZoneId === id) setSelectedZoneId(null);
       await mutateZones();
-      toast({
-        title: "Zona desactivada",
+      toast.success("Zona desactivada", {
         description: zone
           ? `La zona "${zone.name}" ha sido desactivada.`
           : "La zona ha sido desactivada.",
       });
     } catch (err) {
-      toast({
-        title: "Error al desactivar zona",
+      toast.error("Error al desactivar zona", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingId(null);

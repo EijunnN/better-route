@@ -8,8 +8,8 @@ import {
   useEffect,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { VehicleSkillInput } from "@/lib/validations/vehicle-skill";
 
 export interface VehicleSkill {
@@ -76,7 +76,6 @@ const VehicleSkillsContext = createContext<
 
 export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const [skills, setSkills] = useState<VehicleSkill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,16 +136,13 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
       }
       await fetchSkills();
       setShowForm(false);
-      toast({
-        title: "Habilidad creada",
+      toast.success("Habilidad creada", {
         description: `La habilidad "${data.name}" ha sido creada exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al crear habilidad",
+      toast.error("Error al crear habilidad", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -169,16 +165,13 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
       }
       await fetchSkills();
       setEditingSkill(null);
-      toast({
-        title: "Habilidad actualizada",
+      toast.success("Habilidad actualizada", {
         description: `La habilidad "${data.name}" ha sido actualizada exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al actualizar habilidad",
+      toast.error("Error al actualizar habilidad", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -200,18 +193,15 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
         );
       }
       await fetchSkills();
-      toast({
-        title: "Habilidad eliminada",
+      toast.success("Habilidad eliminada", {
         description: skill
           ? `La habilidad "${skill.name}" ha sido eliminada.`
           : "La habilidad ha sido eliminada.",
       });
     } catch (err) {
-      toast({
-        title: "Error al eliminar habilidad",
+      toast.error("Error al eliminar habilidad", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingId(null);
@@ -234,16 +224,13 @@ export function VehicleSkillsProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || "Error al actualizar el estado");
       }
       await fetchSkills();
-      toast({
-        title: "Estado actualizado",
+      toast.success("Estado actualizado", {
         description: `La habilidad "${skill.name}" ahora está ${!skill.active ? "activa" : "inactiva"}.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al actualizar estado",
+      toast.error("Error al actualizar estado", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     }
   };

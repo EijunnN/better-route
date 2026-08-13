@@ -8,9 +8,9 @@ import {
   useEffect,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useApiData } from "@/hooks/use-api";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 
 export interface Role {
   id: string;
@@ -104,7 +104,6 @@ const RolesContext = createContext<RolesContextValue | undefined>(undefined);
 
 export function RolesProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId, isSystemAdmin, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const {
     data: roles = [],
@@ -193,19 +192,14 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       await fetchRoles();
       setShowForm(false);
       setFormData({ name: "", description: "" });
-      toast({
-        title: "Rol creado",
+      toast.success("Rol creado", {
         description: `El rol "${formData.name}" ha sido creado exitosamente.`,
       });
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Error al crear el rol";
       setFormError(errorMessage);
-      toast({
-        title: "Error al crear rol",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error("Error al crear rol", { description: errorMessage });
     }
   };
 
@@ -224,18 +218,15 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       }
       if (selectedRole?.id === id) setSelectedRole(null);
       await fetchRoles();
-      toast({
-        title: "Rol eliminado",
+      toast.success("Rol eliminado", {
         description: role
           ? `El rol "${role.name}" ha sido eliminado.`
           : "El rol ha sido eliminado.",
       });
     } catch (err) {
-      toast({
-        title: "Error al eliminar rol",
+      toast.error("Error al eliminar rol", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingId(null);

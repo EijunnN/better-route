@@ -8,9 +8,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useFleetList, useRoleList, useUserList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { CreateUserInput } from "@/lib/validations/user";
 
 // Types
@@ -140,7 +140,6 @@ const UsersContext = createContext<UsersContextValue | undefined>(undefined);
 
 export function UsersProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId, isSystemAdmin, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("all");
   const [showForm, setShowForm] = useState(false);
@@ -272,8 +271,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
 
       await mutateUsers();
       setShowForm(false);
-      toast({
-        title: "Usuario creado",
+      toast.success("Usuario creado", {
         description: `El usuario "${data.name}" ha sido creado exitosamente.`,
       });
     } catch (err) {
@@ -281,13 +279,11 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         err && typeof err === "object"
           ? (err as ApiErrorResponse)
           : { error: "Ocurrió un error inesperado" };
-      toast({
-        title: "Error al crear usuario",
+      toast.error("Error al crear usuario", {
         description: getApiErrorMessage(
           apiError,
           "Ocurrió un error inesperado",
         ),
-        variant: "destructive",
       });
       throw err;
     }
@@ -333,8 +329,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       await mutateUsers();
       setEditingUser(null);
       setEditingUserRoleIds([]);
-      toast({
-        title: "Usuario actualizado",
+      toast.success("Usuario actualizado", {
         description: `El usuario "${data.name}" ha sido actualizado exitosamente.`,
       });
     } catch (err) {
@@ -342,13 +337,11 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         err && typeof err === "object"
           ? (err as ApiErrorResponse)
           : { error: "Ocurrió un error inesperado" };
-      toast({
-        title: "Error al actualizar usuario",
+      toast.error("Error al actualizar usuario", {
         description: getApiErrorMessage(
           apiError,
           "Ocurrió un error inesperado",
         ),
-        variant: "destructive",
       });
       throw err;
     }
@@ -373,18 +366,15 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       }
 
       await mutateUsers();
-      toast({
-        title: "Usuario desactivado",
+      toast.success("Usuario desactivado", {
         description: user
           ? `El usuario "${user.name}" ha sido desactivado.`
           : "El usuario ha sido desactivado.",
       });
     } catch (err) {
-      toast({
-        title: "Error al desactivar usuario",
+      toast.error("Error al desactivar usuario", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingId(null);

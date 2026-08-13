@@ -3,6 +3,7 @@
 import { AlertCircle, ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import { useFullScreenLayout } from "@/components/layout";
 import {
@@ -21,7 +22,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { VerifiedPlan } from "@/lib/optimization/solved-plan";
 import { safeParseJson } from "@/lib/utils/safe-json";
 
@@ -189,13 +189,11 @@ function ResultsPageContent() {
   };
 
   const [showPostConfirmDialog, setShowPostConfirmDialog] = useState(false);
-  const { toast } = useToast();
 
   // Called by PlanConfirmationDialog's onConfirmed callback AFTER the dialog
   // already confirmed the plan via the API. This only handles post-confirm UI.
   const handleConfirm = () => {
-    toast({
-      title: "Plan confirmado",
+    toast.success("Plan confirmado", {
       description: "Pedidos asignados exitosamente",
     });
     setShowPostConfirmDialog(true);

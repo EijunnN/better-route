@@ -8,9 +8,9 @@ import {
   useEffect,
   useState,
 } from "react";
+import { toast } from "sonner";
 import type { companyDeliveryPolicy } from "@/db/schema";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 
 export type DeliveryPolicy = typeof companyDeliveryPolicy.$inferSelect;
 
@@ -132,7 +132,6 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
 
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [templates, setTemplates] = useState<ProfileTemplate[]>([]);
@@ -333,18 +332,15 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      toast({
-        title: "Cambios guardados",
+      toast.success("Cambios guardados", {
         description: `${savedSections.length} sección${savedSections.length === 1 ? "" : "es"} actualizada${savedSections.length === 1 ? "" : "s"}.`,
       });
       clearDirty();
       fetchProfile();
     } catch (error) {
-      toast({
-        title: "Error al guardar",
+      toast.error("Error al guardar", {
         description:
           error instanceof Error ? error.message : "Inténtalo de nuevo",
-        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -365,12 +361,10 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
         next.delete("profile");
         return next;
       });
-      toast({ title: "Perfil restablecido" });
+      toast.success("Perfil restablecido");
     } catch (error) {
-      toast({
-        title: "Error al restablecer",
+      toast.error("Error al restablecer", {
         description: error instanceof Error ? error.message : "",
-        variant: "destructive",
       });
     }
   };
@@ -392,10 +386,8 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      toast({
-        title: "No se pudo descargar la plantilla",
+      toast.error("No se pudo descargar la plantilla", {
         description: error instanceof Error ? error.message : "",
-        variant: "destructive",
       });
     }
   };

@@ -3,6 +3,7 @@
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Can } from "@/components/auth/can";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import {
@@ -21,7 +22,6 @@ import {
   VisitTimeline,
 } from "@/components/visits";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 
 interface OrderDetail {
   id: string;
@@ -72,7 +72,6 @@ function OrderDetailContent() {
   const [unassignOpen, setUnassignOpen] = useState(false);
   const [revertOpen, setRevertOpen] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
-  const { toast } = useToast();
 
   const refresh = useCallback(() => setRefreshTick((t) => t + 1), []);
 
@@ -136,8 +135,7 @@ function OrderDetailContent() {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(err.error || "No se pudo reabrir la parada");
     }
-    toast({
-      title: "Parada reabierta",
+    toast.success("Parada reabierta", {
       description: "El conductor verá el pedido nuevamente en su lista.",
     });
     refresh();
@@ -169,8 +167,7 @@ function OrderDetailContent() {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(err.error || "No se pudo cancelar el pedido");
     }
-    toast({
-      title: "Pedido cancelado",
+    toast.success("Pedido cancelado", {
       description: "El pedido se marcó como CANCELLED definitivamente.",
     });
     refresh();
@@ -190,8 +187,7 @@ function OrderDetailContent() {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(err.error || "No se pudo sacar el pedido del plan");
     }
-    toast({
-      title: "Pedido desasignado",
+    toast.success("Pedido desasignado", {
       description: "Volvió a Pendiente para replanificarse.",
     });
     refresh();
@@ -211,8 +207,7 @@ function OrderDetailContent() {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(err.error || "No se pudo revertir el pedido");
     }
-    toast({
-      title: "Entrega revertida",
+    toast.success("Entrega revertida", {
       description: "El pedido volvió a Pendiente.",
     });
     refresh();
@@ -235,8 +230,7 @@ function OrderDetailContent() {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(err.error || "No se pudo reactivar el pedido");
     }
-    toast({
-      title: "Pedido reactivado",
+    toast.success("Pedido reactivado", {
       description: "Entrará en el próximo plan disponible.",
     });
     refresh();

@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import { PlanificacionContext } from "./context-instance";
 import type {
   PlanificacionActions,
@@ -17,8 +16,8 @@ import { usePlanificacionEffects } from "./use-effects";
 import { usePlanificacionState } from "./use-state";
 
 export function PlanificacionProvider({ children }: { children: ReactNode }) {
-  // Hook order below is load-bearing: router -> companyContext -> toast ->
-  // all useState (inside usePlanificacionState) -> useEffect (inside
+  // Hook order below is load-bearing: router -> companyContext -> all
+  // useState (inside usePlanificacionState) -> useEffect (inside
   // usePlanificacionEffects). The split hooks never conditionally skip hook
   // calls, so React's rules-of-hooks invariant is preserved.
   const router = useRouter();
@@ -31,7 +30,6 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
 
   // All useState calls live here, in the same order as the original file.
   const state = usePlanificacionState();
@@ -49,7 +47,6 @@ export function PlanificacionProvider({ children }: { children: ReactNode }) {
     derived,
     companyId,
     router,
-    toast,
     loadOrders,
   });
 

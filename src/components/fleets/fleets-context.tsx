@@ -8,9 +8,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useFleetList, useVehicleList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { FleetInput } from "@/lib/validations/fleet";
 
 export interface Fleet {
@@ -79,7 +79,6 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
 
   const {
     data: fleets = [],
@@ -131,16 +130,13 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
       }
       await refetch();
       setShowForm(false);
-      toast({
-        title: "Flota creada",
+      toast.success("Flota creada", {
         description: `La flota "${data.name}" ha sido creada exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al crear flota",
+      toast.error("Error al crear flota", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -163,16 +159,13 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
       }
       await refetch();
       setEditingFleet(null);
-      toast({
-        title: "Flota actualizada",
+      toast.success("Flota actualizada", {
         description: `La flota "${data.name}" ha sido actualizada exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al actualizar flota",
+      toast.error("Error al actualizar flota", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -194,18 +187,15 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
         );
       }
       await refetch();
-      toast({
-        title: "Flota desactivada",
+      toast.success("Flota desactivada", {
         description: fleet
           ? `La flota "${fleet.name}" ha sido desactivada.`
           : "La flota ha sido desactivada.",
       });
     } catch (err) {
-      toast({
-        title: "Error al desactivar flota",
+      toast.error("Error al desactivar flota", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingId(null);

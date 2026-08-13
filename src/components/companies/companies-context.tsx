@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, type ReactNode, use, useState } from "react";
+import { toast } from "sonner";
 import useSWR from "swr";
-import { useToast } from "@/hooks/use-toast";
 import type { CompanyInput } from "@/lib/validations/company";
 
 export interface Company {
@@ -57,7 +57,6 @@ const CompaniesContext = createContext<CompaniesContextValue | undefined>(
 );
 
 export function CompaniesProvider({ children }: { children: ReactNode }) {
-  const { toast } = useToast();
   const {
     data: companies = [],
     isLoading,
@@ -82,16 +81,13 @@ export function CompaniesProvider({ children }: { children: ReactNode }) {
       }
       await mutate();
       setShowForm(false);
-      toast({
-        title: "Empresa creada",
+      toast.success("Empresa creada", {
         description: `La empresa "${data.commercialName}" ha sido creada exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al crear empresa",
+      toast.error("Error al crear empresa", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -119,16 +115,13 @@ export function CompaniesProvider({ children }: { children: ReactNode }) {
         { optimisticData, rollbackOnError: true, revalidate: false },
       );
       setEditingCompany(null);
-      toast({
-        title: "Empresa actualizada",
+      toast.success("Empresa actualizada", {
         description: `La empresa "${data.commercialName}" ha sido actualizada exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al actualizar empresa",
+      toast.error("Error al actualizar empresa", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -154,18 +147,15 @@ export function CompaniesProvider({ children }: { children: ReactNode }) {
         },
         { optimisticData, rollbackOnError: true, revalidate: false },
       );
-      toast({
-        title: "Empresa desactivada",
+      toast.success("Empresa desactivada", {
         description: company
           ? `La empresa "${company.commercialName}" ha sido desactivada.`
           : "La empresa ha sido desactivada.",
       });
     } catch (err) {
-      toast({
-        title: "Error al desactivar empresa",
+      toast.error("Error al desactivar empresa", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingId(null);

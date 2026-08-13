@@ -8,9 +8,9 @@ import {
   useEffect,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useUserList, useVehicleSkillList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { UserSkillInput } from "@/lib/validations/user-skill";
 
 export interface UserSkill {
@@ -123,7 +123,6 @@ const UserSkillsContext = createContext<UserSkillsContextValue | undefined>(
 
 export function UserSkillsProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const [userSkills, setUserSkills] = useState<UserSkill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -175,15 +174,13 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
       setUserSkills(data.data || []);
     } catch (error) {
       console.error("Error al cargar habilidades:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "No se pudieron cargar las habilidades de usuarios",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [companyId, filterUser, filterStatus, filterExpiry, toast]);
+  }, [companyId, filterUser, filterStatus, filterExpiry]);
 
   useEffect(() => {
     fetchUserSkills();
@@ -206,16 +203,13 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
       }
       await fetchUserSkills();
       setShowForm(false);
-      toast({
-        title: "Habilidad asignada",
+      toast.success("Habilidad asignada", {
         description: "La habilidad ha sido asignada exitosamente al usuario.",
       });
     } catch (err) {
-      toast({
-        title: "Error al asignar habilidad",
+      toast.error("Error al asignar habilidad", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -238,17 +232,14 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
       }
       await fetchUserSkills();
       setEditingUserSkill(null);
-      toast({
-        title: "Habilidad actualizada",
+      toast.success("Habilidad actualizada", {
         description:
           "La habilidad del usuario ha sido actualizada exitosamente.",
       });
     } catch (err) {
-      toast({
-        title: "Error al actualizar habilidad",
+      toast.error("Error al actualizar habilidad", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -270,18 +261,15 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
         );
       }
       await fetchUserSkills();
-      toast({
-        title: "Habilidad desactivada",
+      toast.success("Habilidad desactivada", {
         description: userSkill
           ? `La habilidad "${userSkill.skill.name}" de ${userSkill.user.name} ha sido desactivada.`
           : "La habilidad ha sido desactivada.",
       });
     } catch (err) {
-      toast({
-        title: "Error al desactivar habilidad",
+      toast.error("Error al desactivar habilidad", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingId(null);
@@ -306,16 +294,13 @@ export function UserSkillsProvider({ children }: { children: ReactNode }) {
         );
       }
       await fetchUserSkills();
-      toast({
-        title: "Estado actualizado",
+      toast.success("Estado actualizado", {
         description: `La habilidad ahora está ${!currentActive ? "activa" : "inactiva"}.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al actualizar estado",
+      toast.error("Error al actualizar estado", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     }
   };

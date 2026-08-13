@@ -8,8 +8,8 @@ import {
   useEffect,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type {
   ORDER_STATUS,
   TIME_WINDOW_STRICTNESS,
@@ -112,7 +112,6 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -174,16 +173,13 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       }
       await fetchOrders();
       setShowForm(false);
-      toast({
-        title: "Pedido creado",
+      toast.success("Pedido creado", {
         description: `El pedido "${data.trackingId}" ha sido creado exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al crear pedido",
+      toast.error("Error al crear pedido", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -207,16 +203,13 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       await fetchOrders();
       setEditingOrder(null);
       setShowForm(false);
-      toast({
-        title: "Pedido actualizado",
+      toast.success("Pedido actualizado", {
         description: `El pedido "${data.trackingId}" ha sido actualizado exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al actualizar pedido",
+      toast.error("Error al actualizar pedido", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -241,18 +234,15 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || "Error al eliminar pedido");
       }
       await fetchOrders();
-      toast({
-        title: "Pedido eliminado",
+      toast.success("Pedido eliminado", {
         description: order
           ? `El pedido "${order.trackingId}" ha sido eliminado.`
           : "El pedido ha sido eliminado.",
       });
     } catch (err) {
-      toast({
-        title: "Error al eliminar pedido",
+      toast.error("Error al eliminar pedido", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingId(null);
@@ -272,16 +262,13 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         throw new Error(result.error || "Error al eliminar pedidos");
       setCurrentPage(1);
       await fetchOrders();
-      toast({
-        title: "Pedidos eliminados",
+      toast.success("Pedidos eliminados", {
         description: `${result.deleted} pedidos han sido eliminados.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al eliminar pedidos",
+      toast.error("Error al eliminar pedidos", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
@@ -316,11 +303,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         setTrackingLink({ trackingId, url: fullUrl });
       }
     } catch (err) {
-      toast({
-        title: "Error al generar enlace",
+      toast.error("Error al generar enlace", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setIsGeneratingLink(false);

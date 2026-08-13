@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { toast } from "sonner";
 import {
   useCompanyProfile,
   useDrivers,
@@ -16,7 +17,6 @@ import {
   useVehicleSkillList,
 } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 import type { VehicleStatusTransitionInput } from "@/lib/validations/vehicle-status";
 
@@ -146,7 +146,6 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     setSelectedCompanyId,
     authCompanyId,
   } = useCompanyContext();
-  const { toast } = useToast();
   const { drivers } = useDrivers();
   const {
     data: rawVehicles = [],
@@ -245,16 +244,13 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
       }
       await mutateVehicles();
       setShowForm(false);
-      toast({
-        title: "Vehículo creado",
+      toast.success("Vehículo creado", {
         description: `El vehículo "${data.name}" ha sido creado exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al crear vehículo",
+      toast.error("Error al crear vehículo", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -281,16 +277,13 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
       await mutateVehicles();
       setEditingVehicle(null);
       setEditingVehicleSkillIds([]);
-      toast({
-        title: "Vehículo actualizado",
+      toast.success("Vehículo actualizado", {
         description: `El vehículo "${data.name}" ha sido actualizado exitosamente.`,
       });
     } catch (err) {
-      toast({
-        title: "Error al actualizar vehículo",
+      toast.error("Error al actualizar vehículo", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
       throw err;
     }
@@ -312,18 +305,15 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
         );
       }
       await mutateVehicles();
-      toast({
-        title: "Vehículo desactivado",
+      toast.success("Vehículo desactivado", {
         description: vehicle
           ? `El vehículo "${vehicle.name}" ha sido desactivado.`
           : "El vehículo ha sido desactivado.",
       });
     } catch (err) {
-      toast({
-        title: "Error al desactivar vehículo",
+      toast.error("Error al desactivar vehículo", {
         description:
           err instanceof Error ? err.message : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setDeletingId(null);

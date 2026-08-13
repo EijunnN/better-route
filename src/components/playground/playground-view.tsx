@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +33,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApiData } from "@/hooks/use-api";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 import {
   DEFAULT_CAPS,
   DEFAULT_MAP_CENTER,
@@ -63,7 +63,6 @@ type PlacementMode = "manual" | "scatter";
 
 export function PlaygroundView() {
   const { effectiveCompanyId, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const {
     data: summary,
@@ -160,18 +159,15 @@ export function PlaygroundView() {
 
       setManualOrigins([]);
       await refreshSummary();
-      toast({
-        title: "Datos de prueba generados",
+      toast.success("Datos de prueba generados", {
         description: `${data.vehicles} vehículos, ${data.drivers} conductores y ${data.fleets} flotas.`,
       });
     } catch (error) {
-      toast({
-        title: "Error al generar datos",
+      toast.error("Error al generar datos", {
         description:
           error instanceof Error
             ? error.message
             : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setIsGenerating(false);
@@ -194,19 +190,16 @@ export function PlaygroundView() {
       }
 
       await refreshSummary();
-      toast({
-        title: "Datos de prueba borrados",
+      toast.success("Datos de prueba borrados", {
         description:
           "Se eliminaron todas las flotas, conductores y vehículos TEST-.",
       });
     } catch (error) {
-      toast({
-        title: "Error al borrar datos",
+      toast.error("Error al borrar datos", {
         description:
           error instanceof Error
             ? error.message
             : "Ocurrió un error inesperado",
-        variant: "destructive",
       });
     } finally {
       setIsCleaning(false);

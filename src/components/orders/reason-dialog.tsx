@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   open: boolean;
@@ -37,7 +37,6 @@ export function ReasonDialog({
   confirmLabel,
   onConfirm,
 }: Props) {
-  const { toast } = useToast();
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -51,11 +50,9 @@ export function ReasonDialog({
       onOpenChange(false);
       setReason("");
     } catch (err) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description:
           err instanceof Error ? err.message : "No se pudo completar la acción",
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);

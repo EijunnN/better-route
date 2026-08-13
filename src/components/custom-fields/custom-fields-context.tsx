@@ -1,9 +1,9 @@
 "use client";
 
 import { createContext, type ReactNode, use, useState } from "react";
+import { toast } from "sonner";
 import { useFieldDefinitionList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 
 export type FieldType =
   | "text"
@@ -109,7 +109,6 @@ const CustomFieldsContext = createContext<CustomFieldsContextValue | undefined>(
 
 export function CustomFieldsProvider({ children }: { children: ReactNode }) {
   const { effectiveCompanyId: companyId, isReady } = useCompanyContext();
-  const { toast } = useToast();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -142,8 +141,7 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || "Error al crear campo");
       }
       await mutateDefinitions();
-      toast({
-        title: "Campo creado",
+      toast.success("Campo creado", {
         description: `El campo "${data.label}" ha sido creado.`,
       });
     } finally {
@@ -173,8 +171,7 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || "Error al actualizar campo");
       }
       await mutateDefinitions();
-      toast({
-        title: "Campo actualizado",
+      toast.success("Campo actualizado", {
         description: `El campo "${data.label}" ha sido actualizado.`,
       });
     } finally {
@@ -200,8 +197,7 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || "Error al archivar campo");
       }
       await mutateDefinitions();
-      toast({
-        title: "Campo archivado",
+      toast.success("Campo archivado", {
         description: "El campo ya no se usará en nuevos pedidos.",
       });
     } finally {
@@ -229,8 +225,7 @@ export function CustomFieldsProvider({ children }: { children: ReactNode }) {
       throw new Error(error.error || "Error al cambiar estado");
     }
     await mutateDefinitions();
-    toast({
-      title: active ? "Campo reactivado" : "Campo archivado",
+    toast.success(active ? "Campo reactivado" : "Campo archivado", {
       description: active
         ? `"${definition.label}" vuelve a estar disponible.`
         : `"${definition.label}" ya no aparecerá en formularios nuevos.`,
