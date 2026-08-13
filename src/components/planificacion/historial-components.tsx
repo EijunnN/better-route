@@ -454,6 +454,7 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
   const statusConfig = getStatusConfig(effectiveStatus);
   // Plan metrics only exist after confirm. Cancelled/failed jobs have no row.
   const canShowMetrics = effectiveStatus === "CONFIRMED";
+  const summary = job.resultSummary;
 
   return (
     <Card
@@ -468,7 +469,7 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
             {statusConfig.label}
           </Badge>
 
-          {job.result?.isPartial && (
+          {job.resultSummary?.isPartial && (
             <Badge
               variant="outline"
               className="text-xs py-0 shrink-0 text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-500"
@@ -488,29 +489,27 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
                   job.completedAt || job.cancelledAt || job.createdAt,
                 )}
               </span>
-              {job.result && (
+              {summary?.metrics && (
                 <>
                   <span>
                     <span className="font-medium text-foreground">
-                      {job.result.metrics.totalRoutes}
+                      {summary.metrics.totalRoutes}
                     </span>{" "}
                     rutas
                   </span>
                   <span>
                     <span className="font-medium text-foreground">
-                      {job.result.metrics.totalStops}
+                      {summary.metrics.totalStops}
                     </span>{" "}
                     paradas
                   </span>
-                  <span>
-                    {formatDistance(job.result.metrics.totalDistance)}
-                  </span>
-                  {job.result.unassignedOrders.length > 0 && (
-                    <span className="text-orange-600 dark:text-orange-400">
-                      {job.result.unassignedOrders.length} sin asignar
-                    </span>
-                  )}
+                  <span>{formatDistance(summary.metrics.totalDistance)}</span>
                 </>
+              )}
+              {summary && summary.unassignedCount > 0 && (
+                <span className="text-orange-600 dark:text-orange-400">
+                  {summary.unassignedCount} sin asignar
+                </span>
               )}
               {job.status === "RUNNING" && job.progress > 0 && (
                 <span>{job.progress}%</span>

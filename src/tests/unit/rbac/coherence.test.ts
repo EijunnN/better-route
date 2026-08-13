@@ -67,7 +67,7 @@ const PAGE_CONTRACTS: PageContract[] = [
     route: "dashboard",
     sidebar: "metrics:read",
     serverCheck: "authenticated-only (landing page post-login)",
-    why: "Server component that queries DB per user's companyId. No <ProtectedPage> — the (protected) layout's JWT check is enough; a user with no companyId gets a ADMIN_SISTEMA onboarding redirect instead of 403. Sidebar item gated by metrics:read so users without metrics still see the page via direct navigation but without link in nav.",
+    why: "Landing page post-login. Entry is gated by <ProtectedPage requiredPermission='metrics:read'>; the data itself is fetched client-side scoped to the selected company. The fresh-system guard (ADMIN_SISTEMA with no companies → /onboarding) lives in the (protected) LAYOUT, not here: inside the page the layout had already streamed the app chrome while the guard awaited its count query, so the user saw the dashboard flash before being redirected. Sidebar item gated by metrics:read so users without metrics still see the page via direct navigation but without link in nav.",
   },
   {
     kind: "client",

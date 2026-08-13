@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   experimental: {
     optimizePackageImports: ["lucide-react"],
+    // Corre el React Compiler dentro de Turbopack en vez de Babel, que era
+    // el único transform de Babel que quedaba en el pipeline. Experimental
+    // (16.3): si aparece un bug de compilación, sacar este flag lo devuelve
+    // al camino Babel sin tocar código.
+    turbopackRustReactCompiler: true,
   },
   async headers() {
     return [

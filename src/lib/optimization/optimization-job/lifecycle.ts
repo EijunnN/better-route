@@ -355,14 +355,22 @@ export async function createAndExecuteJob(
 
   registerJob(jobId, abortController);
   setJobTimeout(jobId, timeoutMs, async () => {
-    releaseCompanyLock(input.companyId, jobId);
-    await failJob(jobId, "Optimization timed out");
+    try {
+      releaseCompanyLock(input.companyId, jobId);
+      await failJob(jobId, "Optimization timed out");
+    } catch (error) {
+      // El watchdog corre dentro de un setTimeout: nadie awaitea esta
+      // promesa, así que una rejection acá quedaría huérfana y tumbaría el
+      // proceso entero. Y `failJob` rechaza justo cuando la DB está caída —
+      // que suele ser el motivo por el que el job expiró en primer lugar.
+      console.error(`[jobs] watchdog de timeout falló para ${jobId}:`, error);
+    }
   });
 
   // Fire-and-forget execution. Status transitions are persisted by the
   // helpers above (completeJob / failJob / cancelOptimizationJob) which
   // also unregister the job from the in-memory queue.
-  (async () => {
+  void (async () => {
     try {
       await db
         .update(optimizationJobs)
@@ -391,13 +399,28 @@ export async function createAndExecuteJob(
         const partialResults = takePartialResult(jobId);
         await cancelOptimizationJob(jobId, partialResults);
       } else {
+        // Descartar el snapshot parcial también acá: el runner pudo haberlo
+        // dejado seteado y después perder la carrera contra el watchdog
+        // (unregisterJob ya borró el job, así que isJobAborting da false).
+        // Sin esto el plan entero queda retenido en el Map para siempre.
+        takePartialResult(jobId);
         await failJob(
           jobId,
           error instanceof Error ? error.message : "Unknown error",
         );
       }
     }
-  })();
+  })().catch((error) => {
+    // Último recurso: el propio manejo de errores falló (DB caída mientras
+    // persistíamos el fallo). Sin este catch la rejection no tiene dueño y
+    // se lleva puesto el proceso — y con él todas las rutas HTTP.
+    console.error(
+      `[jobs] fallo irrecuperable finalizando el job ${jobId}; queda RUNNING hasta el próximo recoverStaleJobs:`,
+      error,
+    );
+    releaseCompanyLock(input.companyId, jobId);
+    unregisterJob(jobId);
+  });
 
   return { jobId, cached: false };
 }

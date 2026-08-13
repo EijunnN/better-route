@@ -360,6 +360,92 @@ describe("Optimization Config & Jobs", () => {
     expect(bodySearch.data.length).toBeGreaterThanOrEqual(1);
   });
 
+  test("GET /jobs projects result to a summary and never ships the full plan", async () => {
+    const { company, admin, token } = await makeFixtures();
+    const config = await createOptimizationConfig({ companyId: company.id });
+
+    await createOptimizationJob({
+      companyId: company.id,
+      configurationId: config.id,
+      status: "COMPLETED",
+      result: {
+        // Lo pesado: en un plan real son miles de paradas con geometrías.
+        routes: [{ routeId: "r1", stops: [1, 2, 3], geometry: "_p~iF~ps|U_" }],
+        unassignedOrders: [{ orderId: "o1" }, { orderId: "o2" }],
+        metrics: {
+          totalDistance: 12345,
+          totalDuration: 3600,
+          totalRoutes: 4,
+          totalStops: 87,
+          utilizationRate: 72.5,
+          timeWindowComplianceRate: 98,
+        },
+        verification: { violations: [{ code: "TIME_WINDOW_VIOLATION" }] },
+        isPartial: true,
+      },
+    });
+
+    const request = await createTestRequest("/api/optimization/jobs", {
+      method: "GET",
+      token,
+      companyId: company.id,
+      userId: admin.id,
+    });
+    const response = await listJobs(request);
+    expect(response.status).toBe(200);
+
+    const [job] = (await response.json()).data;
+    expect(job.resultSummary).toEqual({
+      isPartial: true,
+      metrics: {
+        totalDistance: 12345,
+        totalDuration: 3600,
+        totalRoutes: 4,
+        totalStops: 87,
+        utilizationRate: 72.5,
+        timeWindowComplianceRate: 98,
+      },
+      unassignedCount: 2,
+    });
+
+    // El punto del endpoint: el listado pinta cuatro números, así que el plan
+    // se queda en Postgres. Serializarlo entero por fila cargaba megabytes de
+    // rutas y geometrías en el heap para tirarlos sin leer.
+    expect(job.result).toBeUndefined();
+    expect(job.resultSummary.routes).toBeUndefined();
+    expect(job.resultSummary.verification).toBeUndefined();
+  });
+
+  test("GET /jobs tolerates legacy results missing plan keys", async () => {
+    const { company, admin, token } = await makeFixtures();
+    const config = await createOptimizationConfig({ companyId: company.id });
+
+    // `jsonb_array_length` sobre un escalar es ERROR en Postgres, no NULL:
+    // sin la guarda de `jsonb_typeof` esta fila devolvería 500.
+    await createOptimizationJob({
+      companyId: company.id,
+      configurationId: config.id,
+      status: "COMPLETED",
+      result: { unassignedOrders: null },
+    });
+
+    const request = await createTestRequest("/api/optimization/jobs", {
+      method: "GET",
+      token,
+      companyId: company.id,
+      userId: admin.id,
+    });
+    const response = await listJobs(request);
+    expect(response.status).toBe(200);
+
+    const [job] = (await response.json()).data;
+    expect(job.resultSummary).toEqual({
+      isPartial: false,
+      metrics: null,
+      unassignedCount: 0,
+    });
+  });
+
   // ==========================================================================
   // GET /api/optimization/jobs/[id]
   // ==========================================================================

@@ -1,7 +1,13 @@
 import { count, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { companies, permissions, rolePermissions, roles } from "@/db/schema";
+import {
+  companies,
+  permissions,
+  rolePermissions,
+  roles,
+  USER_ROLES,
+} from "@/db/schema";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 import { ROLE_PERMISSIONS } from "@/lib/auth/authorization";
 import { onboardingSetupSchema } from "@/lib/validations/onboarding";
@@ -78,29 +84,36 @@ function isPermissionEnabledForRole(
   return false;
 }
 
-const SYSTEM_ROLES = [
+// `code` tipado contra USER_ROLES y no como string suelto: indexa
+// ROLE_PERMISSIONS más abajo, así que un typo acá no rompería el build —
+// crearía el rol con CERO permisos, en silencio.
+const SYSTEM_ROLES: Array<{
+  code: keyof typeof USER_ROLES;
+  name: string;
+  description: string;
+}> = [
   {
-    code: "ADMIN_SISTEMA",
+    code: USER_ROLES.ADMIN_SISTEMA,
     name: "Administrador del Sistema",
     description: "Acceso total a todas las funcionalidades del sistema",
   },
   {
-    code: "PLANIFICADOR",
+    code: USER_ROLES.PLANIFICADOR,
     name: "Planificador",
     description: "Gestión de pedidos, optimización y planificación de rutas",
   },
   {
-    code: "MONITOR",
+    code: USER_ROLES.MONITOR,
     name: "Monitor",
     description: "Monitoreo en tiempo real de rutas y conductores",
   },
   {
-    code: "ADMIN_FLOTA",
+    code: USER_ROLES.ADMIN_FLOTA,
     name: "Administrador de Flota",
     description: "Gestión de flotas, vehículos y conductores",
   },
   {
-    code: "CONDUCTOR",
+    code: USER_ROLES.CONDUCTOR,
     name: "Conductor",
     description: "Acceso a rutas asignadas y actualización de paradas",
   },
@@ -111,7 +124,7 @@ export async function POST(request: NextRequest) {
     const user = await getAuthenticatedUser(request);
 
     // Only ADMIN_SISTEMA can run onboarding
-    if (user.role !== "ADMIN_SISTEMA") {
+    if (user.role !== USER_ROLES.ADMIN_SISTEMA) {
       return NextResponse.json(
         {
           error:

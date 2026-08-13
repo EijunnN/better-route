@@ -8,11 +8,52 @@ import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { createAndExecuteJob } from "@/lib/optimization/optimization-job";
+import type { PlanLevelMetrics } from "@/lib/optimization/solved-plan";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
 import {
   optimizationJobCreateSchema,
   optimizationJobQuerySchema,
 } from "@/lib/validations/optimization-job";
+
+/**
+ * Lo único del VerifiedPlan que la vista de historial pinta por fila.
+ * El plan completo (rutas, paradas, geometrías, violaciones) se pide por
+ * `GET /api/optimization/jobs/[id]` cuando el usuario abre uno.
+ */
+interface OptimizationJobResultSummary {
+  isPartial: boolean;
+  metrics: PlanLevelMetrics | null;
+  unassignedCount: number;
+}
+
+/**
+ * Proyección del `result` JSONB a su resumen, calculada en Postgres.
+ *
+ * Seleccionar la columna entera acá cargaba el VerifiedPlan completo de cada
+ * job del page —planes de 1000+ órdenes con geometrías— en el heap del
+ * proceso, para después serializarlos al navegador y usar cuatro números.
+ *
+ * Defensivo con `jsonb_typeof` a propósito: los planes viejos pueden no
+ * traer todas las claves, y `jsonb_array_length` sobre un escalar es error
+ * de Postgres, no NULL.
+ */
+const resultSummarySql = sql<OptimizationJobResultSummary | null>`
+  case
+    when ${optimizationJobs.result} is null then null
+    else jsonb_build_object(
+      'isPartial',
+        coalesce(${optimizationJobs.result} -> 'isPartial', 'false'::jsonb),
+      'metrics',
+        ${optimizationJobs.result} -> 'metrics',
+      'unassignedCount',
+        case
+          when jsonb_typeof(${optimizationJobs.result} -> 'unassignedOrders') = 'array'
+            then jsonb_array_length(${optimizationJobs.result} -> 'unassignedOrders')
+          else 0
+        end
+    )
+  end
+`;
 
 // GET - List optimization jobs
 export async function GET(request: NextRequest) {
@@ -62,7 +103,7 @@ export async function GET(request: NextRequest) {
           configurationStatus: optimizationConfigurations.status,
           status: optimizationJobs.status,
           progress: optimizationJobs.progress,
-          result: optimizationJobs.result,
+          resultSummary: resultSummarySql,
           error: optimizationJobs.error,
           startedAt: optimizationJobs.startedAt,
           completedAt: optimizationJobs.completedAt,

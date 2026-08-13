@@ -20,7 +20,7 @@ export type {
   HistorialState,
   JobStatus,
   OptimizationJob,
-  OptimizationResult,
+  OptimizationJobResultSummary,
 } from "./historial-context";
 export { HistorialProvider, useHistorial } from "./historial-context";
 export type {

@@ -9,10 +9,9 @@ import {
   useEffect,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import { useToast } from "@/hooks/use-toast";
 
-import { safeParseJson } from "@/lib/utils/safe-json";
 // Types
 export interface OptimizationJob {
   id: string;
@@ -25,31 +24,22 @@ export interface OptimizationJob {
   cancelledAt: string | null;
   createdAt: string;
   updatedAt: string;
-  result?: OptimizationResult;
+  resultSummary?: OptimizationJobResultSummary | null;
   configuration?: {
     name: string;
     objective: string;
   };
 }
 
-export interface OptimizationResult {
-  routes: Array<{
-    routeId: string;
-    vehicleId: string;
-    vehiclePlate: string;
-    driverId?: string;
-    driverName?: string;
-    totalDistance: number;
-    totalDuration: number;
-    totalStops: number;
-    utilizationPercentage: number;
-    timeWindowViolations: number;
-  }>;
-  unassignedOrders: Array<{
-    orderId: string;
-    trackingId: string;
-    reason: string;
-  }>;
+/**
+ * Resumen que devuelve el listado por fila. El plan completo NO viaja acá:
+ * el servidor lo proyecta en SQL (ver `GET /api/optimization/jobs`) porque
+ * mandar cada VerifiedPlan entero solo para pintar cuatro números cargaba
+ * megabytes por request. Para el plan completo está la vista de resultados,
+ * que lo pide por id.
+ */
+export interface OptimizationJobResultSummary {
+  isPartial: boolean;
   metrics: {
     totalDistance: number;
     totalDuration: number;
@@ -57,14 +47,8 @@ export interface OptimizationResult {
     totalStops: number;
     utilizationRate: number;
     timeWindowComplianceRate: number;
-    balanceScore?: number;
-  };
-  summary: {
-    optimizedAt: string;
-    objective: string;
-    processingTimeMs: number;
-  };
-  isPartial?: boolean;
+  } | null;
+  unassignedCount: number;
 }
 
 export type JobStatus =
@@ -138,7 +122,6 @@ export interface HistorialProviderProps {
 
 export function HistorialProvider({ children }: HistorialProviderProps) {
   const { push } = useRouter();
-  const { toast } = useToast();
   const {
     effectiveCompanyId: companyId,
     isReady,
@@ -194,31 +177,13 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
       );
 
       const jobsWithDetails = uniqueJobs.map(
-        (
-          job: OptimizationJob & {
-            result?: string;
-            configurationName?: string;
-          },
-        ) => {
-          // Parse result JSON string from API
-          let parsedResult: unknown;
-          if (job.result) {
-            try {
-              parsedResult =
-                typeof job.result === "string"
-                  ? safeParseJson(job.result)
-                  : job.result;
-            } catch {
-              // Ignore parse errors
-            }
-          }
-
+        (job: OptimizationJob & { configurationName?: string }) => {
           // Use configurationName from API JOIN instead of N+1 fetches
           const configuration = job.configurationName
             ? { name: job.configurationName, objective: "" }
             : undefined;
 
-          return { ...job, result: parsedResult, configuration };
+          return { ...job, configuration };
         },
       );
 
@@ -263,21 +228,18 @@ export function HistorialProvider({ children }: HistorialProviderProps) {
           const data = await response.json();
           throw new Error(data.error || "Error al eliminar el plan");
         }
-        toast({
-          title: "Plan eliminado",
+        toast.success("Plan eliminado", {
           description: "El plan ha sido eliminado exitosamente.",
         });
         await loadJobs();
       } catch (err) {
-        toast({
-          title: "Error al eliminar",
+        toast.error("Error al eliminar", {
           description:
             err instanceof Error ? err.message : "Ocurrió un error inesperado",
-          variant: "destructive",
         });
       }
     },
-    [companyId, toast, loadJobs],
+    [companyId, loadJobs],
   );
 
   const navigateToResults = useCallback(
