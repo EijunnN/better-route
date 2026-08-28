@@ -19,9 +19,11 @@ function centrifugoConnectSrc(): string {
 }
 
 const nextConfig: NextConfig = {
-  // Railway/Docker: empaqueta solo el server y sus deps reales en vez de
-  // arrastrar node_modules entero a la imagen.
-  output: "standalone",
+  // Solo para self-hosting (Dockerfile del VPS): empaqueta el server y sus
+  // deps reales en vez de arrastrar node_modules entero a la imagen. En
+  // Vercel se desactiva a propósito — su pipeline arma su propio output y
+  // standalone le pelea, con fallos en la fase "Deploying outputs".
+  output: process.env.VERCEL ? undefined : "standalone",
   reactCompiler: true,
   experimental: {
     optimizePackageImports: ["lucide-react"],
