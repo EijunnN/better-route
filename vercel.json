@@ -1,0 +1,56 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "app": {
+      "root": "./",
+      "framework": "nextjs",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "vroom",
+          "format": "url",
+          "env": "VROOM_URL"
+        },
+        {
+          "type": "service",
+          "service": "osrm",
+          "format": "url",
+          "env": "OSRM_URL"
+        },
+        {
+          "type": "service",
+          "service": "centrifugo",
+          "format": "url",
+          "env": "CENTRIFUGO_URL"
+        }
+      ]
+    },
+    "osrm": {
+      "root": "docker/osrm/",
+      "runtime": "container"
+    },
+    "vroom": {
+      "root": "docker/vroom/",
+      "runtime": "container",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "osrm",
+          "format": "url",
+          "env": "OSRM_URL"
+        }
+      ]
+    },
+    "centrifugo": {
+      "root": "docker/centrifugo/",
+      "runtime": "container"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/connection/(.*)",
+      "destination": { "service": "centrifugo" }
+    },
+    { "source": "/(.*)", "destination": { "service": "app" } }
+  ]
+}
