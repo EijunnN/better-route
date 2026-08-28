@@ -22,7 +22,13 @@ import { safeParseJson } from "@/lib/utils/safe-json";
 interface RouteData {
   routeId: string;
   vehicleId: string;
-  vehiclePlate: string;
+  /**
+   * MISMO nombre que usa el solver (`RawSolvedRoute.vehicleIdentifier`). Este
+   * tipo describe JSON que sale de `job.result` vía `safeParseJson`, que
+   * castea sin validar: si acá el campo se llama distinto, TypeScript no
+   * avisa y el front lee `undefined`.
+   */
+  vehicleIdentifier: string;
   driverId?: string;
   driverName?: string;
   driverOrigin?: {
@@ -47,8 +53,11 @@ interface RouteData {
   }>;
   totalDistance: number;
   totalDuration: number;
+  totalServiceTime?: number;
+  totalTravelTime?: number;
   totalWeight: number;
   totalVolume: number;
+  capacityUsed?: Record<string, number>;
   utilizationPercentage: number;
   timeWindowViolations: number;
   geometry?: string;
@@ -177,12 +186,17 @@ export async function POST(
       const newRoute: RouteData = {
         routeId: `route-${targetVehicleId}-${Date.now()}`,
         vehicleId: targetVehicleId,
-        vehiclePlate: targetVehicle.plate || targetVehicleId,
+        // Mismo fallback que el solver (stages/solve-batches.ts).
+        vehicleIdentifier:
+          targetVehicle.plate || targetVehicle.name || targetVehicleId,
         stops: [],
         totalDistance: 0,
         totalDuration: 0,
+        totalServiceTime: 0,
+        totalTravelTime: 0,
         totalWeight: 0,
         totalVolume: 0,
+        capacityUsed: {},
         utilizationPercentage: 0,
         timeWindowViolations: 0,
       };
@@ -484,7 +498,7 @@ export async function POST(
         }
         result.vehiclesWithoutRoutes.push({
           id: emptyRoute.vehicleId,
-          plate: emptyRoute.vehiclePlate,
+          plate: emptyRoute.vehicleIdentifier,
         });
 
         result.routes.splice(routeIndex, 1);

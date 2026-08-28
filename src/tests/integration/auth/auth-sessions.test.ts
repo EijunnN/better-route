@@ -140,11 +140,22 @@ describe("Auth sessions & token management", () => {
   // 5. POST /auth/refresh — generates new token pair
   // -----------------------------------------------------------------------
   test("POST /auth/refresh generates new token pair", async () => {
+    // El refresh token DEBE llevar sessionId: sin él no hay rotación
+    // verificable (ni revocación por logout), y el endpoint lo rechaza en
+    // lugar de emitir un par huérfano de sesión. Producción nunca emite uno
+    // así — `generateTokenPair` siempre lo estampa.
+    const { createSession } = await import("@/lib/auth/session");
+    const sessionId = await (createSession as unknown as MockCreateSession)(
+      planner.id,
+      { lastActivityAt: Date.now() },
+    );
+
     const refreshToken = await createTestRefreshToken({
       userId: planner.id,
       companyId: company.id,
       email: planner.email,
       role: planner.role,
+      sessionId,
     });
 
     const req = await createTestRequest("/api/auth/refresh", {

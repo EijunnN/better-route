@@ -136,6 +136,12 @@ async function handleGet(
       return NextResponse.json({ error: "Stop not found" }, { status: 404 });
     }
 
+    // CONDUCTOR solo puede leer sus propias paradas (404 para no filtrar la
+    // existencia de paradas de otros conductores).
+    if (authResult.role === "CONDUCTOR" && stop.userId !== authResult.userId) {
+      return NextResponse.json({ error: "Stop not found" }, { status: 404 });
+    }
+
     return NextResponse.json({ data: stop });
   } catch (error) {
     after(() => console.error("Error fetching route stop:", error));

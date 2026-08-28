@@ -26,6 +26,18 @@ function logUnavailableOnce(error: unknown): void {
 }
 
 /**
+ * ¿Hay una instancia de Redis declarada para este deploy?
+ *
+ * Permite distinguir "no configurado" (dev/tests: degradar es correcto) de
+ * "configurado pero caído" (producción: un incidente, no un modo de
+ * operación). Los guards de seguridad usan esto para decidir si degradan
+ * fail-open o fail-closed.
+ */
+export function isRedisConfigured(): boolean {
+  return Boolean(process.env.REDIS_URL);
+}
+
+/**
  * Devuelve el cliente singleton, o null si REDIS_URL no está configurado.
  * La conexión es lazy (se abre en el primer comando) y se auto-reconecta.
  */

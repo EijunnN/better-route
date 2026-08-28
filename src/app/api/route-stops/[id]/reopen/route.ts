@@ -85,6 +85,23 @@ async function handlePost(
   if (!currentStop) {
     return NextResponse.json({ error: "Stop not found" }, { status: 404 });
   }
+
+  // Security: CONDUCTOR solo puede reabrir paradas asignadas a sí mismo. Sin
+  // este check (que el PATCH sí tiene), un conductor borra la evidencia/fallo
+  // de otra parada de la empresa y revierte su orden a PENDING.
+  if (
+    authResult.role === "CONDUCTOR" &&
+    currentStop.userId !== authResult.userId
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "No tiene permiso para modificar esta parada. Solo puede modificar paradas asignadas a usted.",
+      },
+      { status: 403 },
+    );
+  }
+
   if (currentStop.status !== "FAILED") {
     return NextResponse.json(
       {

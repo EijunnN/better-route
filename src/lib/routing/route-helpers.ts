@@ -67,6 +67,39 @@ export function extractTenantContextAuthed(
 }
 
 /**
+ * Tenant guard for routes that carry the target `companyId` in the path
+ * (`/api/companies/[id]/...`).
+ *
+ * Here the path — not the `x-company-id` header — names the tenant, so
+ * `extractTenantContextAuthed` is the wrong tool: it would demand a header
+ * from ADMIN_SISTEMA (whose JWT carries no companyId) and reject an otherwise
+ * valid request. Contract:
+ * - ADMIN_SISTEMA may act on any company.
+ * - Everyone else only on their own; a mismatch is 403 (authenticated but
+ *   forbidden), never 401.
+ *
+ * On grant it also enters the tenant context for the rest of the request, so
+ * downstream audit/query helpers see the company being acted upon. Callers
+ * MUST have authenticated the user first (`requireRoutePermission`).
+ *
+ * Returns null on grant, a 403 NextResponse to return as-is on denial.
+ */
+export function assertSameTenant(
+  user: AuthenticatedUser,
+  pathCompanyId: string,
+): NextResponse | null {
+  if (user.role !== "ADMIN_SISTEMA" && user.companyId !== pathCompanyId) {
+    return NextResponse.json(
+      { error: "Tenant mismatch", code: "TENANT_MISMATCH" },
+      { status: 403 },
+    );
+  }
+
+  setTenantContext({ companyId: pathCompanyId, userId: user.userId });
+  return null;
+}
+
+/**
  * @deprecated Use `extractTenantContextAuthed` together with `requireRoutePermission`.
  *
  * Previously returned a user object built from the `x-*` headers without a JWT

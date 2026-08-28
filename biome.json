@@ -14,7 +14,8 @@
       "!dist",
       "!build",
       "!drizzle",
-      "!src/registry"
+      "!src/registry",
+      "!public/map-styles"
     ]
   },
   "formatter": {

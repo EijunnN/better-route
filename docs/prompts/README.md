@@ -12,8 +12,8 @@ regla (fail-closed: si no podés probar que una regla se respeta, falla).
 En particular:
 1. Tenancy: ¿llama a extractTenantContextAuthed (directo o vía
    setupAuthContext) antes de tocar la DB? Si el companyId viene en el path,
-   ¿lo compara contra el user con 403 en mismatch (patrón canAccessCompany de
-   companies/[id]/route.ts)? ¿Toda query Drizzle filtra por companyId?
+   ¿usa assertSameTenant(user, id) — que compara contra el user y responde
+   403 en mismatch, nunca 401? ¿Toda query Drizzle filtra por companyId?
    Cuidado con withTenantFilter en tablas sin columna companyId.
 2. RBAC: ¿arranca con requireRoutePermission(request, EntityType.X,
    Action.Y)? ¿El flujo de 5 pasos de CLAUDE.md está completo (Can,
@@ -48,7 +48,7 @@ Canónico: `docs/API-CONTRACT-MOBILE.md` (espejo en `aea/docs/`).
 ## 3. Correr y leer el harness golden de routing
 
 ```
-Corré bun run src/tests/routing-quality/run.ts (28 escenarios golden; los
+Corré bun run src/tests/routing-quality/run.ts (29 escenarios golden; los
 que necesitan DB corren con integration-runner.ts — requiere Postgres up).
 Después:
 1. Resumí escenarios PASS/FAIL y, por cada FAIL, qué check del verifier

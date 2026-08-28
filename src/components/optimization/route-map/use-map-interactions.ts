@@ -2,6 +2,7 @@
 
 import type { RefObject } from "react";
 import { useEffect } from "react";
+import { escapeHtml } from "@/lib/utils";
 import type { Zone } from "./types";
 
 /**
@@ -127,13 +128,13 @@ export function useZoneLayers(
           .setLngLat(coordinates)
           .setHTML(`
             <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 160px;">
-              <strong style="color: ${color}; font-size: 14px;">${props?.name || zone.name}</strong><br/>
+              <strong style="color: ${escapeHtml(color)}; font-size: 14px;">${escapeHtml(props?.name || zone.name)}</strong><br/>
               <span style="color: #aaa; font-size: 12px;">${zone.vehicleCount} vehículo${zone.vehicleCount !== 1 ? "s" : ""} asignado${zone.vehicleCount !== 1 ? "s" : ""}</span>
               ${
                 zone.vehicles.length > 0
                   ? `
                 <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
-                <span style="color: #888; font-size: 11px;">${zone.vehicles.map((v) => v.plate || "Sin placa").join(", ")}</span>
+                <span style="color: #888; font-size: 11px;">${zone.vehicles.map((v) => escapeHtml(v.plate || "Sin placa")).join(", ")}</span>
               `
                   : ""
               }

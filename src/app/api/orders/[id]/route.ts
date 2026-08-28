@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, timeWindowPresets } from "@/db/schema";
+import { orders, routeStops, timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
@@ -83,6 +83,27 @@ export async function GET(
 
     if (result.length === 0) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    // CONDUCTOR solo puede leer pedidos asignados a sí mismo (el endpoint
+    // móvil my-orders ya lo filtra; acá faltaba y exponía PII del cliente y
+    // evidencia de pedidos de otros conductores).
+    if (authResult.role === "CONDUCTOR") {
+      const assigned = await db
+        .select({ id: routeStops.id })
+        .from(routeStops)
+        .where(
+          and(
+            eq(routeStops.orderId, id),
+            eq(routeStops.userId, authResult.userId),
+            withTenantFilter(routeStops, [], tenantCtx.companyId),
+          ),
+        )
+        .limit(1);
+
+      if (assigned.length === 0) {
+        return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      }
     }
 
     const order = result[0];

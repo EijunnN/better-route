@@ -12,7 +12,14 @@ const PUBLIC_API_ROUTES = [
   "/api/public/tracking",
 ];
 
-const PUBLIC_PAGE_ROUTES = ["/login"];
+// `/tracking/[token]` la abre el destinatario del pedido, que no tiene
+// cuenta: sin esta entrada el guard de cookie lo mandaba a /login y el enlace
+// de seguimiento no servía para nada. El token ES la credencial —32 bytes de
+// randomBytes con expiración— y el dato sensible lo filtra
+// `/api/public/tracking/[token]` (rate limit por IP + master switch
+// `trackingEnabled` de la empresa), que ya era público. El prefijo no abre
+// `/api/tracking/*`: esas rutas empiezan con `/api/`.
+const PUBLIC_PAGE_ROUTES = ["/login", "/tracking"];
 
 const OPTIONAL_AUTH_ROUTES = [
   "/api/monitoring/summary",
@@ -69,7 +76,10 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    if (!isPublic && !isOptionalAuth && !payload) {
+    // Un refresh token NO abre rutas protegidas: solo sirve en /api/auth/refresh
+    // (que es pública). Sin este chequeo de `type`, el gate lo aceptaba y la
+    // defensa quedaba delegada al handler.
+    if (!isPublic && !isOptionalAuth && payload?.type !== "access") {
       return NextResponse.json(
         { error: AUTH_ERRORS.UNAUTHORIZED },
         { status: 401 },
@@ -136,7 +146,7 @@ export async function proxy(request: NextRequest) {
 
   // Optionally verify the token for page routes
   const payload = await verifyToken(accessToken);
-  if (!payload) {
+  if (payload?.type !== "access") {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
@@ -147,6 +157,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|map-styles/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -120,6 +120,22 @@ export function getExtensionFromContentType(contentType: string): string {
 }
 
 /**
+ * Defense-in-depth: reject object keys that could traverse or collide.
+ * R2/S3 keys are opaque strings, but the publicUrl built from them is
+ * normalized by HTTP clients (RFC 3986 dot-segments), so a key with `..`
+ * would let a caller forge a URL to another tenant's object.
+ */
+function assertSafeObjectKey(key: string): void {
+  if (
+    key.includes("..") ||
+    key.startsWith("/") ||
+    key.split("/").some((segment) => segment.length === 0)
+  ) {
+    throw new Error("Invalid object key");
+  }
+}
+
+/**
  * Generate a presigned URL for uploading a file to R2
  *
  * @param key - The object key (path) in the bucket
@@ -132,6 +148,8 @@ export async function generatePresignedUploadUrl(
   contentType: string,
   expiresIn: number = PRESIGNED_URL_EXPIRATION,
 ): Promise<string> {
+  assertSafeObjectKey(key);
+
   const client = getS3Client();
   const bucketName = getBucketName();
 
@@ -163,6 +181,7 @@ export async function generatePresignedUploadUrl(
  * @returns Public URL for the file
  */
 export function getFilePublicUrl(key: string): string {
+  assertSafeObjectKey(key);
   const publicUrl = getPublicUrl();
   // Ensure no double slashes
   const baseUrl = publicUrl.endsWith("/") ? publicUrl.slice(0, -1) : publicUrl;
@@ -197,10 +216,10 @@ export function generateUniqueFilename(
 ): string {
   const uuid = crypto.randomUUID();
 
-  // Extract extension from original filename or use content type
-  const originalExt = originalFilename.includes(".")
-    ? `.${originalFilename.split(".").pop()?.toLowerCase()}`
-    : getExtensionFromContentType(contentType);
+  // La extensión sale SIEMPRE del content-type validado, nunca del nombre de
+  // archivo que manda el cliente: un filename como `a.jpg/../../x` inyectaba
+  // `../` en la clave del objeto (path traversal contra el bucket).
+  const ext = getExtensionFromContentType(contentType);
 
   // Sanitize the original filename (remove special chars, keep alphanumeric and hyphens)
   const sanitizedName = originalFilename
@@ -210,7 +229,7 @@ export function generateUniqueFilename(
     .replace(/^-|-$/g, "") // Remove leading/trailing hyphens
     .substring(0, 50); // Limit length
 
-  return `${uuid}-${sanitizedName || "file"}${originalExt}`;
+  return `${uuid}-${sanitizedName || "file"}${ext}`;
 }
 
 /**

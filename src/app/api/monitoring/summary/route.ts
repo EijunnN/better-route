@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
   try {
     // Auth required — this endpoint exposes real-time operational data
     // (active alerts, driver counts, route progress). Previously it used
-    // optionalRoutePermission which allowed anonymous cross-tenant reads
-    // via a forged x-company-id header (security-audit.md Finding #4).
+    // optionalRoutePermission, which returns success for an unauthenticated
+    // caller — anonymous reads via a forged x-company-id header.
     const authResult = await requireRoutePermission(
       request,
       EntityType.METRICS,

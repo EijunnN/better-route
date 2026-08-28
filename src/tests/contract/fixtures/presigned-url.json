@@ -1,5 +1,5 @@
 {
-  "contractVersion": 2,
+  "contractVersion": 3,
   "endpoint": "GET /api/upload/presigned-url",
   "status": 200,
   "body": {

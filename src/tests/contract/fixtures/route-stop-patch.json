@@ -1,5 +1,5 @@
 {
-  "contractVersion": 2,
+  "contractVersion": 3,
   "endpoint": "PATCH /api/route-stops/[id]",
   "status": 200,
   "body": {

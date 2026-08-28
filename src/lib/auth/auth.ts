@@ -25,6 +25,17 @@ const getSecretKey = () => {
   if (!secret) {
     throw new Error("JWT_SECRET environment variable is not set");
   }
+  // Rechazar el placeholder que shipéa en .env.example: un JWT firmado con un
+  // secreto público permite forjar tokens (role/companyId arbitrarios).
+  if (
+    secret.startsWith("your-super-secret-jwt-key") ||
+    secret.startsWith("change-this") ||
+    secret.length < 32
+  ) {
+    throw new Error(
+      "JWT_SECRET must be a strong, unique value (>= 32 chars); placeholder defaults are rejected",
+    );
+  }
   return new TextEncoder().encode(secret);
 };
 
@@ -36,6 +47,12 @@ export interface TokenPayload {
   role: string;
   type: "access" | "refresh";
   sessionId?: string;
+  /**
+   * Identificador único del refresh token (solo en `type: "refresh"`).
+   * Es la pieza que hace verificable la rotación: el server guarda cuál es el
+   * jti vigente por sesión y detecta el reuso de uno viejo.
+   */
+  jti?: string;
 }
 
 /**
@@ -76,7 +93,10 @@ export async function generateRefreshToken(
 export async function verifyToken(token: string): Promise<TokenPayload | null> {
   try {
     const secret = getSecretKey();
-    const { payload } = await jwtVerify(token, secret);
+    // `algorithms` explícito: nunca aceptar un alg que no sea el que firmamos.
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ["HS256"],
+    });
     return payload as unknown as TokenPayload;
   } catch (_error) {
     return null;
@@ -154,7 +174,11 @@ export async function generateTokenPair(user: {
   email: string;
   role: string;
   sessionId?: string;
-}): Promise<{ accessToken: string; refreshToken: string }> {
+}): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  refreshJti: string;
+}> {
   const payload = {
     userId: user.id,
     companyId: user.companyId,
@@ -162,16 +186,20 @@ export async function generateTokenPair(user: {
     role: user.role,
   };
 
+  // El jti viaja solo en el refresh token; el caller lo registra en la sesión
+  // (`registerRefreshJti`) para que la rotación sea verificable.
+  const refreshJti = crypto.randomUUID();
+
   const refreshPayload = user.sessionId
-    ? { ...payload, sessionId: user.sessionId }
-    : payload;
+    ? { ...payload, sessionId: user.sessionId, jti: refreshJti }
+    : { ...payload, jti: refreshJti };
 
   const [accessToken, refreshToken] = await Promise.all([
     generateAccessToken(payload),
     generateRefreshToken(refreshPayload),
   ]);
 
-  return { accessToken, refreshToken };
+  return { accessToken, refreshToken, refreshJti };
 }
 
 /**

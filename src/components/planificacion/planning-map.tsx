@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/components/layout/theme-context";
 import { getMapStyle } from "@/lib/map-styles";
+import { escapeHtml } from "@/lib/utils";
 
 interface Vehicle {
   id: string;
@@ -157,8 +158,8 @@ function vehicleMarkerHTML(
     ? { light: "#ffffff", mid: "#eef1f5", dark: "#c6cfd9" }
     : { light: "#9aa3af", mid: "#79828f", dark: "#59626f" };
   const glass = isSelected ? "#1e293b" : "#111827";
-  const gradId = `vgrad-${vehicle.id}`;
-  const plate = vehicle.plate || vehicle.name;
+  const gradId = `vgrad-${escapeHtml(vehicle.id)}`;
+  const plate = escapeHtml(vehicle.plate || vehicle.name);
 
   return `
     <div class="vehicle-marker-inner" style="position:relative;width:24px;height:48px;cursor:pointer;transition:transform .15s ease;opacity:${isSelected ? "1" : "0.8"};">
@@ -241,10 +242,7 @@ export function PlanningMap({
     const mapStyle = getMapStyle(mapThemeRef.current);
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: {
-        ...mapStyle,
-        glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-      },
+      style: mapStyle,
       center: [-77.0428, -12.0464], // Lima, Peru default
       zoom: 11,
       attributionControl: false,
@@ -274,13 +272,7 @@ export function PlanningMap({
     mapThemeRef.current = isDark;
     const style = getMapStyle(isDark);
     map.current.once("style.load", () => setStyleRevision((v) => v + 1));
-    map.current.setStyle(
-      {
-        ...style,
-        glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-      },
-      { diff: false },
-    );
+    map.current.setStyle(style, { diff: false });
   }, [isDark, isLoaded]);
 
   // Update markers when data changes
@@ -339,9 +331,9 @@ export function PlanningMap({
           closeButton: true,
         }).setHTML(`
           <div class="popup-content">
-            <div class="popup-title">${vehicle.plate || vehicle.name}</div>
-            ${vehicle.assignedDriver ? `<div class="popup-subtitle">${vehicle.assignedDriver.name}</div>` : ""}
-            ${vehicle.originAddress ? `<div class="popup-address">${vehicle.originAddress}</div>` : ""}
+            <div class="popup-title">${escapeHtml(vehicle.plate || vehicle.name)}</div>
+            ${vehicle.assignedDriver ? `<div class="popup-subtitle">${escapeHtml(vehicle.assignedDriver.name)}</div>` : ""}
+            ${vehicle.originAddress ? `<div class="popup-address">${escapeHtml(vehicle.originAddress)}</div>` : ""}
             <span class="popup-badge popup-badge-vehicle">${isSelected ? "✓ Seleccionado" : "No seleccionado"}</span>
           </div>
         `);
@@ -424,9 +416,9 @@ export function PlanningMap({
           closeButton: true,
         }).setHTML(`
           <div class="popup-content">
-            <div class="popup-title">${order.trackingId}</div>
-            ${order.customerName ? `<div class="popup-subtitle">${order.customerName}</div>` : ""}
-            <div class="popup-address">${order.address}</div>
+            <div class="popup-title">${escapeHtml(order.trackingId)}</div>
+            ${order.customerName ? `<div class="popup-subtitle">${escapeHtml(order.customerName)}</div>` : ""}
+            <div class="popup-address">${escapeHtml(order.address)}</div>
             <span class="popup-badge popup-badge-order">Pedido #${stopNumber}</span>
           </div>
         `);
@@ -613,18 +605,18 @@ export function PlanningMap({
           .setLngLat(coordinates)
           .setHTML(`
             <div class="popup-content">
-              <div class="popup-title" style="color: ${color};">${props?.name || zone.name}</div>
+              <div class="popup-title" style="color: ${escapeHtml(color)};">${escapeHtml(props?.name || zone.name)}</div>
               <div class="popup-subtitle">${zone.vehicleCount} vehículo${zone.vehicleCount !== 1 ? "s" : ""} asignado${zone.vehicleCount !== 1 ? "s" : ""}</div>
               ${
                 zone.vehicles.length > 0
                   ? `
                 <div class="popup-address" style="margin-top: 8px;">
-                  ${zone.vehicles.map((v) => v.plate || "Sin placa").join(", ")}
+                  ${zone.vehicles.map((v) => escapeHtml(v.plate || "Sin placa")).join(", ")}
                 </div>
               `
                   : ""
               }
-              <span class="popup-badge" style="background: ${color}20; color: ${color};">Zona de entrega</span>
+              <span class="popup-badge" style="background: ${escapeHtml(color)}20; color: ${escapeHtml(color)};">Zona de entrega</span>
             </div>
           `)
           .addTo(map.current);

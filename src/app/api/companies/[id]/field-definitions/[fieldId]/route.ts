@@ -26,7 +26,7 @@ export async function GET(
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(
@@ -70,7 +70,7 @@ export async function PATCH(
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(
@@ -144,7 +144,7 @@ export async function DELETE(
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(

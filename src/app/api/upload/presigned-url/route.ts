@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/auth-api";
+import {
+  checkRateLimit,
+  getRateLimitHeaders,
+  RATE_LIMITS,
+} from "@/lib/infra/rate-limit";
 import { withContractHeader } from "@/lib/mobile-contract";
 import {
   ALLOWED_CONTENT_TYPES,
@@ -45,6 +50,19 @@ async function handleGet(request: NextRequest) {
       return NextResponse.json(
         { error: "User must belong to a company to upload files" },
         { status: 403 },
+      );
+    }
+
+    // Mintear presigned URLs es barato pero el PUT real escribe en el bucket
+    // compartido: limitar por usuario evita el abuso de almacenamiento.
+    const rateLimit = await checkRateLimit(
+      `presign:user:${authUser.userId}`,
+      RATE_LIMITS.API,
+    );
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Intente más tarde." },
+        { status: 429, headers: getRateLimitHeaders(rateLimit) },
       );
     }
 

@@ -6,11 +6,16 @@
 
 ## Qué vive acá
 
-- **`route-helpers.ts`** — `extractTenantContextAuthed(request, user)`,
-  el helper canónico de derivación de tenant de toda API route (JWT
-  autoritativo; `x-company-id` solo para `ADMIN_SISTEMA`; mismatch = 403).
-  Es el helper de la invariante #1 de CONTEXT.md (ADR-0008). Su
-  complemento RBAC, `requireRoutePermission`, vive en
+- **`route-helpers.ts`** — los dos helpers de tenancy, según de dónde salga
+  el `companyId` (invariante #1 de CONTEXT.md, ADR-0008):
+  - `extractTenantContextAuthed(request, user)` cuando el tenant viene del
+    JWT/header (JWT autoritativo; `x-company-id` solo para `ADMIN_SISTEMA`;
+    mismatch = 403). `setupAuthContext` lo envuelve.
+  - `assertSameTenant(user, pathCompanyId)` cuando el `companyId` viene en
+    el path (`/api/companies/[id]/...`): ahí manda el path, no el header —
+    exigir header rechazaría a `ADMIN_SISTEMA` con un 401 falso.
+
+  Su complemento RBAC, `requireRoutePermission`, vive en
   `src/lib/infra/api-middleware.ts` (ADR-0010,
   `src/lib/auth/permissions/README.md`).
 - **`driver-assignment.ts`** — scoring de asignación driver→vehículo

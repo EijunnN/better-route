@@ -73,28 +73,45 @@ Usamos [Conventional Commits](https://www.conventionalcommits.org/):
 
 ### Estructura de Archivos
 
+Un feature module chico puede vivir en un solo archivo de contexto. Cuando
+crece, se convierte en directorio:
+
 ```
 src/components/{feature}/
-  ├── {feature}-context.tsx   # Provider con state/actions/meta/derived
-  ├── {feature}-views.tsx     # Componentes de vista (List, Form)
-  ├── {feature}-form.tsx      # Formulario (si es complejo)
-  └── index.ts                # Barrel exports
+  ├── {feature}-context/
+  │   ├── provider.tsx      # Orquesta state + actions + derived + meta
+  │   ├── use-state.ts      # Todos los useState
+  │   ├── use-actions.ts    # Handlers (mutations)
+  │   ├── use-derived.ts    # Derivaciones puras
+  │   ├── use-effects.ts    # useEffect + data loaders
+  │   └── types.ts
+  ├── {feature}-views.tsx   # Componentes de vista (List, Form)
+  └── index.ts              # Barrel exports
 ```
+
+El data fetching compartido no va en `useEffect`: se hace con un hook de
+dominio sobre `useApiData` en `src/hooks/queries/`.
 
 ### Pull Requests
 
 - Titulo corto y descriptivo (max 70 caracteres)
 - Descripcion con resumen de cambios y motivacion
 - Un PR por funcionalidad o fix
-- Asegurate de que el build pase antes de solicitar review
+- Antes de pedir review, corré la Definition of Done de
+  [`CLAUDE.md`](./CLAUDE.md): `bun run tsc --noEmit`, `bun run lint`, los
+  tests de la capa que tocaste y el checklist de invariantes de
+  [`docs/REVIEW-RUBRIC.md`](./docs/REVIEW-RUBRIC.md). El hook de Biome cubre
+  estilo — no correctness ni seguridad.
 
 ## Configuracion del Entorno de Desarrollo
 
 ### Requisitos
 
-- **Bun** 1.0+ (o Node.js 20+)
-- **PostgreSQL** 15+
-- **Docker** (para VROOM/OSRM)
+- **Bun** 1.x — no es opcional: los scripts y el runner de tests usan APIs
+  de Bun (`Bun.file`, `Bun.spawnSync`)
+- **PostgreSQL** 16
+- **Docker** (VROOM/OSRM para optimizar; Centrifugo y Redis para realtime y
+  caché — ver [`docker/README.md`](./docker/README.md))
 
 ### Setup Rapido
 

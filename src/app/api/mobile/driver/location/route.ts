@@ -14,6 +14,11 @@ import { getAuthenticatedUser } from "@/lib/auth/auth-api";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { recomputeRouteEtas } from "@/lib/eta";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
+import {
+  checkRateLimit,
+  getRateLimitHeaders,
+  RATE_LIMITS,
+} from "@/lib/infra/rate-limit";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { withContractHeader } from "@/lib/mobile-contract";
 import { publishDriverLocationEvent } from "@/lib/realtime";
@@ -95,6 +100,19 @@ async function handlePost(request: NextRequest) {
 
     const driverId = authUser.userId;
     const companyId = tenantCtx.companyId;
+
+    // El polling de GPS escribe una fila por ping: limitar por conductor para
+    // que un cliente runaway no amplifique escrituras sin cota.
+    const rateLimit = await checkRateLimit(
+      `location:driver:${driverId}`,
+      RATE_LIMITS.POLLING,
+    );
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: AUTH_ERRORS.RATE_LIMITED },
+        { status: 429, headers: getRateLimitHeaders(rateLimit) },
+      );
+    }
 
     // Parsear body
     const body = await request.json();

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(
@@ -155,6 +155,25 @@ export async function POST(request: NextRequest) {
             .replace(/[^a-z0-9]+/g, "_")
             .replace(/^_|_$/g, "")
             .slice(0, 50) || `role_${Date.now()}`;
+
+    // Códigos reservados del sistema: un rol custom con code "ADMIN_SISTEMA"
+    // es tratado como superadmin (wildcard) por hasPermissionFromDB/
+    // getUserPermissionsFromDB, y un code "ADMIN_FLOTA"/"PLANIFICADOR"…
+    // reescribe users.role al asignarse como primary, otorgando el set legacy
+    // completo. Prohibir colisiones (case-insensitive).
+    const RESERVED_ROLE_CODES = new Set([
+      "ADMIN_SISTEMA",
+      "ADMIN_FLOTA",
+      "PLANIFICADOR",
+      "MONITOR",
+      "CONDUCTOR",
+    ]);
+    if (RESERVED_ROLE_CODES.has(derivedCode.toUpperCase())) {
+      return NextResponse.json(
+        { error: "El código del rol está reservado para roles del sistema" },
+        { status: 400 },
+      );
+    }
 
     // Create the role
     const [newRole] = await db

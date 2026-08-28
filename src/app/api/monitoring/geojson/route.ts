@@ -55,8 +55,8 @@ function decodePolyline(encoded: string, precision = 5): [number, number][] {
 export async function GET(request: NextRequest) {
   try {
     // Auth required — exposes route geometry, driver positions, vehicle plates.
-    // Previously optional, which allowed anonymous cross-tenant reads
-    // (security-audit.md Finding #4).
+    // Previously optionalRoutePermission, which succeeds for an
+    // unauthenticated caller → anonymous cross-tenant reads.
     const authResult = await requireRoutePermission(
       request,
       EntityType.ROUTE,

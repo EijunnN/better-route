@@ -372,7 +372,8 @@ lugar de mantenerlo. Sin migrations data-rescue todavía.
 ## Referencias rápidas
 
 - `CLAUDE.md` — convenciones operativas (cómo correr, comandos, RBAC flow).
-- `docs/ROLES-PERMISSIONS.md` — catálogo completo de permisos y roles.
+- `src/lib/auth/permissions/README.md` — contrato RBAC tipado: entidades,
+  acciones, roles base y flujo de 5 pasos para una feature nueva.
 - `docs/API-CONTRACT-MOBILE.md` — contrato del seam con la app móvil
   (espejado en `aea/docs/`).
 - `docs/adr/` — decisiones arquitectónicas con su motivación:

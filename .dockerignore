@@ -1,0 +1,23 @@
+node_modules
+.next
+.git
+.github
+.claude
+.playwright-mcp
+coverage
+playwright-report
+test-results
+
+# Datos de OSRM: 2+ GB que la imagen de la app no usa. El servicio de OSRM
+# los genera en su propio build (docker/osrm/Dockerfile).
+docker/osrm/*.osm.pbf
+docker/osrm/*.osrm*
+
+# Secretos: en Railway y en el VPS las variables se inyectan por entorno.
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+Thumbs.db

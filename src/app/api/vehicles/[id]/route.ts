@@ -153,6 +153,11 @@ export async function PATCH(
       ...restValidatedData,
       updatedAt: new Date(),
     };
+    // status/active se administran por /status-transition (máquina de estados,
+    // guard de ruta activa, optimistic locking e historial). El PATCH genérico
+    // no debe poder saltárselos seteándolos directo.
+    delete updateData.status;
+    delete updateData.active;
     if (insuranceExpiryStr !== undefined) {
       updateData.insuranceExpiry = insuranceExpiryStr
         ? new Date(insuranceExpiryStr)

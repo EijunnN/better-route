@@ -46,8 +46,9 @@
   `src/lib/routing/route-helpers.ts`. JWT autoritativo para non-admins;
   solo `ADMIN_SISTEMA` switchea workspace vía header `x-company-id`.
 - RBAC tipado compartido server/cliente (ADR-0010): contrato y flujo de 5
-  pasos en `src/lib/auth/permissions/README.md`; catálogo en
-  `docs/ROLES-PERMISSIONS.md`. Checklist de revisión: `docs/REVIEW-RUBRIC.md`.
+  pasos en `src/lib/auth/permissions/README.md`; el catálogo vive en el
+  código (`permissions/types.ts` + `ROLE_PERMISSIONS` en `authorization.ts`),
+  no en un doc espejo. Checklist de revisión: `docs/REVIEW-RUBRIC.md`.
 
 ## Bounded contexts
 
@@ -102,12 +103,12 @@ contrato). Campos congelados en §9; capability set de `CONDUCTOR` en §8.
 | Tema | Doc |
 |---|---|
 | Vocabulario, bounded contexts, invariantes globales | `docs/CONTEXT.md` |
-| Decisiones con motivación (12 ADRs) | `docs/adr/` |
+| Decisiones con motivación (11 ADRs) | `docs/adr/` |
 | Semántica solver ↔ verifier | `docs/optimization/SEMANTICS.md` |
 | Contrato móvil | `docs/API-CONTRACT-MOBILE.md` |
 | Rúbrica de revisión (tenancy, RBAC, terminales, evidence, history) | `docs/REVIEW-RUBRIC.md` |
-| RBAC: contrato tipado y flujo | `src/lib/auth/permissions/README.md` |
-| Roles y permisos (catálogo) | `docs/ROLES-PERMISSIONS.md` |
+| RBAC: contrato tipado, flujo y catálogo de roles | `src/lib/auth/permissions/README.md` |
 | Modelo de datos (tablas y relaciones) | `docs/DATA-MODEL.md` |
 | Comandos, testing, Definition of Done | `CLAUDE.md` |
+| Despliegue: reverse proxy, checklist del servidor, Centrifugo | `docs/deployment-centrifugo.md` |
 | Prompts reutilizables | `docs/prompts/README.md` |

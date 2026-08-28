@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { fleets, vehicleFleets, vehicles } from "@/db/schema";
@@ -48,7 +48,11 @@ export async function GET(
       .from(vehicleFleets)
       .innerJoin(vehicles, eq(vehicleFleets.vehicleId, vehicles.id))
       .where(
-        and(eq(vehicleFleets.fleetId, id), eq(vehicleFleets.active, true)),
+        and(
+          eq(vehicleFleets.fleetId, id),
+          eq(vehicleFleets.active, true),
+          eq(vehicles.companyId, tenantCtx.companyId),
+        ),
       );
 
     return NextResponse.json({
@@ -129,6 +133,28 @@ export async function PATCH(
     // mapping lives on primaryFleetId/userSecondaryFleets, managed in /users.
     const { id: _, vehicleIds, ...updateData } = validatedData;
 
+    // Cada vehículo debe pertenecer a la empresa del caller; de lo contrario
+    // este PATCH planta filas cross-tenant en vehicle_fleets y los GET de
+    // flotas filtran datos de vehículos de otro tenant.
+    if (vehicleIds && vehicleIds.length > 0) {
+      const tenantVehicles = await db
+        .select({ id: vehicles.id })
+        .from(vehicles)
+        .where(
+          and(
+            inArray(vehicles.id, vehicleIds),
+            eq(vehicles.companyId, tenantCtx.companyId),
+          ),
+        );
+
+      if (tenantVehicles.length !== vehicleIds.length) {
+        return NextResponse.json(
+          { error: "Uno o más vehículos no pertenecen a la empresa" },
+          { status: 400 },
+        );
+      }
+    }
+
     const [updatedFleet] = await db
       .update(fleets)
       .set({
@@ -183,7 +209,11 @@ export async function PATCH(
       .from(vehicleFleets)
       .innerJoin(vehicles, eq(vehicleFleets.vehicleId, vehicles.id))
       .where(
-        and(eq(vehicleFleets.fleetId, id), eq(vehicleFleets.active, true)),
+        and(
+          eq(vehicleFleets.fleetId, id),
+          eq(vehicleFleets.active, true),
+          eq(vehicles.companyId, tenantCtx.companyId),
+        ),
       );
 
     after(async () => {

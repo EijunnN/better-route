@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(
@@ -211,7 +211,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(

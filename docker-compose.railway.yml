@@ -1,0 +1,119 @@
+# Compose para IMPORTAR en Railway — no para correr local (para eso está
+# docker-compose.yml, que es más rápido porque monta los datos en vez de
+# construirlos).
+#
+# Railway no ejecuta este archivo: lo lee al soltarlo en el canvas del proyecto
+# y crea un servicio por entrada. Por eso acá NO hay nada que Railway ignore:
+#
+#   - Sin bind mounts. El compose local monta tres archivos del repo
+#     (config de Centrifugo, config de VROOM, datos de OSRM) y Railway no
+#     monta archivos del repo: cada config vive dentro de su Dockerfile.
+#   - Sin `profiles`, `healthcheck`, `ulimits` ni `depends_on`: Railway los
+#     ignora. El arranque tolera que las dependencias no estén listas todavía.
+#   - Con la app incluida, que en el compose local corre fuera de Docker.
+#
+# Tras importar quedan las variables por completar: las que dicen CAMBIAR son
+# obligatorias. Ver docs/deployment-railway.md.
+
+services:
+  # ── app ─────────────────────────────────────────────────────────────────
+  # Único servicio junto a centrifugo que necesita dominio público.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Se inlinea en el bundle del cliente durante el build: si falta acá,
+        # el navegador queda sin URL de WebSocket por más que la variable
+        # exista en runtime.
+        NEXT_PUBLIC_CENTRIFUGO_WS_URL: wss://CAMBIAR-centrifugo.up.railway.app/connection/websocket
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: CAMBIAR-url-de-neon
+      # >=32 chars y distinto al de desarrollo: getSecretKey() rechaza los
+      # placeholders de .env.example y el login devuelve 500.
+      JWT_SECRET: CAMBIAR-secreto-fuerte-de-32-caracteres-o-mas
+      REDIS_URL: redis://:CAMBIAR-password@redis.railway.internal:6379
+      VROOM_URL: http://vroom.railway.internal:3000
+      OSRM_URL: http://osrm.railway.internal:5000
+      VROOM_TIMEOUT: "60000"
+      OSRM_TIMEOUT: "30000"
+      CENTRIFUGO_URL: http://centrifugo.railway.internal:8000
+      CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: CAMBIAR-igual-que-en-centrifugo
+      CENTRIFUGO_API_KEY: CAMBIAR-igual-que-en-centrifugo
+      CENTRIFUGO_ALLOWED_ORIGIN: https://CAMBIAR-app.up.railway.app
+      NEXT_PUBLIC_CENTRIFUGO_WS_URL: wss://CAMBIAR-centrifugo.up.railway.app/connection/websocket
+      R2_ACCOUNT_ID: CAMBIAR
+      R2_ACCESS_KEY_ID: CAMBIAR
+      R2_SECRET_ACCESS_KEY: CAMBIAR
+      R2_BUCKET_NAME: CAMBIAR
+      R2_PUBLIC_URL: CAMBIAR
+      ONESIGNAL_APP_ID: CAMBIAR
+      ONESIGNAL_REST_API_KEY: CAMBIAR
+    ports:
+      - "3000:3000"
+
+  # ── osrm ────────────────────────────────────────────────────────────────
+  # El build descarga el mapa de Geofabrik y lo recorta: tarda minutos la
+  # primera vez. BBOX vacío procesa la región entera (para el VPS, no para el
+  # free tier: Perú completo son 1,21 GiB de RAM contra 159 MB de Lima).
+  osrm:
+    build:
+      context: docker/osrm
+      dockerfile: Dockerfile
+      args:
+        REGION: peru
+        CONTINENT: south-america
+        BBOX: "-77.35,-12.55,-76.60,-11.60"
+    ports:
+      - "5000:5000"
+
+  # ── vroom ───────────────────────────────────────────────────────────────
+  vroom:
+    build:
+      context: docker/vroom
+      dockerfile: Dockerfile
+    environment:
+      OSRM_HOST: osrm.railway.internal
+      OSRM_PORT: "5000"
+      # vCPU compartida en el trial: más hilos no aceleran.
+      VROOM_THREADS: "2"
+    ports:
+      - "3000:3000"
+
+  # ── centrifugo ──────────────────────────────────────────────────────────
+  # Necesita dominio público: el navegador abre el WebSocket directo contra
+  # este servicio. En el VPS no hace falta porque un reverse proxy lo sirve en
+  # el mismo origen que la app (docs/deployment-centrifugo.md).
+  centrifugo:
+    build:
+      context: docker/centrifugo
+      dockerfile: Dockerfile
+    environment:
+      CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: CAMBIAR-igual-que-en-app
+      CENTRIFUGO_HTTP_API_KEY: CAMBIAR-igual-que-en-app
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: https://CAMBIAR-app.up.railway.app
+    ports:
+      - "8000:8000"
+
+  # ── redis ───────────────────────────────────────────────────────────────
+  # Misma config que el compose local: AOF everysec para que las sesiones
+  # sobrevivan un restart, y volatile-lru porque todas nuestras keys llevan
+  # TTL (ante presión de memoria se evictan las menos usadas sin tocar
+  # persistentes).
+  redis:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy volatile-lru
+      --requirepass CAMBIAR-password
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  redis_data:

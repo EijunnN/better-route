@@ -24,8 +24,9 @@ Para cada archivo tocado en el diff, recorré las reglas aplicables. Una regla
 
 - [ ] ¿La ruta API nueva/modificada llama a `extractTenantContextAuthed`
       (directo o vía `setupAuthContext`) antes de tocar la DB? Si el `companyId`
-      viene en el path, ¿lo compara contra el user con 403 en mismatch (patrón
-      `canAccessCompany` de `src/app/api/companies/[id]/route.ts`)?
+      viene en el path, el guard es `assertSameTenant(user, id)` — el path
+      manda sobre el header, mismatch = 403 y nunca 401 (patrón:
+      `src/app/api/companies/[id]/route.ts`).
 - [ ] ¿Toda query Drizzle filtra por `companyId`? **Cuidado con**
       `withTenantFilter` (`src/db/tenant-aware.ts`): para tablas **sin** columna
       `companyId` devuelve las conditions **SIN filtro** → hay que pasar el tenant

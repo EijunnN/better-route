@@ -40,7 +40,7 @@ export async function GET(
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(
@@ -87,7 +87,7 @@ export async function PUT(
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(

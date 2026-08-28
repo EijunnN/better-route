@@ -12,7 +12,7 @@
  */
 
 import type { Redis } from "ioredis";
-import { getRedis } from "@/lib/infra/redis";
+import { getRedis, isRedisConfigured } from "@/lib/infra/redis";
 
 // Session configuration
 const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
@@ -20,6 +20,28 @@ const SESSION_PREFIX = "session:";
 const REFRESH_TOKEN_PREFIX = "refresh_token:";
 const USER_SESSIONS_PREFIX = "user_sessions:";
 const ALL_SESSIONS_SET = "all_sessions";
+
+/** jti del refresh token vigente de cada sesión. */
+const REFRESH_JTI_PREFIX = "refresh_jti:";
+/** jti recién rotado, aceptado unos segundos más (ver REFRESH_GRACE_SECONDS). */
+const REFRESH_JTI_GRACE_PREFIX = "refresh_jti_grace:";
+
+/**
+ * Ventana en la que el refresh token anterior sigue siendo aceptado tras una
+ * rotación. Existe por el cliente móvil: si dos requests reciben 401 a la vez,
+ * ambos disparan refresh con el MISMO token y el segundo llegaría con un jti
+ * ya rotado. Sin gracia eso se leería como robo y cerraría la sesión de un
+ * conductor en plena ruta. 30 s cubre la carrera sin dejar una ventana útil
+ * para un atacante.
+ */
+const REFRESH_GRACE_SECONDS = 30;
+
+/** Veredicto de `checkRefreshJti`. */
+export type RefreshJtiVerdict =
+  | "ok" // jti vigente (o dentro de la ventana de gracia)
+  | "reused" // jti ya rotado y fuera de gracia → token robado o replay
+  | "unknown" // la sesión no tiene jti registrado (token pre-rotación)
+  | "unavailable"; // Redis configurado pero sin respuesta
 
 /**
  * Cliente Redis compartido (src/lib/infra/redis.ts).
@@ -259,6 +281,9 @@ export async function invalidateSession(sessionId: string): Promise<void> {
     // Remove refresh token mapping
     await redis.del(`${REFRESH_TOKEN_PREFIX}${session.refreshTokenId}`);
 
+    // Drop the rotation pointer: sin sesión no hay refresh que rotar.
+    await redis.del(`${REFRESH_JTI_PREFIX}${sessionId}`);
+
     // Remove from user's sessions list
     await redis.srem(`${USER_SESSIONS_PREFIX}${session.userId}`, sessionId);
 
@@ -477,8 +502,15 @@ export async function isRefreshTokenValid(
 ): Promise<boolean> {
   const redis = getRedisClient();
   if (!redis) {
-    // When Redis is unavailable, we cannot validate refresh tokens against session store.
-    // Return true to allow JWT-only validation to handle token validity.
+    // Sin Redis declarado (dev/tests) la validación cae en la firma del JWT.
+    // Con Redis declarado pero ausente, fail-closed: si degradáramos, un logout
+    // dejaría de tener efecto justo cuando más importa.
+    if (isRedisConfigured()) {
+      console.error(
+        "[Session] Redis configurado pero no disponible — refresh rechazado (fail-closed).",
+      );
+      return false;
+    }
     console.warn(
       "[Session] Redis unavailable - refresh token validation falling back to JWT-only.",
     );
@@ -502,12 +534,82 @@ export async function isRefreshTokenValid(
 
     return sessionId !== null;
   } catch (error) {
-    console.warn(
-      "[Session] Redis error during refresh token validation:",
+    console.error(
+      "[Session] Redis error during refresh token validation — refresh rechazado (fail-closed):",
       error,
     );
-    // Fall back to trusting the JWT signature
-    return true;
+    return false;
+  }
+}
+
+/**
+ * Registra el jti del refresh token vigente de una sesión y manda el anterior
+ * a la ventana de gracia.
+ *
+ * Se llama al emitir un par de tokens (login y cada refresh): es lo que
+ * convierte la rotación en rotación de verdad — sin esto, todo refresh token
+ * firmado sigue sirviendo hasta su expiración de 7 días.
+ */
+export async function registerRefreshJti(
+  sessionId: string,
+  jti: string,
+): Promise<void> {
+  const redis = getRedisClient();
+  if (!redis) return;
+
+  try {
+    const previousJti = await redis.get(`${REFRESH_JTI_PREFIX}${sessionId}`);
+
+    if (previousJti && previousJti !== jti) {
+      await redis.set(
+        `${REFRESH_JTI_GRACE_PREFIX}${previousJti}`,
+        sessionId,
+        "EX",
+        REFRESH_GRACE_SECONDS,
+      );
+    }
+
+    await redis.set(
+      `${REFRESH_JTI_PREFIX}${sessionId}`,
+      jti,
+      "EX",
+      SESSION_TTL,
+    );
+  } catch (error) {
+    console.warn("[Session] Redis error registrando el jti de refresh:", error);
+  }
+}
+
+/**
+ * ¿El refresh token que llega es el vigente de su sesión?
+ *
+ * Un jti ya rotado y fuera de gracia significa que alguien está reusando un
+ * token viejo — el caller debe matar la sesión entera (recomendación del
+ * OAuth 2.0 Security BCP): si el token fue robado, el legítimo y el atacante
+ * quedan afuera y el usuario re-autentica.
+ */
+export async function checkRefreshJti(
+  sessionId: string,
+  jti: string | undefined,
+): Promise<RefreshJtiVerdict> {
+  if (!jti) return "unknown";
+
+  const redis = getRedisClient();
+  if (!redis) return isRedisConfigured() ? "unavailable" : "unknown";
+
+  try {
+    const currentJti = await redis.get(`${REFRESH_JTI_PREFIX}${sessionId}`);
+
+    if (!currentJti) return "unknown";
+    if (currentJti === jti) return "ok";
+
+    const graceSession = await redis.get(`${REFRESH_JTI_GRACE_PREFIX}${jti}`);
+    if (graceSession === sessionId) return "ok";
+
+    return "reused";
+  } catch (error) {
+    console.error("[Session] Redis error validando el jti de refresh:", error);
+    return "unavailable";
   }
 }
 

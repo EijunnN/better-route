@@ -11,6 +11,7 @@ import {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useTheme } from "@/components/layout/theme-context";
 import { DEFAULT_MAP_CENTER, getMapStyle } from "@/lib/map-styles";
+import { escapeHtml } from "@/lib/utils";
 
 interface MonitoringMapProps {
   jobId: string | null;
@@ -167,7 +168,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
             filter: ["==", ["get", "type"], "stop"],
             layout: {
               "text-field": ["get", "sequence"],
-              "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+              "text-font": ["Noto Sans Bold"],
               "text-size": 11,
               "text-anchor": "center",
             },
@@ -289,17 +290,17 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
                 const statusColor = statusColors[status] || "#6b7280";
                 const statusLabel = statusLabels[status] || status;
                 const sequence = props?.sequence ?? "";
-                const trackingId = props?.trackingId ?? "";
-                const address = props?.address ?? "";
+                const trackingId = (props?.trackingId as string) ?? "";
+                const address = (props?.address as string) ?? "";
 
                 const html = `<div style="font-family: system-ui; font-size: 13px; line-height: 1.4; min-width: 180px;">
   <div style="font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${statusColor};"></span>
     Parada #${sequence}
   </div>
-  <div style="color: var(--muted-foreground); font-size: 12px;">${trackingId}</div>
-  <div style="margin-top: 6px; font-size: 12px;">${address}</div>
-  <div style="margin-top: 4px; font-size: 11px; color: var(--muted-foreground);">Estado: ${statusLabel}</div>
+  <div style="color: var(--muted-foreground); font-size: 12px;">${escapeHtml(trackingId)}</div>
+  <div style="margin-top: 6px; font-size: 12px;">${escapeHtml(address)}</div>
+  <div style="margin-top: 4px; font-size: 11px; color: var(--muted-foreground);">Estado: ${escapeHtml(statusLabel)}</div>
 </div>`;
 
                 popupRef.current
@@ -380,7 +381,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
                     : "";
 
                 const html = `<div style="font-family: system-ui; font-size: 13px; line-height: 1.4; min-width: 180px;">
-  <div style="font-weight: 600; margin-bottom: 4px;">${driverName}</div>
+  <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(driverName)}</div>
   ${statusHtml}
   ${batteryHtml}
 </div>`;

@@ -1,6 +1,27 @@
 import type { NextConfig } from "next";
 
+/**
+ * Origen del WebSocket de Centrifugo, derivado de la URL que ya consume el
+ * cliente. En el VPS Centrifugo vive detrás del mismo reverse proxy que la app
+ * (ver docs/deployment-centrifugo.md), así que `'self'` alcanza y esto queda
+ * vacío. En Railway cada servicio tiene su propio dominio: sin esta entrada la
+ * CSP mata el handshake y el realtime cae a polling en silencio.
+ */
+function centrifugoConnectSrc(): string {
+  const raw = process.env.NEXT_PUBLIC_CENTRIFUGO_WS_URL;
+  if (!raw) return "";
+  try {
+    const { origin } = new URL(raw);
+    return ` ${origin}`;
+  } catch {
+    return "";
+  }
+}
+
 const nextConfig: NextConfig = {
+  // Railway/Docker: empaqueta solo el server y sus deps reales en vez de
+  // arrastrar node_modules entero a la imagen.
+  output: "standalone",
   reactCompiler: true,
   experimental: {
     optimizePackageImports: ["lucide-react"],
@@ -41,7 +62,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              `connect-src 'self'${process.env.NODE_ENV === "development" ? " ws://localhost:8000" : ""} https://*.basemaps.cartocdn.com https://nominatim.openstreetmap.org https://*.upstash.io`,
+              `connect-src 'self'${centrifugoConnectSrc()} https://tiles.openfreemap.org https://nominatim.openstreetmap.org https://*.upstash.io`,
               "worker-src 'self' blob:",
               "frame-ancestors 'none'",
             ].join("; "),

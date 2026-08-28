@@ -83,13 +83,21 @@ Endpoints top-level SIN envelope `data`.
 
 ### POST `/api/auth/login`
 
-- Req: `{ email, password }`. Rate-limit 5/min por IP (en memoria de proceso).
+- Req: `{ email, password }`. Rate-limit **5/min por IP y 5/min por email**
+  (Redis; in-memory solo si no hay Redis configurado). Un login exitoso libera
+  la cubeta del email.
 - 200: `{ user: { id, companyId, email, name, role }, accessToken,
   refreshToken, expiresIn }`. `expiresIn` = segundos del access token
   (**900 prod / 86400 dev**). Todos REQ para `AuthResponse.fromJson`.
-- 400 body inválido; 401 (`'Usuario no encontrado'` ≠ `'Credenciales
-  inválidas'` — enumeración de usuarios, endurecer algún día); 403 inactivo;
-  429 rate limit.
+- 400 body inválido; 401 `'Credenciales inválidas'`; 403 inactivo; 429 rate
+  limit.
+- `[v3]` **401 unificado**: email inexistente y password incorrecta devuelven
+  el MISMO status y mensaje (antes `'Usuario no encontrado'` delataba qué
+  emails existen). El costo en tiempo también se igualó (bcrypt corre siempre),
+  así que el endpoint ya no sirve como oráculo de cuentas.
+- `[v3]` **403 solo tras password válida**: una cuenta inactiva devuelve 403
+  únicamente si la credencial era correcta; con password incorrecta responde
+  401 como cualquier otra. El móvil sigue distinguiendo ambos casos.
 - Side effects: si `role === CONDUCTOR` → `users.appOnline = true`; crea
   sesión Redis; setea cookies httpOnly que el móvil ignora.
 - El móvil valida `user.role == 'CONDUCTOR'` (string exacto) y hace
@@ -104,21 +112,42 @@ Endpoints top-level SIN envelope `data`.
 - 401 `'Token inválido'`: firma/exp inválida, `type !== 'refresh'`, o la
   sesión Redis ya no existe. **401 aquí = sesión terminada** → logout local y
   re-login; NO es transitorio. 403 usuario inactivo.
+- `[v3]` **Rotación estricta con detección de reuso.** Cada refresh emite un
+  par nuevo e invalida el anterior: el refresh token lleva un `jti` y el server
+  guarda cuál es el vigente por sesión. Reusar uno ya rotado se interpreta como
+  robo y **revoca la sesión entera** (OAuth 2.0 Security BCP §4.14.2) → 401
+  también para el token nuevo, y el usuario re-autentica.
+  - **Ventana de gracia de 30 s**: el token recién rotado se sigue aceptando
+    ese lapso, para que dos requests que reciben 401 a la vez y disparan
+    refresh en paralelo no se lean como reuso. El cliente debe usar SIEMPRE el
+    último `refreshToken` recibido y no reintentar con uno viejo pasada la
+    ventana.
+  - Si Redis está configurado pero no responde, el refresh devuelve 401
+    (fail-closed): sin poder verificar la rotación no se emiten tokens nuevos.
 
 **Semántica de sesión (extraída del código, congelada como contrato):**
 
 - Access JWT: claims `{ userId, companyId, email, role, type:'access' }`,
   validación 100% stateless (firma+exp; nunca Redis). TTL 15 min prod / 24 h dev.
-- Refresh JWT: mismos claims + `sessionId` + `type:'refresh'`. TTL 7 d.
+- Refresh JWT: mismos claims + `sessionId` + `jti` + `type:'refresh'`. TTL 7 d.
+  `[v3]` El `sessionId` es **obligatorio**: un refresh token sin él se
+  rechaza con 401 en vez de emitir un par imposible de revocar.
 - Sesión Redis `session:{sessionId}`: TTL 7 días **absoluto desde el login;
   el refresh NO lo renueva** → a los 7 días exactos todo refresh devuelve
   401 y el conductor re-loguea. La app debe tratarlo como flujo normal.
-- **NO hay rotación real**: `/refresh` emite un par nuevo con el mismo
-  `sessionId` pero no invalida el viejo. Dos refresh concurrentes con el
-  mismo token → ambos 200, ambos pares válidos. No existe detección de reuse.
-- Si Redis está caído, `isRefreshTokenValid` es **fail-open** (degrada a
-  JWT-only; la revocación queda inoperante).
-- `/refresh` no tiene rate limit.
+- `[v3]` **Sí hay rotación real** con detección de reuso y 30 s de gracia
+  (detalle arriba, en `POST /api/auth/refresh`). Reemplaza al comportamiento
+  v2, donde el token viejo seguía siendo válido y no existía detección.
+- `[v3]` Con Redis **configurado** pero caído, la validación es
+  **fail-closed** (401). Solo degrada a JWT-only si no hay `REDIS_URL`
+  declarado — es decir, en dev/tests, nunca en un deploy real.
+- `[v3]` `/refresh` **sí tiene rate limit**, en dos niveles:
+  **100/min por IP** y **5/min por sesión**. El límite por IP es holgado a
+  propósito: una flota entera sale por la IP pública de la operadora
+  (CGNAT), así que la cuota estricta va por sesión, que es la unidad que
+  describe el abuso real. Un cliente sano refresca ~1 vez cada 15 min.
+  Excederlo devuelve **429** (no 401): es transitorio, **no** implica sesión
+  terminada y el cliente debe reintentar con backoff, nunca desloguear.
 
 **`[FIX-4]` (móvil, aplicado 2026-07-02) — single-flight de refresh.**
 Un solo refresh en vuelo: los requests concurrentes que reciben 401
@@ -435,6 +464,10 @@ borrar, `""` se almacena como `""`, valores no-string se normalizan a
   20 s en movimiento / 60 s detenido (umbral 2 km/h); Geolocator con
   `distanceFilter` 25 m, foreground-service en Android;
   `forceSendLocation` (abrir/cerrar parada) manda payload reducido.
+- `[v3]` Rate limit **60/min por conductor** (no por IP). La cadencia de
+  arriba da como mucho ~3/min, así que un cliente sano nunca lo toca; está
+  para acotar a un cliente runaway. Excederlo devuelve **429**, transitorio:
+  reintentar con backoff, nunca desloguear.
 - Retries: 3 × 5 s; agotados → cola `_pendingLocations` **EN MEMORIA**
   (max 100 FIFO) que se pierde al matar el proceso. **Decisión (2026-07-02):
   la cola en memoria queda ACEPTADA como pérdida tolerable.** Los pings son
@@ -579,14 +612,17 @@ embebida — §7).
 URL: pre-deploy y single-tenant-per-VPS (ADR-0008) hacen que server y app se
 desplieguen coordinados; un handshake liviano alcanza.
 
-1. **`CONTRACT_VERSION = 2`** — web: `src/lib/mobile-contract/version.ts`;
+1. **`CONTRACT_VERSION = 3`** — web: `src/lib/mobile-contract/version.ts`;
    móvil: `lib/core/contract_version.dart`. Bump en cualquier cambio de
    shape/semántica de este doc; siempre en ambos repos en el mismo cambio.
    Historial: v1 = contrato inicial (2026-07-01); v2 = aplicación de los 10
    fixes normativos del §11 (2026-07-02) — cambios de semántica en PATCH
    (notes merge-patch, failureReason no-blank), location (ceros persistidos,
    contexto de ruta honrado), logout (`{refreshToken}` en body) y shape
-   aditivo en delivery-policy (`quickReplies`).
+   aditivo en delivery-policy (`quickReplies`); **v3 = endurecimiento de auth
+   (2026-08-13)** — 401 de login unificado, 403 de inactivo solo tras validar
+   la password, y rotación estricta de refresh con detección de reuso
+   (§2). Ningún shape cambió: los tres son cambios de semántica.
 2. **Header de handshake** — el web agrega `x-br-contract: <version>` en las
    respuestas del seam (helper compartido en los handlers móviles); el móvil
    lo compara post-login y loguea/avisa UI en mismatch (no bloquea).

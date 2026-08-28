@@ -1,5 +1,5 @@
 {
-  "contractVersion": 2,
+  "contractVersion": 3,
   "endpoint": "GET /api/realtime/subscription-token",
   "status": 200,
   "body": {

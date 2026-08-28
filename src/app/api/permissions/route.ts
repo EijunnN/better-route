@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await setupAuthContext(request);
     if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
+      return authResult.response ?? unauthorizedResponse();
     }
 
     const permError = await checkPermissionOrError(

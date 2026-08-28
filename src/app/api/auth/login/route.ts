@@ -9,17 +9,29 @@ import {
   setAuthCookies,
   verifyToken,
 } from "@/lib/auth/auth";
+import { registerRefreshJti } from "@/lib/auth/session";
 import {
   checkRateLimit,
   getClientIp,
   getRateLimitHeaders,
   RATE_LIMITS,
+  resetRateLimit,
 } from "@/lib/infra/rate-limit";
 import { withContractHeader } from "@/lib/mobile-contract";
 import { AUTH_ERRORS, loginSchema } from "@/lib/validations/auth";
 
 const ACCESS_TOKEN_EXPIRES_IN_SECONDS =
   process.env.NODE_ENV === "development" ? 24 * 60 * 60 : 15 * 60;
+
+/**
+ * Hash bcrypt (cost 10, el mismo que usa el alta de usuarios) de una cadena
+ * aleatoria que nadie conoce. Se compara contra él cuando el email no existe,
+ * para que un login fallido cueste lo mismo exista o no la cuenta: sin esto,
+ * responder ~100 ms más rápido delata qué emails están registrados aunque el
+ * mensaje de error sea idéntico.
+ */
+const DUMMY_PASSWORD_HASH =
+  "$2b$10$s32UBLJcd.Ur26L.0mVIzujZDw2gW8viNua662zDKhg3dPY9xW7z2";
 
 /**
  * POST /api/auth/login
@@ -31,7 +43,7 @@ async function handlePost(request: NextRequest) {
   try {
     // Rate limiting by IP
     const ip = getClientIp(request);
-    const rateLimit = checkRateLimit(ip, RATE_LIMITS.AUTH);
+    const rateLimit = await checkRateLimit(`auth:ip:${ip}`, RATE_LIMITS.AUTH);
 
     if (!rateLimit.success) {
       return NextResponse.json(
@@ -59,6 +71,22 @@ async function handlePost(request: NextRequest) {
 
     const { email, password } = validation.data;
 
+    // Segunda dimensión: sin reverse proxy que setee los headers de IP, todos
+    // los clientes comparten la cubeta "unknown". Limitar también por email
+    // mantiene protegida cada cuenta y evita que un atacante agote la cubeta
+    // compartida y deje a todos afuera.
+    const emailRateLimit = await checkRateLimit(
+      `auth:email:${email.toLowerCase()}`,
+      RATE_LIMITS.AUTH,
+    );
+
+    if (!emailRateLimit.success) {
+      return NextResponse.json(
+        { error: AUTH_ERRORS.RATE_LIMITED },
+        { status: 429, headers: getRateLimitHeaders(emailRateLimit) },
+      );
+    }
+
     // Find user by email
     const userResult = await db
       .select({
@@ -76,28 +104,29 @@ async function handlePost(request: NextRequest) {
 
     const user = userResult[0];
 
-    if (!user) {
+    // Se corre bcrypt SIEMPRE (contra el hash dummy si no hay usuario) para no
+    // filtrar por tiempo si el email existe.
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      user?.password ?? DUMMY_PASSWORD_HASH,
+    );
+
+    if (!user || !isPasswordValid) {
+      // Respuesta única para "no existe" y "password incorrecta": distinguirlas
+      // convierte al endpoint en un oráculo de emails registrados.
       return NextResponse.json(
-        { error: AUTH_ERRORS.USER_NOT_FOUND },
+        { error: AUTH_ERRORS.INVALID_CREDENTIALS },
         { status: 401, headers: getRateLimitHeaders(rateLimit) },
       );
     }
 
-    // Check if user is active
+    // El chequeo de cuenta inactiva va DESPUÉS de validar la password: quien
+    // llega hasta acá ya probó conocer la credencial, así que el 403 no revela
+    // nada nuevo — y el móvil sigue distinguiendo "inactivo" de "credenciales".
     if (!user.active) {
       return NextResponse.json(
         { error: AUTH_ERRORS.USER_INACTIVE },
         { status: 403, headers: getRateLimitHeaders(rateLimit) },
-      );
-    }
-
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { error: AUTH_ERRORS.INVALID_CREDENTIALS },
-        { status: 401, headers: getRateLimitHeaders(rateLimit) },
       );
     }
 
@@ -109,6 +138,10 @@ async function handlePost(request: NextRequest) {
         .set({ appOnline: true })
         .where(eq(users.id, user.id));
     }
+
+    // Credencial correcta: liberá la cubeta por email para no arrastrar los
+    // intentos fallidos previos de un usuario legítimo.
+    await resetRateLimit(`auth:email:${email.toLowerCase()}`);
 
     // Create session in Redis and generate tokens with sessionId
     const sessionId = await createAuthSession(
@@ -124,13 +157,15 @@ async function handlePost(request: NextRequest) {
       },
     );
 
-    const { accessToken, refreshToken } = await generateTokenPair({
+    const { accessToken, refreshToken, refreshJti } = await generateTokenPair({
       id: user.id,
       companyId: user.companyId,
       email: user.email,
       role: user.role,
       sessionId,
     });
+
+    await registerRefreshJti(sessionId, refreshJti);
 
     // Set cookies
     await setAuthCookies(accessToken, refreshToken);

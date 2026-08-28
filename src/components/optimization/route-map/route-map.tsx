@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useTheme } from "@/components/layout/theme-context";
 import { getMapStyle } from "@/lib/map-styles";
+import { escapeHtml } from "@/lib/utils";
 import { ROUTE_COLORS, UNASSIGNED_COLOR } from "./constants";
 import { decodePolyline } from "./decode-polyline";
 import type { Route, RouteMapProps } from "./types";
@@ -71,7 +72,7 @@ function driverVanHTML(
     <div style="position:relative;width:20px;height:40px;cursor:pointer;">
       <svg width="20" height="40" viewBox="0 0 24 48" style="display:block;overflow:visible;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.45));">
         <defs>
-          <linearGradient id="rvan-${routeId}" x1="0" y1="0" x2="1" y2="0">
+          <linearGradient id="rvan-${escapeHtml(routeId)}" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stop-color="${shadeHex(color, 0.35)}"/>
             <stop offset="0.5" stop-color="${color}"/>
             <stop offset="1" stop-color="${dark}"/>
@@ -79,13 +80,13 @@ function driverVanHTML(
         </defs>
         <rect x="0" y="9.5" width="3.4" height="2.6" rx="1.2" fill="${dark}"/>
         <rect x="20.6" y="9.5" width="3.4" height="2.6" rx="1.2" fill="${dark}"/>
-        <rect x="2.5" y="1" width="19" height="46" rx="6" fill="url(#rvan-${routeId})" stroke="rgba(255,255,255,0.88)" stroke-width="1.2"/>
+        <rect x="2.5" y="1" width="19" height="46" rx="6" fill="url(#rvan-${escapeHtml(routeId)})" stroke="rgba(255,255,255,0.88)" stroke-width="1.2"/>
         <path d="M5 4.5 Q12 2.3 19 4.5 L19 7.8 Q12 6.2 5 7.8 Z" fill="rgba(255,255,255,0.25)"/>
         <path d="M5.2 10.5 Q12 8.4 18.8 10.5 L17.6 15.8 Q12 13.9 6.4 15.8 Z" fill="#0f172a"/>
         <rect x="5" y="18.5" width="14" height="23.5" rx="2.5" fill="rgba(0,0,0,0.12)"/>
         <rect x="6" y="43.4" width="12" height="1.8" rx="0.9" fill="#0f172a" opacity="0.55"/>
       </svg>
-      <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;padding:1.5px 6px;border-radius:999px;background:rgba(17,24,39,0.85);color:#f9fafb;font-size:8.5px;font-weight:600;letter-spacing:0.3px;white-space:nowrap;border:1px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,0.35);font-family:system-ui,-apple-system,sans-serif;">${identifier}</div>
+      <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;padding:1.5px 6px;border-radius:999px;background:rgba(17,24,39,0.85);color:#f9fafb;font-size:8.5px;font-weight:600;letter-spacing:0.3px;white-space:nowrap;border:1px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,0.35);font-family:system-ui,-apple-system,sans-serif;">${escapeHtml(identifier)}</div>
     </div>
   `;
 }
@@ -276,10 +277,7 @@ export function RouteMap({
         const style = getMapStyle(mapThemeRef.current);
         map.current = new maplibregl.Map({
           container: mapContainer.current,
-          style: {
-            ...style,
-            glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-          },
+          style,
           center: [centerLng, centerLat],
           zoom: 12,
           attributionControl: false,
@@ -345,9 +343,9 @@ export function RouteMap({
               className: "dark-popup",
             }).setHTML(`
               <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 160px;">
-                <strong style="color: #fff; font-size: 14px;">Inicio: ${route.driverName || "Conductor"}</strong><br/>
-                <span style="color: ${color}; font-weight: 600;">${route.vehicleIdentifier}</span>
-                ${route.driverOrigin.address ? `<hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/><span style="color: #888; font-size: 11px;">${route.driverOrigin.address}</span>` : ""}
+                <strong style="color: #fff; font-size: 14px;">Inicio: ${escapeHtml(route.driverName || "Conductor")}</strong><br/>
+                <span style="color: ${color}; font-weight: 600;">${escapeHtml(route.vehicleIdentifier)}</span>
+                ${route.driverOrigin.address ? `<hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/><span style="color: #888; font-size: 11px;">${escapeHtml(route.driverOrigin.address)}</span>` : ""}
               </div>
             `);
 
@@ -489,28 +487,28 @@ export function RouteMap({
                           (tid, idx) => `
                         <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
                           <span style="background: ${color}33; color: ${color}; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">R${routeIndex + 1}-${stop.sequence}.${idx + 1}</span>
-                          <span style="color: #fff; font-size: 12px;">${tid}</span>
+                          <span style="color: #fff; font-size: 12px;">${escapeHtml(tid)}</span>
                         </div>
                       `,
                         )
                         .join("")}
                     </div>
-                    <span style="color: ${color}; font-weight: 600;">${route.vehicleIdentifier}</span>
-                    ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${route.driverName}</span>` : ""}
+                    <span style="color: ${color}; font-weight: 600;">${escapeHtml(route.vehicleIdentifier)}</span>
+                    ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${escapeHtml(route.driverName)}</span>` : ""}
                     <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
-                    <span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block;">${stop.address}</span>
+                    <span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block;">${escapeHtml(stop.address)}</span>
                   </div>
                 `
                 : `
                   <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 200px;">
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                       <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Parada ${stop.sequence}</span>
-                      <strong style="color: #fff;">${stop.trackingId}</strong>
+                      <strong style="color: #fff;">${escapeHtml(stop.trackingId)}</strong>
                     </div>
-                    <span style="color: ${color}; font-weight: 600;">${route.vehicleIdentifier}</span>
-                    ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${route.driverName}</span>` : ""}
+                    <span style="color: ${color}; font-weight: 600;">${escapeHtml(route.vehicleIdentifier)}</span>
+                    ${route.driverName ? `<span style="color: #666; margin-left: 8px;">• ${escapeHtml(route.driverName)}</span>` : ""}
                     <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
-                    <span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block;">${stop.address}</span>
+                    <span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block;">${escapeHtml(stop.address)}</span>
                   </div>
                 `;
 
@@ -604,11 +602,11 @@ export function RouteMap({
               <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 200px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                   <span style="background: ${UNASSIGNED_COLOR}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Sin asignar</span>
-                  <strong style="color: #fff;">${order.trackingId}</strong>
+                  <strong style="color: #fff;">${escapeHtml(order.trackingId)}</strong>
                 </div>
                 <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
-                <span style="color: #f87171; font-size: 11px; line-height: 1.4; display: block;">${order.reason}</span>
-                ${order.address ? `<span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block; margin-top: 4px;">${order.address}</span>` : ""}
+                <span style="color: #f87171; font-size: 11px; line-height: 1.4; display: block;">${escapeHtml(order.reason)}</span>
+                ${order.address ? `<span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block; margin-top: 4px;">${escapeHtml(order.address)}</span>` : ""}
               </div>
             `);
 
@@ -695,7 +693,7 @@ export function RouteMap({
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                   <span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">SIN RUTA</span>
                 </div>
-                <strong style="color: #fff; font-size: 14px;">${vehicle.plate}</strong>
+                <strong style="color: #fff; font-size: 14px;">${escapeHtml(vehicle.plate)}</strong>
                 <p style="color: #9ca3af; font-size: 11px; margin-top: 4px;">Vehículo disponible sin asignación</p>
               </div>
             `);

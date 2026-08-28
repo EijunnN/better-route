@@ -310,7 +310,21 @@ mock.module("@/lib/optimization/vroom-optimizer", () => ({
 
 mock.module("@/lib/auth/session", () => {
   const sessions = new Map<string, Record<string, unknown>>();
+  // Rotación de refresh tokens: sessionId → jti vigente.
+  // A diferencia de Redis, el stub NO implementa la ventana de gracia de 30 s
+  // (ver REFRESH_GRACE_SECONDS): acá un jti rotado se considera reusado de
+  // inmediato, que es justo lo que un test querría observar.
+  const refreshJtis = new Map<string, string>();
   return {
+    registerRefreshJti: async (sessionId: string, jti: string) => {
+      refreshJtis.set(sessionId, jti);
+    },
+    checkRefreshJti: async (sessionId: string, jti: string | undefined) => {
+      if (!jti) return "unknown";
+      const current = refreshJtis.get(sessionId);
+      if (!current) return "unknown";
+      return current === jti ? "ok" : "reused";
+    },
     createSession: async (userId: string, data: Record<string, unknown>) => {
       const id = crypto.randomUUID();
       sessions.set(id, { userId, ...data, createdAt: new Date() });
@@ -318,7 +332,10 @@ mock.module("@/lib/auth/session", () => {
     },
     getSession: async (id: string) => sessions.get(id) || null,
     validateSession: async (id: string) => sessions.has(id),
-    invalidateSession: async (id: string) => sessions.delete(id),
+    invalidateSession: async (id: string) => {
+      refreshJtis.delete(id);
+      return sessions.delete(id);
+    },
     getUserSessions: async (userId: string) =>
       [...sessions.entries()]
         .filter(([, s]) => s.userId === userId)
@@ -328,7 +345,8 @@ mock.module("@/lib/auth/session", () => {
         if (s.userId === userId) sessions.delete(id);
       }
     },
-    isRefreshTokenValid: async () => true,
+    // Fiel al real: una sesión revocada invalida su refresh token.
+    isRefreshTokenValid: async (sessionId: string) => sessions.has(sessionId),
     invalidateAllSessions: async () => {
       const c = sessions.size;
       sessions.clear();

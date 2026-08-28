@@ -210,13 +210,26 @@ export async function GET(request: NextRequest) {
     const tenantFilter = withTenantFilter(routeStops, [], tenantCtx.companyId);
     const conditions: SQL<unknown>[] = tenantFilter ? [tenantFilter] : [];
 
+    // CONDUCTOR solo puede listar sus propias paradas; el filtro
+    // userId/driverId del query no puede apuntar a otro conductor.
+    const isConductor = authResult.role === "CONDUCTOR";
+    if (isConductor) {
+      if (userId && userId !== authResult.userId) {
+        return NextResponse.json(
+          { error: "No tiene permiso para ver paradas de otro conductor" },
+          { status: 403 },
+        );
+      }
+      conditions.push(eq(routeStops.userId, authResult.userId));
+    }
+
     if (jobId) {
       conditions.push(eq(routeStops.jobId, jobId));
     }
     if (routeId) {
       conditions.push(eq(routeStops.routeId, routeId));
     }
-    if (userId) {
+    if (userId && !isConductor) {
       conditions.push(eq(routeStops.userId, userId));
     }
     if (status) {

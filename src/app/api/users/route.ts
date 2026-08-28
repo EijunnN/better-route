@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { Action, EntityType } from "@/lib/auth/authorization";
+import { Action, EntityType, isAdmin } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { logCreate } from "@/lib/infra/audit";
 import { setTenantContext } from "@/lib/infra/tenant";
@@ -182,6 +182,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const validatedData = createUserSchema.parse(body);
+
+    // Solo ADMIN_SISTEMA puede crear usuarios con rol ADMIN_SISTEMA; de lo
+    // contrario un rol custom con user:create mintea un superadmin global.
+    if (validatedData.role === "ADMIN_SISTEMA" && !isAdmin(authResult)) {
+      return NextResponse.json(
+        { error: "No autorizado para crear un usuario ADMIN_SISTEMA" },
+        { status: 403 },
+      );
+    }
 
     // Check for duplicates in parallel (email, username, and optionally identification)
     const [existingEmail, existingUsername, existingIdentification] =

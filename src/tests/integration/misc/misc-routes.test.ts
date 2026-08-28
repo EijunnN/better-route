@@ -16,8 +16,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 // Route handler imports
-// POST /api/admin/cache (warmup) was removed with the dead warmupCache stub —
-// see docs/cache-audit.md.
+// POST /api/admin/cache (warmup) was removed with the dead warmupCache stub.
 import {
   DELETE as cacheDELETE,
   GET as cacheGET,

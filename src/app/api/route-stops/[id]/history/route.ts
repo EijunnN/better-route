@@ -38,6 +38,11 @@ async function handleGet(
       return NextResponse.json({ error: "Stop not found" }, { status: 404 });
     }
 
+    // CONDUCTOR solo puede leer el historial de sus propias paradas.
+    if (authResult.role === "CONDUCTOR" && stop.userId !== authResult.userId) {
+      return NextResponse.json({ error: "Stop not found" }, { status: 404 });
+    }
+
     // Get history
     const history = await db.query.routeStopHistory.findMany({
       where: eq(routeStopHistory.routeStopId, stopId),

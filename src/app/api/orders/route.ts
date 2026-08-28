@@ -218,6 +218,13 @@ export async function POST(request: NextRequest) {
       .values({
         ...validatedData,
         companyId: tenantCtx.companyId,
+        // El estado de una orden se crea SIEMPRE en PENDING y activa: los
+        // cambios de estado deben pasar por los endpoints de transición
+        // (cancel/reactivate/…) que validan la máquina de estados y escriben
+        // order_status_history. Aceptar `status`/`active` del body permitía
+        // crear órdenes terminales falsas sin historial.
+        status: "PENDING",
+        active: true,
         // Convert empty string to null for optional fields
         timeWindowPresetId: validatedData.timeWindowPresetId || null,
         customerEmail: validatedData.customerEmail || null,

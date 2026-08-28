@@ -30,12 +30,6 @@ export function useMapThemeSync(
     if (onStyleReloaded) {
       map.current.once("style.load", onStyleReloaded);
     }
-    map.current.setStyle(
-      {
-        ...style,
-        glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-      },
-      { diff: false },
-    );
+    map.current.setStyle(style, { diff: false });
   }, [isDark, isLoading, map, mapThemeRef, onStyleReloaded]);
 }

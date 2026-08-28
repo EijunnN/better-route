@@ -55,8 +55,14 @@ audit):
 - Routes with `companyId` in the path (e.g.
   `/api/companies/[id]/...`) must additionally compare the path
   `companyId` against the user (403 on mismatch; only `ADMIN_SISTEMA`
-  bypasses) — reference pattern: `canAccessCompany` in
-  `src/app/api/companies/[id]/route.ts`.
+  bypasses) — helper: `assertSameTenant` in
+  `src/lib/routing/route-helpers.ts`.
+  > *Nota 2026-08-13 (no cambia la decisión):* el patrón vivía inline como
+  > `canAccessCompany` en cada ruta. Se extrajo al helper canónico
+  > `assertSameTenant` tras un bug real — `/api/companies/[id]` derivaba el
+  > tenant del header vía `setupAuthContext` y devolvía `401` a
+  > `ADMIN_SISTEMA` (sin `companyId` en el JWT) al editar una empresa.
+  > En estas rutas **el path nombra al tenant**, no el header.
 - The pre-audit unauthed helper (`extractTenantContext`) is deleted and
   must not be reintroduced.
 

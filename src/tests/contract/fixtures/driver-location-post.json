@@ -1,5 +1,5 @@
 {
-  "contractVersion": 2,
+  "contractVersion": 3,
   "endpoint": "POST /api/mobile/driver/location",
   "status": 201,
   "body": {

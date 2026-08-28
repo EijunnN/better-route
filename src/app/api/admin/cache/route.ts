@@ -5,7 +5,8 @@
  * DELETE /api/admin/cache — invalidate all cache (emergency, admin only).
  *
  * The legacy POST /api/admin/cache "warmup" endpoint was removed along with
- * the dead warmupCache() stub. See docs/cache-audit.md.
+ * the dead warmupCache() stub — it logged and returned 200 without doing any
+ * work, which is worse than not having the endpoint.
  */
 
 import { NextResponse } from "next/server";

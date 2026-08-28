@@ -29,7 +29,7 @@ export async function GET(
   try {
     // Rate limiting by IP
     const ip = getClientIp(_request);
-    const rateLimit = checkRateLimit(
+    const rateLimit = await checkRateLimit(
       `public-tracking:${ip}`,
       RATE_LIMITS.PUBLIC_TRACKING,
     );

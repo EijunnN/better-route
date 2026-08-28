@@ -9,8 +9,9 @@ import { verifyToken } from "@/lib/auth/auth";
  *
  * NOTE: the previous file also exported an LRU-based `getCached` +
  * invalidation helpers. Those were unused and NOT tenant-aware by
- * construction (process-local cache keyed by a caller-supplied string),
- * so they were deleted to remove the footgun. See docs/cache-audit.md D7.
+ * construction (process-local cache keyed by a caller-supplied string:
+ * one process caches tenant A's row, the next request for tenant B on the
+ * same process reads it back), so they were deleted to remove the footgun.
  */
 export const getCompanyId = cache(async (): Promise<string | null> => {
   const cookieStore = await cookies();

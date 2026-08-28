@@ -4,6 +4,7 @@ import { Clock, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getMapStyle } from "@/lib/map-styles";
+import { escapeHtml } from "@/lib/utils";
 import { DEFAULT_BRAND_ACCENT } from "./constants";
 
 interface TrackingMapProps {
@@ -78,17 +79,17 @@ export function TrackingMap({
               <div style="
                 position: absolute; inset: -10px;
                 border-radius: 50%;
-                background: ${accent};
+                background: ${escapeHtml(accent)};
                 opacity: 0.25;
                 filter: blur(8px);
               "></div>
               <div style="
                 position: relative;
                 width: 36px; height: 36px;
-                background: ${accent};
+                background: ${escapeHtml(accent)};
                 border-radius: 50%;
                 display: flex; align-items: center; justify-content: center;
-                box-shadow: 0 4px 12px ${accent}66;
+                box-shadow: 0 4px 12px ${escapeHtml(accent)}66;
               ">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="m7.5 4.27 9 5.15"/>
@@ -143,17 +144,17 @@ export function TrackingMap({
             <div style="
               position: absolute; inset: -8px;
               border-radius: 50%;
-              background: ${accent};
+              background: ${escapeHtml(accent)};
               opacity: 0.4;
               animation: pulse-driver 2s infinite;
             "></div>
             <div style="
               position: relative;
               width: 28px; height: 28px;
-              background: ${accent};
+              background: ${escapeHtml(accent)};
               border: 3px solid white;
               border-radius: 50%;
-              box-shadow: 0 4px 12px ${accent}8c;
+              box-shadow: 0 4px 12px ${escapeHtml(accent)}8c;
             "></div>
           </div>`;
         driverMarker.current = new maplibregl.Marker({ element: driverEl })

@@ -41,9 +41,9 @@ export async function POST(request: NextRequest) {
 - Para multi-tenant: derivá el tenant del JWT con
   `extractTenantContextAuthed(request, user)` — directo tras
   `requireRoutePermission`, o implícito si usás `setupAuthContext` (lo llama
-  internamente). Si además la ruta recibe `companyId` por path/body, compará
-  ese valor contra el user — mismatch = 403, solo `ADMIN_SISTEMA` lo salta —
-  como hace `canAccessCompany` en `src/app/api/companies/[id]/route.ts`.
+  internamente). Si la ruta recibe el `companyId` por path, el tenant lo
+  nombra el path: usá `assertSameTenant(user, id)` — mismatch = 403, solo
+  `ADMIN_SISTEMA` lo salta. Patrón: `src/app/api/companies/[id]/route.ts`.
 - **Nunca** uses `setupAuthContext` solo — siempre acompañado de un check de
   permission.
 
@@ -200,12 +200,15 @@ El cliente esconde el botón por UX. **El server enforce siempre**.
 
 ### ❌ NO reimplementes el check tenant-vs-path con semántica propia
 
-No hay un helper compartido para validar el `companyId` del path: el patrón
-de referencia es `canAccessCompany(user, companyIdFromPath)` en
-`src/app/api/companies/[id]/route.ts` (bypass solo para `ADMIN_SISTEMA`,
-mismatch → 403 `TENANT_MISMATCH`). Si tu ruta recibe `companyId` por path,
-replicá esa semántica exacta — no inventes variantes que devuelvan 401 o
-que olviden el bypass de admin.
+Usá `assertSameTenant(user, companyIdFromPath)` de
+`src/lib/routing/route-helpers.ts`: bypass solo para `ADMIN_SISTEMA`,
+mismatch → 403 `TENANT_MISMATCH`, y entra al tenant context del path.
+No inventes variantes que devuelvan 401 (el caller **está** autenticado —
+lo que falla es el tenant) ni que olviden el bypass de admin.
+
+Tampoco derives el tenant del header en estas rutas: `setupAuthContext` le
+exige `x-company-id` a `ADMIN_SISTEMA`, cuyo JWT no trae `companyId`, y la
+ruta termina rechazando a un admin legítimo con un 401 falso.
 
 ### ❌ NO `<ProtectedPage>` sin `requiredPermission`
 

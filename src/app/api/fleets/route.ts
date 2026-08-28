@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
           and(
             inArray(vehicleFleets.fleetId, fleetIds),
             eq(vehicleFleets.active, true),
+            eq(vehicles.companyId, tenantCtx.companyId),
           ),
         );
 

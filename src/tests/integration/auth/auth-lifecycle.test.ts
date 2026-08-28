@@ -7,12 +7,25 @@ import {
   test,
 } from "bun:test";
 import { POST as loginPOST } from "@/app/api/auth/login/route";
+import { POST as refreshPOST } from "@/app/api/auth/refresh/route";
 import { GET as ordersGET } from "@/app/api/orders/route";
 import { resetRateLimit } from "@/lib/infra/rate-limit";
 import { createExpiredToken, createTestToken } from "../setup/test-auth";
 import { createCompany, createUser } from "../setup/test-data";
 import { cleanDatabase } from "../setup/test-db";
 import { createTestRequest } from "../setup/test-request";
+
+/**
+ * El login limita por dos dimensiones (IP y email). Sin reverse proxy los
+ * requests de test caen todos en la IP "unknown", así que hay que liberar
+ * ambas cubetas entre tests.
+ */
+async function resetAuthLimits(...emails: string[]): Promise<void> {
+  await resetRateLimit("auth:ip:unknown");
+  await Promise.all(
+    emails.map((email) => resetRateLimit(`auth:email:${email.toLowerCase()}`)),
+  );
+}
 
 describe("Auth lifecycle", () => {
   let company: Awaited<ReturnType<typeof createCompany>>;
@@ -28,8 +41,12 @@ describe("Auth lifecycle", () => {
     });
   });
 
-  beforeEach(() => {
-    resetRateLimit("unknown");
+  beforeEach(async () => {
+    await resetAuthLimits(
+      "auth-test@test.com",
+      "inactive@test.com",
+      "nobody@nowhere.com",
+    );
   });
 
   afterAll(async () => {
@@ -99,19 +116,26 @@ describe("Auth lifecycle", () => {
   });
 
   // -----------------------------------------------------------------------
-  // 4. Login with non-existent email
+  // 4. Login with non-existent email — indistinguible de password incorrecta
   // -----------------------------------------------------------------------
-  test("login with non-existent email returns 401", async () => {
-    const req = await createTestRequest("/api/auth/login", {
+  test("login with non-existent email is indistinguishable from a wrong password", async () => {
+    const unknownEmailReq = await createTestRequest("/api/auth/login", {
       method: "POST",
       body: { email: "nobody@nowhere.com", password: "password123" },
     });
+    const unknownEmailRes = await loginPOST(unknownEmailReq);
 
-    const res = await loginPOST(req);
-    expect(res.status).toBe(401);
+    const wrongPasswordReq = await createTestRequest("/api/auth/login", {
+      method: "POST",
+      body: { email: "auth-test@test.com", password: "wrong-password" },
+    });
+    const wrongPasswordRes = await loginPOST(wrongPasswordReq);
 
-    const data = await res.json();
-    expect(data.error).toBe("Usuario no encontrado");
+    // Mismo status y mismo mensaje: el endpoint no puede usarse como oráculo
+    // de qué emails están registrados.
+    expect(unknownEmailRes.status).toBe(401);
+    expect(wrongPasswordRes.status).toBe(401);
+    expect(await unknownEmailRes.json()).toEqual(await wrongPasswordRes.json());
   });
 
   // -----------------------------------------------------------------------
@@ -166,7 +190,7 @@ describe("Auth lifecycle", () => {
   // 7. Rate limiting after N failed attempts
   // -----------------------------------------------------------------------
   test("rate limiting kicks in after 5 failed login attempts", async () => {
-    resetRateLimit("unknown");
+    await resetAuthLimits("auth-test@test.com");
 
     // Make 5 requests to exhaust the limit
     for (let i = 0; i < 5; i++) {
@@ -191,5 +215,45 @@ describe("Auth lifecycle", () => {
     expect(data.error).toBe(
       "Demasiados intentos. Intente nuevamente más tarde",
     );
+  });
+
+  // -----------------------------------------------------------------------
+  // 8. Rotación de refresh tokens y detección de reuso
+  // -----------------------------------------------------------------------
+  test("reusar un refresh token ya rotado revoca la sesión entera", async () => {
+    await resetAuthLimits("auth-test@test.com");
+
+    const loginReq = await createTestRequest("/api/auth/login", {
+      method: "POST",
+      body: { email: "auth-test@test.com", password: "password123" },
+    });
+    const loginRes = await loginPOST(loginReq);
+    expect(loginRes.status).toBe(200);
+    const { refreshToken: originalToken } = await loginRes.json();
+
+    // Rotación normal: el refresh devuelve un token distinto al usado.
+    const rotateReq = await createTestRequest("/api/auth/refresh", {
+      method: "POST",
+      body: { refreshToken: originalToken },
+    });
+    const rotateRes = await refreshPOST(rotateReq);
+    expect(rotateRes.status).toBe(200);
+    const { refreshToken: rotatedToken } = await rotateRes.json();
+    expect(rotatedToken).not.toBe(originalToken);
+
+    // Reusar el token viejo: firma válida y no expirado, pero ya rotado.
+    const replayReq = await createTestRequest("/api/auth/refresh", {
+      method: "POST",
+      body: { refreshToken: originalToken },
+    });
+    expect((await refreshPOST(replayReq)).status).toBe(401);
+
+    // Y el reuso mata la sesión completa: el token legítimo tampoco sirve,
+    // así que un ladrón no puede quedarse con la sesión del usuario.
+    const afterReplayReq = await createTestRequest("/api/auth/refresh", {
+      method: "POST",
+      body: { refreshToken: rotatedToken },
+    });
+    expect((await refreshPOST(afterReplayReq)).status).toBe(401);
   });
 });

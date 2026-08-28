@@ -1,5 +1,5 @@
 {
-  "contractVersion": 2,
+  "contractVersion": 3,
   "endpoint": "POST /api/chat/conversations/[driverId]/read",
   "status": 200,
   "body": { "ok": true }

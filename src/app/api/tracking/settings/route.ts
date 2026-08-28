@@ -116,6 +116,22 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // brandColor se interpola dentro de innerHTML en el mapa público de
+    // tracking: validar formato hex estricto para que no pueda romper el
+    // atributo style e inyectar markup.
+    if ("brandColor" in body) {
+      const brandColor = body.brandColor;
+      if (
+        typeof brandColor !== "string" ||
+        !/^#[0-9a-fA-F]{3,8}$/.test(brandColor)
+      ) {
+        return NextResponse.json(
+          { error: "brandColor debe ser un color hex válido (ej. #3B82F6)" },
+          { status: 400 },
+        );
+      }
+    }
+
     // Check if settings exist
     const existing = await db.query.companyTrackingSettings.findFirst({
       where: eq(companyTrackingSettings.companyId, tenantCtx.companyId),

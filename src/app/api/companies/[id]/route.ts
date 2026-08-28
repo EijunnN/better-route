@@ -3,54 +3,38 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
 import { Action, EntityType } from "@/lib/auth/authorization";
+import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import {
-  checkPermissionOrError,
+  assertSameTenant,
   handleError,
   notFoundResponse,
-  setupAuthContext,
-  unauthorizedResponse,
 } from "@/lib/routing/route-helpers";
 import { updateCompanySchema } from "@/lib/validations/company";
 
-// Companies don't use tenant filtering - they ARE the tenants
-// ADMIN_SISTEMA can access all companies, others only their own
-function canAccessCompany(
-  user: { role: string; companyId: string | null },
-  companyId: string,
-): boolean {
-  if (user.role === "ADMIN_SISTEMA") return true;
-  return user.companyId === companyId;
-}
+// Companies don't use tenant filtering - they ARE the tenants. The company
+// being acted upon is the `[id]` in the path, so tenancy is enforced with
+// assertSameTenant (ADMIN_SISTEMA: any; others: only their own).
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
-
-    // Check if user can read companies
-    const permError = await checkPermissionOrError(
-      authResult.user,
+    // The target tenant is the `[id]` in the path, not the x-company-id
+    // header — same reasoning as the listing in ../route.ts: setupAuthContext
+    // would demand a header from ADMIN_SISTEMA (whose JWT has no companyId)
+    // and reject the request as unauthenticated.
+    const user = await requireRoutePermission(
+      request,
       EntityType.COMPANY,
       Action.READ,
     );
-    if (permError) return permError;
+    if (user instanceof NextResponse) return user;
 
     const { id } = await params;
 
-    // Check access to this specific company. Caller IS authenticated and
-    // has the COMPANY:READ permission, but is scoped to a different company:
-    // that's a 403 (forbidden), not a 401 (unauthenticated).
-    if (!canAccessCompany(authResult.user, id)) {
-      return NextResponse.json(
-        { error: "Tenant mismatch", code: "TENANT_MISMATCH" },
-        { status: 403 },
-      );
-    }
+    const tenantError = assertSameTenant(user, id);
+    if (tenantError) return tenantError;
 
     const [company] = await db
       .select()
@@ -73,29 +57,17 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
-
-    // Check if user can update companies
-    const permError = await checkPermissionOrError(
-      authResult.user,
+    const user = await requireRoutePermission(
+      request,
       EntityType.COMPANY,
       Action.UPDATE,
     );
-    if (permError) return permError;
+    if (user instanceof NextResponse) return user;
 
     const { id } = await params;
 
-    // Authenticated + has permission, but trying to access a different
-    // tenant's company → 403, not 401.
-    if (!canAccessCompany(authResult.user, id)) {
-      return NextResponse.json(
-        { error: "Tenant mismatch", code: "TENANT_MISMATCH" },
-        { status: 403 },
-      );
-    }
+    const tenantError = assertSameTenant(user, id);
+    if (tenantError) return tenantError;
 
     const body = await request.json();
     const validatedData = updateCompanySchema.parse({ ...body, id });
@@ -178,29 +150,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const authResult = await setupAuthContext(request);
-    if (!authResult.authenticated || !authResult.user) {
-      return unauthorizedResponse();
-    }
-
-    // Check if user can delete companies (sensitive action)
-    const permError = await checkPermissionOrError(
-      authResult.user,
+    // Deleting a company is a sensitive, cross-tenant action
+    const user = await requireRoutePermission(
+      request,
       EntityType.COMPANY,
       Action.DELETE,
     );
-    if (permError) return permError;
+    if (user instanceof NextResponse) return user;
 
     const { id } = await params;
 
-    // Authenticated + has permission, but trying to access a different
-    // tenant's company → 403, not 401.
-    if (!canAccessCompany(authResult.user, id)) {
-      return NextResponse.json(
-        { error: "Tenant mismatch", code: "TENANT_MISMATCH" },
-        { status: 403 },
-      );
-    }
+    const tenantError = assertSameTenant(user, id);
+    if (tenantError) return tenantError;
 
     const [existingCompany] = await db
       .select()

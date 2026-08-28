@@ -55,6 +55,24 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
+/**
+ * Formula injection guard: una celda cuyo primer carácter es `=`, `+`, `-`,
+ * `@` (o tab/CR) se interpreta como fórmula por Excel/Sheets/LibreOffice y
+ * ejecuta un enlace/DDE en la máquina de quien abre el archivo. Prefijar una
+ * comilla simple fuerza el valor a texto plano.
+ */
+function sanitizeCell(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
+/** Sheet names cannot contain `[]:*?/\` in Excel; strip them. */
+function sanitizeSheetName(value: string): string {
+  return value
+    .split("")
+    .filter((c) => !"[]:*?/\\".includes(c))
+    .join("");
+}
+
 interface PlanRow {
   "N° Parada": number;
   "Código Track": string;
@@ -100,10 +118,10 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
         stop.groupedTrackingIds.forEach((trackingId) => {
           planRows.push({
             "N° Parada": stop.sequence,
-            "Código Track": trackingId,
-            Conductor: route.driverName || "Sin asignar",
-            Vehículo: route.vehicleIdentifier,
-            Dirección: stop.address,
+            "Código Track": sanitizeCell(trackingId),
+            Conductor: sanitizeCell(route.driverName || "Sin asignar"),
+            Vehículo: sanitizeCell(route.vehicleIdentifier),
+            Dirección: sanitizeCell(stop.address),
             "Hora Est. Llegada": formatTime(stop.estimatedArrival),
             "Espera (min)": waitStr,
             "Ventana Inicio": formatTime(stop.timeWindow?.start),
@@ -115,10 +133,10 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
       } else {
         planRows.push({
           "N° Parada": stop.sequence,
-          "Código Track": stop.trackingId,
-          Conductor: route.driverName || "Sin asignar",
-          Vehículo: route.vehicleIdentifier,
-          Dirección: stop.address,
+          "Código Track": sanitizeCell(stop.trackingId),
+          Conductor: sanitizeCell(route.driverName || "Sin asignar"),
+          Vehículo: sanitizeCell(route.vehicleIdentifier),
+          Dirección: sanitizeCell(stop.address),
           "Hora Est. Llegada": formatTime(stop.estimatedArrival),
           "Espera (min)": waitStr,
           "Ventana Inicio": formatTime(stop.timeWindow?.start),
@@ -163,8 +181,8 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
         stop.groupedTrackingIds.forEach((trackingId) => {
           driverRows.push({
             "N° Parada": stop.sequence,
-            "Código Track": trackingId,
-            Dirección: stop.address,
+            "Código Track": sanitizeCell(trackingId),
+            Dirección: sanitizeCell(stop.address),
             "Hora Est. Llegada": formatTime(stop.estimatedArrival),
             "Espera (min)": waitStr,
             "Ventana Inicio": formatTime(stop.timeWindow?.start),
@@ -176,8 +194,8 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
       } else {
         driverRows.push({
           "N° Parada": stop.sequence,
-          "Código Track": stop.trackingId,
-          Dirección: stop.address,
+          "Código Track": sanitizeCell(stop.trackingId),
+          Dirección: sanitizeCell(stop.address),
           "Hora Est. Llegada": formatTime(stop.estimatedArrival),
           "Espera (min)": waitStr,
           "Ventana Inicio": formatTime(stop.timeWindow?.start),
@@ -203,11 +221,10 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
       { wch: 12 }, // Longitud
     ];
 
-    // Sheet name: "Ruta N - Placa" (max 31 chars for Excel)
-    const sheetName = `Ruta ${index + 1} - ${route.vehicleIdentifier}`.slice(
-      0,
-      31,
-    );
+    // Sheet name: "Ruta N - Placa" (max 31 chars for Excel, sin chars inválidos)
+    const sheetName = sanitizeSheetName(
+      `Ruta ${index + 1} - ${route.vehicleIdentifier}`,
+    ).slice(0, 31);
     XLSX.utils.book_append_sheet(workbook, driverSheet, sheetName);
   });
 
@@ -237,8 +254,8 @@ export function exportPlanToExcel(data: ExportData, filename?: string): void {
       "Volumen (L)",
     ],
     ...data.routes.map((route) => [
-      route.vehicleIdentifier,
-      route.driverName || "Sin asignar",
+      sanitizeCell(route.vehicleIdentifier),
+      sanitizeCell(route.driverName || "Sin asignar"),
       route.stops.length,
       formatDistance(route.totalDistance),
       formatDuration(route.totalDuration),

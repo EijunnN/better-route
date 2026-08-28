@@ -52,9 +52,11 @@ roles** se crean por empresa en `/roles` y se almacenan en DB.
 - `ADMIN_SISTEMA` debe pasar header explícitamente para switchear workspace.
 
 Para rutas con `companyId` en el path (ej. `/api/companies/[id]/...`):
-`setupAuthContext` + `checkPermissionOrError`, y después comparar el
-`companyId` del path contra el user — mismatch = 403, solo `ADMIN_SISTEMA`
-lo salta. Patrón de referencia: `canAccessCompany` en
+`requireRoutePermission` + `assertSameTenant(user, id)`. Acá el **path**
+nombra al tenant, no el header: `setupAuthContext` le exigiría
+`x-company-id` a `ADMIN_SISTEMA` (cuyo JWT no trae `companyId`) y
+devolvería un 401 falso a un admin legítimo. Mismatch = 403, solo
+`ADMIN_SISTEMA` lo salta. Patrón de referencia:
 `src/app/api/companies/[id]/route.ts`.
 
 ---
@@ -80,8 +82,15 @@ src/components/<feature>/
 
 ## Convenciones del proyecto
 
-- **Pre-deploy stage**: sin usuarios reales todavía. Preferimos refactors
-  agresivos a compat shims. Eliminar código deprecated en lugar de mantenerlo.
+- **Beta en producción (desde 2026-08-13)**: gratuita mientras dure la beta.
+  Seguimos prefiriendo refactors agresivos a compat shims y eliminar código
+  deprecated en lugar de mantenerlo — pero ya hay superficie expuesta a
+  internet: para cualquier decisión de seguridad, asumí tráfico real. Los
+  pasos manuales del despliegue (headers del reverse proxy, variables que la
+  app exige) están en
+  [`docs/deployment-centrifugo.md`](./docs/deployment-centrifugo.md#checklist-al-desplegar);
+  el entorno de prueba en contenedores está en
+  [`docs/deployment-railway.md`](./docs/deployment-railway.md).
 - **Organización**: cuando un módulo crece, convertir en directorio +
   `index.ts`. Borrar archivos muertos sin temor.
 - **Imports**: barrels (`index.ts`) en cada feature module.
@@ -169,6 +178,18 @@ corregí/anotá el doc.
 > (RBAC tipado) fueron escritos. `docs/routing-quality-findings.md` queda
 > como snapshot histórico con banner (decidido 2026-07-02: se conserva —
 > documenta por qué existe el verifier).
+>
+> **Poda de docs (2026-08-13):** se eliminaron los reportes de trabajo ya
+> cerrado —`security-audit`, `cache-audit`, `preprod-audit-report`,
+> `pending-review-findings-2026-07-02`, `AGENT-UPGRADE-PLAN`, `PROCESS.md`,
+> `docs/issues/` (backlog implementado) y `routing-quality-report` (lo
+> regenera el harness)— tras verificar en el código que sus hallazgos
+> estaban aplicados. `ROLES-PERMISSIONS.md` y `DEPLOYMENT-ROUTING.md` se
+> borraron por contradecir a sus canónicos:
+> `src/lib/auth/permissions/README.md` y `docker/README.md`.
+> **Regla:** una auditoría o un plan es un artefacto de trabajo, no
+> documentación — cuando se aplica, se borra; lo que sobrevive es el ADR o
+> la regla ejecutable (hook, test, rúbrica).
 
 ## Seam con la app móvil
 
@@ -214,3 +235,13 @@ de dar una tarea por terminada, además del hook:
 4. **Checklist de invariantes** → [`docs/REVIEW-RUBRIC.md`](./docs/REVIEW-RUBRIC.md)
    (aislamiento tenant, RBAC, estados terminales, evidence, history append-only).
    El hook de biome **no** verifica correctness ni seguridad.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
