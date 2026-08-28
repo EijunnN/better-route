@@ -45,6 +45,34 @@ const upstreamPort = target.port || (target.protocol === "https:" ? 443 : 80);
 const basePath = target.pathname.replace(/\/$/, "");
 const listenPort = Number(process.env.OSRM_PROXY_PORT || 5000);
 
+/**
+ * Los headers hop-by-hop describen UNA conexión, no el mensaje, así que
+ * reenviarlos entre dos conexiones distintas deja a las puntas negociando
+ * cosas que no valen para su tramo. VROOM habla con un cliente Go que usa
+ * keep-alive: al copiarle su `connection`/`transfer-encoding` al tramo de
+ * salida, la respuesta llegaba sin cerrar y el solve se colgaba hasta el
+ * timeout de 240 s, pese a que OSRM había contestado la matriz en 111 ms.
+ * Node arma los suyos para cada tramo; acá solo hay que no estorbarlo.
+ */
+const HOP_BY_HOP = new Set([
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+]);
+
+function stripHopByHop(headers) {
+  const out = {};
+  for (const [k, v] of Object.entries(headers)) {
+    if (!HOP_BY_HOP.has(k.toLowerCase())) out[k] = v;
+  }
+  return out;
+}
+
 http
   .createServer((req, res) => {
     const upstream = client.request(
@@ -55,11 +83,14 @@ http
         path: basePath + req.url,
         method: req.method,
         // El Host original es 127.0.0.1: mandarlo rompe el ruteo del destino.
-        headers: { ...req.headers, host: target.host },
+        headers: { ...stripHopByHop(req.headers), host: target.host },
         agent,
       },
       (upstreamRes) => {
-        res.writeHead(upstreamRes.statusCode || 502, upstreamRes.headers);
+        res.writeHead(
+          upstreamRes.statusCode || 502,
+          stripHopByHop(upstreamRes.headers),
+        );
         upstreamRes.pipe(res);
       },
     );
