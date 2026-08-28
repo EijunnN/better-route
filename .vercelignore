@@ -1,0 +1,26 @@
+# `vercel deploy` sube el directorio de trabajo, no el repo, así que
+# .gitignore no lo protege: sin esta lista intenta subir los ~2,7 GB de datos
+# de OSRM y muere con "File size limit exceeded (100 MB)" (peru-latest.osrm
+# solo ya pesa 635 MB).
+#
+# El servicio de OSRM no los necesita subidos: su Dockerfile los genera en
+# build desde Geofabrik.
+docker/osrm/*.osm.pbf
+docker/osrm/*.osrm*
+
+node_modules
+.next
+.git
+.claude
+.playwright-mcp
+coverage
+playwright-report
+test-results
+
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+Thumbs.db

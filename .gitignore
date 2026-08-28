@@ -61,3 +61,6 @@ docker/osrm/*.osrm*
 # Local agent skills (per-developer, not project state)
 .agents/skills/
 skills-lock.json
+
+.vercel
+.env*
