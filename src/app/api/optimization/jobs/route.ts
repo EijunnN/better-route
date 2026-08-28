@@ -10,6 +10,16 @@ import { setTenantContext } from "@/lib/infra/tenant";
 import { createAndExecuteJob } from "@/lib/optimization/optimization-job";
 import type { PlanLevelMetrics } from "@/lib/optimization/solved-plan";
 import { extractTenantContextAuthed } from "@/lib/routing/route-helpers";
+
+/**
+ * Con OPTIMIZATION_INLINE/VERCEL el solve corre dentro de este request en vez
+ * de soltarse al proceso, así que el handler tiene que durar lo que dure la
+ * corrida. 300 s es el techo del plan Hobby de Vercel y deja margen sobre
+ * VROOM_TIMEOUT (240 s). En un VPS este export es inocuo: el job se suelta y
+ * la respuesta sale igual de rápido.
+ */
+export const maxDuration = 300;
+
 import {
   optimizationJobCreateSchema,
   optimizationJobQuerySchema,
