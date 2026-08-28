@@ -22,6 +22,24 @@ if (!rawTarget) {
 
 const target = new URL(rawTarget);
 const client = target.protocol === "https:" ? https : http;
+
+/**
+ * El binding resuelve a `*.services.vercel-infra.com` sobre TLS con un
+ * certificado que la imagen de VROOM no puede validar: no trae bundle de CA
+ * ("Ignoring extra certs from /etc/ssl/certs/ca-certificates.crt ... No such
+ * file") y la cadena de Vercel es interna, así que el handshake muere con
+ * "self-signed certificate in certificate chain" y VROOM ve un 502.
+ *
+ * Saltar la verificación queda acotado a ese dominio interno: el tráfico no
+ * sale a la red pública —Vercel lo enruta service-to-service, sin pasar por
+ * el pipeline público— y el permiso de acceso ya lo da el binding, no el
+ * certificado. Contra cualquier otro host se valida normal.
+ */
+const isVercelInternal = target.hostname.endsWith(".services.vercel-infra.com");
+const agent =
+  target.protocol === "https:" && isVercelInternal
+    ? new https.Agent({ rejectUnauthorized: false })
+    : undefined;
 const upstreamPort = target.port || (target.protocol === "https:" ? 443 : 80);
 // El binding puede traer un path base; hay que anteponerlo a la ruta de OSRM.
 const basePath = target.pathname.replace(/\/$/, "");
@@ -38,6 +56,7 @@ http
         method: req.method,
         // El Host original es 127.0.0.1: mandarlo rompe el ruteo del destino.
         headers: { ...req.headers, host: target.host },
+        agent,
       },
       (upstreamRes) => {
         res.writeHead(upstreamRes.statusCode || 502, upstreamRes.headers);

@@ -18,6 +18,11 @@ FROM ghcr.io/vroom-project/vroom-docker:v1.14.0
 
 USER root
 
+# La imagen base no trae bundle de CA y Node avisa en cada arranque
+# ("Ignoring extra certs from /etc/ssl/certs/ca-certificates.crt"). Sin esto
+# no hay TLS válido hacia ningún destino https.
+RUN apt-get update  && apt-get install -y --no-install-recommends ca-certificates  && update-ca-certificates  && rm -rf /var/lib/apt/lists/*
+
 COPY osrm-proxy.js /usr/local/bin/osrm-proxy.js
 
 # maxlocations debe ser <= --max-table-size de OSRM (5000): si OSRM rechaza la
