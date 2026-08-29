@@ -7,37 +7,9 @@
       "bindings": [
         {
           "type": "service",
-          "service": "vroom",
-          "format": "url",
-          "env": "VROOM_URL"
-        },
-        {
-          "type": "service",
-          "service": "osrm",
-          "format": "url",
-          "env": "OSRM_URL"
-        },
-        {
-          "type": "service",
           "service": "centrifugo",
           "format": "url",
           "env": "CENTRIFUGO_URL"
-        }
-      ]
-    },
-    "osrm": {
-      "root": "docker/osrm/",
-      "runtime": "container"
-    },
-    "vroom": {
-      "root": "docker/vroom/",
-      "runtime": "container",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "osrm",
-          "format": "url",
-          "env": "OSRM_URL"
         }
       ]
     },
@@ -49,8 +21,15 @@
   "rewrites": [
     {
       "source": "/connection/(.*)",
-      "destination": { "service": "centrifugo" }
+      "destination": {
+        "service": "centrifugo"
+      }
     },
-    { "source": "/(.*)", "destination": { "service": "app" } }
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "app"
+      }
+    }
   ]
 }
