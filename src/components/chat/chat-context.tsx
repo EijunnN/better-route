@@ -26,7 +26,10 @@ import { useCompanyContext } from "@/hooks/use-company-context";
  * exposes one conversation.
  */
 
-const POLLING_INTERVAL = 60000;
+// Red de seguridad para un WebSocket caído: los mensajes llegan por
+// Centrifugo. Era 60s, que en un plan facturado por CPU activa significaba
+// pagar 60 invocaciones/hora por dato que ya había llegado por el socket.
+const POLLING_INTERVAL = 300000;
 const INITIAL_LIMIT = 50;
 const SCROLL_BACK_LIMIT = 50;
 

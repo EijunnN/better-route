@@ -7,16 +7,22 @@ import {
   useCallback,
   useState,
 } from "react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
 import type { companyDeliveryPolicy } from "@/db/schema";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import type { SystemState } from "@/lib/workflow/states";
 import { useMonitoringStream } from "./use-monitoring-stream";
 
-// Safety-net poll. Centrifugo (ADR-0007) delivers transitions in
-// realtime; this only covers a dead WebSocket, so it can be slow.
-const POLLING_INTERVAL = 30000;
+// Safety-net poll. Centrifugo (ADR-0007) delivers transitions in realtime;
+// esto sólo cubre un WebSocket caído, así que puede ser lento — y conviene
+// que lo sea: a 30s eran 240 invocaciones/hora por pestaña abierta, pagando
+// dos veces por el mismo dato en un plan que se factura por CPU activa.
+const POLLING_INTERVAL = 300000;
+
+/** Clave SWR del panel de eventos recientes. Vive acá porque el dueño del
+ *  stream es quien la revalida cuando llega una transición por el socket. */
+export const MONITORING_EVENTS_URL = "/api/monitoring/events";
 
 const fetcher = async (url: string, companyId: string) => {
   const response = await fetch(url, { headers: { "x-company-id": companyId } });
@@ -265,6 +271,11 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   const [showAlerts, setShowAlerts] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
+  const { mutate: globalMutate } = useSWRConfig();
+  const mutateEvents = useCallback(() => {
+    if (companyId) globalMutate([MONITORING_EVENTS_URL, companyId]);
+  }, [globalMutate, companyId]);
+
   // Fetch confirmed plans for the plan selector
   const { data: confirmedPlans = [], isLoading: isLoadingPlans } = useSWR<
     ConfirmedPlan[]
@@ -395,10 +406,14 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
         mutateMonitoring();
         mutateDrivers();
         if (view === "detail") mutateDetail();
+        // El panel de eventos vive de esta misma transición. Revalidar su
+        // clave acá lo mantiene al día por el socket, sin que tenga que
+        // pollear su propio endpoint.
+        mutateEvents();
       }
       setLastUpdate(new Date());
     },
-    [mutateMonitoring, mutateDrivers, mutateDetail, view],
+    [mutateMonitoring, mutateDrivers, mutateDetail, mutateEvents, view],
   );
   useMonitoringStream(companyId, handleStreamEvent);
 

@@ -1,11 +1,13 @@
 "use client";
 
 import { CheckCircle, Clock, MapPin, Package, XCircle } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useApiData } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
+import { MONITORING_EVENTS_URL } from "./monitoring-context";
 
 interface StopEvent {
   id: string;
@@ -58,33 +60,19 @@ export function RecentEventsPanel({
   onLocateOnMap,
   getWorkflowLabel,
 }: RecentEventsPanelProps) {
-  const [events, setEvents] = useState<StopEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "FAILED" | "COMPLETED">("all");
 
-  const fetchEvents = useCallback(async () => {
-    try {
-      const response = await fetch("/api/monitoring/events", {
-        headers: { "x-company-id": companyId },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setEvents(data.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching events:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [companyId]);
-
-  useEffect(() => {
-    fetchEvents();
-    // Refresh every 10 seconds.
-    const interval = setInterval(fetchEvents, 10000);
-    return () => clearInterval(interval);
-  }, [fetchEvents]);
+  // El panel muestra transiciones de parada, que es justo lo que Centrifugo
+  // publica: el contexto revalida esta clave con cada evento que llega por el
+  // socket, así que la lista sale antes que con el poll de 10s que había acá
+  // — y sin pagar 360 invocaciones por hora de pestaña abierta. El intervalo
+  // queda sólo como red de seguridad para un WebSocket caído.
+  const { data, isLoading } = useApiData<StopEvent[]>(
+    MONITORING_EVENTS_URL,
+    companyId,
+    { refreshInterval: 300000 },
+  );
+  const events = data ?? [];
 
   const filteredEvents =
     filter === "all" ? events : events.filter((e) => e.type === filter);
