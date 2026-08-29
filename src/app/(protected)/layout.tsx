@@ -76,8 +76,15 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await redirectIfNoCompanies();
-  const initialUser = await resolveInitialUser();
+  // En paralelo: son independientes y cada una paga su propia ida a Neon.
+  // En serie sumaban las dos latencias al tiempo que el layout tarda en
+  // soltar el HTML, que es lo que el usuario ve como "todo cargando".
+  // Un `redirect()` dentro de la primera rechaza la Promise.all con la
+  // excepción que Next espera, así que el guard sigue cortando igual.
+  const [, initialUser] = await Promise.all([
+    redirectIfNoCompanies(),
+    resolveInitialUser(),
+  ]);
   return (
     <AppShell initialUser={initialUser}>
       {children}
