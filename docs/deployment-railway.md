@@ -183,6 +183,41 @@ que `NEXT_PUBLIC_CENTRIFUGO_WS_URL` no estaba presente **en el build**.
 
 ---
 
+## Estado real (2026-08-29)
+
+Lo de arriba describe el stack entero en Railway. Hoy está partido: `app` corre
+en Vercel y en Railway quedaron sólo los que Vercel no puede hospedar bien.
+
+| Servicio | Dónde | Consumo medido (7 días) |
+|---|---|---|
+| `app` | Vercel | — |
+| `osrm` | Railway | 13,7 MB medios → **~$0,14/mes** |
+| `vroom` | Railway | 2,8 MB medios → **~$0,03/mes** |
+| `centrifugo` | mudándose de Vercel a Railway | ~32 MB → **~$0,35/mes** |
+| `redis` | Upstash | — |
+
+Los promedios son bajísimos porque duermen: el consumo se cobra por minuto
+encendido, y sin tráfico no hay minutos. La cuenta está en el plan **Free**,
+que da **$1/mes que no se acumula** y **exige `sleepApplication: true`** en
+todos los servicios (Railway rechaza la config sin eso).
+
+**Por qué se mueve Centrifugo.** En Vercel corre como container service y los
+WebSockets abiertos le impiden escalar a cero: está encendido las 24 horas
+consumiendo CPU activa, que es como factura el plan Hobby. En Railway el app
+sleeping sí lo apaga cuando no queda ninguna conexión — de noche y fines de
+semana no cuesta nada. Con conexiones activas no duerme: la
+[doc de Railway](https://docs.railway.com/guides/rabbitmq-producers-consumers)
+lo dice para cualquier conexión persistente, porque el heartbeat cuenta como
+tráfico saliente.
+
+> **Los deploys del free tier en us-west2 están bloqueados entre las 8:00 y las
+> 20:00 de Los Ángeles** (10:00–22:00 en Perú), y cambiar de región es función
+> de pago. El límite es sólo para desplegar: una vez arriba, los servicios
+> responden a cualquier hora. Correr `scripts/deploy-centrifugo-railway.sh`
+> fuera de esa ventana.
+
+---
+
 ## Estirar el crédito
 
 Los ~355 MB del stack cuestan ~$3,6/mes de RAM, así que el crédito de $5 da
