@@ -1,5 +1,7 @@
 "use client";
 
+import { SWRConfig } from "swr";
+import { AUTH_ME_KEY, type AuthUser } from "@/hooks/use-auth";
 import { PermissionsProvider } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
 import { CompanyProvider } from "./company-context";
@@ -9,6 +11,20 @@ import { ThemeProvider } from "./theme-context";
 
 interface AppShellProps {
   children: React.ReactNode;
+}
+
+interface AppShellRootProps extends AppShellProps {
+  /**
+   * Sesión resuelta en el servidor por el layout. Va como `fallback` de SWR
+   * para que el chrome —sidebar incluido— salga pintado en el primer HTML.
+   *
+   * Sin esto el sidebar se queda en skeleton hasta que responde
+   * `/api/auth/me`, que verifica el JWT y pega tres queries contra Neon: en
+   * producción eran ~1,5 s de función fría, y el usuario veía la app entera
+   * cargando en cada recarga. Ese endpoint sigue existiendo para revalidar y
+   * para la app móvil; lo que se saca es del camino crítico del primer render.
+   */
+  initialUser: AuthUser | null;
 }
 
 function AppShellContent({ children }: AppShellProps) {
@@ -37,16 +53,20 @@ function AppShellContent({ children }: AppShellProps) {
   );
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, initialUser }: AppShellRootProps) {
   return (
-    <ThemeProvider>
-      <PermissionsProvider>
-        <CompanyProvider>
-          <LayoutProvider>
-            <AppShellContent>{children}</AppShellContent>
-          </LayoutProvider>
-        </CompanyProvider>
-      </PermissionsProvider>
-    </ThemeProvider>
+    <SWRConfig
+      value={initialUser ? { fallback: { [AUTH_ME_KEY]: initialUser } } : {}}
+    >
+      <ThemeProvider>
+        <PermissionsProvider>
+          <CompanyProvider>
+            <LayoutProvider>
+              <AppShellContent>{children}</AppShellContent>
+            </LayoutProvider>
+          </CompanyProvider>
+        </PermissionsProvider>
+      </ThemeProvider>
+    </SWRConfig>
   );
 }

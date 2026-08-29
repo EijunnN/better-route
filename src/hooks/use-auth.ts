@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import useSWR from "swr";
 
-interface User {
+export interface AuthUser {
   id: string;
   companyId: string | null;
   email: string;
@@ -12,6 +12,12 @@ interface User {
   active: boolean;
   permissions: string[];
 }
+
+type User = AuthUser;
+
+/** Clave SWR de la sesión. El layout la precarga con `fallback` para que el
+ *  chrome no espere una ida y vuelta antes de pintarse. */
+export const AUTH_ME_KEY = "/api/auth/me";
 
 interface UseAuthReturn {
   user: User | null;
@@ -52,7 +58,7 @@ export function useAuth(): UseAuthReturn {
     error,
     isLoading,
     mutate,
-  } = useSWR<User>("/api/auth/me", fetcher, {
+  } = useSWR<User>(AUTH_ME_KEY, fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     dedupingInterval: 10000, // 10 seconds deduplication
