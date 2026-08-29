@@ -300,6 +300,14 @@
 
   font-family: var(--cockpit-sans), ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "ss01", "cv11";
+
+  /* Redefinir los tokens de arriba no alcanza: `color` se hereda como valor
+     YA COMPUTADO, y el body lo resolvió con el --foreground del tema. Con la
+     app en claro los hijos heredaban texto oscuro sobre paneles negros por
+     más que acá --foreground valga claro. Hay que volver a aplicarlo para que
+     se recompute con los tokens de este bloque. */
+  color: var(--foreground);
+  background-color: var(--background);
 }
 
 /* Plex Mono on demand — applied to any element with `.cockpit-mono`
