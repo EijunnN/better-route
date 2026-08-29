@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicles, zones, zoneVehicles } from "@/db/schema";
@@ -30,7 +30,7 @@ export async function GET(
     // Apply tenant filtering
     const whereClause = withTenantFilter(
       zones,
-      [eq(zones.id, id)],
+      [eq(zones.id, id), isNull(zones.deletedAt)],
       tenantCtx.companyId,
     );
 
@@ -52,17 +52,8 @@ export async function GET(
       .innerJoin(vehicles, eq(zoneVehicles.vehicleId, vehicles.id))
       .where(and(eq(zoneVehicles.zoneId, id), eq(zoneVehicles.active, true)));
 
-    // Parse geometry and activeDays
-    let parsedGeometry = null;
-    try {
-      parsedGeometry = safeParseJson(zone.geometry);
-    } catch {
-      // Keep as null if parsing fails
-    }
-
     return NextResponse.json({
       ...zone,
-      parsedGeometry,
       activeDays: zone.activeDays ? safeParseJson(zone.activeDays) : null,
       vehicles: relatedVehicles.map((v) => ({
         ...v,
@@ -97,70 +88,12 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    // Normalize geometry to string — DB column is jsonb so it may arrive as object
-    if (body.geometry && typeof body.geometry !== "string") {
-      body.geometry = JSON.stringify(body.geometry);
-    }
     const validatedData = updateZoneSchema.parse({ ...body, id });
-
-    // Validate GeoJSON structure if geometry is being updated
-    if (validatedData.geometry) {
-      const geo = (
-        typeof validatedData.geometry === "string"
-          ? JSON.parse(validatedData.geometry)
-          : validatedData.geometry
-      ) as { type?: string; coordinates?: unknown };
-
-      // Must be a Polygon or MultiPolygon
-      if (!geo.type || !["Polygon", "MultiPolygon"].includes(geo.type)) {
-        return NextResponse.json(
-          {
-            error:
-              "Zone geometry must be a Polygon or MultiPolygon GeoJSON object.",
-          },
-          { status: 400 },
-        );
-      }
-
-      // Must have coordinates
-      if (
-        !geo.coordinates ||
-        !Array.isArray(geo.coordinates) ||
-        geo.coordinates.length === 0
-      ) {
-        return NextResponse.json(
-          { error: "Zone geometry must have valid coordinates." },
-          { status: 400 },
-        );
-      }
-
-      // Validate coordinate ranges
-      const validateCoords = (coords: unknown): boolean => {
-        if (!Array.isArray(coords)) return false;
-        if (typeof coords[0] === "number") {
-          // [lng, lat] pair
-          const [lng, lat] = coords as number[];
-          return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
-        }
-        // Nested array - recurse
-        return coords.every((c) => validateCoords(c));
-      };
-
-      if (!validateCoords(geo.coordinates)) {
-        return NextResponse.json(
-          {
-            error:
-              "Zone geometry contains invalid coordinates. Latitude must be -90 to 90, longitude -180 to 180.",
-          },
-          { status: 400 },
-        );
-      }
-    }
 
     // Apply tenant filtering when fetching existing zone
     const existingWhereClause = withTenantFilter(
       zones,
-      [eq(zones.id, id)],
+      [eq(zones.id, id), isNull(zones.deletedAt)],
       tenantCtx.companyId,
     );
 
@@ -183,14 +116,14 @@ export async function PATCH(
           and(
             eq(zones.companyId, tenantCtx.companyId),
             eq(zones.name, validatedData.name),
-            eq(zones.active, true),
+            isNull(zones.deletedAt),
           ),
         )
         .limit(1);
 
       if (duplicateZone.length > 0) {
         return NextResponse.json(
-          { error: "Ya existe una zona activa con este nombre en la empresa" },
+          { error: "Ya existe una zona con este nombre en la empresa" },
           { status: 400 },
         );
       }
@@ -235,14 +168,6 @@ export async function PATCH(
       .innerJoin(vehicles, eq(zoneVehicles.vehicleId, vehicles.id))
       .where(and(eq(zoneVehicles.zoneId, id), eq(zoneVehicles.active, true)));
 
-    // Parse geometry for response
-    let parsedGeometry = null;
-    try {
-      parsedGeometry = safeParseJson(updatedZone.geometry);
-    } catch {
-      // Keep as null if parsing fails
-    }
-
     // Log update (non-blocking)
     after(async () => {
       await logUpdate("zone", id, {
@@ -253,7 +178,6 @@ export async function PATCH(
 
     return NextResponse.json({
       ...updatedZone,
-      parsedGeometry,
       activeDays: updatedZone.activeDays
         ? safeParseJson(updatedZone.activeDays)
         : null,
@@ -301,7 +225,7 @@ export async function DELETE(
     // Apply tenant filtering when fetching existing zone
     const whereClause = withTenantFilter(
       zones,
-      [eq(zones.id, id)],
+      [eq(zones.id, id), isNull(zones.deletedAt)],
       tenantCtx.companyId,
     );
 
@@ -329,11 +253,12 @@ export async function DELETE(
         .where(eq(zoneVehicles.zoneId, id));
     }
 
-    // Soft delete - set active to false
+    // Soft delete. `active` queda como estaba: es la pausa del usuario, y
+    // reutilizarla acá hacía que editar una zona borrada la resucitara.
     await db
       .update(zones)
       .set({
-        active: false,
+        deletedAt: new Date(),
         isDefault: false, // Remove default status if it was default
         updatedAt: new Date(),
       })

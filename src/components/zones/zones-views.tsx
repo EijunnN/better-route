@@ -474,13 +474,12 @@ export function ZonesFormView() {
                       name: state.editingZone.name,
                       description: state.editingZone.description,
                       type: state.editingZone.type as ZoneInput["type"],
-                      geometry: state.editingZone.geometry,
+                      geometry: JSON.stringify(state.editingZone.geometry),
                       color: state.editingZone.color,
                       isDefault: state.editingZone.isDefault,
                       activeDays: state.editingZone
                         .activeDays as ZoneInput["activeDays"],
                       active: state.editingZone.active,
-                      parsedGeometry: state.editingZone.parsedGeometry,
                     }
                   : undefined)
               }
@@ -493,6 +492,7 @@ export function ZonesFormView() {
                 actions.setViewMode("map-editor");
               }}
               onFormDataChange={(data) => actions.setPendingFormData(data)}
+              onVehicleSelectionChange={actions.setEditingZoneVehicleIds}
             />
           </div>
         </div>
@@ -553,15 +553,7 @@ export function ZonesMapEditorView() {
 
   const { state, actions, derived } = useZones();
 
-  const currentGeometry = state.pendingFormData?.geometry
-    ? (() => {
-        try {
-          return JSON.parse(state.pendingFormData.geometry);
-        } catch {
-          return null;
-        }
-      })()
-    : state.editingZone?.parsedGeometry || null;
+  const currentGeometry = derived.currentFormGeometry;
 
   return (
     <div className="h-screen flex flex-col">

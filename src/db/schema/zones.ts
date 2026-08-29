@@ -44,7 +44,12 @@ export const zones = pgTable("zones", {
   isDefault: boolean("is_default").notNull().default(false),
   // Days of week this zone is active
   activeDays: jsonb("active_days").$type<string[]>(),
+  // Pausa operativa que controla el usuario desde el form. NO es el borrado:
+  // una zona inactiva sigue existiendo, listándose y reservando su nombre.
   active: boolean("active").notNull().default(true),
+  // Soft delete. Antes lo hacía `active`, y al compartir bandera con la pausa
+  // una zona borrada revivía si alguien la editaba y la marcaba activa.
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

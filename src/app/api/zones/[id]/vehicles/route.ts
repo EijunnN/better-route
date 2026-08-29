@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicles, zones, zoneVehicles } from "@/db/schema";
@@ -34,7 +34,7 @@ export async function GET(
     // Verify zone exists and belongs to tenant
     const whereClause = withTenantFilter(
       zones,
-      [eq(zones.id, zoneId)],
+      [eq(zones.id, zoneId), isNull(zones.deletedAt)],
       tenantCtx.companyId,
     );
     const [zone] = await db.select().from(zones).where(whereClause).limit(1);
@@ -115,7 +115,7 @@ export async function POST(
     // Verify zone exists and belongs to tenant
     const whereClause = withTenantFilter(
       zones,
-      [eq(zones.id, zoneId)],
+      [eq(zones.id, zoneId), isNull(zones.deletedAt)],
       tenantCtx.companyId,
     );
     const [zone] = await db.select().from(zones).where(whereClause).limit(1);
@@ -282,7 +282,7 @@ export async function DELETE(
     // Verify zone exists and belongs to tenant
     const whereClause = withTenantFilter(
       zones,
-      [eq(zones.id, zoneId)],
+      [eq(zones.id, zoneId), isNull(zones.deletedAt)],
       tenantCtx.companyId,
     );
     const [zone] = await db.select().from(zones).where(whereClause).limit(1);

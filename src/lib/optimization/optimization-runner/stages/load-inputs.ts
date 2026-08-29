@@ -4,7 +4,7 @@
  * pipeline operates on without re-querying.
  */
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
   optimizationConfigurations,
@@ -97,7 +97,13 @@ export async function loadInputs(
     db
       .select()
       .from(zones)
-      .where(and(eq(zones.companyId, input.companyId), eq(zones.active, true))),
+      .where(
+        and(
+          eq(zones.companyId, input.companyId),
+          eq(zones.active, true),
+          isNull(zones.deletedAt),
+        ),
+      ),
     db.query.users.findMany({
       where: and(
         eq(users.companyId, input.companyId),

@@ -150,12 +150,12 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
         if (response.ok) {
           const data = await response.json();
           const mappedZones: Zone[] = (data.data || [])
-            .filter((z: { parsedGeometry: unknown }) => z.parsedGeometry)
+            .filter((z: { geometry: unknown }) => z.geometry)
             .map(
               (z: {
                 id: string;
                 name: string;
-                parsedGeometry: { type: string; coordinates: number[][][] };
+                geometry: { type: string; coordinates: number[][][] };
                 color: string | null;
                 active: boolean;
                 vehicleCount: number;
@@ -163,7 +163,7 @@ export function usePlanificacionEffects(deps: EffectsDeps) {
               }) => ({
                 id: z.id,
                 name: z.name,
-                geometry: z.parsedGeometry,
+                geometry: z.geometry,
                 color: z.color,
                 active: z.active,
                 vehicleCount: z.vehicleCount,

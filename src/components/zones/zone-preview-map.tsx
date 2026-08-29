@@ -2,6 +2,7 @@
 
 import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ZoneGeometry } from "@/lib/validations/zone";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Crosshair, Layers, ZoomIn, ZoomOut } from "lucide-react";
 import { useTheme } from "@/components/layout/theme-context";
@@ -16,11 +17,7 @@ interface Zone {
   id: string;
   name: string;
   color: string;
-  geometry: string;
-  parsedGeometry?: {
-    type: "Polygon";
-    coordinates: number[][][];
-  } | null;
+  geometry: ZoneGeometry;
   active: boolean;
   type?: string;
 }
@@ -56,14 +53,7 @@ export function ZonePreviewMap({
       let hasValidZone = false;
 
       zones.forEach((zone) => {
-        let geometry = zone.parsedGeometry;
-        if (!geometry && zone.geometry) {
-          try {
-            geometry = JSON.parse(zone.geometry);
-          } catch {
-            return;
-          }
-        }
+        const geometry = zone.geometry;
         if (!geometry?.coordinates?.[0]) return;
 
         const isSelected = zone.id === selectedZoneId;
@@ -220,14 +210,7 @@ export function ZonePreviewMap({
     const selectedZone = zones.find((z) => z.id === selectedZoneId);
     if (!selectedZone) return;
 
-    let geometry = selectedZone.parsedGeometry;
-    if (!geometry && selectedZone.geometry) {
-      try {
-        geometry = JSON.parse(selectedZone.geometry);
-      } catch {
-        return;
-      }
-    }
+    const geometry = selectedZone.geometry;
 
     if (!geometry?.coordinates?.[0]) return;
 
@@ -254,14 +237,7 @@ export function ZonePreviewMap({
     let hasValidZone = false;
 
     zones.forEach((zone) => {
-      let geometry = zone.parsedGeometry;
-      if (!geometry && zone.geometry) {
-        try {
-          geometry = JSON.parse(zone.geometry);
-        } catch {
-          return;
-        }
-      }
+      const geometry = zone.geometry;
 
       if (!geometry?.coordinates?.[0]) return;
       hasValidZone = true;

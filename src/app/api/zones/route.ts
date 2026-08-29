@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicles, zones, zoneVehicles } from "@/db/schema";
@@ -25,7 +25,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = zoneQuerySchema.parse(Object.fromEntries(searchParams));
 
-    const conditions = [];
+    // Las borradas nunca se listan. `active` es la pausa operativa, no el
+    // borrado: filtrar por ella escondería zonas que el usuario solo pausó.
+    const conditions = [isNull(zones.deletedAt)];
 
     if (query.active !== undefined) {
       conditions.push(eq(zones.active, query.active));
@@ -107,23 +109,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Combine data with parsed geometry
-    const data = zonesData.map((zone) => {
-      let parsedGeometry = null;
-      try {
-        parsedGeometry = safeParseJson(zone.geometry);
-      } catch {
-        // Keep as null if parsing fails
-      }
-
-      return {
-        ...zone,
-        parsedGeometry,
-        activeDays: zone.activeDays ? safeParseJson(zone.activeDays) : null,
-        vehicles: zoneVehiclesMap[zone.id] || [],
-        vehicleCount: (zoneVehiclesMap[zone.id] || []).length,
-      };
-    });
+    const data = zonesData.map((zone) => ({
+      ...zone,
+      activeDays: zone.activeDays ? safeParseJson(zone.activeDays) : null,
+      vehicles: zoneVehiclesMap[zone.id] || [],
+      vehicleCount: (zoneVehiclesMap[zone.id] || []).length,
+    }));
 
     return NextResponse.json({
       data,
@@ -155,65 +146,7 @@ export async function POST(request: NextRequest) {
     setTenantContext(tenantCtx);
 
     const body = await request.json();
-    // Normalize geometry to string — DB column is jsonb so it may arrive as object
-    if (body.geometry && typeof body.geometry !== "string") {
-      body.geometry = JSON.stringify(body.geometry);
-    }
     const validatedData = zoneSchema.parse(body);
-
-    // Validate GeoJSON structure
-    if (validatedData.geometry) {
-      const geo = (
-        typeof validatedData.geometry === "string"
-          ? JSON.parse(validatedData.geometry)
-          : validatedData.geometry
-      ) as { type?: string; coordinates?: unknown };
-
-      // Must be a Polygon or MultiPolygon
-      if (!geo.type || !["Polygon", "MultiPolygon"].includes(geo.type)) {
-        return NextResponse.json(
-          {
-            error:
-              "Zone geometry must be a Polygon or MultiPolygon GeoJSON object.",
-          },
-          { status: 400 },
-        );
-      }
-
-      // Must have coordinates
-      if (
-        !geo.coordinates ||
-        !Array.isArray(geo.coordinates) ||
-        geo.coordinates.length === 0
-      ) {
-        return NextResponse.json(
-          { error: "Zone geometry must have valid coordinates." },
-          { status: 400 },
-        );
-      }
-
-      // Validate coordinate ranges
-      const validateCoords = (coords: unknown): boolean => {
-        if (!Array.isArray(coords)) return false;
-        if (typeof coords[0] === "number") {
-          // [lng, lat] pair
-          const [lng, lat] = coords as number[];
-          return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
-        }
-        // Nested array - recurse
-        return coords.every((c) => validateCoords(c));
-      };
-
-      if (!validateCoords(geo.coordinates)) {
-        return NextResponse.json(
-          {
-            error:
-              "Zone geometry contains invalid coordinates. Latitude must be -90 to 90, longitude -180 to 180.",
-          },
-          { status: 400 },
-        );
-      }
-    }
 
     // Check for duplicate zone name within the same company
     const existingZone = await db
@@ -223,14 +156,14 @@ export async function POST(request: NextRequest) {
         and(
           eq(zones.companyId, tenantCtx.companyId),
           eq(zones.name, validatedData.name),
-          eq(zones.active, true),
+          isNull(zones.deletedAt),
         ),
       )
       .limit(1);
 
     if (existingZone.length > 0) {
       return NextResponse.json(
-        { error: "Ya existe una zona activa con este nombre en la empresa" },
+        { error: "Ya existe una zona con este nombre en la empresa" },
         { status: 400 },
       );
     }
@@ -265,21 +198,12 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    // Parse geometry for response
-    let parsedGeometry = null;
-    try {
-      parsedGeometry = safeParseJson(newZone.geometry);
-    } catch {
-      // Keep as null if parsing fails
-    }
-
     // Log creation
     await logCreate("zone", newZone.id, newZone);
 
     return NextResponse.json(
       {
         ...newZone,
-        parsedGeometry,
         activeDays: newZone.activeDays
           ? safeParseJson(newZone.activeDays)
           : null,

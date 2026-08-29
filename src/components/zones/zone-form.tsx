@@ -1,6 +1,6 @@
 "use client";
 
-import type { ZoneInput } from "@/lib/validations/zone";
+import type { ZoneFormData } from "@/lib/validations/zone";
 import {
   useZoneForm,
   type VehicleOption,
@@ -20,21 +20,17 @@ import {
 export type { VehicleOption };
 
 interface ZoneFormProps {
-  onSubmit: (data: ZoneInput, vehicleIds: string[]) => Promise<void>;
-  initialData?: Partial<ZoneInput> & {
-    parsedGeometry?: {
-      type: "Polygon";
-      coordinates: number[][][];
-    } | null;
-  };
+  onSubmit: (data: ZoneFormData, vehicleIds: string[]) => Promise<void>;
+  initialData?: Partial<ZoneFormData>;
   vehicles: VehicleOption[];
   initialVehicleIds?: string[];
   submitLabel?: string;
   onGeometryEdit?: (snapshot: {
-    formData: ZoneInput;
+    formData: ZoneFormData;
     vehicleIds: string[];
   }) => void;
-  onFormDataChange?: (data: ZoneInput) => void;
+  onFormDataChange?: (data: ZoneFormData) => void;
+  onVehicleSelectionChange?: (vehicleIds: string[]) => void;
 }
 
 function ZoneFormContent() {
@@ -92,6 +88,7 @@ export function ZoneForm({
   submitLabel = "Guardar",
   onGeometryEdit,
   onFormDataChange,
+  onVehicleSelectionChange,
 }: ZoneFormProps) {
   return (
     <ZoneFormProvider
@@ -102,6 +99,7 @@ export function ZoneForm({
       submitLabel={submitLabel}
       onGeometryEdit={onGeometryEdit}
       onFormDataChange={onFormDataChange}
+      onVehicleSelectionChange={onVehicleSelectionChange}
     >
       <ZoneFormContent />
     </ZoneFormProvider>

@@ -131,6 +131,10 @@ export function isPointInZone(
  * on createdAt iteration order, and a RESTRICTED polygon drawn on
  * top of a DELIVERY area correctly excludes that pocket from
  * routing without forcing the operator to recut polygons by hand.
+ *
+ * No mira `activeDays`: no conoce el día del plan. Quien planifica una fecha
+ * debe pasarle zonas ya filtradas con `isZoneActiveOnDay` — es lo que hacen
+ * `createZoneBatches` y `calculateZoneStats`.
  */
 export function getZoneForOrder(
   order: OrderWithLocation,
@@ -386,13 +390,18 @@ export function createZoneBatches<
   const warnings: string[] = [];
   const unroutable: Array<{ order: TOrder; reason: string }> = [];
 
+  // Una zona solo rige los días que tiene configurados. Sin este filtro una
+  // RESTRICTED de fin de semana bloqueaba entregas de un martes, y los lotes
+  // se armaban contra zonas que ese día no aplican.
+  const zonesForDay = zones.filter((zone) => isZoneActiveOnDay(zone, day));
+
   // Pre-filter: orders whose drop-off falls inside a RESTRICTED zone
   // never reach VROOM. Surface them as unroutable with a clear
   // reason — the operator sees them in the "no incluidas" section
   // of the plan results, can fix the address, and re-run.
   const routableOrders: TOrder[] = [];
   for (const order of orders) {
-    const zone = getZoneForOrder(order, zones);
+    const zone = getZoneForOrder(order, zonesForDay);
     if (zone?.type === "RESTRICTED") {
       unroutable.push({
         order,
@@ -404,13 +413,13 @@ export function createZoneBatches<
   }
 
   // Group routable orders by zone
-  const ordersByZone = groupOrdersByZone(routableOrders, zones);
+  const ordersByZone = groupOrdersByZone(routableOrders, zonesForDay);
 
   // Create batch for each zone with orders
   for (const [zoneId, zoneOrders] of ordersByZone.entries()) {
     if (zoneOrders.length === 0) continue;
 
-    const zone = zones.find((z) => z.id === zoneId);
+    const zone = zonesForDay.find((z) => z.id === zoneId);
 
     // Defensive: a RESTRICTED zone shouldn't produce a batch even if
     // somehow `routableOrders` slipped one through. Skip entirely so
@@ -467,7 +476,8 @@ export function calculateZoneStats(
   let unzonedCount = 0;
   let unassignableCount = 0;
 
-  const ordersByZone = groupOrdersByZone(orders, zones);
+  const zonesForDay = zones.filter((zone) => isZoneActiveOnDay(zone, day));
+  const ordersByZone = groupOrdersByZone(orders, zonesForDay);
 
   for (const [zoneId, zoneOrders] of ordersByZone.entries()) {
     if (zoneId === "unzoned") {
@@ -480,7 +490,7 @@ export function calculateZoneStats(
       continue;
     }
 
-    const zone = zones.find((z) => z.id === zoneId);
+    const zone = zonesForDay.find((z) => z.id === zoneId);
     const eligibleVehicles = filterVehiclesForZone(vehicles, zoneId, day);
 
     stats.push({

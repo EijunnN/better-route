@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { DAYS_OF_WEEK, type ZoneInput } from "@/lib/validations/zone";
+import { DAYS_OF_WEEK, type ZoneFormData } from "@/lib/validations/zone";
 
 export interface VehicleOption {
   id: string;
@@ -17,7 +17,7 @@ export interface VehicleOption {
 }
 
 export interface ZoneFormState {
-  formData: ZoneInput;
+  formData: ZoneFormData;
   errors: Record<string, string>;
   isSubmitting: boolean;
   selectedDays: string[];
@@ -27,8 +27,8 @@ export interface ZoneFormState {
 
 export interface ZoneFormActions {
   updateField: (
-    field: keyof ZoneInput,
-    value: ZoneInput[keyof ZoneInput],
+    field: keyof ZoneFormData,
+    value: ZoneFormData[keyof ZoneFormData],
   ) => void;
   toggleDay: (day: string) => void;
   selectAllDays: () => void;
@@ -45,7 +45,7 @@ export interface ZoneFormMeta {
   vehicles: VehicleOption[];
   submitLabel: string;
   onGeometryEdit?: (snapshot: {
-    formData: ZoneInput;
+    formData: ZoneFormData;
     vehicleIds: string[];
   }) => void;
 }
@@ -68,21 +68,19 @@ const ZoneFormContext = createContext<ZoneFormContextValue | undefined>(
 
 export interface ZoneFormProviderProps {
   children: ReactNode;
-  onSubmit: (data: ZoneInput, vehicleIds: string[]) => Promise<void>;
-  initialData?: Partial<ZoneInput> & {
-    parsedGeometry?: {
-      type: "Polygon";
-      coordinates: number[][][];
-    } | null;
-  };
+  onSubmit: (data: ZoneFormData, vehicleIds: string[]) => Promise<void>;
+  initialData?: Partial<ZoneFormData>;
   vehicles: VehicleOption[];
   initialVehicleIds?: string[];
   submitLabel?: string;
   onGeometryEdit?: (snapshot: {
-    formData: ZoneInput;
+    formData: ZoneFormData;
     vehicleIds: string[];
   }) => void;
-  onFormDataChange?: (data: ZoneInput) => void;
+  onFormDataChange?: (data: ZoneFormData) => void;
+  /** Reporta la selección de vehículos al padre en cada cambio, para que
+   *  sobreviva al desmontaje del form cuando se abre el editor de mapa. */
+  onVehicleSelectionChange?: (vehicleIds: string[]) => void;
 }
 
 export function ZoneFormProvider({
@@ -94,8 +92,9 @@ export function ZoneFormProvider({
   submitLabel = "Guardar",
   onGeometryEdit,
   onFormDataChange,
+  onVehicleSelectionChange,
 }: ZoneFormProviderProps) {
-  const defaultData: ZoneInput = {
+  const defaultData: ZoneFormData = {
     name: initialData?.name ?? "",
     description: initialData?.description ?? "",
     type: initialData?.type ?? "DELIVERY",
@@ -106,7 +105,7 @@ export function ZoneFormProvider({
     active: initialData?.active ?? true,
   };
 
-  const [formData, setFormData] = useState<ZoneInput>(defaultData);
+  const [formData, setFormData] = useState<ZoneFormData>(defaultData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDays, setSelectedDays] = useState<string[]>(
@@ -117,8 +116,8 @@ export function ZoneFormProvider({
   const [vehicleSearch, setVehicleSearch] = useState("");
 
   const updateField = (
-    field: keyof ZoneInput,
-    value: ZoneInput[keyof ZoneInput],
+    field: keyof ZoneFormData,
+    value: ZoneFormData[keyof ZoneFormData],
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => {
@@ -180,7 +179,7 @@ export function ZoneFormProvider({
 
     setIsSubmitting(true);
 
-    const submitData: ZoneInput = {
+    const submitData: ZoneFormData = {
       ...formData,
       activeDays:
         selectedDays.length > 0
@@ -223,6 +222,21 @@ export function ZoneFormProvider({
     }
     onFormDataChangeRef.current?.(formData);
   }, [formData]);
+
+  // Igual que arriba, para los vehículos. El form se desmonta al pasar al
+  // editor de mapa y vuelve a montarse con `initialVehicleIds`: sin avisar
+  // cada cambio, una selección hecha antes de dibujar se perdía al volver.
+  const onVehicleSelectionChangeRef = useRef(onVehicleSelectionChange);
+  onVehicleSelectionChangeRef.current = onVehicleSelectionChange;
+  const isFirstVehicleRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstVehicleRender.current) {
+      isFirstVehicleRender.current = false;
+      return;
+    }
+    onVehicleSelectionChangeRef.current?.(selectedVehicleIds);
+  }, [selectedVehicleIds]);
 
   const hasValidGeometry = (() => {
     if (!formData.geometry) return false;

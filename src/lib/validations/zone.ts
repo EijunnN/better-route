@@ -50,6 +50,25 @@ const geometrySchema = z.object({
   coordinates: coordinatesSchema,
 });
 
+export type ZoneGeometry = z.infer<typeof geometrySchema>;
+
+/**
+ * La columna es `jsonb`: lo canónico es guardar el objeto GeoJSON. El editor
+ * de mapa produce el polígono ya serializado, así que se acepta también el
+ * string y se parsea acá — el borde de la API es el único lugar donde conviven
+ * las dos formas. Antes se hacía al revés (todo a string), y eso metía un JSON
+ * string dentro del jsonb: los mapas de planificación y optimización pasan
+ * `zone.geometry` directo a MapLibre y no dibujaban nada.
+ */
+const zoneGeometryInput = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}, geometrySchema);
+
 // Zone schema for creation
 export const zoneSchema = z.object({
   name: z
@@ -64,18 +83,7 @@ export const zoneSchema = z.object({
   type: z
     .enum(ZONE_TYPES, { message: "Tipo de zona inválido" })
     .default("DELIVERY"),
-  // GeoJSON polygon geometry stored as JSON string
-  geometry: z.string().refine(
-    (val) => {
-      try {
-        const parsed = JSON.parse(val);
-        return geometrySchema.safeParse(parsed).success;
-      } catch {
-        return false;
-      }
-    },
-    { message: "Geometria debe ser un poligono GeoJSON valido" },
-  ),
+  geometry: zoneGeometryInput,
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, "Color debe ser un codigo hexadecimal valido")
@@ -92,20 +100,7 @@ export const updateZoneSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(500).optional().nullable(),
   type: z.enum(ZONE_TYPES).optional(),
-  geometry: z
-    .string()
-    .refine(
-      (val) => {
-        try {
-          const parsed = JSON.parse(val);
-          return geometrySchema.safeParse(parsed).success;
-        } catch {
-          return false;
-        }
-      },
-      { message: "Geometria debe ser un poligono GeoJSON valido" },
-    )
-    .optional(),
+  geometry: zoneGeometryInput.optional(),
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -150,6 +145,13 @@ export const updateZoneVehicleSchema = z.object({
 
 // Type exports
 export type ZoneInput = z.infer<typeof zoneSchema>;
+
+/**
+ * Lo que maneja el formulario de zonas. El editor de mapa entrega el polígono
+ * ya serializado, así que ahí `geometry` viaja como string; la API lo parsea
+ * en su borde (`zoneGeometryInput`) y lo guarda como objeto en el jsonb.
+ */
+export type ZoneFormData = Omit<ZoneInput, "geometry"> & { geometry: string };
 export type UpdateZoneInput = z.infer<typeof updateZoneSchema>;
 export type ZoneQuery = z.infer<typeof zoneQuerySchema>;
 export type ZoneVehicleInput = z.infer<typeof zoneVehicleSchema>;

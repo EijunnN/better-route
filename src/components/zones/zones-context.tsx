@@ -11,7 +11,7 @@ import {
 import { toast } from "sonner";
 import { useVehicleList, useZoneList } from "@/hooks/queries";
 import { useCompanyContext } from "@/hooks/use-company-context";
-import type { ZoneInput } from "@/lib/validations/zone";
+import type { ZoneFormData, ZoneGeometry } from "@/lib/validations/zone";
 
 // Types
 export interface Zone {
@@ -19,11 +19,7 @@ export interface Zone {
   name: string;
   description?: string | null;
   type: string;
-  geometry: string;
-  parsedGeometry?: {
-    type: "Polygon";
-    coordinates: number[][][];
-  } | null;
+  geometry: ZoneGeometry;
   color: string;
   isDefault: boolean;
   activeDays?: string[] | null;
@@ -62,7 +58,7 @@ export interface ZonesState {
   viewMode: ViewMode;
   editingZone: Zone | null;
   editingZoneVehicleIds: string[];
-  pendingFormData: Partial<ZoneInput> | null;
+  pendingFormData: Partial<ZoneFormData> | null;
   selectedZoneId: string | null;
   searchQuery: string;
   deletingId: string | null;
@@ -71,8 +67,8 @@ export interface ZonesState {
 // Actions
 export interface ZonesActions {
   fetchZones: () => Promise<void>;
-  handleCreate: (data: ZoneInput, vehicleIds: string[]) => Promise<void>;
-  handleUpdate: (data: ZoneInput, vehicleIds: string[]) => Promise<void>;
+  handleCreate: (data: ZoneFormData, vehicleIds: string[]) => Promise<void>;
+  handleUpdate: (data: ZoneFormData, vehicleIds: string[]) => Promise<void>;
   handleDelete: (id: string) => Promise<void>;
   handleStartNew: () => void;
   handleEdit: (zone: Zone) => Promise<void>;
@@ -80,7 +76,7 @@ export interface ZonesActions {
   setViewMode: (mode: ViewMode) => void;
   setSelectedZoneId: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
-  setPendingFormData: (data: Partial<ZoneInput> | null) => void;
+  setPendingFormData: (data: Partial<ZoneFormData> | null) => void;
   setEditingZoneVehicleIds: (ids: string[]) => void;
   cancelForm: () => void;
 }
@@ -101,7 +97,7 @@ export interface ZonesDerived {
   filteredZones: Zone[];
   selectedZone: Zone | undefined;
   activeZonesCount: number;
-  currentFormGeometry: string | undefined;
+  currentFormGeometry: ZoneGeometry | null;
   currentFormColor: string;
 }
 
@@ -131,7 +127,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     [],
   );
   const [pendingFormData, setPendingFormData] =
-    useState<Partial<ZoneInput> | null>(null);
+    useState<Partial<ZoneFormData> | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -166,7 +162,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     await mutateZones();
   }, [mutateZones]);
 
-  const handleCreate = async (data: ZoneInput, vehicleIds: string[]) => {
+  const handleCreate = async (data: ZoneFormData, vehicleIds: string[]) => {
     if (!companyId || isSubmitting) return;
     setIsSubmitting(true);
     try {
@@ -216,7 +212,7 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleUpdate = async (data: ZoneInput, vehicleIds: string[]) => {
+  const handleUpdate = async (data: ZoneFormData, vehicleIds: string[]) => {
     if (!editingZone || !companyId || isSubmitting) return;
     setIsSubmitting(true);
     try {
@@ -307,20 +303,14 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
 
   const handleEdit = async (zone: Zone) => {
     setEditingZone(zone);
-    // zone.geometry comes from the API as an already-parsed object (DB column is jsonb).
-    // pendingFormData.geometry is typed as string, so normalize here.
-    const normalizedGeometry =
-      typeof zone.geometry === "string"
-        ? zone.geometry
-        : JSON.stringify(zone.geometry);
     setPendingFormData({
       name: zone.name,
       description: zone.description,
-      type: zone.type as ZoneInput["type"],
-      geometry: normalizedGeometry,
+      type: zone.type as ZoneFormData["type"],
+      geometry: JSON.stringify(zone.geometry),
       color: zone.color,
       isDefault: zone.isDefault,
-      activeDays: zone.activeDays as ZoneInput["activeDays"],
+      activeDays: zone.activeDays as ZoneFormData["activeDays"],
       active: zone.active,
     });
 
@@ -373,8 +363,18 @@ export function ZonesProvider({ children }: { children: ReactNode }) {
     () => zones.filter((z) => z.active).length,
     [zones],
   );
-  const currentFormGeometry =
-    pendingFormData?.geometry || editingZone?.geometry;
+  // El form guarda la geometría serializada (se la da el editor de mapa); el
+  // resto de la app la consume como objeto, que es como vive en el jsonb.
+  const currentFormGeometry = useMemo<ZoneGeometry | null>(() => {
+    if (pendingFormData?.geometry) {
+      try {
+        return JSON.parse(pendingFormData.geometry) as ZoneGeometry;
+      } catch {
+        return null;
+      }
+    }
+    return editingZone?.geometry ?? null;
+  }, [pendingFormData?.geometry, editingZone?.geometry]);
   const currentFormColor =
     pendingFormData?.color || editingZone?.color || "#3B82F6";
 

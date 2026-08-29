@@ -1152,12 +1152,14 @@ describe("Zone Delete - DELETE /api/zones/[id]", () => {
     expect(data.success).toBe(true);
     expect(data.deactivatedVehicles).toBe(1);
 
-    // Verify zone is soft deleted
+    // El borrado marca `deletedAt` y suelta el default. `active` no se toca:
+    // es la pausa que controla el usuario, y compartir bandera hacía que
+    // editar una zona borrada y marcarla activa la resucitara.
     const [dbZone] = await testDb
       .select()
       .from(zones)
       .where(eq(zones.id, zone.id));
-    expect(dbZone.active).toBe(false);
+    expect(dbZone.deletedAt).not.toBeNull();
     expect(dbZone.isDefault).toBe(false);
   });
 

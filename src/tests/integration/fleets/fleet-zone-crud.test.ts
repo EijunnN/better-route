@@ -417,9 +417,7 @@ describe("Zone CRUD", () => {
     expect(response.status).toBe(400);
 
     const data = await response.json();
-    expect(data.error).toBe(
-      "Ya existe una zona activa con este nombre en la empresa",
-    );
+    expect(data.error).toBe("Ya existe una zona con este nombre en la empresa");
   });
 
   // 13. Zone list with vehicle counts
@@ -463,6 +461,42 @@ describe("Zone CRUD", () => {
     expect(zoneWithVehicles.vehicles).toHaveLength(2);
   });
 
+  // 13b. Pausar una zona no la borra
+  test("GET /api/zones lists paused zones but not deleted ones", async () => {
+    const paused = await createZone({
+      companyId: company.id,
+      name: "Zone Paused",
+    });
+
+    const pauseRequest = await createTestRequest(`/api/zones/${paused.id}`, {
+      method: "PATCH",
+      token,
+      companyId: company.id,
+      userId: admin.id,
+      body: { id: paused.id, active: false },
+    });
+    const pauseResponse = await PATCH_ZONE(pauseRequest, {
+      params: Promise.resolve({ id: paused.id }),
+    });
+    expect(pauseResponse.status).toBe(200);
+
+    const listRequest = await createTestRequest("/api/zones", {
+      method: "GET",
+      token,
+      companyId: company.id,
+      userId: admin.id,
+    });
+    const { data } = await (await GET_ZONES(listRequest)).json();
+
+    // Una pausa es reversible desde la UI: si la lista la escondiera, el
+    // usuario perdería la única forma de volver a activarla.
+    const listed = (data as Array<{ id: string; active: boolean }>).find(
+      (z) => z.id === paused.id,
+    );
+    expect(listed).toBeDefined();
+    expect(listed?.active).toBe(false);
+  });
+
   // 14. Zone update geometry (new valid GeoJSON)
   test("PATCH /api/zones/:id updates zone geometry", async () => {
     const zone = await createZone({
@@ -484,10 +518,11 @@ describe("Zone CRUD", () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    // parsedGeometry should reflect the updated polygon
-    expect(data.parsedGeometry).toBeDefined();
-    expect(data.parsedGeometry.type).toBe("Polygon");
-    expect(data.parsedGeometry.coordinates[0][0][0]).toBe(-77.06);
+    // La geometría se guarda como objeto en el jsonb, no como JSON string.
+    expect(data.geometry).toBeDefined();
+    expect(typeof data.geometry).toBe("object");
+    expect(data.geometry.type).toBe("Polygon");
+    expect(data.geometry.coordinates[0][0][0]).toBe(-77.06);
   });
 
   // 15. Zone soft delete
@@ -513,12 +548,26 @@ describe("Zone CRUD", () => {
     expect(data.success).toBe(true);
     expect(data.message).toBe("Zona desactivada exitosamente");
 
-    // Verify in DB: active should be false
+    // El borrado marca `deletedAt`, no `active`: esa bandera es la pausa que
+    // controla el usuario y reutilizarla revivía zonas borradas al editarlas.
     const [dbRecord] = await testDb
       .select()
       .from(zones)
       .where(eq(zones.id, zone.id));
-    expect(dbRecord.active).toBe(false);
+    expect(dbRecord.deletedAt).not.toBeNull();
+
+    // Y deja de listarse.
+    const listRequest = await createTestRequest("/api/zones", {
+      method: "GET",
+      token,
+      companyId: company.id,
+      userId: admin.id,
+    });
+    const listResponse = await GET_ZONES(listRequest);
+    const listData = await listResponse.json();
+    expect(
+      (listData.data as Array<{ id: string }>).some((z) => z.id === zone.id),
+    ).toBe(false);
   });
 
   // 16. Tenant isolation (zone)
