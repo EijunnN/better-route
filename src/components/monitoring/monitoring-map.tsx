@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useTheme } from "@/components/layout/theme-context";
 import { DEFAULT_MAP_CENTER, getMapStyle } from "@/lib/map-styles";
 import { escapeHtml } from "@/lib/utils";
 
@@ -42,14 +41,10 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
     },
     ref,
   ) {
-    const { isDark } = useTheme();
-    const isDarkRef = useRef(isDark);
-    isDarkRef.current = isDark;
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const mapThemeRef = useRef<boolean | null>(null);
     const popupRef = useRef<maplibregl.Popup | null>(null);
 
     // Expose flyTo method to parent via ref
@@ -497,10 +492,14 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
 
           if (!mapContainer.current) return;
 
-          mapThemeRef.current = isDarkRef.current;
           map.current = new maplibregl.Map({
             container: mapContainer.current,
-            style: getMapStyle(isDarkRef.current),
+            // Siempre el estilo oscuro: el cockpit (`data-cockpit` en
+            // monitoring/page.tsx) pinta sus superficies con un chrome oscuro
+            // fijo, sin variante clara. Siguiendo el tema de la app, en modo
+            // claro quedaba un mapa blanco bajo paneles oscuros y las rutas de
+            // colores encima resultaban ilegibles.
+            style: getMapStyle(true),
             center: DEFAULT_MAP_CENTER,
             zoom: 12,
             attributionControl: false,
@@ -550,16 +549,7 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(
       }
     }, [selectedDriverId, jobId, selectedVehicleIds.join(","), isLoading]);
 
-    // React to theme changes
-    useEffect(() => {
-      if (!map.current || isLoading) return;
-      if (mapThemeRef.current === isDark) return; // Already correct style
-      mapThemeRef.current = isDark;
-      map.current.once("style.load", () => {
-        loadMapDataRef.current(false);
-      });
-      map.current.setStyle(getMapStyle(isDark), { diff: false });
-    }, [isDark, isLoading]);
+    // Sin efecto de cambio de tema: el mapa del cockpit es oscuro siempre.
 
     return (
       <div className="size-full relative">
