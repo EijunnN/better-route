@@ -7,6 +7,10 @@ import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import {
+  buildVroomConfigFromPreset,
+  loadOptimizationPreset,
+} from "@/lib/optimization/preset-config";
+import {
   type DepotConfig,
   type OrderForOptimization,
   type VehicleForOptimization,
@@ -215,6 +219,15 @@ export async function POST(
         ),
       });
 
+      // El preset atado al job manda: sin el, la reoptimizacion caia a
+      // DRIVER_ORIGIN y un preset OPEN_END terminaba cerrando las rutas en el
+      // punto de partida despues de un swap. Es el mismo fallo que ya se
+      // habia corregido en reassign; aca habia quedado pendiente.
+      const preset = await loadOptimizationPreset({
+        companyId: tenantCtx.companyId,
+        configurationId: job.configurationId,
+      });
+
       // Reoptimize each affected route
       for (const routeId of affectedRouteIds) {
         const route = result.routes.find((r) => r.routeId === routeId);
@@ -271,7 +284,11 @@ export async function POST(
           const optimResult = await vroomOptimizeRoutes(
             ordersForOptim,
             [vehicleForOptim],
-            { depot, objective: "DISTANCE" },
+            buildVroomConfigFromPreset({
+              preset,
+              depot,
+              objective: "DISTANCE",
+            }),
           );
 
           // Update route with optimized stops
