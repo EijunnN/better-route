@@ -69,5 +69,10 @@ ENV OSRM_MAX_TABLE_SIZE=5000 \
 
 EXPOSE 5000
 
-# Railway asigna PORT en runtime, así que el puerto no puede quedar fijo en CMD.
-CMD ["sh", "-c", "osrm-routed --algorithm mld --max-table-size ${OSRM_MAX_TABLE_SIZE} --port ${PORT} --ip 0.0.0.0 /data/map.osrm"]
+# La plataforma asigna PORT en runtime, así que no puede quedar fijo en CMD.
+#
+# `--ip ::` y no 0.0.0.0: la red privada de Railway es IPv6, y escuchando solo
+# en IPv4 el host interno (osrm.railway.internal) resuelve a una dirección
+# donde nadie atiende — VROOM recibe "upstream unreachable" pese a que el
+# dominio público sí responde. En IPv6 dual-stack esto igual acepta IPv4.
+CMD ["sh", "-c", "osrm-routed --algorithm mld --max-table-size ${OSRM_MAX_TABLE_SIZE} --port ${PORT} --ip :: /data/map.osrm"]
