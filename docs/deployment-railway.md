@@ -193,7 +193,7 @@ en Vercel y en Railway quedaron sólo los que Vercel no puede hospedar bien.
 | `app` | Vercel | — |
 | `osrm` | Railway | 13,7 MB medios → **~$0,14/mes** |
 | `vroom` | Railway | 2,8 MB medios → **~$0,03/mes** |
-| `centrifugo` | mudándose de Vercel a Railway | ~32 MB → **~$0,35/mes** |
+| `centrifugo` | Railway (movido 2026-08-30) | ~32 MB → **~$0,35/mes** |
 | `redis` | Upstash | — |
 
 Los promedios son bajísimos porque duermen: el consumo se cobra por minuto
@@ -213,8 +213,19 @@ tráfico saliente.
 > **Los deploys del free tier en us-west2 están bloqueados entre las 8:00 y las
 > 20:00 de Los Ángeles** (10:00–22:00 en Perú), y cambiar de región es función
 > de pago. El límite es sólo para desplegar: una vez arriba, los servicios
-> responden a cualquier hora. Correr `scripts/deploy-centrifugo-railway.sh`
-> fuera de esa ventana.
+> responden a cualquier hora.
+
+**Centrifugo: dejar que mande el Dockerfile.** El `startCommand` de Railway
+pisa el `CMD` de la imagen y **no expande variables**: un `${PORT}` ahí llega
+literal y Centrifugo aborta con `'http_server.port' cannot parse value as
+'int'`, en bucle, hasta que el deploy se da por fallido. El `CMD` del
+Dockerfile sí lo expande porque es un `sh -c` real. Con `startCommand` vacío y
+el builder en `Dockerfile.vercel` arranca a la primera; el dominio se genera
+con `targetPort: 8000`, que es donde escucha.
+
+Ojo también con la fuente: un `connect-service-source --image` deja
+`source.image` fijo aunque el deploy se rechace, y a partir de ahí ignora el
+Dockerfile. `railway up` la devuelve a los archivos del repo.
 
 ---
 
