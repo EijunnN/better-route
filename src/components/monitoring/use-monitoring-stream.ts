@@ -2,7 +2,7 @@
 
 import { Centrifuge } from "centrifuge";
 import { useEffect, useRef } from "react";
-import type { MonitoringEventKind } from "@/lib/realtime";
+import type { MonitoringEvent } from "@/lib/realtime";
 
 /**
  * Resolve the Centrifugo WebSocket URL. In production the reverse proxy
@@ -19,8 +19,11 @@ function resolveWsUrl(): string {
 
 /**
  * Subscribes the monitoring page to its company's realtime channel over
- * Centrifugo (ADR-0007). Each event triggers `onEvent` so the caller can
- * revalidate the SWR caches it owns — payloads are small hints, not data.
+ * Centrifugo (ADR-0007). Entrega el evento completo, no sólo su `kind`: el
+ * de ubicación ya trae lat/lng/heading/speed, así que quien escucha puede
+ * mover el marcador con ese dato en vez de volver a pedir la lista entera.
+ * Con cuatro conductores pingueando cada 20s eso eran ~720 refetch por hora
+ * y por pestaña abierta, de datos que el socket ya había traído.
  *
  * Uses server-side subscriptions: the `channels` claim in the token
  * (issued by `/api/realtime/token`) subscribes the connection to
@@ -30,7 +33,7 @@ function resolveWsUrl(): string {
  */
 export function useMonitoringStream(
   companyId: string | null,
-  onEvent: (kind: MonitoringEventKind) => void,
+  onEvent: (event: MonitoringEvent) => void,
 ): void {
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
@@ -51,9 +54,8 @@ export function useMonitoringStream(
 
     // Server-side subscriptions deliver publications on the client object.
     centrifuge.on("publication", (ctx) => {
-      const kind = (ctx.data as { kind?: MonitoringEventKind } | undefined)
-        ?.kind;
-      if (kind) onEventRef.current(kind);
+      const event = ctx.data as MonitoringEvent | undefined;
+      if (event?.kind) onEventRef.current(event);
     });
 
     centrifuge.connect();

@@ -11,6 +11,7 @@ import useSWR, { useSWRConfig } from "swr";
 import type { FieldDefinition } from "@/components/custom-fields/custom-fields-context";
 import type { companyDeliveryPolicy } from "@/db/schema";
 import { useCompanyContext } from "@/hooks/use-company-context";
+import type { MonitoringEvent } from "@/lib/realtime";
 import type { SystemState } from "@/lib/workflow/states";
 import { useMonitoringStream } from "./use-monitoring-stream";
 
@@ -398,17 +399,45 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   // `dedupingInterval: 2000` keeps multiple drivers reporting in
   // quick succession from causing a refetch storm.
   const handleStreamEvent = useCallback(
-    (kind: string) => {
-      if (kind === "driver.location") {
-        mutateDrivers();
+    (event: MonitoringEvent) => {
+      if (event.kind === "driver.location") {
+        // El evento ya trae la posición: se aplica al caché sin revalidar
+        // (`revalidate: false`). Pedirle la lista al servidor con cada ping
+        // eran ~720 requests por hora y pestaña para mover un marcador que
+        // el socket ya había traído — y el plan factura CPU activa.
+        mutateDrivers(
+          (current) =>
+            current?.map((d) =>
+              d.id === event.driverId
+                ? {
+                    ...d,
+                    currentLocation: {
+                      accuracy: null,
+                      batteryLevel: null,
+                      ...d.currentLocation,
+                      latitude: event.latitude,
+                      longitude: event.longitude,
+                      speed: event.speed,
+                      heading: event.heading,
+                      isMoving: event.isMoving,
+                      recordedAt: event.occurredAt,
+                      isRecent: true,
+                    },
+                  }
+                : d,
+            ),
+          { revalidate: false },
+        );
+        // El detalle sí se recarga: trae la traza y los tiempos por parada,
+        // que no vienen en el evento. Es una sola pestaña, la del conductor
+        // que el planificador está mirando.
         if (view === "detail") mutateDetail();
       } else {
+        // Una transición de parada cambia contadores, progreso y evidencia:
+        // eso no viaja en el evento y hay que ir a buscarlo.
         mutateMonitoring();
         mutateDrivers();
         if (view === "detail") mutateDetail();
-        // El panel de eventos vive de esta misma transición. Revalidar su
-        // clave acá lo mantiene al día por el socket, sin que tenga que
-        // pollear su propio endpoint.
         mutateEvents();
       }
       setLastUpdate(new Date());
