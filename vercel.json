@@ -3,28 +3,10 @@
   "services": {
     "app": {
       "root": "./",
-      "framework": "nextjs",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "centrifugo",
-          "format": "url",
-          "env": "CENTRIFUGO_URL"
-        }
-      ]
-    },
-    "centrifugo": {
-      "root": "docker/centrifugo/",
-      "runtime": "container"
+      "framework": "nextjs"
     }
   },
   "rewrites": [
-    {
-      "source": "/connection/(.*)",
-      "destination": {
-        "service": "centrifugo"
-      }
-    },
     {
       "source": "/(.*)",
       "destination": {
