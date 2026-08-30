@@ -6,10 +6,13 @@ import { withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/auth/authorization";
 import { requireRoutePermission } from "@/lib/infra/api-middleware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { formatArrivalTime } from "@/lib/optimization/optimization-runner/postprocess";
 import {
   buildVroomConfigFromPreset,
   loadOptimizationPreset,
 } from "@/lib/optimization/preset-config";
+import type { VerifiedPlan } from "@/lib/optimization/solved-plan";
+import { assertPersistableVerifiedPlan } from "@/lib/optimization/solved-plan/schemas";
 import {
   type DepotConfig,
   type OrderForOptimization,
@@ -35,8 +38,10 @@ interface RouteData {
     trackingId: string;
     sequence: number;
     address: string;
-    latitude: string;
-    longitude: string;
+    // `number`, como en solved-plan/schemas. Declararlos `string` acá dejaba
+    // pasar un `String(lat)` que el validador de confirmación rechaza.
+    latitude: number;
+    longitude: number;
     estimatedArrival?: string;
     timeWindow?: {
       start: string;
@@ -60,8 +65,8 @@ interface OptimizationResult {
     orderId: string;
     trackingId: string;
     reason: string;
-    latitude?: string;
-    longitude?: string;
+    latitude?: number;
+    longitude?: number;
     address?: string;
   }>;
   vehiclesWithoutRoutes?: Array<{
@@ -252,6 +257,10 @@ export async function POST(
           longitude: parseFloat(String(o.longitude)),
           weightRequired: o.weightRequired || 0,
           volumeRequired: o.volumeRequired || 0,
+          // La ventana viaja o VROOM resuelve sin restricción horaria y
+          // devuelve tiempos contados desde cero, no horas del día.
+          timeWindowStart: o.timeWindowStart ?? undefined,
+          timeWindowEnd: o.timeWindowEnd ?? undefined,
           serviceTime: 300, // Default 5 minutes
           priority: 1,
         }));
@@ -273,6 +282,11 @@ export async function POST(
                 -77.0428,
             ),
           ),
+          // Sin la jornada, VROOM arranca en t=0 y los arrivals salen como
+          // segundos desde cero: la ruta reoptimizada mostraba "00:05" en vez
+          // de la hora real.
+          timeWindowStart: vehicleInfo.workdayStart ?? undefined,
+          timeWindowEnd: vehicleInfo.workdayEnd ?? undefined,
         };
 
         const depot: DepotConfig = {
@@ -313,20 +327,24 @@ export async function POST(
             // Map optimized stops back to our format
             const optimizedStops = optimRoute.stops.map((optStop, idx) => {
               const originalStop = stopByOrderId.get(optStop.orderId);
-              // Convert arrival time to ISO string if it's a number (timestamp)
-              const arrivalTime = optStop.arrivalTime
-                ? typeof optStop.arrivalTime === "number"
-                  ? new Date(optStop.arrivalTime * 1000).toISOString()
-                  : String(optStop.arrivalTime)
-                : undefined;
+              // `arrival` de VROOM son segundos desde medianoche y el plan
+              // guardado los quiere como "HH:MM" (solved-plan/schemas). Antes
+              // acá se hacía `new Date(arrival * 1000).toISOString()`, que
+              // producía un timestamp de 1970, y `String(latitude)`, que
+              // convertía a texto un campo declarado `z.number()`: el plan
+              // quedaba con una forma que el validador de confirmación
+              // rechaza, y el usuario no podía confirmar sin reoptimizar.
               return {
                 orderId: optStop.orderId,
                 trackingId: originalStop?.trackingId || optStop.orderId,
                 sequence: idx + 1,
                 address: originalStop?.address || "",
-                latitude: String(optStop.latitude),
-                longitude: String(optStop.longitude),
-                estimatedArrival: arrivalTime,
+                latitude: optStop.latitude,
+                longitude: optStop.longitude,
+                estimatedArrival:
+                  optStop.arrivalTime !== undefined
+                    ? formatArrivalTime(optStop.arrivalTime)
+                    : undefined,
                 groupedOrderIds: originalStop?.groupedOrderIds,
                 groupedTrackingIds: originalStop?.groupedTrackingIds,
               };
@@ -363,6 +381,24 @@ export async function POST(
 
     // Update summary
     result.summary.optimizedAt = new Date().toISOString();
+
+    // Boundary de escritura: el `as unknown` de abajo borra toda verificación
+    // de tipos, así que la forma se valida en runtime antes de tocar el JSONB.
+    try {
+      assertPersistableVerifiedPlan(result as unknown as VerifiedPlan);
+    } catch (shapeError) {
+      console.error(
+        "El intercambio produjo un plan con forma inválida; no se persiste:",
+        shapeError,
+      );
+      return NextResponse.json(
+        {
+          error:
+            "El intercambio produjo un plan inválido y no se guardó. El plan anterior queda intacto.",
+        },
+        { status: 500 },
+      );
+    }
 
     // Save updated result to database
     await db

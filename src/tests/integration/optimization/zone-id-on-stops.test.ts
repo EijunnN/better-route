@@ -53,8 +53,13 @@ mock.module("@/lib/optimization/vroom-optimizer", () => ({
                 trackingId: o.trackingId,
                 sequence: i + 1,
                 address: o.address,
-                latitude: String(o.latitude),
-                longitude: String(o.longitude),
+                // `number`, como declara OptimizedStop. El mock los mandaba
+                // como texto y el runner los pasaba tal cual al schema, que
+                // exige number: el test fallaba por su propio mock, no por el
+                // código. Es el mismo malentendido —"las coordenadas son
+                // string"— que rompió reassign/swap en producción.
+                latitude: o.latitude,
+                longitude: o.longitude,
               })),
               totalDistance: 100,
               totalDuration: 300,

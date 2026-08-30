@@ -243,3 +243,67 @@ describe("assertPersistableVerifiedPlan", () => {
     expect(() => assertPersistableVerifiedPlan(plan)).toThrow(ZodError);
   });
 });
+
+/**
+ * Regresión de un bug que llegó a producción: reassign y swap-vehicles
+ * reescriben `job.result` tras reoptimizar la ruta afectada, y lo hacían con
+ * `String(latitude)` y `new Date(arrival * 1000).toISOString()`. El plan
+ * quedaba guardado con coordenadas en texto y un timestamp de 1970 donde va
+ * un "HH:MM". Nada fallaba en ese momento —el `as unknown` del update borra
+ * la verificación de tipos—; el error aparecía días después, al confirmar,
+ * como "Stored optimization result has an invalid shape", sin señalar al
+ * endpoint que lo había escrito.
+ *
+ * Estas dos formas son exactamente las que producía el código viejo.
+ */
+describe("drift de reassign/swap: la forma que llegó a producción", () => {
+  test("rechaza coordenadas en texto", () => {
+    const route = validRawRoute();
+    const drifted = {
+      ...route,
+      stops: [
+        {
+          ...route.stops[0],
+          latitude: String(route.stops[0].latitude),
+          longitude: String(route.stops[0].longitude),
+        },
+      ],
+    };
+
+    expect(() => parseRawSolvedRoute(drifted)).toThrow(ZodError);
+  });
+
+  test("rechaza un arrival ISO donde va HH:MM", () => {
+    const route = validRawRoute();
+    const drifted = {
+      ...route,
+      stops: [
+        {
+          ...route.stops[0],
+          // 305 s desde medianoche pasados por `new Date(s * 1000)`.
+          estimatedArrival: new Date(305 * 1000).toISOString(),
+        },
+      ],
+    };
+
+    expect(() => parseRawSolvedRoute(drifted)).toThrow(ZodError);
+  });
+
+  test("acepta la forma que produce formatArrivalTime", () => {
+    const route = validRawRoute({
+      stops: [
+        {
+          orderId: "order-1",
+          trackingId: "TRK-1",
+          sequence: 1,
+          address: "Av. Test 123",
+          latitude: -12.0773444912536,
+          longitude: -77.0834608886827,
+          estimatedArrival: "09:05",
+        },
+      ],
+    });
+
+    expect(() => parseRawSolvedRoute(route)).not.toThrow();
+  });
+});
