@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { STOP_STATUS_TRANSITIONS } from "@/db/schema";
+import { formatWallClock } from "@/lib/utils/wall-clock";
 import {
   ALLOWED_TRANSITIONS,
   isTerminal,
@@ -121,14 +122,6 @@ export function StopStatusUpdateDialog({
       (stop.customFields as Record<string, unknown> | null) ?? {},
     );
   }
-
-  const formatTime = (isoString?: string | null) => {
-    if (!isoString) return "--:--";
-    return new Date(isoString).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   const willCompleteStop = selectedStatus === "COMPLETED";
   const willFailStop = selectedStatus === "FAILED";
@@ -244,8 +237,8 @@ export function StopStatusUpdateDialog({
                   <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                     <Clock className="size-3" />
                     <span>
-                      Ventana: {formatTime(stop.timeWindowStart)} -{" "}
-                      {formatTime(stop.timeWindowEnd)}
+                      Ventana: {formatWallClock(stop.timeWindowStart)} -{" "}
+                      {formatWallClock(stop.timeWindowEnd)}
                     </span>
                   </div>
                 )}

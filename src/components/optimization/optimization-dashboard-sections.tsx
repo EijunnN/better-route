@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { exportPlanToExcel } from "@/lib/export/export-plan-excel";
 import { cn } from "@/lib/utils";
+import { formatWallClock } from "@/lib/utils/wall-clock";
 import { DriverAssignmentDisplay } from "./driver-assignment-quality";
 import {
   formatDistance,
@@ -71,12 +72,13 @@ import { PencilSelectOverlay } from "./pencil-select-overlay";
 import { PlanConfirmationDialog } from "./plan-confirmation-dialog";
 import { ROUTE_COLORS, RouteMap } from "./route-map";
 
-/** Format a time window value that may be HH:mm, HH:mm:ss, or an ISO date string */
+/**
+ * Ventana horaria, que puede llegar como HH:mm, HH:mm:ss o ISO. Es hora de
+ * pared: se lee sin convertir a la zona del navegador (ver `wall-clock.ts`).
+ */
 function formatTimeWindow(value: string): string {
   if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(value)) return value.slice(0, 5);
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return formatWallClock(value, value);
 }
 
 // KPI Badge Component

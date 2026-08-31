@@ -68,6 +68,18 @@ cableado por endpoint).
 - Fechas: ISO-8601 UTC strings. **Excepción**: time windows de la Order en
   my-orders son `HH:MM:SS` crudos (formato `time` de Postgres; el parser
   Dart tolera `HH:MM` y `HH:MM:SS`) (§4).
+- **Dos semánticas bajo el mismo formato ISO.** Los campos de *hora de
+  pared* —`timeWindow.start`/`end`, `estimatedArrival`— son la hora que el
+  operador cargó y el conductor debe leer tal cual. El server las compone con
+  `setUTCHours` para que los dígitos crucen intactos un `timestamp` sin zona
+  de Postgres, así que llegan como `09:00Z` significando las 9 **locales**.
+  El cliente debe leer las componentes UTC, no convertir con `toLocal()`.
+  Los campos de *instante real* —`liveEtaAt`, `startedAt`, `completedAt`—
+  sí son momentos absolutos y se convierten normal. Confundirlos desfasa la
+  hora por el offset del dispositivo: en Perú (UTC-5) una ventana de 9 a 14
+  se mostraba de 4 a 9. El móvil normaliza esto al parsear
+  (`parseWallClock` / `parseInstant` en `models/route_stop.dart`), no en
+  cada widget.
 - Coordenadas: `latitude`/`longitude` son `number` en respuestas del server;
   los parsers móviles toleran string-o-num. En el `PATCH` de cierre,
   `gpsLatitude`/`gpsLongitude` viajan como **string**.

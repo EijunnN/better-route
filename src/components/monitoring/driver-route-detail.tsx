@@ -29,6 +29,7 @@ import {
 import { DELIVERY_FAILURE_LABELS } from "@/db/schema";
 import { useCompanyContext } from "@/hooks/use-company-context";
 import { cn } from "@/lib/utils";
+import { formatStopEta, formatWallClock } from "@/lib/utils/wall-clock";
 import type { SystemState } from "@/lib/workflow/states";
 import { type DeliveryPolicy, policyForState } from "./monitoring-context";
 import {
@@ -249,14 +250,6 @@ export function DriverRouteDetail({
     const minutes = Math.floor((seconds % 3600) / 60);
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
-  };
-
-  const formatTime = (isoString?: string | null) => {
-    if (!isoString) return "--:--";
-    return new Date(isoString).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   const handleStatusUpdate = async (
@@ -680,12 +673,13 @@ export function DriverRouteDetail({
                               : "Horario planificado"
                           }
                         >
-                          {formatTime(
-                            stop.status === "PENDING" ||
-                              stop.status === "IN_PROGRESS"
-                              ? (stop.liveEtaAt ?? stop.estimatedArrival)
-                              : stop.estimatedArrival,
-                          )}
+                          {stop.status === "PENDING" ||
+                          stop.status === "IN_PROGRESS"
+                            ? formatStopEta(
+                                stop.liveEtaAt,
+                                stop.estimatedArrival,
+                              )
+                            : formatWallClock(stop.estimatedArrival)}
                         </span>
                         {stop.id && stop.status === "FAILED" && (
                           <Can perm="route_stop:update">
