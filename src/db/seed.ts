@@ -47,10 +47,31 @@ import {
 import { seedDefaultFieldDefinitions } from "@/lib/custom-fields/seed-defaults";
 import { seedDefaultDeliveryPolicy } from "@/lib/workflow/seed-defaults";
 
+/**
+ * En producción el admin sale de SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD: el
+ * default de desarrollo (admin123) en un VPS expuesto es una cuenta
+ * ADMIN_SISTEMA —acceso a todas las empresas— con contraseña pública.
+ */
+function resolveSeedAdmin(): { email: string; password: string } {
+  const email = process.env.SEED_ADMIN_EMAIL ?? "admin@planeamiento.com";
+  const password = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
+  if (process.env.NODE_ENV === "production" && password.length < 12) {
+    throw new Error(
+      "SEED_ADMIN_PASSWORD es obligatoria en producción (mínimo 12 caracteres)",
+    );
+  }
+  return { email, password };
+}
+
 async function seed() {
   console.log("🌱 Starting database seed...");
 
   const shouldReset = process.argv.includes("--reset");
+  if (shouldReset && process.env.NODE_ENV === "production") {
+    throw new Error(
+      "seed --reset borra todas las empresas: no corre en producción",
+    );
+  }
 
   try {
     if (shouldReset) {
@@ -100,18 +121,19 @@ async function seed() {
     }
 
     // Create admin user (ADMIN_SISTEMA without companyId - can manage all companies)
+    const seedAdmin = resolveSeedAdmin();
     const existingAdmin = await db
       .select()
       .from(users)
-      .where(eq(users.email, "admin@planeamiento.com"))
+      .where(eq(users.email, seedAdmin.email))
       .limit(1);
 
     if (existingAdmin.length === 0) {
-      const hashedPassword = await bcrypt.hash("admin123", 10);
+      const hashedPassword = await bcrypt.hash(seedAdmin.password, 10);
 
       await db.insert(users).values({
         companyId: null,
-        email: "admin@planeamiento.com",
+        email: seedAdmin.email,
         username: "admin",
         password: hashedPassword,
         name: "Administrador del Sistema",
@@ -119,7 +141,7 @@ async function seed() {
         active: true,
       });
 
-      console.log("✅ Created admin user: admin@planeamiento.com / admin123");
+      console.log(`✅ Created admin user: ${seedAdmin.email}`);
     } else {
       console.log("ℹ️  Admin user already exists");
     }
@@ -834,8 +856,6 @@ async function seed() {
     }
 
     console.log("\n🎉 Seed completed successfully!");
-    console.log("\n📋 Login credentials:");
-    console.log("   Admin: admin@planeamiento.com / admin123");
   } catch (error) {
     console.error("❌ Seed failed:", error);
     process.exit(1);
