@@ -1,3 +1,5 @@
+# Stack de DESARROLLO: la app corre en el host con `bun dev`. Producción usa
+# docker-compose.prod.yml (docs/deployment-vps.md).
 services:
   # Centrifugo - realtime messaging server (WebSocket). See ADR-0007.
   # Core infra, not behind a profile: the app publishes monitoring and
@@ -8,7 +10,7 @@ services:
     restart: unless-stopped
     command: centrifugo --health.enabled
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./docker/centrifugo/config.json:/centrifugo/config.json:ro
     # Centrifugo reads CENTRIFUGO_<CONFIG_PATH> env vars natively. The left
@@ -29,7 +31,7 @@ services:
     container_name: osrm-backend
     restart: unless-stopped
     ports:
-      - "5001:5000"
+      - "127.0.0.1:5001:5000"
     volumes:
       - ./docker/osrm:/data
     # --max-table-size: Max coordinates for distance matrix (default ~100).
@@ -46,7 +48,7 @@ services:
     container_name: vroom
     restart: unless-stopped
     ports:
-      - "5000:3000"
+      - "127.0.0.1:5000:3000"
     volumes:
       - ./docker/vroom/config.yml:/conf/config.yml:ro
     depends_on:
@@ -85,21 +87,5 @@ services:
       timeout: 3s
       retries: 5
 
-  # PostgreSQL with PostGIS (optional - for production)
-  # postgres:
-  #   image: postgis/postgis:16-3.4
-  #   container_name: postgres
-  #   restart: unless-stopped
-  #   ports:
-  #     - "5432:5432"
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: planeamiento
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-
 volumes:
   redis_data:
-# volumes:
-#   postgres_data:

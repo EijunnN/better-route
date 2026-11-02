@@ -13,7 +13,7 @@ test-results
 docker/osrm/*.osm.pbf
 docker/osrm/*.osrm*
 
-# Secretos: en Railway y en el VPS las variables se inyectan por entorno.
+# Secretos: en el VPS las variables se inyectan por entorno (.env.vps).
 .env
 .env.*
 !.env.example

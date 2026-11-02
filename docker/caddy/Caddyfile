@@ -1,0 +1,18 @@
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Mismo origen para el WebSocket: sin subdominio, sin CORS, y la CSP
+	# `connect-src 'self'` alcanza. Caddy reenvía el upgrade solo.
+	handle /connection/* {
+		reverse_proxy centrifugo:8000
+	}
+
+	handle {
+		reverse_proxy app:3000 {
+			# getClientIp (src/lib/infra/rate-limit.ts) confía en X-Real-IP
+			# antes que en nada. Sin este header el rate limit del login ve a
+			# todos los clientes como uno solo.
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}

@@ -60,8 +60,9 @@ Principios de diseño que guían el proyecto:
 - **Determinista y verificable.** Cada plan pasa por un *verifier*
   independiente del solver que confirma que se cumplen las restricciones antes
   de confirmarlo.
-- **Dueño de tus datos.** Single-tenant por instalación: una empresa, su
-  propio despliegue, su propia base de datos.
+- **Aislamiento por empresa.** Cada fila lleva su `companyId` y cada request
+  valida el tenant contra el JWT. Varias empresas comparten la instalación
+  sin ver los datos de las otras.
 
 ---
 
@@ -149,7 +150,7 @@ Principios de diseño que guían el proyecto:
 └───────────────┬───────────────────┬──────────────┬────────────────┘
                 │                   │              │
         ┌───────┴──────┐   ┌────────┴──────┐  ┌────┴───────────┐
-        │  PostgreSQL  │   │ Upstash Redis │  │ Cloudflare R2  │
+        │  PostgreSQL  │   │     Redis     │  │ Cloudflare R2  │
         │  (Drizzle)   │   │    (cache)    │  │   (evidencia)  │
         └──────────────┘   └───────────────┘  └────────────────┘
                 │
@@ -177,8 +178,8 @@ feature. **Cadena de layout:** `AppShell > ThemeProvider > PermissionsProvider
 | Estado / datos | SWR + hooks de dominio sobre `useApiData` |
 | Mapas | MapLibre GL |
 | Backend | Next.js API Routes (Bun) |
-| Base de datos | PostgreSQL (Neon) + Drizzle ORM |
-| Cache | Upstash Redis |
+| Base de datos | PostgreSQL + Drizzle ORM |
+| Cache | Redis (ioredis) |
 | Almacenamiento | Cloudflare R2 (S3-compatible) |
 | Auth | JWT (cookies) |
 | Optimización | VROOM (solver VRP) + OSRM (red vial) |
@@ -198,10 +199,9 @@ feature. **Cadena de layout:** `AppShell > ThemeProvider > PermissionsProvider
 - ~4 GB RAM, 2 vCPU
 
 **Producción (referencia)**
-- VPS con 8 GB RAM, 4 vCPU
-- SSD 50 GB+ (los mapas de OSRM ocupan espacio)
-- Redis (Upstash o self-hosted)
-- Almacenamiento S3-compatible (Cloudflare R2 / MinIO)
+- VPS con 8 GB RAM, 4 vCPU, SSD 50 GB+ (los mapas de OSRM ocupan espacio)
+- Almacenamiento S3-compatible (Cloudflare R2) para evidencias y backups
+- Guía paso a paso: [`docs/deployment-vps.md`](./docs/deployment-vps.md)
 
 ---
 
@@ -263,15 +263,14 @@ bun run db:migrate     # lo aplica
 
 ```bash
 bun run dev            # http://localhost:3000  (Turbopack)
-# Producción:
-bun run build && bun run start
 ```
 
 ### 7. Primer ingreso
 
 El **onboarding** crea la primera empresa + sus roles. Si cargaste el seed, hay
-un administrador del sistema de ejemplo (revisa `src/db/seed.ts` para las
-credenciales por defecto) — **cámbialo en producción**.
+un administrador del sistema de ejemplo (`admin@planeamiento.com` /
+`admin123`, solo en desarrollo). En producción el seed exige
+`SEED_ADMIN_PASSWORD` y se niega a usar el default.
 
 ### Comandos útiles
 
@@ -293,7 +292,7 @@ Todas viven en [`.env.example`](./.env.example). Resumen:
 |----------|----------|
 | `DATABASE_URL` | Conexión PostgreSQL |
 | `JWT_SECRET` | Firma de los JWT (cambiar en producción) |
-| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Cache (Upstash Redis) |
+| `REDIS_URL` | Cache, sesiones y rate limit (Redis) |
 | `VROOM_URL` / `OSRM_URL` / `*_TIMEOUT` | Motores de optimización y red vial |
 | `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` / `R2_PUBLIC_URL` | Almacenamiento de evidencia (Cloudflare R2) |
 | `CENTRIFUGO_URL` / `CENTRIFUGO_TOKEN_HMAC_SECRET_KEY` / `CENTRIFUGO_API_KEY` / `CENTRIFUGO_ALLOWED_ORIGIN` | Realtime (servidor) |

@@ -40,8 +40,8 @@
 
 ## Tenancy y autorización (transversal)
 
-- Multi-tenant en el **código**, single-tenant por VPS en el **deployment**
-  (ADR-0008). Toda fila lleva `companyId`.
+- Multi-tenant en el **código** (ADR-0008) y en el **deployment**: un VPS
+  compartido por todas las empresas (ADR-0012). Toda fila lleva `companyId`.
 - Derivación de tenant: `extractTenantContextAuthed(request, user)` en
   `src/lib/routing/route-helpers.ts`. JWT autoritativo para non-admins;
   solo `ADMIN_SISTEMA` switchea workspace vía header `x-company-id`.
@@ -103,12 +103,13 @@ contrato). Campos congelados en §9; capability set de `CONDUCTOR` en §8.
 | Tema | Doc |
 |---|---|
 | Vocabulario, bounded contexts, invariantes globales | `docs/CONTEXT.md` |
-| Decisiones con motivación (11 ADRs) | `docs/adr/` |
+| Decisiones con motivación (12 ADRs) | `docs/adr/` |
 | Semántica solver ↔ verifier | `docs/optimization/SEMANTICS.md` |
 | Contrato móvil | `docs/API-CONTRACT-MOBILE.md` |
 | Rúbrica de revisión (tenancy, RBAC, terminales, evidence, history) | `docs/REVIEW-RUBRIC.md` |
 | RBAC: contrato tipado, flujo y catálogo de roles | `src/lib/auth/permissions/README.md` |
 | Modelo de datos (tablas y relaciones) | `docs/DATA-MODEL.md` |
 | Comandos, testing, Definition of Done | `CLAUDE.md` |
-| Despliegue: reverse proxy, checklist del servidor, Centrifugo | `docs/deployment-centrifugo.md` |
+| Despliegue en el VPS: compose de producción, backups, verificación | `docs/deployment-vps.md` |
+| Centrifugo: variables, reverse proxy, smoke test | `docs/deployment-centrifugo.md` |
 | Prompts reutilizables | `docs/prompts/README.md` |

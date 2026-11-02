@@ -11,6 +11,10 @@ el servidor que ningún test cubre.
 
 ## Reverse proxy
 
+En producción esto ya está resuelto en `docker/caddy/Caddyfile`
+(`docker-compose.prod.yml`); lo de abajo explica por qué y sirve si algún día
+se cambia de proxy.
+
 Browser and mobile clients reach Centrifugo on the same origin as the
 app — no subdomain, no CORS. The reverse proxy routes `/connection/*` to
 Centrifugo (`:8000`); everything else goes to Next.js (`:3000`).
@@ -110,40 +114,6 @@ bun run scripts/smoke-centrifugo.ts
 
 ## Checklist al desplegar
 
-Pasos que se hacen **en el servidor** y que ningún test del repo puede
-verificar por vos.
-
-### 1. Headers de IP en el reverse proxy
-
-Editá la config del sitio (nginx: típicamente
-`/etc/nginx/sites-available/<tu-sitio>`) con los `proxy_set_header` de la
-sección *Reverse proxy*, y recargá:
-
-```bash
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-`nginx -t` valida la sintaxis sin aplicar nada; el `&&` hace que la recarga
-ocurra **solo** si la validación pasó, para no dejar el sitio caído con una
-config rota. `reload` levanta workers nuevos y deja terminar a los viejos —
-a diferencia de `restart`, no corta las conexiones abiertas (incluidos los
-WebSockets de Centrifugo).
-
-Comprobación rápida desde afuera: el login debe seguir funcionando y, tras
-6 intentos fallidos seguidos con el mismo email, devolver `429`.
-
-### 2. Variables que la app exige en producción
-
-| Variable | Qué pasa si falta |
-|---|---|
-| `JWT_SECRET` | La app **tira excepción** al firmar/verificar cualquier token: no hay login posible. |
-| `DATABASE_URL` | Sin base no arranca nada. |
-| `REDIS_URL` | Degrada en silencio y con consecuencias de seguridad: el rate limit pasa a ser por proceso (se reinicia en cada deploy) y la rotación de refresh tokens no se puede verificar. Con la variable **puesta** pero Redis caído, el refresh responde 401 (fail-closed) — es deliberado. |
-
-### 3. Migraciones
-
-```bash
-bun run db:migrate
-```
-
-Nunca `db:push` (ADR-0009).
+Vive en [`deployment-vps.md`](./deployment-vps.md#verificación): variables
+obligatorias en `.env.vps.example`, migraciones automáticas (servicio
+`migrate`) y las comprobaciones desde afuera (rate limit, WebSocket, puertos).

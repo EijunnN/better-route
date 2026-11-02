@@ -1,19 +1,21 @@
-# OSRM con los datos ya cocinados dentro de la imagen.
+# OSRM con los datos ya cocinados dentro de la imagen (docker-compose.prod.yml).
 #
 # Los .osrm pesan >2 GB para Perú entero y están gitignoreados, así que no
 # viajan en el repo: se generan acá en build time desde Geofabrik. El build
-# tarda (minutos), pero es reproducible y el runtime arranca en segundos.
+# tarda minutos, pero es reproducible y el runtime arranca en segundos.
 #
-# BBOX recorta el mapa antes de procesarlo. El default cubre Lima
-# Metropolitana (Ancón–Pucusana–Chosica), que es donde opera la flota:
-# medido contra Perú completo son 0,25 GB en vez de 2,17 GB y 253 MB de RAM
-# en vez de 1,21 GiB bajo una matriz de 1000×1000.
+# BBOX recorta el mapa antes de procesarlo. Medido contra Perú completo, Lima
+# Metropolitana (-77.35,-12.55,-76.60,-11.60) son 0,25 GB en vez de 2,17 GB y
+# 253 MB de RAM en vez de 1,21 GiB bajo una matriz de 1000×1000.
 #
-#   BBOX=""  → sin recorte, procesa la región entera (lo que querés en un VPS
-#              con RAM de sobra y reparto fuera de Lima).
+#   BBOX=""  → sin recorte, procesa la región entera. Es el default del VPS
+#              compartido: una empresa fuera de Lima no puede quedarse sin
+#              rutas por una optimización de RAM.
 #
-# Un pedido FUERA del bbox no obtiene ruta. Si sumás ciudades, ampliá el bbox
-# y reconstruí — no es un cambio de arquitectura, es otro `osmium extract`.
+# Un pedido FUERA del bbox no obtiene ruta: no degrada, falla.
+#
+# Versión fija en build y runtime: el formato de los .osrm cambia entre
+# versiones y un runtime distinto al que los generó no los carga.
 
 # ── descarga ──────────────────────────────────────────────────────────────
 # Stage aparte a propósito: la imagen de osmium corre Debian 9, que ya está
@@ -31,7 +33,7 @@ RUN apk add --no-cache curl ca-certificates \
 
 # ── recorte ───────────────────────────────────────────────────────────────
 FROM stefda/osmium-tool:latest AS clip
-ARG BBOX=-77.35,-12.55,-76.60,-11.60
+ARG BBOX=""
 WORKDIR /data
 COPY --from=fetch /data/region.osm.pbf .
 
@@ -46,9 +48,9 @@ RUN if [ -n "$BBOX" ]; then \
  && ls -la map.osm.pbf
 
 # ── procesado ─────────────────────────────────────────────────────────────
-# MLD (no CH): es el algoritmo que espera `osrm-routed --algorithm mld` en
-# docker-compose.yml, y el único que soporta customize incremental.
-FROM osrm/osrm-backend:latest AS build
+# MLD (no CH): es el algoritmo que espera `osrm-routed --algorithm mld`, y el
+# único que soporta customize incremental.
+FROM ghcr.io/project-osrm/osrm-backend:v5.27.1 AS build
 WORKDIR /data
 COPY --from=clip /data/map.osm.pbf .
 RUN osrm-extract -p /opt/car.lua map.osm.pbf \
@@ -58,21 +60,13 @@ RUN osrm-extract -p /opt/car.lua map.osm.pbf \
  && du -sh /data
 
 # ── runtime ───────────────────────────────────────────────────────────────
-FROM osrm/osrm-backend:latest AS runtime
+FROM ghcr.io/project-osrm/osrm-backend:v5.27.1 AS runtime
 WORKDIR /data
 COPY --from=build /data/ /data/
 
-# max-table-size debe ser >= `maxlocations` de docker/vroom/config.yml (5000):
-# si OSRM rechaza la tabla, VROOM devuelve code 3 y la corrida entera falla.
-ENV OSRM_MAX_TABLE_SIZE=5000 \
-    PORT=5000
-
 EXPOSE 5000
 
-# La plataforma asigna PORT en runtime, así que no puede quedar fijo en CMD.
-#
-# `--ip ::` y no 0.0.0.0: la red privada de Railway es IPv6, y escuchando solo
-# en IPv4 el host interno (osrm.railway.internal) resuelve a una dirección
-# donde nadie atiende — VROOM recibe "upstream unreachable" pese a que el
-# dominio público sí responde. En IPv6 dual-stack esto igual acepta IPv4.
-CMD ["sh", "-c", "osrm-routed --algorithm mld --max-table-size ${OSRM_MAX_TABLE_SIZE} --port ${PORT} --ip :: /data/map.osrm"]
+# --max-table-size debe ser >= `maxlocations` de docker/vroom/config.yml
+# (5000): si OSRM rechaza la tabla, VROOM devuelve code 3 y la corrida entera
+# falla, no degrada.
+CMD ["osrm-routed", "--algorithm", "mld", "--max-table-size", "5000", "/data/map.osrm"]

@@ -1,7 +1,7 @@
 # 0008. Multi-tenant code, single-tenant-per-VPS deployment, and tenant derivation [Accepted]
 
 Date: 2026-07-01
-Status: Accepted
+Status: Accepted — §2 (deployment model) superseded by ADR-0012; §1 and §3 still in force
 
 ## Context
 

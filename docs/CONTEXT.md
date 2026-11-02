@@ -17,10 +17,12 @@ su flota, importa órdenes, corre un optimizador para generar planes de
 ruta, los conductores las ejecutan en una app móvil, y los clientes
 finales siguen su entrega vía un link público.
 
-**Modelo de tenancy (ADR-0008)**: el *código* es multi-tenant (toda fila
-lleva `companyId`, RBAC per-company), pero el *deployment* es
-single-tenant: una instalación por empresa cliente en su propio VPS, con
-su propia DB y Redis locales. No hay SaaS público compartido.
+**Modelo de tenancy (ADR-0008 + ADR-0012)**: el *código* es multi-tenant
+(toda fila lleva `companyId`, RBAC per-company) y el *deployment* también:
+**un solo VPS sirve a todas las empresas**, con Postgres, Redis, Centrifugo,
+VROOM y OSRM compartidos (`docker-compose.prod.yml`). El aislamiento entre
+tenants es la única barrera entre clientes reales, y `ADMIN_SISTEMA` es
+exclusivo del operador del VPS.
 
 ---
 
@@ -363,9 +365,10 @@ Reglas que **siempre** son ciertas. Si tu cambio las viola, está mal.
 
 ## Estado de deployment
 
-**Pre-deploy**: aún no hay usuarios reales. Las refactorizaciones
-agresivas son preferibles a compat shims. Eliminar código deprecated en
-lugar de mantenerlo. Sin migrations data-rescue todavía.
+**Beta gratuita en producción** (desde 2026-08-13) sobre un VPS compartido
+(ADR-0012, `docs/deployment-vps.md`). Las refactorizaciones agresivas siguen
+siendo preferibles a compat shims y el código deprecated se elimina, pero
+las decisiones de seguridad asumen tráfico real de internet.
 
 ---
 
@@ -388,3 +391,4 @@ lugar de mantenerlo. Sin migrations data-rescue todavía.
   - ADR-0009: Migraciones Drizzle versionadas (`db:generate` + `db:migrate`, nunca `db:push`)
   - ADR-0010: Contrato RBAC tipado compartido server/cliente
   - ADR-0011: FailureReason como string libre per-company (enum legacy)
+  - ADR-0012: Un VPS compartido para todas las empresas (reemplaza ADR-0008 §2)

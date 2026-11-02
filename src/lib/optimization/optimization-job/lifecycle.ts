@@ -53,21 +53,6 @@ import type { OptimizationInput } from "../optimization-runner/types";
 import { loadOptimizationPreset } from "../preset-config";
 import { calculateInputHash } from "./input-hash";
 
-/**
- * Si el trabajo pesado se espera dentro del request o se suelta al proceso.
- *
- * En un VPS el proceso sigue vivo después de responder, así que soltarlo deja
- * el POST rápido y el cliente descubre el avance por polling. En serverless
- * (Vercel) la instancia se apaga apenas responde: el job quedaría RUNNING
- * para siempre y el watchdog moriría con ella, porque vive en su memoria.
- *
- * `OPTIMIZATION_INLINE` fuerza el modo a mano ("1" espera, "0" suelta) para
- * probar cualquiera de los dos caminos donde sea.
- */
-const RUNS_INLINE =
-  process.env.OPTIMIZATION_INLINE === "1" ||
-  (process.env.OPTIMIZATION_INLINE !== "0" && Boolean(process.env.VERCEL));
-
 export { calculateInputHash };
 
 // ─── Hash + cache primitives ───────────────────────────────────────────
@@ -439,17 +424,10 @@ export async function createAndExecuteJob(
     unregisterJob(jobId);
   };
 
-  if (RUNS_INLINE) {
-    // Serverless: no hay proceso que sobreviva a la respuesta HTTP. Soltar el
-    // trabajo acá lo deja huérfano —el job queda RUNNING para siempre, y con
-    // él mueren el AbortController y el watchdog, que viven en la memoria de
-    // esa instancia—, así que se espera y el POST responde con el job ya
-    // resuelto. El cliente sigue haciendo polling y lo encuentra terminado en
-    // la primera vuelta: el contrato de la ruta no cambia.
-    await execute().catch(onUnrecoverable);
-  } else {
-    void execute().catch(onUnrecoverable);
-  }
+  // Se suelta al proceso: el POST responde enseguida y el cliente descubre el
+  // avance por polling. Asume un proceso que sobrevive a la respuesta (VPS);
+  // en serverless el job quedaría RUNNING huérfano.
+  void execute().catch(onUnrecoverable);
 
   return { jobId, cached: false };
 }

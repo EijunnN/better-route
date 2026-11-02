@@ -112,9 +112,9 @@ Mismas rutas dentro del área; lo que se pierde es cobertura fuera del bbox
 docker run --rm -v "$PWD:/data" stefda/osmium-tool   osmium extract --bbox=-77.35,-12.55,-76.60,-11.60 --set-bounds   -o lima.osm.pbf peru-latest.osm.pbf
 ```
 
-`docker/osrm/Dockerfile` hace esto solo en build time (variable `BBOX`), que es
-como se despliega en Railway — ver
-[`docs/deployment-railway.md`](../docs/deployment-railway.md).
+`docker/osrm/Dockerfile` hace esto solo en build time (variable `BBOX`, que
+en producción sale de `OSRM_BBOX`). Así se despliega en el VPS; ver
+[`docs/deployment-vps.md`](../docs/deployment-vps.md).
 
 ## Regiones Soportadas
 

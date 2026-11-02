@@ -34,8 +34,9 @@ yarn-error.log*
 # which vars exist; never track real values.
 .env*
 !.env.example
+!.env.vps.example
 
-# vercel
+# link local de la CLI de Vercel (el deploy ya no usa Vercel, ADR-0012)
 .vercel
 
 # typescript
@@ -61,6 +62,3 @@ docker/osrm/*.osrm*
 # Local agent skills (per-developer, not project state)
 .agents/skills/
 skills-lock.json
-
-.vercel
-.env*

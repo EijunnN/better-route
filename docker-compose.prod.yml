@@ -1,0 +1,170 @@
+# Stack de producción: un VPS para todas las empresas (ADR-0012).
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.vps up -d --build
+#
+# Guía completa: docs/deployment-vps.md.
+#
+# Solo Caddy publica puertos. Docker escribe sus reglas de iptables por delante
+# de ufw, así que un `ports:` en cualquier otro servicio queda abierto a
+# internet aunque el firewall diga lo contrario: VROOM, OSRM, Centrifugo,
+# Postgres y Redis se hablan únicamente por la red interna del compose.
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  caddy:
+    <<: *restart
+    image: caddy:2.10-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?falta DOMAIN}
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+      - centrifugo
+
+  app:
+    <<: *restart
+    build:
+      context: .
+      target: runner
+      args:
+        # Vacío a propósito: el cliente deriva wss://<mismo origen>/connection/
+        # websocket, que Caddy enruta a Centrifugo.
+        NEXT_PUBLIC_CENTRIFUGO_WS_URL: ""
+        NEXT_PUBLIC_ENABLE_PLAYGROUND: "false"
+    env_file: .env.vps
+    environment: &app-env
+      NODE_ENV: production
+      DATABASE_URL: postgresql://betterroute:${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}@postgres:5432/betterroute
+      REDIS_URL: redis://:${REDIS_PASSWORD:?falta REDIS_PASSWORD}@redis:6379
+      VROOM_URL: http://vroom:3000
+      OSRM_URL: http://osrm-backend:5000
+      CENTRIFUGO_URL: http://centrifugo:8000
+      CENTRIFUGO_ALLOWED_ORIGIN: https://${DOMAIN}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      centrifugo:
+        condition: service_started
+      vroom:
+        condition: service_started
+
+  # Corre `db:migrate` en cada `up` y termina. La app no arranca hasta que
+  # salga con 0: nunca sirve contra un schema a medio migrar. La misma imagen
+  # sirve para tareas puntuales:
+  #   docker compose -f docker-compose.prod.yml --env-file .env.vps run --rm migrate bun run db:seed
+  migrate:
+    build:
+      context: .
+      target: tools
+    env_file: .env.vps
+    environment: *app-env
+    command: ["bun", "run", "db:migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    <<: *restart
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: betterroute
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: betterroute
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U betterroute -d betterroute"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # pg_dump diario. Sin R2_BACKUP_* configurado el dump queda solo en el
+  # volumen local, que no sobrevive a la pérdida del VPS.
+  backup:
+    <<: *restart
+    build: docker/backup
+    env_file: .env.vps
+    environment:
+      PGHOST: postgres
+      PGUSER: betterroute
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: betterroute
+    volumes:
+      - backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis:
+    <<: *restart
+    image: redis:7-alpine
+    # AOF everysec: las sesiones sobreviven a un restart sin castigar IO.
+    # volatile-lru: todas nuestras keys llevan TTL; ante presión de memoria se
+    # evictan las menos usadas sin tocar keys persistentes.
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy volatile-lru
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  centrifugo:
+    <<: *restart
+    image: centrifugo/centrifugo:v6
+    command: centrifugo --health.enabled
+    volumes:
+      - ./docker/centrifugo/config.json:/centrifugo/config.json:ro
+    environment:
+      CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_HMAC_SECRET_KEY:?falta CENTRIFUGO_TOKEN_HMAC_SECRET_KEY}
+      CENTRIFUGO_HTTP_API_KEY: ${CENTRIFUGO_API_KEY:?falta CENTRIFUGO_API_KEY}
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: https://${DOMAIN}
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+  # Los datos del mapa se cocinan dentro de la imagen en el primer build
+  # (minutos). OSRM_BBOX vacío = la región entera.
+  osrm-backend:
+    <<: *restart
+    build:
+      context: docker/osrm
+      args:
+        BBOX: ${OSRM_BBOX:-}
+
+  vroom:
+    <<: *restart
+    image: ghcr.io/vroom-project/vroom-docker:v1.14.0
+    volumes:
+      - ./docker/vroom/config.yml:/conf/config.yml:ro
+    depends_on:
+      - osrm-backend
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
+  redis_data:
+  backups:

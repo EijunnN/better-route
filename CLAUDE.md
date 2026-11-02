@@ -1,7 +1,7 @@
 # BetterRoute — Planeamiento
 
 Multi-tenant SaaS de optimización de rutas vehiculares. Next.js 16 (App
-Router) + Bun + Postgres (Neon) + Drizzle + Redis (docker-compose, ioredis) +
+Router) + Bun + Postgres + Drizzle + Redis (ioredis) +
 VROOM solver + OSRM road network.
 
 ---
@@ -85,12 +85,12 @@ src/components/<feature>/
 - **Beta en producción (desde 2026-08-13)**: gratuita mientras dure la beta.
   Seguimos prefiriendo refactors agresivos a compat shims y eliminar código
   deprecated en lugar de mantenerlo — pero ya hay superficie expuesta a
-  internet: para cualquier decisión de seguridad, asumí tráfico real. Los
-  pasos manuales del despliegue (headers del reverse proxy, variables que la
-  app exige) están en
-  [`docs/deployment-centrifugo.md`](./docs/deployment-centrifugo.md#checklist-al-desplegar);
-  el entorno de prueba en contenedores está en
-  [`docs/deployment-railway.md`](./docs/deployment-railway.md).
+  internet: para cualquier decisión de seguridad, asumí tráfico real.
+- **Despliegue**: un VPS compartido por todas las empresas (ADR-0012), todo
+  en `docker-compose.prod.yml` detrás de Caddy. Instalación, backups y
+  verificación en [`docs/deployment-vps.md`](./docs/deployment-vps.md). Un
+  bug de tenancy acá filtra datos **entre clientes**, y `ADMIN_SISTEMA` es
+  solo del operador.
 - **Organización**: cuando un módulo crece, convertir en directorio +
   `index.ts`. Borrar archivos muertos sin temor.
 - **Imports**: barrels (`index.ts`) en cada feature module.

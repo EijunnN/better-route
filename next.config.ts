@@ -3,9 +3,9 @@ import type { NextConfig } from "next";
 /**
  * Origen del WebSocket de Centrifugo, derivado de la URL que ya consume el
  * cliente. En el VPS Centrifugo vive detrás del mismo reverse proxy que la app
- * (ver docs/deployment-centrifugo.md), así que `'self'` alcanza y esto queda
- * vacío. En Railway cada servicio tiene su propio dominio: sin esta entrada la
- * CSP mata el handshake y el realtime cae a polling en silencio.
+ * (docker/caddy/Caddyfile), así que `'self'` alcanza y esto queda vacío. En
+ * dev Centrifugo escucha en otro puerto: sin esta entrada la CSP mata el
+ * handshake y el realtime cae a polling en silencio.
  */
 function centrifugoConnectSrc(): string {
   const raw = process.env.NEXT_PUBLIC_CENTRIFUGO_WS_URL;
@@ -19,11 +19,9 @@ function centrifugoConnectSrc(): string {
 }
 
 const nextConfig: NextConfig = {
-  // Solo para self-hosting (Dockerfile del VPS): empaqueta el server y sus
-  // deps reales en vez de arrastrar node_modules entero a la imagen. En
-  // Vercel se desactiva a propósito — su pipeline arma su propio output y
-  // standalone le pelea, con fallos en la fase "Deploying outputs".
-  output: process.env.VERCEL ? undefined : "standalone",
+  // Empaqueta el server y sus deps reales en vez de arrastrar node_modules
+  // entero a la imagen del VPS.
+  output: "standalone",
   reactCompiler: true,
   experimental: {
     optimizePackageImports: ["lucide-react"],
@@ -51,20 +49,13 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            // In production, Centrifugo lives behind the same reverse
-            // proxy as the app (wss://same-origin/connection/websocket),
-            // which `'self'` already covers. In dev the SDK reaches
-            // ws://localhost:8000 directly, so we whitelist it
-            // explicitly — without this entry the WebSocket handshake
-            // is killed by CSP before the Centrifuge SDK can connect,
-            // and live chat / monitoring silently fall back to polling.
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              `connect-src 'self'${centrifugoConnectSrc()} https://tiles.openfreemap.org https://nominatim.openstreetmap.org https://*.upstash.io`,
+              `connect-src 'self'${centrifugoConnectSrc()} https://tiles.openfreemap.org https://nominatim.openstreetmap.org`,
               "worker-src 'self' blob:",
               "frame-ancestors 'none'",
             ].join("; "),
